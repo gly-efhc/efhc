@@ -18,6 +18,6 @@ assert.match(app,/user-shell-layout\.css/);
 const css=read('src/styles/user-shell-layout.css');
 assert.match(css,/efhc-energy-stage_image/);
 assert.match(css,/data:image\/webp;base64/);
-assert.match(css,/data-efhc-canon-migration="v872"/);
+assert.match(css,/data-efhc-source-styles="true"/);
 assert.doesNotMatch(css,/#admin|\.efhc-admin-/);
 console.log('EFHC CANON VISUAL MIGRATION v871: PASS');

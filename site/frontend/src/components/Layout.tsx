@@ -697,7 +697,7 @@ export function Layout(
         data-tma-shell-polish="viewport-theme-backbutton-safe-area"
         data-public-shell-route={isAdminRoute ? "admin" : "public"}
         data-interface-app-mode={appMode}
-        data-efhc-canon-migration={appMode === "user" ? "v872" : undefined}
+        data-efhc-source-styles={appMode === "user" ? "true" : undefined}
         data-interface-customization-mode={customization.mode}
         data-global-theme-id={isAdminRoute ? undefined : customization.globalThemeId}
         data-color-theme-id={isAdminRoute ? undefined : customization.colorThemeId}
@@ -707,10 +707,10 @@ export function Layout(
         data-theme-page-route={router.pathname}
         data-theme-page-groups={themePage.groups.join(",")}
         data-public-color-system={
-          isAdminRoute ? undefined : "soft-muted-v2"
+          isAdminRoute ? undefined : "soft-muted"
         }
         data-public-ui-polish={
-          isAdminRoute ? undefined : "route-harmony-v2"
+          isAdminRoute ? undefined : "route-harmony"
         }
         className={
           "bg-[var(--tg-bg)] efhc-shell efhc-game-shell " +

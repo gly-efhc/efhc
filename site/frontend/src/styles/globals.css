@@ -13182,7 +13182,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 
 /* Цикл 1635: публичная гармонизация маршрутов v2. */
 .efhc-independent-shell[data-public-shell-route="public"]
-[data-public-color-system="soft-muted-v2"]{
+[data-public-color-system="soft-muted"]{
   --efhc-public-accent:#c5b487;
   --efhc-public-accent-strong:#a99668;
   --efhc-public-accent-soft:rgba(197,180,135,.13);
@@ -13206,7 +13206,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 }
 
 .efhc-independent-shell[data-public-shell-route="public"]
-[data-public-ui-polish="route-harmony-v2"]{
+[data-public-ui-polish="route-harmony"]{
   background:
     radial-gradient(
       620px 260px at 50% -70px,

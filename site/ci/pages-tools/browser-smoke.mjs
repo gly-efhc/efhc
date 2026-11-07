@@ -96,7 +96,7 @@ async function inspect(path) {
   const address=url.replace(/\/$/,'')+path;
   await send('Page.navigate',{url:address});
   await sleep(8500);
-  const expr=`JSON.stringify({href:location.href,path:location.pathname,title:document.title,text:(document.body?.innerText||'').slice(0,600),root:!!document.getElementById('__next'),html:!!document.documentElement,onboarding:!!document.querySelector('[data-onboarding-tour]'),energy:(document.querySelector('.efhc-energy-stage_value')?.textContent||'').trim(),balance:(document.querySelector('.efhc-game-header_balance-value')?.textContent||'').trim(),profileTag:(document.querySelector('.efhc-game-header_profile')?.tagName||''),profileAvatarButton:!!document.querySelector('.efhc-game-header_profile > button.efhc-game-header_profile-avatar-button'),profileNameButton:!!document.querySelector('.efhc-game-header_profile-copy > button.efhc-game-header_profile-name-button'),migration:document.querySelector('.efhc-independent-shell')?.getAttribute('data-efhc-canon-migration')||'',profileDisplay:(()=>{const e=document.querySelector('.efhc-game-header_profile');return e?getComputedStyle(e).display:''})(),adminDemo:!!document.querySelector('[data-efhc-admin-readonly-demo]'),providerDemo:!!document.querySelector('[data-efhc-provider-demo=\"readonly-simulation\"]')})`;
+  const expr=`JSON.stringify({href:location.href,path:location.pathname,title:document.title,text:(document.body?.innerText||'').slice(0,600),root:!!document.getElementById('__next'),html:!!document.documentElement,onboarding:!!document.querySelector('[data-onboarding-tour]'),energy:(document.querySelector('.efhc-energy-stage_value')?.textContent||'').trim(),balance:(document.querySelector('.efhc-game-header_balance-value')?.textContent||'').trim(),profileTag:(document.querySelector('.efhc-game-header_profile')?.tagName||''),profileAvatarButton:!!document.querySelector('.efhc-game-header_profile > button.efhc-game-header_profile-avatar-button'),profileNameButton:!!document.querySelector('.efhc-game-header_profile-copy > button.efhc-game-header_profile-name-button'),migration:document.querySelector('.efhc-independent-shell')?.getAttribute('data-efhc-source-styles')||'',profileDisplay:(()=>{const e=document.querySelector('.efhc-game-header_profile');return e?getComputedStyle(e).display:''})(),adminDemo:!!document.querySelector('[data-efhc-admin-readonly-demo]'),providerDemo:!!document.querySelector('[data-efhc-provider-demo=\"readonly-simulation\"]')})`;
   const result=await send('Runtime.evaluate',{expression:expr,returnByValue:true});
   const data=JSON.parse(result.result.result.value);
   lastSnapshot = {path:data.path, title:limitText(data.title), root:data.root,
@@ -115,7 +115,7 @@ async function inspect(path) {
     if (!data.energy.startsWith('8123.')) throw Error('PAGES_FROZEN_ENERGY_FIXTURE_MISSING: '+data.energy);
     if (data.balance !== '12345678.12345678') throw Error('PAGES_FROZEN_BALANCE_FIXTURE_MISSING expected=12345678.12345678 actual='+data.balance+' route='+data.path);
     if (data.profileTag !== 'DIV' || !data.profileAvatarButton || !data.profileNameButton) throw Error('PAGES_CANON_PROFILE_DOM_MISMATCH: '+JSON.stringify(data));
-    if (data.migration !== 'v872' || data.profileDisplay !== 'grid') throw Error('PAGES_CANON_PROFILE_CSS_NOT_ACTIVE: '+JSON.stringify(data));
+    if (data.migration !== 'true' || data.profileDisplay !== 'grid') throw Error('PAGES_CANON_PROFILE_CSS_NOT_ACTIVE: '+JSON.stringify(data));
   }
   if (path === '/admin/' && !data.adminDemo) throw Error('PAGES_ADMIN_PREVIEW_MISSING');
 if (path.startsWith('/web-profile/') && !data.providerDemo) throw Error('PAGES_PROVIDER_DEMO_MISSING');
@@ -362,7 +362,7 @@ await send('Page.enable');await send('Runtime.enable');await send('Network.enabl
   const readRanksHero=async()=>{
     const reply=await send('Runtime.evaluate',{expression:
       `JSON.stringify((()=>{const root=document.querySelector('.efhc-ranks-shell[data-kg]');
-        const hero=root?.querySelector('[data-ranks-hero-summary="cycle0012-responsive"]');
+        const hero=root?.querySelector('[data-ranks-hero-summary="responsive-ranks-summary"]');
         const stats=[...(hero?.querySelectorAll('.efhc-game-stat')||[])];
         const values=stats.map(el=>el.querySelector('.efhc-game-stat_value'));
         const energy=hero?.querySelector('[data-ranks-hero-energy-d8]');
@@ -417,7 +417,7 @@ await send('Page.enable');await send('Runtime.enable');await send('Network.enabl
   const readRanksHero=async()=>{
     const reply=await send('Runtime.evaluate',{expression:
       `JSON.stringify((()=>{const root=document.querySelector('.efhc-ranks-shell[data-kg]');
-        const hero=root?.querySelector('[data-ranks-hero-summary="cycle0012-responsive"]');
+        const hero=root?.querySelector('[data-ranks-hero-summary="responsive-ranks-summary"]');
         const stats=[...(hero?.querySelectorAll('.efhc-game-stat')||[])];
         const values=stats.map(el=>el.querySelector('.efhc-game-stat_value'));
         const energy=hero?.querySelector('[data-ranks-hero-energy-d8]');

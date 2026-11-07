@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 const root=fileURLToPath(new URL('../../frontend/',import.meta.url));
 const require=createRequire(process.env.EFHC_FRONTEND_DEPENDENCIES || path.join(root,'package.json'));
 const postcss=require('postcss');
-const scope='.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"]';
+const scope='.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"]';
 const source=postcss.parse(fs.readFileSync(path.join(root,'public/FRONTEND_v866.css'),'utf8'));
 function filter(container){
  const result=container.clone({nodes:[]});

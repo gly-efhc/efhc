@@ -57,7 +57,7 @@ test('aggregation helper continues after feature failure, but raises on transpor
 });
 
 test('Ranks override supersedes generic clipping only within Ranks hero',()=>{
- assert.match(css,/\.efhc-independent-shell\[data-interface-app-mode="user"\][\s\S]*?\.efhc-ranks-shell\[data-kg\][\s\S]*?\[data-ranks-hero-summary="cycle0012-responsive"\][\s\S]*?\.efhc-game-stat_value\s*\{\s*overflow:\s*visible/);
+ assert.match(css,/\.efhc-independent-shell\[data-interface-app-mode="user"\][\s\S]*?\.efhc-ranks-shell\[data-kg\][\s\S]*?\[data-ranks-hero-summary="responsive-ranks-summary"\][\s\S]*?\.efhc-game-stat_value\s*\{\s*overflow:\s*visible/);
  assert.match(css,/overflow-wrap:\s*anywhere/);
  assert.doesNotMatch(css,/!important/);
 });

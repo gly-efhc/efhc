@@ -60,7 +60,7 @@ export default function HubPage() {
       className="efhc-hub-page efhc-hub-actions"
       data-hu="HU-01"
       data-public-surface="hub"
-      data-hub-runtime="dynamic-active-links-v251"
+      data-hub-runtime="dynamic-active-links"
       data-hub-visible-action-count={links.length}
       data-hub-empty-slots="none"
       data-hub-commerce-copy="forbidden-before-exit"

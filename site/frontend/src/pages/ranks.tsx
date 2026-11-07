@@ -183,13 +183,13 @@ export default function RanksPage(props: {
       data-public-visual-beauty="tasks-referrals-ranks"
       data-public-surface="ranks"
       data-ranks-proof-pass="v049"
-      data-ranks-runtime="react-query-kwh-current-v050"
+      data-ranks-runtime="react-query-current-energy"
       data-ranks-score="total_generated_kwh"
       data-ranks-tie-policy="dense-rank-global-id"
       data-ranks-referral-leaderboard="removed"
     >
       <GameHero
-        data-ranks-hero-summary="cycle0012-responsive"
+        data-ranks-hero-summary="responsive-ranks-summary"
         title={t("ranks.title")}
         right={
           <Button

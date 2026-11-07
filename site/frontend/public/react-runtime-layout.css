@@ -77,33 +77,33 @@ body:has(.efhc-independent-shell[data-interface-app-mode="admin"]) #__next {
 
 /* OWNER: Header slots 4–6 (physical HS-10/11/13) use slot 1's action
    material only. Palette tokens and all other Header geometry stay authored. */
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"][data-global-theme-id]
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"][data-global-theme-id]
   .efhc-game-header:is([data-hs="HS-10"],[data-hs="HS-11"],[data-hs="HS-13"]) .efhc-header-action {
   background-image:none!important;
   background-color:var(--efhc-tone-inset)!important;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"][data-global-theme-id="03"]
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"][data-global-theme-id="03"]
   .efhc-game-header:is([data-hs="HS-10"],[data-hs="HS-11"],[data-hs="HS-13"]) .efhc-header-action {
   background-color:var(--efhc-color-card)!important;
 }
 /* KG owns composition, CT owns the Ranks summary material. Legacy KG tokens
    contained a fixed blue palette when selected independently from CT-03. */
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"][data-global-theme-id]
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"] {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"][data-global-theme-id]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"] {
   border-color:var(--efhc-route-border-strong)!important;
   background-image:radial-gradient(300px 150px at 100% 0,var(--efhc-route-glow),transparent 70%)!important;
   background-color:var(--efhc-route-surface-raised)!important;
   box-shadow:inset 0 0 0 1px var(--efhc-route-border);
 }
 /* Slot 1 keeps HUB as its accent action in CT-03; copy that exception too. */
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"][data-global-theme-id="03"]
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"][data-global-theme-id="03"]
   .efhc-game-header:is([data-hs="HS-10"],[data-hs="HS-11"],[data-hs="HS-13"]) .efhc-header-action.efhc-btn-primary {
   background-color:var(--efhc-color-accent-soft)!important;
 }
 /* Header starts 1px below the viewport. Reserve its dot row only in editing,
    otherwise the above-position clamp would put the dots inside the Header. */
 html[data-customization-mode="editing"]
-  .efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header {
+  .efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header {
   margin-top:12px;
 }
 

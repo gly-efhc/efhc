@@ -2,14 +2,14 @@
    Existing ranking rows, KG variant colors/materials, CT and shared GameShell are untouched.
    Container query follows actual narrow app width even on wide browser windows.
    Never clip the exact D8 energy value or use ellipsis in the Ranks summary. */
-.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"] {
+.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"] {
   container: efhc-ranks-summary / inline-size;
 }
-.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
   :is(.efhc-game-hero_head, .efhc-game-hero_side, .efhc-game-stats, .efhc-game-stat) {
   min-width: 0;
 }
-.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+.efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
   .efhc-game-stat_value {
   max-width: 100%;
   min-width: 0;
@@ -30,19 +30,19 @@
 @container efhc-ranks-summary (max-width: 440px) {
   /* A pair of readable full-width summary rows instead of squeezed columns.
      Keep 15px OWNER label typography and KG-specific materials/radii. */
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
     .efhc-game-stats {
     grid-template-columns: minmax(0, 1fr);
     gap: .43rem;
   }
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
     .efhc-game-stat {
     display: grid;
     grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr);
     align-items: center;
     gap: .45rem;
   }
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
     .efhc-game-stat_value {
     text-align: right;
     font-size: clamp(.73rem, 3.05vw, .89rem);
@@ -50,11 +50,11 @@
   }
 }
 @container efhc-ranks-summary (max-width: 310px) {
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
     .efhc-game-stat {
     grid-template-columns: minmax(0, 1fr);
   }
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
     .efhc-game-stat_value {
     text-align: left;
   }
@@ -67,7 +67,7 @@
    Limit override to the Ranks hero for all KG/CT combinations. */
 .efhc-independent-shell[data-interface-app-mode="user"]
   .efhc-ranks-shell[data-kg]
-  [data-ranks-hero-summary="cycle0012-responsive"]
+  [data-ranks-hero-summary="responsive-ranks-summary"]
   .efhc-game-stat_value {
   overflow: visible;
   text-overflow: clip;
@@ -81,12 +81,12 @@
    ranking entries retain their authored styling and exact D8 precision. */
 @container efhc-ranks-summary (max-width: 440px) {
   .efhc-independent-shell[data-interface-app-mode="user"]
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
   .efhc-game-stat {
     grid-template-columns: minmax(0, 1fr);
   }
   .efhc-independent-shell[data-interface-app-mode="user"]
-  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="cycle0012-responsive"]
+  .efhc-ranks-shell[data-kg] [data-ranks-hero-summary="responsive-ranks-summary"]
   .efhc-game-stat_value {
     text-align: left;
     min-width: 0;

@@ -5,7 +5,7 @@
  * No color override here: HS/SC/HB/CT variants own chroma.
  * Local source correction, not full browser parity certification.
  */
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   grid-template-areas:"profile balance" "actions actions";
@@ -15,7 +15,7 @@
   padding:.55rem .65rem .5rem;
   font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] :is(.efhc-game-header_profile,.efhc-game-header_balance) {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] :is(.efhc-game-header_profile,.efhc-game-header_balance) {
   width:100%;
   max-width:none !important;
   min-width:0 !important;
@@ -24,7 +24,7 @@
   box-sizing:border-box;
   align-self:stretch;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile {
   display:grid;
   grid-area:profile;
   grid-template-columns:2.35rem minmax(0,1fr);
@@ -34,7 +34,7 @@
   border-radius:.9rem;
   text-align:left;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_balance {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_balance {
   grid-area:balance;
   display:flex;
   align-items:center;
@@ -45,14 +45,14 @@
   border-radius:.875rem;
   font-variant-numeric:tabular-nums lining-nums;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-avatar-button,
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_avatar {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-avatar-button,
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_avatar {
   width:2.35rem;
   height:2.35rem;
   flex:0 0 auto;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-copy {min-width:0;overflow:visible;}
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .profile-name {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-copy {min-width:0;overflow:visible;}
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .profile-name {
   font-family:inherit;
   font-size:.875rem;
   font-weight:800;
@@ -62,7 +62,7 @@
   text-overflow:ellipsis;
   white-space:nowrap;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_statuses {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_statuses {
   display:flex;
   align-items:center;
   flex-wrap:nowrap;
@@ -72,14 +72,14 @@
   overflow:visible;
   white-space:nowrap;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .level-label {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .level-label {
   font-family:inherit;
   font-size:.64rem;
   font-weight:400;
   line-height:1;
   padding:0;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_status {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_status {
   display:inline-block;
   font-family:inherit;
   font-size:.59rem;
@@ -91,7 +91,7 @@
   box-shadow:none;
   white-space:nowrap;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_balance-value {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_balance-value {
   font-family:inherit;
   font-variant-numeric:tabular-nums lining-nums;
   font-size:var(--efhc-header-balance-fit-size,13px) !important;
@@ -100,14 +100,14 @@
   white-space:nowrap;
   text-overflow:clip;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_actions[data-action-count="4"] {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_actions[data-action-count="4"] {
   grid-area:actions;
   display:grid;
   width:100%;
   grid-template-columns:repeat(4,minmax(0,1fr)) !important;
   gap:.38rem;
 }
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-header-action {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-header-action {
   display:flex;
   align-items:center;
   justify-content:center;
@@ -123,7 +123,7 @@
 /* Frozen HTML keeps labels VISIBLE at 320px and 390px. Legacy React CSS
  * hides them for the fifth-button layout; override only for four actions. */
 @media(max-width:430px) {
-  .efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_actions[data-action-count="4"] .efhc-header-action span {
+  .efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-game-header_actions[data-action-count="4"] .efhc-header-action span {
     display:inline;
     min-width:0;
     overflow:hidden;
@@ -134,7 +134,7 @@
 }
 /* React's primary class is efhc-btn-primary, frozen HTML uses .primary;
  * map visual semantics while preserving CT theme variables. */
-.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-canon-migration="v872"] .efhc-game-header[data-canon-header="true"] .efhc-header-action.efhc-btn-primary {
+.efhc-independent-shell[data-interface-app-mode="user"][data-efhc-source-styles="true"] .efhc-game-header[data-canon-header="true"] .efhc-header-action.efhc-btn-primary {
   border-color:var(--efhc-color-border-strong,rgba(110,168,255,.36));
   background:var(--efhc-color-accent-soft,rgba(59,130,246,.12));
   color:var(--efhc-color-accent,#eaf3ff);

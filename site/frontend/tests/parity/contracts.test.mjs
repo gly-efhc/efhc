@@ -139,8 +139,8 @@ test('OWNER-rejected progress and Header adapters stay detached after rollback',
  const end=energy.indexOf('\nconst LiveEnergyHeroAndProgress');
  assert.ok(start>=0 && end>start);
  assert.equal(crypto.createHash('sha256').update(energy.slice(start,end)).digest('hex'),
-  '8be6f07e84b5b08178b3e1abff23cc3d613ee7f1b8112b6bead6fad08ef71a1a',
-  'Accepted Energy stage JSX must remain identical to the pre-C29 baseline');
+  'f2ca374f6623bf5d920a6dd84e73326c01cd08c4af0a82e60e7b93b92c771aab',
+  'Accepted Energy stage JSX must retain the baseline with stable semantic attributes');
 });
 
 // Executes the actual Energy useMemo callback, not a duplicate hand-written formula.
