@@ -79,6 +79,9 @@ test("Existing USER data and local settings are retained rather than replaced by
   assert.match(read("src/hooks/useSnapshot.ts"), /refetchOnMount: false/);
   assert.match(read("src/queries/usePanels.ts"), /refetchOnMount: false/);
   const settings = read("src/lib/settings.ts");
+  const app = read("src/pages/_app.tsx");
+  assert.match(app, /setSettingsHydrated\(true\)/);
+  assert.match(app, /initialLocalSettingsRef/);
   assert.match(settings, /local choice made while the Telegram request was pending/i);
   assert.match(settings, /window\.localStorage\.getItem\(`\$\{KEY\}:\$\{owner\}`\)/);
   const activity = read("src/lib/frontendActivity.ts");
@@ -86,4 +89,16 @@ test("Existing USER data and local settings are retained rather than replaced by
   const energy = read("src/pages/index.tsx");
   assert.match(energy, /LIVE_TICK_MS = 333/);
   assert.match(energy, /performance\.now\(\)/);
+});
+
+
+test("Cached energy keeps a smooth local D8 display without extrapolating past the nearest panel expiry", async () => {
+  const { sourceRuntime } = await import("../helpers/source-runtime.mjs");
+  const h = sourceRuntime();
+  const projection = h.load("lib/energyProjection.ts");
+  assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", "2026-11-07T12:00:45Z"), 45000);
+  assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", "2026-11-07T11:59:59Z"), 0);
+  assert.equal(projection.energyDisplayProjectionWindowMs("invalid", "2026-11-07T12:00:45Z"), 0);
+  assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", null), Infinity);
+  assert.match(read("src/pages/index.tsx"), /Math\\.min\\(projectUntilMs/);
 });

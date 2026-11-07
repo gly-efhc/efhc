@@ -9,7 +9,7 @@ import React, {
 import { EnergyVariantIcon } from
   "../components/icons/EnergyVariantIcon";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
-import { reconcileEnergyAnchor } from "../lib/energyProjection";
+import { energyDisplayProjectionWindowMs, reconcileEnergyAnchor } from "../lib/energyProjection";
 import { useT } from "../hooks/useT";
 import type {
   SnapshotStatus,
@@ -113,14 +113,10 @@ function LiveEnergyBlock(props: LiveBlockProps) {
   // A cached server snapshot may include an expiry that reduces active panels.
   // Until the backend confirms the new active count, stop local display
   // extrapolation at the first known expiry rather than inventing more energy.
-  const projectUntilMs = useMemo(() => {
-    if (!props.server_now_iso || !props.nearest_expire_at) return Infinity;
-    const from = Date.parse(props.server_now_iso);
-    const end = Date.parse(props.nearest_expire_at);
-    return Number.isFinite(from) && Number.isFinite(end)
-      ? Math.max(0, end - from)
-      : 0;
-  }, [props.server_now_iso, props.nearest_expire_at]);
+  const projectUntilMs = useMemo(
+    () => energyDisplayProjectionWindowMs(props.server_now_iso, props.nearest_expire_at),
+    [props.server_now_iso, props.nearest_expire_at],
+  );
 
   const stateRef = useRef<{
     base_scaled: bigint;
