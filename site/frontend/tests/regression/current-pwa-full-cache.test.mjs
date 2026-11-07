@@ -30,7 +30,7 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
 test("The Pages deploy workflow requires full offline Chromium acceptance before deployment", () => {
   const releaseWorkflow = readFileSync(path.resolve(frontend, "../../.github/workflows/efhc-pages.yml"), "utf8");
   const gate = releaseWorkflow.indexOf("      - name: Require complete offline PWA and persistent React pages before publishing");
-  const publish = releaseWorkflow.indexOf("      - name: Deploy to GitHub Pages");
+  const publish = releaseWorkflow.indexOf("      - name: Deploy real React to GitHub Pages");
   assert.ok(gate > 0, "Full offline PWA gate must be mandatory in Pages workflow");
   assert.ok(publish > gate, "PWA gate must execute before actual Pages publication");
   const gateBody = releaseWorkflow.slice(gate, releaseWorkflow.indexOf("      - name: Retain mandatory persistence evidence", gate));
