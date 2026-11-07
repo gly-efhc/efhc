@@ -144,3 +144,82 @@ export async function verifyFrameThickness(page,{base}) {
   }
   return cases;
 }
+
+
+/**
+ * Positive existence check: never accept "no doubled frame" when the sole
+ * visible colored frame was removed. Use actual mounted React hero elements,
+ * not injected fixtures, and preserve original theme and design attributes.
+ */
+export async function verifyVisibleHeroFrames(page,{base}) {
+  const routes=[
+    ['panels/','.efhc-panels-hero[data-ph="PH-01"]'],
+    ['exchange/','.efhc-exchange-hero[data-xh="XH-01"]'],
+    ['tasks/','.efhc-tasks-shell[data-tg="TG-01"] .efhc-game-hero'],
+    ['ranks/','.efhc-ranks-shell[data-kg="KG-01"] .efhc-game-hero']
+  ];
+  const results=[];
+  for(const [route,selector] of routes){
+    await visit(page,base,route);
+    const variants=await page.evaluate(selector=>{
+      const hero=document.querySelector(selector);
+      const host=document.querySelector('.efhc-frontend-shell[data-global-theme-id]');
+      if(!hero||!host)throw Error('Missing real rendered hero: '+selector);
+      const html=document.documentElement;
+      const shell=hero.closest('.efhc-independent-shell[data-interface-app-mode="user"]');
+      const elements=[html,host,shell].filter(Boolean);
+      const prior=elements.map(e=>({
+        element:e,
+        global:e.getAttribute('data-global-theme-id'),
+        color:e.getAttribute('data-color-theme-id')
+      }));
+      const result=[];
+      try{
+        for(let i=1;i<=10;i++){
+          const suffix=String(i).padStart(2,'0');
+          for(const e of elements){
+            e.setAttribute('data-global-theme-id',suffix);
+            e.setAttribute('data-color-theme-id','CT-'+suffix);
+          }
+          const s=getComputedStyle(hero);
+          const rect=hero.getBoundingClientRect();
+          result.push({
+            theme:'CT-'+suffix,
+            width:s.borderTopWidth,
+            borderStyle:s.borderTopStyle,
+            borderColor:s.borderTopColor,
+            shadow:s.boxShadow,
+            rendered:rect.width>0&&rect.height>0&&s.display!=='none'&&s.visibility==='visible'
+          });
+        }
+      }finally{
+        for(const previous of prior){
+          for(const [name,value] of [
+            ['data-global-theme-id',previous.global],
+            ['data-color-theme-id',previous.color]
+          ]){
+            if(value===null)previous.element.removeAttribute(name);
+            else previous.element.setAttribute(name,value);
+          }
+        }
+      }
+      return result;
+    },selector);
+    assert.equal(variants.length,10,route+' should cover ten CT themes');
+    for(const value of variants){
+      const label=route+' '+value.theme;
+      assert.ok(value.rendered,label+' mounted hero was not visibly rendered');
+      assertOnePixel(value.width,label+' outer border thickness');
+      assert.ok(value.borderStyle!=='none'&&value.borderStyle!=='hidden',label+' missing outer border style');
+      assert.ok(!/^(?:transparent|rgba?\([^)]*,\s*0(?:\.0+)?\)|color\([^)]*\/\s*0(?:\.0+)?\))$/.test(value.borderColor),
+        label+' visually missing outer border: '+value.borderColor);
+      // An opaque or themed colored outer border must be the sole sharp edge.
+      const sharpInset=/(?:0px\s+){3}1px\s+inset|\binset\s+(?:0px\s+){3}1px\b/.test(value.shadow);
+      if(!((route==='panels/'||route==='exchange/')&&value.theme==='CT-03'))
+        assert.equal(sharpInset,false,label+' duplicate crisp inset ring: '+value.shadow);
+      results.push({route, ...value});
+    }
+  }
+  console.log('VISIBLE_HERO_FRAME_AUDIT '+JSON.stringify(results));
+  return results;
+}

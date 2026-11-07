@@ -138,3 +138,19 @@ html[data-interface-app-mode="user"] #profileAvatarOverlay
     border-color: var(--efhc-ct-accent,var(--efhc-admin-canon-focus,var(--tg-button))) !important;
   }
 }
+
+/* Rendered-outline correction: retain the existing CT-colored external 1px
+   border, remove only the extra sharp 1px inset ring. Previous approach
+   made the border transparent and visually erased the frame. */
+html body .efhc-frontend-shell[data-global-theme-id]:not([data-global-theme-id="03"])
+:is(.efhc-game-hero.efhc-panels-hero[data-ph="PH-01"],
+    .efhc-game-hero.efhc-exchange-hero[data-xh="XH-01"]) {
+  box-shadow: 0 0 16px rgba(var(--efhc-ct-accent-rgb,110,168,255),.12) !important;
+}
+/* Tasks and Ranks active hero have a hard inset with no distinct soft
+   layer in the measured current design. Keep their 1px themed border. */
+html body .efhc-frontend-shell[data-global-theme-id]
+:is(.efhc-tasks-shell[data-tg="TG-01"] .efhc-game-hero,
+    .efhc-ranks-shell[data-kg="KG-01"] .efhc-game-hero) {
+  box-shadow: 0 0 16px rgba(var(--efhc-ct-accent-rgb,110,168,255),.12) !important;
+}
