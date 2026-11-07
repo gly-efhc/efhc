@@ -133,7 +133,20 @@ try {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
         // Editing-only theme dots are absent in normal USER mode. Verify the
         // real, rendered USER shell color token rather than a hidden editor.
-        await page.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
+        const observed=await page.evaluate(({ownerCacheKey,settingsKey})=>{
+          const ownerCache=JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null");
+          const setting=JSON.parse(sessionStorage.getItem(settingsKey)||"null");
+          const shell=document.querySelector('[data-theme-page-surface="true"]');
+          return {shellPresent:Boolean(shell),theme:shell?.getAttribute("data-color-theme-id")||null,
+            lang:setting?.lang||null,storedTheme:setting?.color_theme_id||null,
+            ownerInCache:Boolean(ownerCache?.owner),ownerInSettings:Boolean(setting?.settings_owner),
+            sameOwner:Boolean(ownerCache?.owner && ownerCache.owner===setting?.settings_owner),
+            sessionPresent:Boolean(sessionStorage.getItem(settingsKey)),
+            durableOwnerSettings:Boolean(ownerCache?.owner && localStorage.getItem(settingsKey+":"+ownerCache.owner)),
+            anonymousOwner:setting?.settings_owner===null};
+        },{ownerCacheKey,settingsKey});
+        console.log("PWA_SETTINGS_RUNTIME",JSON.stringify(observed));
+        assert.equal(observed.theme,"CT-03","cached CT must be applied on USER shell; diagnostics: "+JSON.stringify(observed));
         const settings=await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)||"null"),settingsKey);
         assert.equal(settings?.lang,"ru");
         assert.equal(settings?.color_theme_id,"CT-03");
