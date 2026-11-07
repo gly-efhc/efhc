@@ -293,7 +293,7 @@ async function cacheFirst(request) {
   return response;
 }
 
-async function staleWhileRevalidate(request) {
+async function staleWhileRevalidate(request, event) {
   const names = await cacheNames();
   const cache = await caches.open(names.contentName);
   const cached = await cache.match(request);
@@ -304,33 +304,35 @@ async function staleWhileRevalidate(request) {
       return response;
     })
     .catch(() => undefined);
-  return cached || (await network) || Response.error();
+  if (cached) { event.waitUntil(network); return cached; }
+  return (await network) || Response.error();
 }
 
 function isReadOnlyOfflineRoute(url) {
-  if (url.pathname === "/faq") return true;
-  if (url.pathname === "/hub") return true;
-  if (url.pathname !== "/web-profile") return false;
+  const path = relativePath(url.pathname);
+  if (path === "/faq" || path === "/faq/" || path === "/hub" || path === "/hub/") return true;
+  if (path !== "/web-profile" && path !== "/web-profile/") return false;
   const legal = url.searchParams.get("legal");
   return legal === "privacy" || legal === "terms";
 }
 
 async function navigationFallback(request) {
-  try {
-    return await fetch(request);
-  } catch {
-    const url = new URL(request.url);
-    const fallback = isReadOnlyOfflineRoute(url)
-      ? "/offline-readonly.html"
-      : OFFLINE_URL;
-    return (
-      (await caches.match(fallback)) ||
-      new Response("EFHC is offline.", {
-        status: 503,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      })
-    );
+  const config = await loadConfig();
+  const url = new URL(request.url);
+  if (config.static_export && relativePath(url.pathname) !== null) {
+    // The Pages Router exports trailingSlash routes as immutable HTML shells.
+    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\/$/, "") + "/index.html";
+    const cached = await caches.match(html);
+    if (cached) return cached;
   }
+  try {
+    const response = await fetch(request);
+    if (response.ok || !config.static_export) return response;
+  } catch { /* Use the existing app route first, fallback only if absent. */ }
+  const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
+  return (await caches.match(fallback)) || new Response("EFHC is offline.", {
+    status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 self.addEventListener("install", (event) => {
@@ -370,10 +372,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
-  if (data.type === "SKIP_WAITING") {
-    void self.skipWaiting();
-    return;
-  }
+  if (data.type === "SKIP_WAITING") return; // New version takes over on next open.
   if (data.type === "CACHE_URLS" && Array.isArray(data.urls)) {
     event.waitUntil(cacheUrls(data.urls, data.reason || "runtime"));
     return;
@@ -384,7 +383,7 @@ self.addEventListener("message", (event) => {
         const names = await cacheNames();
         runtimeCachePolicy = normalizeCachePolicy(
           data.policy,
-          names.config.cache_limits,
+          names.config.cache_limits || names.config.limits,
         );
         await Promise.all([
           pruneCache(names.staticName, runtimeCachePolicy.static),
@@ -431,16 +430,17 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (isProtectedPath(url.pathname)) return;
+  if (isApiRequest(url.pathname)) return;
   if (request.mode === "navigate") {
     event.respondWith(navigationFallback(request));
     return;
   }
+  if (isProtectedPath(url.pathname)) return;
   if (isImmutableAsset(url)) {
     event.respondWith(cacheFirst(request));
     return;
   }
   if (isContentAsset(url)) {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(staleWhileRevalidate(request, event));
   }
 });
