@@ -1,5 +1,12 @@
-const BUILD_CONFIG_URL = "/pwa-build.json";
-const OFFLINE_URL = "/offline.html";
+const PWA_SCOPE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const scoped = (path) => `${PWA_SCOPE}/${path.replace(/^\//, "")}`;
+const BUILD_CONFIG_URL = scoped("pwa-build.json");
+const OFFLINE_URL = scoped("offline.html");
+const READONLY_OFFLINE_URL = scoped("offline-readonly.html");
+function relativePath(path) {
+  if (PWA_SCOPE && path !== PWA_SCOPE && !path.startsWith(PWA_SCOPE + "/")) return null;
+  return path.slice(PWA_SCOPE.length) || "/";
+}
 const CACHE_PREFIX = "efhc-pwa-";
 const CACHED_AT = "x-efhc-cached-at";
 let configPromise = null;
@@ -7,11 +14,13 @@ let runtimeCachePolicy = null;
 
 async function loadConfig() {
   if (!configPromise) {
-    configPromise = fetch(BUILD_CONFIG_URL, { cache: "no-store" })
-      .then((response) => response.json())
-      .catch(() => ({
+    configPromise = typeof EFHC_PWA_BUILD_CONFIG !== "undefined"
+      ? Promise.resolve(EFHC_PWA_BUILD_CONFIG)
+      : fetch(BUILD_CONFIG_URL, { cache: "no-store" })
+      .then((response) => { if (!response.ok) throw Error("PWA config HTTP " + response.status); return response.json(); })
+      .catch(async () => (await caches.match(BUILD_CONFIG_URL))?.json() || ({
         build_id: "efhc-fallback",
-        precache: [OFFLINE_URL, "/manifest.webmanifest"],
+        precache: [OFFLINE_URL, READONLY_OFFLINE_URL, scoped("manifest.webmanifest")],
         cache_limits: {
           static: {
             max_entries: 240,
@@ -24,7 +33,7 @@ async function loadConfig() {
             max_bytes: 41943040,
           },
         },
-      }));
+      })));
   }
   return configPromise;
 }
@@ -48,7 +57,7 @@ function normalizeCachePolicy(policy, defaults) {
         staticSource.max_entries,
         defaults.static.max_entries,
         80,
-        800,
+        3000,
       ),
       max_age_seconds: boundedInteger(
         staticSource.max_age_seconds,
@@ -87,8 +96,13 @@ function normalizeCachePolicy(policy, defaults) {
 }
 
 function cachePolicy(config) {
-  const defaults = config.cache_limits;
-  return runtimeCachePolicy || normalizeCachePolicy(null, defaults);
+  const defaults = config.cache_limits || config.limits;
+  const policy = runtimeCachePolicy || normalizeCachePolicy(null, defaults);
+  if (config.static_export) {
+    policy.static.max_entries = Math.max(policy.static.max_entries, defaults.static.max_entries);
+    policy.static.max_bytes = Math.max(policy.static.max_bytes, defaults.static.max_bytes);
+  }
+  return policy;
 }
 
 async function cacheNames() {
@@ -101,44 +115,35 @@ async function cacheNames() {
 }
 
 function isApiRequest(pathname) {
-  return pathname.startsWith("/api/");
+  const p = relativePath(pathname);
+  return p === null || p === "/api" || p.startsWith("/api/");
 }
 
 function isProtectedPath(pathname) {
-  return (
-    isApiRequest(pathname) ||
-    pathname.startsWith("/admin/") ||
-    pathname === "/admin" ||
-    pathname === "/health" ||
-    pathname.startsWith("/meta/") ||
-    pathname === "/openapi.json"
-  );
+  const p = relativePath(pathname);
+  return p === null || isApiRequest(pathname) || p.startsWith("/admin/") || p === "/admin" ||
+    p === "/health" || p.startsWith("/meta/") || p === "/openapi.json";
 }
 
 function isImmutableAsset(url) {
-  return (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.startsWith("/assets/") ||
-    url.pathname.startsWith("/images/") ||
-    url.pathname.startsWith("/skins/") ||
-    /\.(?:woff2?|png|jpe?g|webp|avif|svg|ico)$/.test(url.pathname)
-  );
+  const p = relativePath(url.pathname);
+  return p !== null && (p.startsWith("/_next/static/") || p.startsWith("/assets/") ||
+    p.startsWith("/images/") || p.startsWith("/skins/") ||
+    /\.(?:js|css|woff2?|png|jpe?g|webp|avif|svg|ico|mp3)$/.test(p));
 }
 
 function isContentAsset(url) {
-  return (
-    url.pathname.startsWith("/locale/") ||
-    url.pathname.startsWith("/faq/") ||
-    url.pathname === "/manifest.webmanifest" ||
-    url.pathname === "/locale-manifest.json" ||
-    url.pathname === BUILD_CONFIG_URL
-  );
+  const p = relativePath(url.pathname);
+  return p !== null && (p.startsWith("/locale/") || p.startsWith("/faq/") ||
+    p === "/manifest.webmanifest" || p === "/locale-manifest.json" ||
+    url.pathname === BUILD_CONFIG_URL);
 }
 
-function isSafeCacheUrl(value) {
+function isSafeCacheUrl(value, config) {
   try {
     const url = new URL(value, self.location.origin);
-    if (url.origin !== self.location.origin) return false;
+    if (url.origin !== self.location.origin || url.search || url.hash || isApiRequest(url.pathname)) return false;
+    if (config.static_export && /\.html$/.test(url.pathname) && relativePath(url.pathname) !== null) return true;
     if (isProtectedPath(url.pathname)) return false;
     return isImmutableAsset(url) || isContentAsset(url);
   } catch {
@@ -156,6 +161,9 @@ async function notifyClients(message) {
 
 async function stampedResponse(response) {
   const headers = new Headers(response.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+  headers.delete("transfer-encoding");
   headers.set(CACHED_AT, String(Date.now()));
   const body = await response.clone().blob();
   return new Response(body, {
@@ -219,7 +227,8 @@ async function pruneCache(cacheName, limits) {
 
 async function cacheUrls(urls, reason = "runtime") {
   const names = await cacheNames();
-  const unique = [...new Set(urls)].filter(isSafeCacheUrl);
+  const unique = [...new Set(urls)].filter((url) => isSafeCacheUrl(url, names.config));
+  const failures = [];
   const total = unique.length;
   let completed = 0;
   let completedBytes = 0;
@@ -237,13 +246,14 @@ async function cacheUrls(urls, reason = "runtime") {
       const cached = await cache.match(request);
       if (!cached) {
         const response = await fetch(request);
+        if (!response.ok) throw Error("Precache HTTP " + response.status);
         await putSafe(cache, request, response);
         completedBytes += await responseBytes(response);
       } else {
         completedBytes += await responseBytes(cached);
       }
     } catch {
-      // One optional asset must not abort the whole cache pass.
+      failures.push(url);
     }
     completed += 1;
     await notifyClients({
@@ -256,8 +266,14 @@ async function cacheUrls(urls, reason = "runtime") {
     });
   }
   await pruneCache(names.staticName, cachePolicy(names.config).static);
+  if (reason === "install" && failures.some((url) => /\.html$|\/_next\/static\/.*\.(?:js|css)$/.test(url))) {
+    await notifyClients({ type: "CACHE_FAILED", failed: failures.length, reason });
+    throw Error("EFHC_REQUIRED_PRECACHE_FAILED:" + failures.length);
+  }
   await notifyClients({
     type: "CACHE_COMPLETE",
+    failed: failures.length,
+    complete: failures.length === 0,
     reason,
     completed,
     completedBytes,
