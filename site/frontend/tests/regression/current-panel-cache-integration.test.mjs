@@ -86,6 +86,10 @@ test("Energy, indicator colors, PNL countdown and progress bars keep their accep
   assert.ok(styles.includes("efhc-energy-progress"));
   const indicators = source("components/interface-settings/InterfaceIndicators.tsx");
   assert.ok(indicators.includes("data-indicator-group"));
+  const referrals = source("pages/referrals.tsx");
+  assert.match(referrals, /Number\\.isFinite\\(raw\\)/);
+  assert.match(referrals, /Number\\.isFinite\\(rawLevel\\)/);
+  assert.match(referrals, /style=\\{\\{ width: progressPct \\}\\}/);
 });
 
 test("Local user settings survive reload without Telegram, remain owner-scoped, and sync after local choice", async () => {

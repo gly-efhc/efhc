@@ -85,11 +85,13 @@ export default function ReferralsPage(props: {
   const referralLink = stats?.referral_link?.trim() || "";
   const progress = useMemo(() => {
     const raw = Number(stats?.progress ?? 0);
-    return Math.max(0, Math.min(1, raw));
+    return Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
   }, [stats?.progress]);
   const progressPct = `${(progress * 100).toFixed(2)}%`;
+  const rawLevel = Number(stats?.level ?? 0);
+  const safeLevel = Number.isFinite(rawLevel) ? Math.max(0, Math.min(5, rawLevel)) : 0;
   const achievementProgressPct = `${Math.max(0, Math.min(100, (
-    ((stats?.level ?? 0) + ((stats?.level ?? 0) >= 5 ? 0 : progress)) / 5
+    (safeLevel + (safeLevel >= 5 ? 0 : progress)) / 5
   ) * 100)).toFixed(2)}%`;
   const canShare = Boolean(referralLink);
   const shareText = t("referrals.share_invite_text").replace(

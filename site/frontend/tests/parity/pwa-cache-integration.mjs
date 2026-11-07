@@ -90,6 +90,40 @@ try {
     }
     await context.setOffline(false);
   });
+  await check("offline progress indicators stay finite and inside their tracks at 390/1440", async () => {
+    await context.setOffline(true);
+    try {
+      for (const width of [390,1440]) {
+        await page.setViewportSize({width,height:900});
+        for (const [route,selector] of [
+          ["",".efhc-energy-progress-track"],
+          ["referrals/",".efhc-energy-progress-track"],
+          ["referrals/",".efhc-referral-achievement-track"],
+        ]) {
+          await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
+          await page.locator(selector).first().waitFor({state:"attached"});
+          const data = await page.locator(selector).first().evaluate(track=>{
+            const fill = track.firstElementChild;
+            const rail = track.getBoundingClientRect();
+            const widthCss = fill ? getComputedStyle(fill).width : "";
+            const fillRect = fill?.getBoundingClientRect();
+            return {rail:rail.width,paint:fillRect?.width ?? 0,widthCss,
+              inline:fill?.style?.width ?? "",child:Boolean(fill)};
+          });
+          assert.equal(data.child,true,route+" "+selector+" has no progress fill");
+          assert.ok(Number.isFinite(data.rail) && data.rail>=0);
+          assert.ok(Number.isFinite(data.paint) && data.paint>=0 && data.paint<=data.rail+2,
+            "progress fill escapes rail "+JSON.stringify({width,route,selector,data}));
+          assert.ok(!/(NaN|Infinity|undefined)/i.test(data.inline),
+            "invalid progress percentage "+JSON.stringify({width,route,selector,data}));
+        }
+        const values = await page.locator("[role=progressbar][aria-valuenow]").evaluateAll(nodes=>
+          nodes.map(n=>({name:n.getAttribute("aria-label"),value:Number(n.getAttribute("aria-valuenow"))})));
+        for (const item of values) assert.ok(Number.isFinite(item.value) && item.value>=0 && item.value<=100,
+          "invalid accessibility percentage "+JSON.stringify(item));
+      }
+    } finally { await context.setOffline(false); }
+  });
   await check("PWA update remains waiting during the active session", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile = path.join(root,"sw.js");
