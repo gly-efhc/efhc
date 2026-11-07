@@ -202,6 +202,40 @@ try {
     console.log("PWA_ALL_CT_PROGRESS_OK "+verified);
     results.push({name:"ten_theme_progress_inventory",status:"INFO",count:verified});
   });
+  await check("cycle0038 one-pixel frame CSS stays cached and paints offline after cycle0037 merge", async () => {
+    const framePath = new URL("frame-thickness-contract.css", base).pathname;
+    assert.ok(exportConfig.precache.includes(framePath), "1px frame contract is not in full offline precache");
+    await context.setOffline(true);
+    try {
+      await page.goto(base, { waitUntil: "domcontentloaded", timeout: 25000 });
+      await page.waitForFunction(() => [...document.styleSheets].some(sheet =>
+        sheet.href?.endsWith("/frame-thickness-contract.css")), null, { timeout: 12000 });
+      const proof = await page.evaluate(async (cssPath) => {
+         const cachesList = await caches.keys();
+        let cached = false;
+        for (const name of cachesList.filter(name => name.endsWith("-static"))) {
+          const cache = await caches.open(name);
+          if (await cache.match(cssPath)) cached = true;
+        }
+        const coin = document.querySelector(".efhc-independent-shell[data-interface-app-mode='user'] .efhc-energy-stage_coin");
+        if (!coin) throw Error("Missing rendered Energy coin for offline CSS check");
+        const before = coin.getAttribute("data-ei");
+        try {
+          coin.setAttribute("data-ei", "EI-15");
+          const computed = getComputedStyle(coin);
+          return {cached, border: computed.borderTopWidth, style: computed.borderTopStyle};
+        } finally {
+          if (before == null) coin.removeAttribute("data-ei");
+          else coin.setAttribute("data-ei", before);
+        }
+      }, framePath);
+      assert.equal(proof.cached, true, "1px CSS absent from offline static cache");
+      assert.equal(proof.border, "1px", "cached 1px frame contract not applied offline");
+      assert.equal(proof.style, "solid");
+    } finally {
+      await context.setOffline(false);
+    }
+  });
   await check("offline progress indicators stay finite and inside their tracks at 390/1440", async () => {
     await context.setOffline(true);
     try {
