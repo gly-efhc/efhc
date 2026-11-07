@@ -131,15 +131,6 @@ try {
     try {
       for (const route of ["","panels/",""]) {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
-        const diagnostic=await page.evaluate(({ownerCacheKey,settingsKey}) => ({
-          owner:JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.owner||null,
-          stored:JSON.parse(sessionStorage.getItem(settingsKey)||"null"),
-          localSettingsKeys:Object.keys(localStorage).filter(k=>k.includes("EFHC_USER_SETTINGS")).slice(0,10),
-          renderedTheme:[...document.querySelectorAll("[data-color-theme-id]")].slice(0,7).map(el=>el.getAttribute("data-color-theme-id")),
-          text:document.querySelector(".efhc-energy-stage_eyebrow")?.textContent||null,
-          appMode:document.querySelector("[data-interface-app-mode]")?.getAttribute("data-interface-app-mode")||null,
-        }),{ownerCacheKey,settingsKey});
-        console.log("PWA_SETTINGS_RESTORE_DIAGNOSTIC",JSON.stringify(diagnostic));
         await page.locator('[data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
         const settings=await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)||"null"),settingsKey);
         assert.equal(settings?.lang,"ru");
@@ -153,6 +144,53 @@ try {
         }
       }
     } finally { await context.setOffline(false); }
+  });
+  await check("all ten color themes keep Energy and Referrals progress within rails offline", async () => {
+    await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    const previous=await page.evaluate(key=>sessionStorage.getItem(key),settingsKey);
+    const themes=Array.from({length:10},(_,i)=>"CT-"+String(i+1).padStart(2,"0"));
+    let verified=0;
+    await context.setOffline(true);
+    try {
+      for(const ct of themes){
+        await page.evaluate(({key,ct})=>{
+          const current=JSON.parse(sessionStorage.getItem(key)||"null");
+          if(!current) throw Error("Expected cached UI settings before theme progress sweep");
+          current.color_theme_id=ct;
+          current.global_theme_id=ct.slice(3);
+          sessionStorage.setItem(key,JSON.stringify(current));
+        },{key:settingsKey,ct});
+        for(const route of ["","referrals/"]){
+          await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
+          await page.locator(`[data-color-theme-id="${ct}"]`).first().waitFor({state:"attached",timeout:12000});
+          for(const width of [390,1440]){
+            await page.setViewportSize({width,height:900});
+            const selectors=route
+              ? [".efhc-energy-progress-track",".efhc-referral-achievement-track"]
+              : [".efhc-energy-progress-track"];
+            for(const selector of selectors){
+              const track=page.locator(selector).first();
+              await track.waitFor({state:"attached",timeout:12000});
+              const box=await track.evaluate(el=>{
+                const rail=el.getBoundingClientRect(),fill=el.firstElementChild?.getBoundingClientRect();
+                return {rail:rail.width,fill:fill?.width??-1,inline:el.firstElementChild?.style?.width??""};
+              });
+              assert.ok(Number.isFinite(box.rail)&&box.rail>0 &&
+                Number.isFinite(box.fill)&&box.fill>=0&&box.fill<=box.rail+2 &&
+                !/(?:NaN|Infinity|undefined)/.test(box.inline),
+                "theme progress overflow "+JSON.stringify({ct,route,width,selector,box}));
+              verified++;
+            }
+          }
+        }
+      }
+    }finally{
+      await page.evaluate(({key,previous})=>{if(previous===null)sessionStorage.removeItem(key);
+        else sessionStorage.setItem(key,previous);},{key:settingsKey,previous}).catch(()=>undefined);
+      await context.setOffline(false);
+    }
+    console.log("PWA_ALL_CT_PROGRESS_OK "+verified);
+    results.push({name:"ten_theme_progress_inventory",status:"INFO",count:verified});
   });
   await check("offline progress indicators stay finite and inside their tracks at 390/1440", async () => {
     await context.setOffline(true);
