@@ -329,11 +329,11 @@ export async function loadSettingsAsync(): Promise<UserSettings> {
   // A current local owner model wins over an old provider-level cloud setting.
   try {
     if (!owner || windowStateStorage().getItem(KEY)) return local;
-    const raw = await telegramCloudStorageGet(owner ? `${CLOUD_KEY}_${owner}` : CLOUD_KEY);
+    const raw = await telegramCloudStorageGet(`${CLOUD_KEY}_${owner}`);
     if (currentUserDataOwner() !== owner) return loadSettings();
-    if (raw) {
-      return normalizeSettings(withLocalAvatarPayload(JSON.parse(raw) || {}, local));
-    }
+    // A local choice made while the Telegram request was pending always wins.
+    if (windowStateStorage().getItem(KEY) || window.localStorage.getItem(`${KEY}:${owner}`)) return loadSettings();
+    if (raw) return normalizeSettings(withLocalAvatarPayload(JSON.parse(raw) || {}, local));
     return local;
   } catch {
     return local;

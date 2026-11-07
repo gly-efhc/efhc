@@ -88,9 +88,8 @@ def main():
                 'privacyPolicyUrl': public_url + '/web-profile/?legal=privacy'}
     (target / 'public/tonconnect-manifest.json').write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    (target / 'public/sw.js').unlink(missing_ok=True)
+    # Retain the shared PWA shell; build-specific Pages scope is set after export.
     (target / 'public/runtime-config.json').unlink(missing_ok=True)
-    (target / 'public/manifest.webmanifest').unlink(missing_ok=True)
     # The DEMO backend receives business requests over its explicit HTTPS origin.
     print(f'EFHC_PAGES_TEMP_BUILD_READY base={base!r} source={source} target={target}')
 

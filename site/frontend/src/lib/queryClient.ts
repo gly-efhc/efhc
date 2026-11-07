@@ -21,7 +21,7 @@ export function createEfhcQueryClient() {
         gcTime: 300_000,
         networkMode: "always",
         retry: 1,
-        refetchOnMount: "always",
+        refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
       },

@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { appBasePath } from "../lib/appBasePath";
 import React, {
   useCallback,
   useEffect,
@@ -401,7 +402,7 @@ export function PwaRuntimeStatus(props: {
       }
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
-    void navigator.serviceWorker.register("/sw.js").then(
+    void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/` }).then(
       (registration) => {
         if (disposed) return;
         trackedRegistration = registration;
@@ -431,7 +432,11 @@ export function PwaRuntimeStatus(props: {
           });
         });
       },
-    ).catch(() => undefined);
+    ).catch((error: unknown) => {
+      // A failed registration must be visible to diagnostics, not silently ignored.
+      console.warn("EFHC_PWA_REGISTRATION_FAILED", error);
+      window.dispatchEvent(new CustomEvent("efhc:pwa-registration-failed"));
+    });
     return () => {
       disposed = true;
       cleanupIdle();
@@ -449,10 +454,8 @@ export function PwaRuntimeStatus(props: {
     };
   }, [enabled, nextRoutes, router]);
 
-  useEffect(() => {
-    if (!waiting || financialRoute) return;
-    return idle(() => waiting.postMessage({ type: "SKIP_WAITING" }));
-  }, [financialRoute, waiting]);
+  // Never activate a new version while the running USER/Admin session is open.
+  // A waiting Service Worker takes over only after the old client is closed.
 
   useEffect(() => {
     const syncOnboarding = () => {
