@@ -24,7 +24,7 @@ type PanelsPortfolioRuntimeState = "active" | "archive";
 
 export type PanelsPortfolioRuntimePanel = {
   id: DbId;
-  public_id?: string | null;
+  public_id: string;
   activated_at?: string | null;
   created_at?: string | null;
   expires_at?: string | null;
@@ -119,7 +119,7 @@ function clampPercent(value: number): number {
 }
 
 function panelLabel(panel: PanelsPortfolioRuntimePanel): string {
-  return /^PNL-(?!00000000$)[0-9]{8}$/.test(panel.public_id ?? "") ? panel.public_id! : "—";
+  return /^PNL-(?!00000000$)[0-9]{8}$/.test(panel.public_id) ? panel.public_id : "Ошибка целостности PNL";
 }
 
 function buildPanelPoints(
