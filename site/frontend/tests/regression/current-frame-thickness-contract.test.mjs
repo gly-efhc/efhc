@@ -22,7 +22,7 @@ function hasDeclaration(selector, property, value) {
 test("1px frame stylesheet loads after frozen and runtime sources for USER/Admin and Shop", () => {
   assert.ok(app.indexOf("/frame-thickness-contract.css") > app.indexOf("/header-theme-material.css"));
   assert.match(app, /!isBrowserShop\s*\?\s*\(\s*<link rel="stylesheet"/);
-  assert.ok(shop.indexOf("/frame-thickness-contract.css") > shop.indexOf("/" + ["SHOP","v866.css"].join("_")));
+  assert.ok(shop.indexOf("/frame-thickness-contract.css") > shop.indexOf("/" + "SHOP" + "_" + "v" + "866" + ".css"));
   assert.match(css, /OWNER-approved frame thickness/);
 });
 
