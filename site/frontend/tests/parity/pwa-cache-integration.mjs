@@ -131,7 +131,9 @@ try {
     try {
       for (const route of ["","panels/",""]) {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
-        await page.locator('[data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
+        // Editing-only theme dots are absent in normal USER mode. Verify the
+        // real, rendered USER shell color token rather than a hidden editor.
+        await page.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
         const settings=await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)||"null"),settingsKey);
         assert.equal(settings?.lang,"ru");
         assert.equal(settings?.color_theme_id,"CT-03");
@@ -162,7 +164,7 @@ try {
         },{key:settingsKey,ct});
         for(const route of ["","referrals/"]){
           await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
-          await page.locator(`[data-color-theme-id="${ct}"]`).first().waitFor({state:"attached",timeout:12000});
+          await page.locator(`[data-theme-page-surface="true"][data-color-theme-id="${ct}"]`).first().waitFor({state:"attached",timeout:12000});
           for(const width of [390,1440]){
             await page.setViewportSize({width,height:900});
             const selectors=route
