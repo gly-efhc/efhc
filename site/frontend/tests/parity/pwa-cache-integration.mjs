@@ -202,7 +202,7 @@ try {
     console.log("PWA_ALL_CT_PROGRESS_OK "+verified);
     results.push({name:"ten_theme_progress_inventory",status:"INFO",count:verified});
   });
-  await check("cycle0038 one-pixel frame CSS stays cached and paints offline after cycle0037 merge", async () => {
+  await check("one-pixel frame CSS stays cached and paints offline", async () => {
     const framePath = new URL("frame-thickness-contract.css", base).pathname;
     assert.ok(exportConfig.precache.includes(framePath), "1px frame contract is not in full offline precache");
     await context.setOffline(true);
