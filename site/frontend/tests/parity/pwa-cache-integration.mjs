@@ -14,6 +14,7 @@ const origin = new URL(base).origin;
 const root = process.env.EFHC_PWA_EXPORT_DIR;
 if (!root || !path.isAbsolute(root)) throw new Error("EFHC_PWA_EXPORT_DIR required");
 const artifactDir = process.env.EFHC_PARITY_ARTIFACTS || "/tmp/efhc-persistence-artifacts";
+const exportConfig = JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"));
 await mkdir(artifactDir, {recursive:true});
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
@@ -23,7 +24,7 @@ const context = await browser.newContext({
   viewport: {width:390,height:844},
   serviceWorkers: "allow",
 });
-const page = await context.newPage();
+let page = await context.newPage();
 page.setDefaultTimeout(20000);
 const results = [];
 const errors = [];
@@ -90,6 +91,55 @@ try {
     }
     await context.setOffline(false);
   });
+  await check("every exported application HTML route remains navigable without transport", async () => {
+    const htmlRoutes = exportConfig.precache.filter(url =>
+      url.endsWith(".html") && !/\/offline(?:-readonly)?\.html$/.test(url));
+    assert.ok(htmlRoutes.length >= 42,"all Next static routes are required, not just six smoke pages");
+    await context.setOffline(true);
+    try {
+      for (const html of htmlRoutes) {
+        const destination = html.endsWith("/index.html") ? html.slice(0,-"index.html".length) : html;
+        await page.goto(new URL(destination,origin).href,{waitUntil:"domcontentloaded",timeout:25000});
+        const view = await page.evaluate(() => ({
+          controlled:Boolean(navigator.serviceWorker.controller),
+          reactRoot:Boolean(document.querySelector("#__next")),
+          bodySize:document.body.innerText.length,
+          fallback:document.body.innerText.includes("EFHC is offline."),
+        }));
+        assert.ok(view.controlled && view.reactRoot && view.bodySize>10 && !view.fallback,
+          "offline route shell failed: "+JSON.stringify({destination,view}));
+      }
+    } finally { await context.setOffline(false); }
+    console.log("PWA_ALL_EXPORTED_ROUTES_OK "+htmlRoutes.length);
+    results.push({name:"all_exported_routes_inventory",status:"INFO",count:htmlRoutes.length});
+  });
+  await check("offline reload restores local language, CT theme and audio choices before backend", async () => {
+    await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    await page.evaluate(() => {
+      sessionStorage.setItem("EFHC_USER_SETTINGS_V1",JSON.stringify({
+        settings_owner:null,lang:"ru",color_theme_id:"CT-03",global_theme_id:"03",
+        theme_mode:"dark",music_enabled:true,sfx_enabled:false,reduce_motion:false,
+        interface_settings_version:4,
+      }));
+    });
+    await context.setOffline(true);
+    try {
+      for (const route of ["","panels/",""]) {
+        await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
+        await page.locator('[data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
+        const settings=await page.evaluate(() => JSON.parse(sessionStorage.getItem("EFHC_USER_SETTINGS_V1")||"null"));
+        assert.equal(settings?.lang,"ru");
+        assert.equal(settings?.color_theme_id,"CT-03");
+        assert.equal(settings?.music_enabled,true);
+        assert.equal(settings?.sfx_enabled,false);
+        if (!route) {
+          await page.locator(".efhc-energy-stage_eyebrow").waitFor({state:"visible",timeout:15000});
+          const title=(await page.locator(".efhc-energy-stage_eyebrow").innerText()).trim();
+          assert.equal(title,"Энергия","visible language must match cached Russian preference");
+        }
+      }
+    } finally { await context.setOffline(false); }
+  });
   await check("offline progress indicators stay finite and inside their tracks at 390/1440", async () => {
     await context.setOffline(true);
     try {
@@ -133,8 +183,17 @@ try {
       return navigator.serviceWorker.controller?.scriptURL || "";
     });
     assert.ok(originalController.endsWith("/sw.js"),"existing worker must control active session");
+    const oldConfig=exportConfig;
+    const newBuildId=oldConfig.build_id+"-staged";
+    const oldStaticCache="efhc-pwa-"+oldConfig.build_id+"-static";
+    const newStaticCache="efhc-pwa-"+newBuildId+"-static";
+    const pinned=/^const EFHC_PWA_BUILD_CONFIG = ([^\n]+);\n/.exec(original);
+    assert.ok(pinned,"real exported worker must embed an immutable version configuration");
+    const nextBuild={...JSON.parse(pinned[1]),build_id:newBuildId};
+    const nextWorker="const EFHC_PWA_BUILD_CONFIG = "+JSON.stringify(nextBuild)+";\n"+
+      original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n";
     try {
-      await writeFile(workerFile,original+"\n// EFHC_TEST_STAGED_UPDATE_"+Date.now()+"\n","utf8");
+      await writeFile(workerFile,nextWorker,"utf8");
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
       // Installation revalidates the full precache and is not instantaneous.
       // Poll the actual registry on the Node side; an async waitForFunction
@@ -163,6 +222,34 @@ try {
       await page.waitForTimeout(500);
       assert.equal(await page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting)),true,
         "update activated in the middle of a running session");
+      const interim=await page.evaluate(async (names) => {
+        const keys=await caches.keys();
+        return {old:keys.includes(names.old),staged:keys.includes(names.next)};
+      },{old:oldStaticCache,next:newStaticCache});
+      assert.equal(interim.old,true,"old app cache must stay available during an active session");
+      assert.equal(interim.staged,true,"new version must be completely staged before takeover");
+
+      // App closes: only now may the browser activate the installed worker.
+      // Reopening the same browser context preserves realistic PWA cache storage.
+      await page.close();
+      page=await context.newPage();
+      page.on("pageerror",error=>errors.push(String(error.message)));
+      await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await page.waitForFunction(async names => {
+        const registration=await navigator.serviceWorker.getRegistration();
+        const keys=await caches.keys();
+        return registration?.active?.state==="activated" &&
+          keys.includes(names.next) && !keys.includes(names.old);
+      },{old:oldStaticCache,next:newStaticCache},{timeout:30000});
+      const after=await page.evaluate(async names=>({
+        keys:await caches.keys(),
+        active:(await navigator.serviceWorker.getRegistration())?.active?.state,
+        controlled:Boolean(navigator.serviceWorker.controller),
+        nextCache:(await caches.open(names.next)).keys().then(keys=>keys.length),
+      }),{next:newStaticCache});
+      assert.equal(after.active,"activated");
+      assert.ok(after.controlled);
+      assert.ok((await after.nextCache)>0);
     } finally {
       await writeFile(workerFile,original,"utf8");
     }
