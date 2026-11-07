@@ -12,6 +12,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -136,6 +137,7 @@ export default function App({ Component, pageProps }: AppProps) {
     DEFAULT_SETTINGS,
   );
   const [settingsHydrated, setSettingsHydrated] = useState(false);
+  const initialLocalSettingsRef = useRef<UserSettings | null>(null);
   const [userViewEpoch, setUserViewEpoch] = useState(0);
   useEffect(() => {
     const changed = () => {
@@ -226,18 +228,22 @@ export default function App({ Component, pageProps }: AppProps) {
     setTelegramAvatarUrl((u as any)?.photo_url || null);
 
     const s = loadSettings();
+    initialLocalSettingsRef.current = s;
     const currentScheme = getTelegramColorScheme() || "dark";
     setTgScheme(currentScheme);
     setSettings(s);
     setLang(s.lang);
-    loadSettingsAsync()
+    // Local UI is usable immediately. Telegram is optional synchronization,
+    // never a prerequisite for selected language, theme or page rendering.
+    setSettingsHydrated(true);
+    void loadSettingsAsync()
       .then((next) => {
+        initialLocalSettingsRef.current = null;
         setSettings(next);
         setLang(next.lang);
         applyTheme(next.theme_mode);
       })
-      .catch(() => undefined)
-      .finally(() => setSettingsHydrated(true));
+      .catch(() => { initialLocalSettingsRef.current = null; });
 
     // Apply theme immediately and then subscribe
     // to Telegram theme changes.
@@ -264,7 +270,9 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     if (!settingsHydrated) return;
     // Persist settings only after stored settings were loaded.
-    void saveSettingsAsync(settings);
+    // Do not write default preferences to Telegram before a fresh device
+    // has had the chance to restore its older saved cloud preferences.
+    if (settings !== initialLocalSettingsRef.current) void saveSettingsAsync(settings);
     setLang(settings.lang);
     applyTheme(settings.theme_mode);
   }, [settings, settingsHydrated]);
