@@ -15505,12 +15505,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   --efhc-route-glow:var(--efhc-color-accent-soft);
 }
 
-[data-interface-app-mode="user"][data-global-theme-id="01"] .efhc-main,
-[data-interface-app-mode="user"][data-global-theme-id="02"] .efhc-main,
-[data-interface-app-mode="user"][data-global-theme-id="03"] .efhc-main,
-[data-interface-app-mode="user"][data-global-theme-id="01"] .efhc-shop-layout_main,
-[data-interface-app-mode="user"][data-global-theme-id="02"] .efhc-shop-layout_main,
-[data-interface-app-mode="user"][data-global-theme-id="03"] .efhc-shop-layout_main{
+[data-interface-app-mode="user"][data-color-theme-id] :is(.efhc-main,.efhc-shop-layout_main){
   color:var(--tg-text);
   font-size:1rem;
   line-height:1.5;
