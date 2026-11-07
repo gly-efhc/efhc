@@ -15,6 +15,8 @@ const root = process.env.EFHC_PWA_EXPORT_DIR;
 if (!root || !path.isAbsolute(root)) throw new Error("EFHC_PWA_EXPORT_DIR required");
 const artifactDir = process.env.EFHC_PARITY_ARTIFACTS || "/tmp/efhc-persistence-artifacts";
 const exportConfig = JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"));
+const ownerCacheKey = "EFHC_USER_DATA_CACHE_V1";
+const settingsKey = "EFHC_USER_SETTINGS_V1";
 await mkdir(artifactDir, {recursive:true});
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
@@ -118,8 +120,8 @@ try {
     await page.evaluate(() => {
       // Restore for the currently active *display owner*, if there is one;
       // never inject another Global ID or create an authorization fixture.
-      const cacheOwner=JSON.parse(sessionStorage.getItem("EFHC_USER_DATA_CACHE_V1")||"null")?.owner||null;
-      sessionStorage.setItem("EFHC_USER_SETTINGS_V1",JSON.stringify({
+      const cacheOwner=JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.owner||null;
+      sessionStorage.setItem(settingsKey,JSON.stringify({
         settings_owner:cacheOwner,lang:"ru",color_theme_id:"CT-03",global_theme_id:"03",
         theme_mode:"dark",music_enabled:true,sfx_enabled:false,reduce_motion:false,
         interface_settings_version:4,
@@ -130,8 +132,8 @@ try {
       for (const route of ["","panels/",""]) {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
         const diagnostic=await page.evaluate(() => ({
-          owner:JSON.parse(sessionStorage.getItem("EFHC_USER_DATA_CACHE_V1")||"null")?.owner||null,
-          stored:JSON.parse(sessionStorage.getItem("EFHC_USER_SETTINGS_V1")||"null"),
+          owner:JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.owner||null,
+          stored:JSON.parse(sessionStorage.getItem(settingsKey)||"null"),
           localSettingsKeys:Object.keys(localStorage).filter(k=>k.includes("EFHC_USER_SETTINGS")).slice(0,10),
           renderedTheme:[...document.querySelectorAll("[data-color-theme-id]")].slice(0,7).map(el=>el.getAttribute("data-color-theme-id")),
           text:document.querySelector(".efhc-energy-stage_eyebrow")?.textContent||null,
@@ -139,7 +141,7 @@ try {
         }));
         console.log("PWA_SETTINGS_RESTORE_DIAGNOSTIC",JSON.stringify(diagnostic));
         await page.locator('[data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
-        const settings=await page.evaluate(() => JSON.parse(sessionStorage.getItem("EFHC_USER_SETTINGS_V1")||"null"));
+        const settings=await page.evaluate(() => JSON.parse(sessionStorage.getItem(settingsKey)||"null"));
         assert.equal(settings?.lang,"ru");
         assert.equal(settings?.color_theme_id,"CT-03");
         assert.equal(settings?.music_enabled,true);
