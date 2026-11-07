@@ -12,6 +12,7 @@ import {verifyHeaderMaterials} from './header-material.mjs';
 import {verifyStaticPages} from './static-pages.mjs';
 import {verifyTasksData} from './tasks-data.mjs';
 import {verifyFrameThickness,verifyVisibleHeroFrames} from './frame-thickness.mjs';
+import {verifyColorThemePages} from './color-theme-pages.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -124,6 +125,11 @@ try{
   await check('all mounted Hero contours stay visibly colored and one pixel across ten CT',async()=>{
     const rows=await verifyVisibleHeroFrames(page,{base});
     assert.equal(rows.length,40,'4 live route heroes x 10 color themes');
+  });
+  await check('all USER routes keep Theme03 material roles and geometry across ten CT and two widths',async()=>{
+    const rows=await verifyColorThemePages(page,{base,artifacts:dir});
+    assert.ok(rows.length>=30,'expected every USER route at mobile and desktop');
+    assert.ok(rows.every(row=>row.themes===10),'ten themes required for each route');
   });
   await check('removed browser finance store does not reappear',async()=>{
     await visit();
