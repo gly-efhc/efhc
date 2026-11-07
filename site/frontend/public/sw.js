@@ -271,8 +271,16 @@ async function cacheUrls(urls, reason = "runtime") {
     });
   }
   await pruneCache(names.staticName, cachePolicy(names.config).static);
-  if (reason === "install" && failures.some((url) => /\.html$|\/_next\/static\/.*\.(?:js|css)$/.test(url))) {
-    await notifyClients({ type: "CACHE_FAILED", failed: failures.length, reason });
+  // OWNER: the first install of a full exported frontend is atomic. A missing
+  // language, font, image or progress design is just as much an incomplete app
+  // as a missing HTML/JS shell. Keep the previous active SW if this fails.
+  const incompleteExport = reason === "install" && names.config.static_export &&
+    (failures.length > 0 || unique.length !== (names.config.precache || []).length);
+  const missingEssentialShell = reason === "install" && !names.config.static_export &&
+    failures.some((url) => /\.html$|\/_next\/static\/.*\.(?:js|css)$/.test(url));
+  if (incompleteExport || missingEssentialShell) {
+    await notifyClients({ type: "CACHE_FAILED", failed: failures.length +
+      Math.max(0, (names.config.precache || []).length - unique.length), reason });
     throw Error("EFHC_REQUIRED_PRECACHE_FAILED:" + failures.length);
   }
   await notifyClients({

@@ -124,3 +124,48 @@ test("A newer local language/theme choice beats a pending older Telegram cloud r
   assert.equal(selected.color_theme_id, "CT-03");
   assert.equal(settings.loadSettings().color_theme_id, "CT-03");
 });
+
+test("A missing locale or theme asset aborts the full PWA install instead of reporting a ready offline shell", async () => {
+  const source = read("public/sw.js");
+  const events = new Map();
+  const origin = "https://efhc.example";
+  const scope = origin + "/efhc/";
+  const stored = new Map();
+  class RequestStub {
+    constructor(value) { this.url = new URL(value, scope).href; }
+  }
+  const disk = {
+    async match(req) { return stored.get(typeof req === "string" ? new URL(req, scope).href : req.url) || undefined; },
+    async put(req, response) { stored.set(req.url, response.clone()); },
+    async keys() { return [...stored.keys()].map(url => ({url})); },
+    async delete(req) { return stored.delete(req.url); },
+  };
+  const worker = {
+    registration: {scope, active:null},
+    location: {origin},
+    clients: {matchAll:async () => []},
+    addEventListener(type, handler) {events.set(type,handler);},
+  };
+  const config = {
+    build_id: "test-incomplete-locale",
+    static_export: true,
+    precache: ["/efhc/index.html","/efhc/locale/ru.json"],
+    cache_limits: {
+      static: {max_entries:100,max_age_seconds:2592000,max_bytes:16777216},
+      content: {max_entries:100,max_age_seconds:604800,max_bytes:16777216},
+    },
+  };
+  const sandbox = {
+    self:worker, URL, Headers, Response, Blob, Request:RequestStub, Date, console,
+    EFHC_PWA_BUILD_CONFIG:config,
+    caches: {open:async () => disk,match:async req=>disk.match(req),keys:async()=>[],delete:async()=>true},
+    fetch:async request => new Response(request.url.endsWith("ru.json") ? "missing" : "html", {
+      status:request.url.endsWith("ru.json") ? 404 : 200,
+    }),
+  };
+  vm.runInNewContext(source,sandbox,{filename:"sw.js"});
+  let installing;
+  events.get("install")({waitUntil(promise){installing=promise;}});
+  await assert.rejects(installing,/EFHC_REQUIRED_PRECACHE_FAILED/);
+  assert.ok(stored.has(origin+"/efhc/index.html"),"valid page may stage, but worker must fail until locale is present");
+});
