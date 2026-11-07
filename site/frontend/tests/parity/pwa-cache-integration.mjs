@@ -245,11 +245,11 @@ try {
         keys:await caches.keys(),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,
         controlled:Boolean(navigator.serviceWorker.controller),
-        nextCache:(await caches.open(names.next)).keys().then(keys=>keys.length),
+        nextCache:(await (await caches.open(names.next)).keys()).length,
       }),{next:newStaticCache});
       assert.equal(after.active,"activated");
       assert.ok(after.controlled);
-      assert.ok((await after.nextCache)>0);
+      assert.ok(after.nextCache>0);
     } finally {
       await writeFile(workerFile,original,"utf8");
     }
