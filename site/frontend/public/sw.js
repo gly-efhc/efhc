@@ -195,27 +195,32 @@ async function pruneCache(cacheName, limits) {
   const maxAgeMs = Number(limits.max_age_seconds || 0) * 1000;
   const maxEntries = Number(limits.max_entries || 0);
   const maxBytes = Number(limits.max_bytes || 0);
+  const config = await loadConfig();
+  const pinned = config.static_export && cacheName.endsWith("-static")
+    ? new Set(config.precache.map((url) => new URL(url, self.location.origin).href))
+    : new Set();
   const entries = [];
   for (const request of keys) {
     const response = await cache.match(request);
     const cachedAt = Number(response?.headers.get(CACHED_AT) || 0);
-    if (maxAgeMs && cachedAt && now - cachedAt > maxAgeMs) {
+    if (!pinned.has(request.url) && maxAgeMs && cachedAt && now - cachedAt > maxAgeMs) {
       await cache.delete(request);
       continue;
     }
     entries.push({
       request,
       cachedAt,
+      pinned: pinned.has(request.url),
       bytes: response ? await responseBytes(response) : 0,
     });
   }
-  entries.sort((left, right) => right.cachedAt - left.cachedAt);
+  entries.sort((left, right) => Number(right.pinned) - Number(left.pinned) || right.cachedAt - left.cachedAt);
   let keptEntries = 0;
   let keptBytes = 0;
   for (const entry of entries) {
     const entryAllowed = !maxEntries || keptEntries < maxEntries;
     const byteAllowed = !maxBytes || keptBytes + entry.bytes <= maxBytes;
-    if (!entryAllowed || !byteAllowed) {
+    if (!entry.pinned && (!entryAllowed || !byteAllowed)) {
       await cache.delete(entry.request);
       continue;
     }
@@ -386,8 +391,8 @@ self.addEventListener("message", (event) => {
           names.config.cache_limits || names.config.limits,
         );
         await Promise.all([
-          pruneCache(names.staticName, runtimeCachePolicy.static),
-          pruneCache(names.contentName, runtimeCachePolicy.content),
+          pruneCache(names.staticName, cachePolicy(names.config).static),
+          pruneCache(names.contentName, cachePolicy(names.config).content),
         ]);
         await notifyClients({
           type: "CACHE_POLICY_APPLIED",
@@ -411,8 +416,13 @@ self.addEventListener("message", (event) => {
           names.contentName,
           cachePolicy(names.config).content,
         );
+        let precacheMissing = 0;
+        for (const url of names.config.precache || []) {
+          if (isSafeCacheUrl(url, names.config) && !(await staticCache.match(url))) precacheMissing++;
+        }
         await notifyClients({
           type: "CACHE_STATUS",
+          precacheMissing,
           buildId: names.config.build_id,
           staticEntries: (await staticCache.keys()).length,
           contentEntries: (await contentCache.keys()).length,
