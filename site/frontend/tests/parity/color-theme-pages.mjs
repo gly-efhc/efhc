@@ -27,6 +27,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
   assert.equal(catalog.length, 10, "All ten color themes are required");
   assert.ok(routes.length >= 15, "USER route coverage shrank");
   const outcomes = [];
+  const failures = [];
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
     for (const route of routes) {
@@ -50,6 +51,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
         let expectedMaterial = null;
         let expectedRects = null;
         const matrix = [];
+        const mismatches = [];
         try {
           for (const entry of palette) {
             for (const node of [root, shell]) {
@@ -84,7 +86,12 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             else rects.forEach(([w, h], index) => {
               const [baseW, baseH] = expectedRects[index];
               if (Math.abs(w - baseW) > 1 || Math.abs(h - baseH) > 1) {
-                throw new Error("Layout changed with color " + entry.id + " at " + (sample[index]?.className || sample[index]?.tagName));
+                if (mismatches.length < 30) mismatches.push({
+                  color: entry.id,
+                  element: String(sample[index]?.className || sample[index]?.tagName),
+                  baseline: [baseW, baseH],
+                  actual: [w, h],
+                });
               }
             });
             matrix.push({ theme: entry.id, roles: roleNames.length, measuredElements: sample.length });
@@ -97,15 +104,17 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             else node.setAttribute("data-global-theme-id", legacy);
           }
         }
-        return matrix;
+        return { matrix, mismatches };
       }, { palette: catalog, roleNames: roles, neutral: neutralRoles, selectors: layoutSelectors });
-      assert.equal(result.length, 10, "Missing theme on " + route + " at " + width);
-      outcomes.push({ route, width, themes: result.length, measuredElements: result[0]?.measuredElements || 0 });
+      assert.equal(result.matrix.length, 10, "Missing theme on " + route + " at " + width);
+      outcomes.push({ route, width, themes: result.matrix.length, measuredElements: result.matrix[0]?.measuredElements || 0 });
+      for (const mismatch of result.mismatches) failures.push({ route, width, ...mismatch });
     }
   }
   if (artifacts) {
     const { writeFile } = await import("node:fs/promises");
-    await writeFile(artifacts + "/color-theme-pages.json", JSON.stringify({ roles, outcomes }, null, 2));
+    await writeFile(artifacts + "/color-theme-pages.json", JSON.stringify({ roles, outcomes, failures }, null, 2));
   }
+  assert.equal(failures.length, 0, "Color-only geometry drift: " + JSON.stringify(failures.slice(0, 30)));
   return outcomes;
 }
