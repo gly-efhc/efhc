@@ -27,6 +27,20 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
 });
 
+test("The Pages deploy workflow requires full offline Chromium acceptance before deployment", () => {
+  const releaseWorkflow = readFileSync(path.resolve(frontend, "../../.github/workflows/efhc-pages.yml"), "utf8");
+  const gate = releaseWorkflow.indexOf("      - name: Require complete offline PWA and persistent React pages before publishing");
+  const publish = releaseWorkflow.indexOf("      - name: Deploy to GitHub Pages");
+  assert.ok(gate > 0, "Full offline PWA gate must be mandatory in Pages workflow");
+  assert.ok(publish > gate, "PWA gate must execute before actual Pages publication");
+  const gateBody = releaseWorkflow.slice(gate, releaseWorkflow.indexOf("      - name: Retain mandatory persistence evidence", gate));
+  assert.match(gateBody, /EFHC_PWA_EXPORT_DIR:/);
+  assert.match(gateBody, /node site\\/frontend\\/tests\\/parity\\/pwa-cache-integration\\.mjs/);
+  assert.match(gateBody, /node site\\/frontend\\/tests\\/parity\\/persistent-pages\\.mjs/);
+  assert.doesNotMatch(gateBody, /continue-on-error\\s*:\\s*true/);
+  assert.doesNotMatch(gateBody, /if:\\s*\\$\\{\\{ inputs\\.full_review/);
+});
+
 test("Complete compiled export is precached, stable on repeated builds and verified fail-closed", (t) => {
   const root = mkdtempSync(path.join(tmpdir(), "efhc-full-pwa-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
