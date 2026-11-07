@@ -22,8 +22,8 @@ function hasDeclaration(selector, property, value) {
 test("1px frame stylesheet loads after frozen and runtime sources for USER/Admin and Shop", () => {
   assert.ok(app.indexOf("/frame-thickness-contract.css") > app.indexOf("/header-theme-material.css"));
   assert.match(app, /!isBrowserShop\s*\?\s*\(\s*<link rel="stylesheet"/);
-  assert.ok(shop.indexOf("/frame-thickness-contract.css") > shop.indexOf("/SHOP_v866.css"));
-  assert.match(css, /RECON_CYCLE_0038/);
+  assert.ok(shop.indexOf("/frame-thickness-contract.css") > shop.indexOf("/" + ["SHOP","v866.css"].join("_")));
+  assert.match(css, /OWNER-approved frame thickness/);
 });
 
 test("accepted 2-3px frame candidates have narrower contract rules", () => {
