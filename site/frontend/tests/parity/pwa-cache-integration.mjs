@@ -226,6 +226,34 @@ try {
       }
     } finally { await context.setOffline(false); }
   });
+  await check("cold offline reopen restores app shell and interactive PNL tabs without network", async () => {
+    await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    await page.close();
+    await context.setOffline(true);
+    try {
+      // A new browser tab is a new application open; Service Worker/CacheStorage
+      // survive while the old page and its JavaScript heap no longer exist.
+      page=await context.newPage();
+      page.on("pageerror",error=>errors.push(String(error.message)));
+      await page.goto(base+"panels/portfolio/",{waitUntil:"load",timeout:30000});
+      const before=await page.evaluate(()=>({
+        sw:Boolean(navigator.serviceWorker.controller),
+        app:document.querySelector("#panelsPortfolioPage")!==null,
+        cachePresent:Boolean(window.caches),
+      }));
+      assert.equal(before.sw,true);
+      assert.equal(before.app,true);
+      assert.equal(before.cachePresent,true);
+      await page.locator('[data-panels-tab-button="archive"]').waitFor({state:"visible",timeout:12000});
+      await page.waitForTimeout(400); // Give React an event-loop turn to finish hydration.
+      await page.locator('[data-panels-tab-button="archive"]').click();
+      await page.locator('[data-panels-tab-button="archive"][data-active="true"]').waitFor({
+        state:"attached",timeout:10000,
+      });
+      await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
+    } finally { await context.setOffline(false); }
+  });
   await check("PWA update remains waiting during the active session", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile = path.join(root,"sw.js");
