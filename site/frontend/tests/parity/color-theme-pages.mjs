@@ -50,6 +50,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
           }).slice(0, 80);
         let expectedMaterial = null;
         let expectedRects = null;
+        let expectedGeometry = null;
         const matrix = [];
         const mismatches = [];
         try {
@@ -82,11 +83,37 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
               const r = el.getBoundingClientRect();
               return [Math.round(r.width * 10) / 10, Math.round(r.height * 10) / 10];
             });
+            const geometryProperties = [
+              "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth",
+              "borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius",
+              "fontSize", "lineHeight", "fontWeight", "paddingTop", "paddingRight",
+              "paddingBottom", "paddingLeft", "columnGap", "rowGap", "display",
+              "gridTemplateColumns", "boxSizing",
+            ];
+            const geometry = sample.map(el => {
+              const computed = getComputedStyle(el);
+              return Object.fromEntries(geometryProperties.map(property => [property, computed[property]]));
+            });
+            if (!expectedGeometry) expectedGeometry = geometry;
+            else geometry.forEach((current, index) => {
+              const previous = expectedGeometry[index];
+              for (const property of geometryProperties) {
+                if (current[property] !== previous[property] && mismatches.length < 40) {
+                  mismatches.push({
+                    color: entry.id,
+                    element: String(sample[index]?.className || sample[index]?.tagName),
+                    property,
+                    baseline: previous[property],
+                    actual: current[property],
+                  });
+                }
+              }
+            });
             if (!expectedRects) expectedRects = rects;
             else rects.forEach(([w, h], index) => {
               const [baseW, baseH] = expectedRects[index];
               if (Math.abs(w - baseW) > 1 || Math.abs(h - baseH) > 1) {
-                if (mismatches.length < 30) mismatches.push({
+                if (mismatches.length < 40) mismatches.push({
                   color: entry.id,
                   element: String(sample[index]?.className || sample[index]?.tagName),
                   baseline: [baseW, baseH],
