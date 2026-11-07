@@ -156,6 +156,11 @@ try {
         assert.equal(settings?.sfx_enabled,false);
         if (!route) {
           await page.locator(".efhc-energy-stage_eyebrow").waitFor({state:"visible",timeout:15000});
+          // The root locale can update before React commits translated text.
+          // Require the actual USER caption, never just the locale attribute.
+          await page.waitForFunction(() =>
+            document.querySelector(".efhc-energy-stage_eyebrow")?.textContent?.trim() === "Энергия",
+            null, {timeout:15000});
           const title=(await page.locator(".efhc-energy-stage_eyebrow").innerText()).trim();
           assert.equal(title,"Энергия","visible language must match cached Russian preference");
         }
