@@ -373,6 +373,10 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="stylesheet" href={`${router.basePath}/react-runtime-layout.css`} data-efhc-visual-adapter="runtime-layout" />
         <link rel="stylesheet" href={`${router.basePath}/header-theme-material.css`} data-efhc-visual-adapter="header-material" />
       </> : null}
+      {/* OWNER cycle 0038: one-pixel contours; after frozen and runtime CSS. */}
+      {!isBrowserShop ? (
+        <link rel="stylesheet" href={`${router.basePath}/frame-thickness-contract.css`} data-efhc-frame-width-contract="1px" />
+      ) : null}
       <WalletProvider
         manifestUrl={tcManifestUrl}
         returnUrl={tcReturnUrl}
