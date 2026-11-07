@@ -20,7 +20,11 @@ const now = "2026-11-07T12:00:00Z";
 
 test("The existing PNL card uses a shared local tick, confirmed list and exact D8 projection", () => {
   const h = sourceRuntime();
-  const { projectPanelGeneratedD8: projected } = h.load("lib/panelDisplayProjection.ts");
+  const { projectPanelGeneratedD8: projected, confirmedPanelRateD8: confirmedRate } = h.load("lib/panelDisplayProjection.ts");
+  assert.equal(confirmedRate("0.00001482",2), "0.00000741", "VIP active per-panel rate");
+  assert.equal(confirmedRate("0.00001384",2), "0.00000692", "Base active per-panel rate");
+  assert.equal(confirmedRate("0.00001483",2), null, "non-divisible aggregate must not invent a rate");
+  assert.equal(confirmedRate("0.00001482",0), null);
   assert.equal(projected(basePanel, now, 0), "12.00000000");
   assert.equal(projected(basePanel, now, 333), "12.00000333");
   assert.equal(projected(basePanel, now, 1500), "12.00001500");
@@ -32,7 +36,9 @@ test("The existing PNL card uses a shared local tick, confirmed list and exact D
   assert.equal(projected(basePanel, null, 9000), "12.00000000");
   assert.equal(projected(basePanel, now, Number.POSITIVE_INFINITY), "12.00000000");
   const src = source("pages/panels/portfolio.tsx");
-  assert.match(src, /projectPanelGeneratedD8\(p, serverNowIso, elapsedClientMs\)/);
+  assert.match(src, /projectPanelGeneratedD8\(/);
+  assert.match(src, /confirmedPerPanelRateD8/);
+  assert.match(src, /props\.snap\?\.profile\.is_vip/);
   assert.match(src, /setInterval\(updateNow, 333\)/);
   assert.match(src, /data-panel-countdown-live="client-stopwatch"/);
   assert.match(src, /data-panel-identity=\{p\.public_id \?\? undefined\}/);

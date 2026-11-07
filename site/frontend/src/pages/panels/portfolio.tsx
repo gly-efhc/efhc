@@ -18,7 +18,7 @@ import { usePanelsList } from "../../queries/usePanels";
 import { useT } from "../../hooks/useT";
 import type { SyncSnapshot } from "../../hooks/useSnapshot";
 import { format8 } from "../../lib/format";
-import { projectPanelGeneratedD8 } from "../../lib/panelDisplayProjection";
+import { confirmedPanelRateD8, projectPanelGeneratedD8 } from "../../lib/panelDisplayProjection";
 import { hapticSelection } from "../../lib/telegram";
 import { useInterfaceVariantSurface } from
   "../../hooks/useInterfaceVariantSurface";
@@ -115,6 +115,12 @@ export default function PanelsPortfolioPage(props: {
     listQuery.data?.pages.at(-1)?.server_now_utc ?? null;
   const serverNowIso = listServerNowIso ?? props.snap?.meta?.server_now_iso ?? null;
   const countdownSource = "panel-list-server-now-plus-client-stopwatch";
+  // A VIP owner may have a different effective rate for every active panel.
+  // The exact server snapshot, never the unadjusted base rate, owns that truth.
+  const confirmedPerPanelRateD8 = useMemo(() => confirmedPanelRateD8(
+    props.snap?.meta.gen_per_sec_effective ?? null,
+    props.snap?.panels.active_count ?? null,
+  ), [props.snap?.meta.gen_per_sec_effective, props.snap?.panels.active_count]);
   const [anchorServerMs, setAnchorServerMs] = useState<number | null>(null);
   const [anchorClientMs, setAnchorClientMs] = useState<number | null>(null);
   const panelListViewportRef = useRef<HTMLDivElement | null>(null);
@@ -441,7 +447,10 @@ export default function PanelsPortfolioPage(props: {
                       {t("panels.generated_kwh")}
                     </div>
                     <div className="font-semibold tabular-nums">
-                      {projectPanelGeneratedD8(p, serverNowIso, elapsedClientMs)}
+                      {projectPanelGeneratedD8(
+                        { ...p, base_gen_per_sec: confirmedPerPanelRateD8 ?? (props.snap?.profile && !props.snap.profile.is_vip ? p.base_gen_per_sec : "0.00000000") },
+                        serverNowIso, elapsedClientMs,
+                      )}
                     </div>
                   </div>
                   <div
