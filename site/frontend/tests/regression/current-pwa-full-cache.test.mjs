@@ -35,10 +35,10 @@ test("The Pages deploy workflow requires full offline Chromium acceptance before
   assert.ok(publish > gate, "PWA gate must execute before actual Pages publication");
   const gateBody = releaseWorkflow.slice(gate, releaseWorkflow.indexOf("      - name: Retain mandatory persistence evidence", gate));
   assert.match(gateBody, /EFHC_PWA_EXPORT_DIR:/);
-  assert.match(gateBody, /node site\\/frontend\\/tests\\/parity\\/pwa-cache-integration\\.mjs/);
-  assert.match(gateBody, /node site\\/frontend\\/tests\\/parity\\/persistent-pages\\.mjs/);
-  assert.doesNotMatch(gateBody, /continue-on-error\\s*:\\s*true/);
-  assert.doesNotMatch(gateBody, /if:\\s*\\$\\{\\{ inputs\\.full_review/);
+  assert.ok(gateBody.includes("node site/frontend/tests/parity/pwa-cache-integration.mjs"));
+  assert.ok(gateBody.includes("node site/frontend/tests/parity/persistent-pages.mjs"));
+  assert.ok(!gateBody.includes("continue-on-error: true"));
+  assert.ok(!gateBody.includes("if: ${{ inputs.full_review"));
 });
 
 test("Complete compiled export is precached, stable on repeated builds and verified fail-closed", (t) => {
