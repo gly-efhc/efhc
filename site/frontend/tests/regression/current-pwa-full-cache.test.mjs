@@ -102,3 +102,25 @@ test("Cached energy keeps a smooth local D8 display without extrapolating past t
   assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", null), Infinity);
   assert.match(read("src/pages/index.tsx"), /Math\\.min\\(projectUntilMs/);
 });
+
+test("A newer local language/theme choice beats a pending older Telegram cloud response", async () => {
+  const { sourceRuntime } = await import("../helpers/source-runtime.mjs");
+  const owner = "0000000088";
+  let releaseCloud;
+  const cloudResponse = new Promise((resolve) => { releaseCloud = resolve; });
+  const runtime = sourceRuntime({ overrides: {
+    "./userDataCache": { currentUserDataOwner: () => owner },
+    "./telegram": {
+      telegramCloudStorageGet: () => cloudResponse,
+      telegramCloudStorageSet: async () => undefined,
+    },
+  } });
+  const settings = runtime.load("lib/settings.ts");
+  const pending = settings.loadSettingsAsync();
+  settings.saveSettings({ ...settings.resetSettings(), lang: "ru", color_theme_id: "CT-03" });
+  releaseCloud(JSON.stringify({ ...settings.resetSettings(), lang: "en", color_theme_id: "CT-01" }));
+  const selected = await pending;
+  assert.equal(selected.lang, "ru");
+  assert.equal(selected.color_theme_id, "CT-03");
+  assert.equal(settings.loadSettings().color_theme_id, "CT-03");
+});
