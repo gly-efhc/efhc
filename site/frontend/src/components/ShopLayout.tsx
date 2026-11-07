@@ -144,6 +144,7 @@ export function ShopLayout(
       >
         <Head>
           <link rel="stylesheet" href={`${router.basePath}/SHOP_v866.css`} data-efhc-visual-authority="frozen-shop-v866" />
+          <link rel="stylesheet" href={`${router.basePath}/frame-thickness-contract.css`} data-efhc-frame-width-contract="1px" />
           <title>{canonicalTitle}</title>
           <meta name="description" content={t("portal.browser_shop.subtitle")} />
           <link rel="canonical" href={`https://efhc.app${canonicalPath}`} />

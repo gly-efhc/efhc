@@ -1,0 +1,140 @@
+/* OWNER-approved frame thickness
+   OWNER: one visible 1 CSS px contour across USER, Admin, and Browser Shop.
+   This loads AFTER the protected source styles. Frozen source and no-border variants
+   remain untouched. Accent/contrast may increase; line width may not.
+   Only adjust known pre-existing borders, outlines and hard selection rings. */
+
+/* Energy: EI-15 was explicitly 2px double. Preserve its active CT color. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-energy-stage_coin[data-ei="EI-15"] {
+  border-width: 1px !important;
+  border-style: solid !important;
+  box-shadow: 0 0 20px rgba(var(--efhc-ct-accent-rgb,110,168,255),.26) !important;
+}
+
+/* EI-20 has a second inset 2px hard contour. Preserve soft illumination only. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-energy-stage_coin[data-ei="EI-20"] {
+  box-shadow: 0 0 14px rgba(243,207,105,.16) !important;
+}
+
+/* Exchange: the XS-09 statistic's left accent is part of its existing border. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-exchange-stats-surface[data-xs="XS-09"] .efhc-game-stat {
+  border-left-width: 1px !important;
+}
+
+/* FAQ CSS includes 2px/3px left accents. Affects existing outlines only;
+   elements whose border-style is none remain borderless. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is(.efhc-faq-section-node,.efhc-faq-subsection-node) {
+  border-left-width: 1px !important;
+}
+
+/* Protected Header and Panels variants: thin an existing underline only. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-game-header_balance[data-hb="HB-13"] {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.04),
+    inset 0 -1px 0 rgba(229,191,88,.18) !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-panels-tabs[data-pt="PT-10"] > .efhc-btn-primary {
+  box-shadow: inset 0 -1px 0 rgb(var(--efhc-ct-accent-rgb,110,168,255)) !important;
+}
+
+/* Admin: selected items already have 1px borders. Remove the second rigid
+   2px shadow ring; preserve selection through brighter edge and soft glow. */
+[data-interface-app-mode="admin"] .efhc-admin-tasks-catalog_card[data-selected="true"] {
+  border-color: color-mix(in srgb,var(--tg-button) 88%,transparent) !important;
+  box-shadow: 0 0 11px color-mix(in srgb,var(--tg-button) 24%,transparent) !important;
+}
+[data-interface-app-mode="admin"] .efhc-admin-reports-visual_metric[data-selected="true"] {
+  border-color: color-mix(in srgb,var(--tg-button) 88%,transparent) !important;
+  box-shadow: 0 0 11px color-mix(in srgb,var(--tg-button) 24%,transparent) !important;
+}
+
+/* No extra outlines are created: outline-style remains owned by the original
+   component/state. This corrects existing keyboard and focus-within rings. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+.efhc-independent-shell[data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+.efhc-shop-site[data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-width: 1px !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"] :focus-within,
+.efhc-independent-shell[data-interface-app-mode="admin"] :focus-within,
+.efhc-shop-site[data-interface-app-mode="shop-landing"] :focus-within {
+  outline-width: 1px !important;
+}
+
+/* Keep focus perceptible by chroma rather than increasing thickness.
+   Inherit CT-01...CT-10 / Admin / Shop semantic accent tokens. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-ct-accent,var(--efhc-route-accent,var(--tg-button))) !important;
+}
+.efhc-independent-shell[data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-admin-canon-focus,var(--tg-button)) !important;
+}
+.efhc-shop-site[data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-color-focus,var(--efhc-color-accent,currentColor)) !important;
+}
+
+/* Avatar editor may be portaled outside the USER shell; override its
+   originally !important 2px outlines without changing avatar image geometry. */
+[data-modal-portal="body"][data-interface-app-mode="user"]:has(.efhc-profile-avatar-editor)
+:is(button,input,select,textarea):focus-visible,
+html[data-interface-app-mode="user"] #profileAvatarOverlay
+:is(button,input,select,textarea):focus-visible {
+  outline-width: 1px !important;
+  outline-color: var(--efhc-ct-accent,var(--tg-button)) !important;
+}
+
+/* Admin and shop dialogs may live outside the app shell; scope them by
+   their explicit portal mode without changing borderless default controls. */
+[data-modal-portal="body"][data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+[data-modal-portal="body"][data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+[data-modal-portal="body"][data-interface-app-mode="user"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-width: 1px !important;
+}
+[data-modal-portal="body"][data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-admin-canon-focus,var(--tg-button)) !important;
+}
+[data-modal-portal="body"][data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-color-focus,var(--efhc-color-accent,currentColor)) !important;
+}
+
+/* Busy indicators already have borders; lower only their stroke thickness
+   even when a modal is portaled outside its parent app shell. */
+.efhc-frontend-button_spinner,
+.efhc-tonconnect-first-bind-qr i {
+  border-width: 1px !important;
+}
+
+/* Actual browser-shop legacy NFT art carries a 2px frame; do not manufacture
+   a frame for the rest of the storefront or recolor the artwork. */
+.efhc-shop-site[data-interface-app-mode="shop-landing"]
+:is(.nft-art,.efhc-shop-landing_nft-art) {
+  border-width: 1px !important;
+}
+
+/* Contrast mode: retain high-contrast color, never increase border thickness.
+   No border-style is introduced into originally borderless components. */
+@media (prefers-contrast: more) {
+  :where(.efhc-independent-shell[data-interface-app-mode="user"],
+         .efhc-independent-shell[data-interface-app-mode="admin"])
+  :is(.efhc-card,.efhc-panel-chrome,.efhc-pill) {
+    border-width: 1px !important;
+    border-color: var(--efhc-ct-accent,var(--efhc-admin-canon-focus,var(--tg-button))) !important;
+  }
+}

@@ -11,6 +11,7 @@ import {verifyPortfolioThemeHeights} from './portfolio-theme-height.mjs';
 import {verifyHeaderMaterials} from './header-material.mjs';
 import {verifyStaticPages} from './static-pages.mjs';
 import {verifyTasksData} from './tasks-data.mjs';
+import {verifyFrameThickness} from './frame-thickness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -115,6 +116,10 @@ try{
     await visit('browser-shop/');
     await page.locator('[data-public-surface="browser-shop"]').waitFor({state:'visible'});
     assert.ok((await page.locator('body').innerText()).trim().length>25);
+  });
+  await check('one-pixel visible frames on real React Pages in USER Admin and Shop',async()=>{
+    const cases=await verifyFrameThickness(page,{base});
+    assert.ok(cases.length>=14,'expected frame matrix across ten color themes');
   });
   await check('removed browser finance store does not reappear',async()=>{
     await visit();
