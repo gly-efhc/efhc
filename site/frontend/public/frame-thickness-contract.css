@@ -95,12 +95,28 @@ html[data-interface-app-mode="user"] #profileAvatarOverlay
   outline-color: var(--efhc-ct-accent,var(--tg-button)) !important;
 }
 
-/* Busy indicators are existing strokes, not new framing surfaces. */
-:where(.efhc-independent-shell[data-interface-app-mode="user"],
-       .efhc-independent-shell[data-interface-app-mode="admin"])
+/* Admin and shop dialogs may live outside the app shell; scope them by
+   their explicit portal mode without changing borderless default controls. */
+[data-modal-portal="body"][data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+[data-modal-portal="body"][data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible,
+[data-modal-portal="body"][data-interface-app-mode="user"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-width: 1px !important;
+}
+[data-modal-portal="body"][data-interface-app-mode="admin"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-admin-canon-focus,var(--tg-button)) !important;
+}
+[data-modal-portal="body"][data-interface-app-mode="shop-landing"]
+:is(a,button,input,select,textarea,summary,[tabindex],[role="button"]):focus-visible {
+  outline-color: var(--efhc-color-focus,var(--efhc-color-accent,currentColor)) !important;
+}
+
+/* Busy indicators already have borders; lower only their stroke thickness
+   even when a modal is portaled outside its parent app shell. */
 .efhc-frontend-button_spinner,
-:where(.efhc-independent-shell[data-interface-app-mode="user"],
-       .efhc-independent-shell[data-interface-app-mode="admin"])
 .efhc-tonconnect-first-bind-qr i {
   border-width: 1px !important;
 }
