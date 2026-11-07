@@ -138,3 +138,165 @@ html[data-interface-app-mode="user"] #profileAvatarOverlay
     border-color: var(--efhc-ct-accent,var(--efhc-admin-canon-focus,var(--tg-button))) !important;
   }
 }
+
+
+/* One visible line for surfaces already using an inset 1px edge.
+   Keep their original 1px border width for box sizing, make only the
+   duplicate OUTER stroke transparent; retain the original themed inset
+   stroke and all soft shadows verbatim. No new frames are created. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is(
+  .efhc-exchange-shell[data-xh="XH-01"],
+  .efhc-exchange-shell[data-xh="XH-02"],
+  .efhc-exchange-shell[data-xh="XH-03"],
+  .efhc-tasks-shell[data-tg="TG-01"],
+  .efhc-tasks-shell[data-tg="TG-02"],
+  .efhc-tasks-shell[data-tg="TG-03"],
+  .efhc-tasks-shell[data-tg="TG-10"],
+  .efhc-referrals-shell[data-rg="RG-03"],
+  .efhc-ranks-shell[data-kg="KG-03"],
+  .efhc-ranks-shell[data-kg="KG-09"]
+) .efhc-game-hero,
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-ranks-shell[data-kg="KG-03"] :is(.efhc-rank-card,.efhc-ranks-me-card) {
+  border-color: transparent !important;
+}
+/* Panels' current CT02/CT03 material draws an additional 1px inset
+   ring over the original 1px border; keep only the inset visible. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is([data-global-theme-id="02"],[data-global-theme-id="03"]) .efhc-panels-hero,
+.efhc-independent-shell[data-interface-app-mode="user"]:is(
+  [data-global-theme-id="02"],[data-global-theme-id="03"]
+) .efhc-panels-hero {
+  border-color: transparent !important;
+}
+
+/* The actual page theme attribute lives on the frontend shell, while
+   PH/XH design IDs sit on Hero itself and TG/KG IDs sit on GamePageShell.
+   Keep the original border width for geometry. Where these active
+   materials already paint a full 1px inset edge, hide only the duplicate
+   exterior border color; the original inset and any soft shadow survive. */
+.efhc-frontend-shell:is(
+  [data-global-theme-id="01"],
+  [data-global-theme-id="02"],
+  [data-global-theme-id="03"]
+) :is(
+  .efhc-panels-hero[data-ph="PH-01"],
+  .efhc-exchange-hero[data-xh="XH-01"],
+  .efhc-tasks-shell[data-tg="TG-01"] .efhc-game-hero,
+  .efhc-ranks-shell[data-kg="KG-01"] .efhc-game-hero
+) {
+  border-color: transparent !important;
+}
+
+/* Header avatar retains its existing 1px border, not a second sharp
+   inset stroke. The former USER inner stroke was a 4%-opacity hard line;
+   the Admin halo stays softly blurred rather than drawing another ring. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-game-header_avatar {
+  box-shadow: none !important;
+}
+[data-interface-app-mode="admin"] .efhc-game-header_avatar {
+  box-shadow: 0 0 16px rgba(244,210,122,.22) !important;
+}
+
+/* Three-line Profile avatar: preserve existing external themed border
+   and soft 11px halo, remove only the duplicate inner 1px line. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page .efhc-profile-hero[data-profile-hero-layout="three-line"]
+button.efhc-profile-avatar-button {
+  box-shadow: 0 0 11px rgba(var(--efhc-ct-accent-rgb),.12) !important;
+}
+
+/* Admin legend dots are visible in the normal page, with an existing
+   sharp 2px ring. Replace with a single 1px ring plus a gentle glow. */
+.efhc-admin-category-legend_item > i {
+  box-shadow:
+    0 0 0 1px rgba(var(--efhc-admin-tile-rgb),.16),
+    0 0 6px rgba(var(--efhc-admin-tile-rgb),.13) !important;
+}
+
+/* Other legacy hard rings are only single 1px strokes. Their low-opacity
+   halo remains a blurred light rather than a second hard frame. */
+.efhc-status-dot {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb,currentColor 18%,transparent),
+    0 0 5px color-mix(in srgb,currentColor 12%,transparent) !important;
+}
+.efhc-referral-achievement-node[data-referral-level-state="next"]
+.efhc-referral-achievement-dot {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb,var(--tg-button) 13%,transparent),
+    0 0 6px color-mix(in srgb,var(--tg-button) 10%,transparent) !important;
+}
+.efhc-history-balance-dot {
+  box-shadow: 0 0 0 1px rgba(148,163,184,.08),
+              0 0 6px rgba(148,163,184,.08) !important;
+}
+.efhc-history-balance-row[data-balance-tone="main"] .efhc-history-balance-dot {
+  box-shadow: 0 0 0 1px rgba(110,168,255,.10),
+              0 0 6px rgba(110,168,255,.08) !important;
+}
+.efhc-history-balance-row[data-balance-tone="bonus"] .efhc-history-balance-dot {
+  box-shadow: 0 0 0 1px rgba(216,180,93,.10),
+              0 0 6px rgba(216,180,93,.08) !important;
+}
+/* Selected avatar presets already have their own crisp 1px border.
+   Highlight by soft light instead of adding a second 2px edge. */
+.efhc-profile-avatar-preset[data-active="true"],
+.efhc-profile-avatar-custom-select[data-active="true"] {
+  box-shadow: 0 0 8px rgba(244,210,122,.15) !important;
+}
+.efhc-profile-avatar-social[data-active="true"] {
+  box-shadow: 0 0 8px rgba(59,130,246,.15) !important;
+}
+/* Existing navigation variant: keep a single thin accent plus soft
+   glow, including its stronger themed selector. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+.efhc-game-nav_grid[data-bn="BN-11"] .efhc-game-nav_item[data-active="true"]
+.efhc-game-nav_icon {
+  box-shadow: 0 0 0 1px rgba(var(--efhc-ct-accent-rgb,110,168,255),.12),
+              0 0 7px rgba(var(--efhc-ct-accent-rgb,110,168,255),.12) !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-global-theme-id="11"]
+.efhc-game-nav_grid[data-bn="BN-11"] .efhc-game-nav_item[data-active="true"]
+.efhc-game-nav_icon {
+  box-shadow: 0 0 0 1px rgba(var(--efhc-route-accent-rgb,110,168,255),.14),
+              0 0 7px rgba(var(--efhc-route-accent-rgb,110,168,255),.12) !important;
+}
+.efhc-admin-shell .efhc-bonuses-source-toggle input:checked,
+.efhc-admin-shell .efhc-bonuses-bank-map-toggles input:checked {
+  box-shadow: inset 0 0 0 1px rgba(8,13,22,.9) !important;
+}
+/* Some legacy inputs use :focus rather than :focus-visible; only the
+   thickness of an already-present outline changes. */
+.efhc-independent-shell[data-interface-app-mode="user"]
+:is(input,select,textarea):focus,
+.efhc-admin-shell :is(input,select,textarea):focus,
+.efhc-shop-site[data-interface-app-mode="shop-landing"]
+:is(input,select,textarea):focus {
+  outline-width: 1px !important;
+}
+.efhc-admin-shell :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible {
+  outline-width: 1px !important;
+}
+
+
+/* Verified frontend-shell scope: actual app element is
+   .efhc-frontend-shell[data-global-theme-id], not the old migration shell.
+   CSS border width stays at 1px (geometry unchanged); hide only the
+   duplicate 1px outer COLOR when a visible inset 1px contour exists.
+   PH/XH CT03 have no matching inset: retain their original outer edge. */
+html body .efhc-frontend-shell[data-global-theme-id]:not([data-global-theme-id="03"])
+.efhc-game-hero.efhc-panels-hero[data-ph="PH-01"],
+html body .efhc-frontend-shell[data-global-theme-id]:not([data-global-theme-id="03"])
+.efhc-game-hero.efhc-exchange-hero[data-xh="XH-01"] {
+  border-color: transparent !important;
+}
+/* TG-01 and KG-01 retain their actual CT-colored 1px border.
+   Their computed shadow consists solely of an extra sharp inset 1px ring,
+   with no soft/blurred layer. Remove that duplicate inset, not the border. */
+body [data-tg="TG-01"] .efhc-game-hero,
+body [data-kg="KG-01"] .efhc-game-hero {
+  box-shadow: none !important;
+}

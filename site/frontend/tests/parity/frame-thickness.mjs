@@ -96,6 +96,16 @@ export async function verifyFrameThickness(page,{base}) {
   }
 
   await visit(page,base,'browser-shop/');
+  const shopOrder=await page.evaluate(()=>{
+    const styles=[...document.styleSheets].map(sheet=>sheet.href||'');
+    return {
+      shop:styles.findIndex(href=>href.endsWith('/' + 'SHOP' + '_' + 'v' + '866' + '.css')),
+      contract:styles.findIndex(href=>href.endsWith('/frame-thickness-contract.css'))
+    };
+  });
+  assert.ok(shopOrder.shop>=0,'Shop frozen CSS must be present');
+  assert.ok(shopOrder.contract>shopOrder.shop,
+    'Shop 1px frame contract must cascade after frozen styles');
   const shop=await page.evaluate(()=>{
     const root=document.querySelector('.efhc-shop-site[data-interface-app-mode="shop-landing"]');
     if(!root)throw Error('Missing rendered Browser Shop');
@@ -143,4 +153,113 @@ export async function verifyFrameThickness(page,{base}) {
     }
   }
   return cases;
+}
+
+
+/**
+ * Enumerates widths on ACTUAL rendered UI nodes, not synthetic fixture buttons.
+ * This is diagnostic: a CSS border can intentionally be functional, e.g. a
+ * progress indicator. The caller decides whether it is a visual frame.
+ */
+export async function auditActualRenderedFrames(page,{base,routes=[
+  '', 'panels/', 'panels/portfolio/', 'exchange/', 'tasks/', 'referrals/',
+  'ranks/', 'web-profile/', 'faq/', 'admin/', 'browser-shop/'
+]}) {
+  const result=[];
+  for(const route of routes){
+    await visit(page,base,route);
+    const report=await page.evaluate(()=>{
+      const offenders=[],shadows=[];
+      const isVisible=element=>{
+        const s=getComputedStyle(element);
+        if(s.display==='none'||s.visibility!=='visible'||Number(s.opacity)===0)return false;
+        const r=element.getBoundingClientRect();
+        return r.width>0&&r.height>0;
+      };
+      const summary=el=>{
+        const classes=typeof el.className==='string'?
+          el.className.split(/\s+/).filter(Boolean).slice(0,3).join('.'):'';
+        const attr=['data-ei','data-xs','data-hb','data-selected','data-active',
+          'data-pt','data-ph','data-xh','data-tg','data-kg']
+          .filter(a=>el.hasAttribute(a)).map(a=>a+'='+el.getAttribute(a)).join(' ');
+        const ancestry=['data-global-theme-id','data-tg','data-kg','data-ph','data-xh']
+          .map(a=>el.closest('['+a+']'))
+          .filter(Boolean)
+          .map(parent=>parent.tagName.toLowerCase()+'.'+
+            (typeof parent.className==='string'?parent.className.split(' ')[0]:'')+
+            '('+['data-global-theme-id','data-tg','data-kg','data-ph','data-xh']
+              .filter(a=>parent.hasAttribute(a))
+              .map(a=>a+'='+parent.getAttribute(a)).join(',')+')')
+          .filter((value,index,array)=>array.indexOf(value)===index)
+          .slice(0,3).join('>');
+        return el.tagName.toLowerCase()+(el.id?'#'+el.id:'')+
+          (classes?'.'+classes:'')+(attr?' ['+attr+']':'')+
+          (ancestry?' <'+ancestry+'>':'');
+      };
+      for(const node of document.querySelectorAll('body *')){
+        if(!(node instanceof HTMLElement)||!isVisible(node))continue;
+        const s=getComputedStyle(node);
+        const width={};
+        for(const edge of ['Top','Right','Bottom','Left']){
+          const style=s['border'+edge+'Style'];
+          const n=Number.parseFloat(s['border'+edge+'Width']);
+          if(style!=='none'&&style!=='hidden'&&n>1.01)
+            width[edge.toLowerCase()]=Number(n.toFixed(2));
+        }
+        if(s.outlineStyle!=='none'&&Number.parseFloat(s.outlineWidth)>1.01)
+          width.outline=Number.parseFloat(s.outlineWidth);
+        if(Object.keys(width).length)
+          offenders.push({element:summary(node),width});
+        // A crisp 1px shadow next to a 1px border looks like a second edge.
+        const hardRing = /\b(?:0px\s+){3}[1-9]px\b/.test(s.boxShadow);
+        const hasBorder = ['Top','Right','Bottom','Left'].some(edge=>{
+          const color=s['border'+edge+'Color'];
+          const transparent=color==='transparent'||
+            color.endsWith(', 0)')||color.endsWith('/ 0)');
+          return s['border'+edge+'Style']!=='none'&&
+            Number.parseFloat(s['border'+edge+'Width'])>=0.99&&!transparent;
+        });
+        if(hardRing)
+          shadows.push({element:summary(node),shadow:s.boxShadow.slice(0,175),
+            borderPlusRing:hasBorder});
+      }
+      // Sweep each ACTUAL Hero across the ten color-theme selectors.
+      // This does not invent components or modify persisted UI settings.
+      const themeFrames=[];
+      const themeHost=document.querySelector('.efhc-frontend-shell[data-global-theme-id]');
+      const hero=document.querySelector('.efhc-game-hero');
+      if(themeHost&&hero){
+        const original=themeHost.getAttribute('data-global-theme-id');
+        try{
+          for(let n=1;n<=10;n++){
+            const theme=String(n).padStart(2,'0');
+            themeHost.setAttribute('data-global-theme-id',theme);
+            const computed=getComputedStyle(hero);
+            const color=computed.borderTopColor;
+            const transparent=color==='transparent'||
+              color.endsWith(', 0)')||color.endsWith('/ 0)');
+            const visibleBorder=computed.borderTopStyle!=='none'&&
+              Number.parseFloat(computed.borderTopWidth)>=.99&&!transparent;
+            const inset=/0px 0px 0px 1px inset/.test(computed.boxShadow);
+            themeFrames.push({theme,visibleBorder,inset,
+              double:visibleBorder&&inset});
+          }
+        }finally{
+          if(original===null)themeHost.removeAttribute('data-global-theme-id');
+          else themeHost.setAttribute('data-global-theme-id',original);
+        }
+      }
+      return {
+        renderedNodes:document.querySelectorAll('body *').length,
+        thickBorders:offenders.length,ringShadows:shadows.length,
+        doubleEdges:shadows.filter(x=>x.borderPlusRing).length,
+        themeFrameCases:themeFrames,
+        themeDoubleEdges:themeFrames.filter(x=>x.double).length,
+        offenders:offenders.slice(0,36),shadows:shadows.slice(0,24)
+      };
+    });
+    result.push({route:route||'home',...report});
+    console.log('FRAME_REAL_DOM_AUDIT '+JSON.stringify(result.at(-1)));
+  }
+  return result;
 }

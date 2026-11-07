@@ -11,7 +11,7 @@ import {verifyPortfolioThemeHeights} from './portfolio-theme-height.mjs';
 import {verifyHeaderMaterials} from './header-material.mjs';
 import {verifyStaticPages} from './static-pages.mjs';
 import {verifyTasksData} from './tasks-data.mjs';
-import {verifyFrameThickness} from './frame-thickness.mjs';
+import {verifyFrameThickness,auditActualRenderedFrames} from './frame-thickness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -120,6 +120,21 @@ try{
   await check('one-pixel visible frames on real React Pages in USER Admin and Shop',async()=>{
     const cases=await verifyFrameThickness(page,{base});
     assert.ok(cases.length>=14,'expected frame matrix across ten color themes');
+  });
+  await check('audit actually rendered frame widths on USER Admin and Shop',async()=>{
+    const report=await auditActualRenderedFrames(page,{base});
+    assert.equal(report.length,11,'expected route samples');
+    await fs.writeFile(dir+'/rendered-frame-widths.json',JSON.stringify(report,null,2));
+    const uncorrected=report.flatMap(item=>{
+      const problems=item.shadows.filter(s=>
+        s.borderPlusRing||/0px 0px 0px [2-9]px/.test(s.shadow));
+      if(item.thickBorders||problems.length||item.themeDoubleEdges)
+        return [{route:item.route,borders:item.offenders,shadows:problems,
+          themes:item.themeFrameCases?.filter(x=>x.double)}];
+      return [];
+    });
+    assert.deepEqual(uncorrected,[],
+      'Real rendered pages must not have thick or doubled crisp frames');
   });
   await check('removed browser finance store does not reappear',async()=>{
     await visit();
