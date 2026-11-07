@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { activateUserCache, currentUserDataOwner, startUserDataPersistence } from "./userDataCache";
+import { activateUserCache, startUserDataPersistence } from "./userDataCache";
 import { bindWindowSettings, resetSettings, saveSettings } from "./settings";
 import {resetWindowDrafts} from "./ownerDrafts";
 
@@ -33,11 +33,9 @@ export function createEfhcQueryClient() {
     },
   });
   if (typeof window !== "undefined") {
+    // Hydrate only after React mount in the owner-bound query hooks; pre-hydrating
+    // would mismatch the statically exported SSR tree on a cached reload.
     startUserDataPersistence(client);
-    // Restore confirmed, owner-scoped data before mounting USER pages.
-    // The cache never grants a session, Admin permission, or money action.
-    const cachedOwner = currentUserDataOwner();
-    if (cachedOwner) activateUserCache(client, cachedOwner, false);
   }
   return client;
 }
