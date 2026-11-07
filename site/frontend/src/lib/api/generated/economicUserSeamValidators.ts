@@ -4,9 +4,11 @@
 import { z } from "zod";
 import { dbIdSchema } from "../db-id";
 
+export const PanelPublicIdSchema = z.string().regex(/^PNL-(?!00000000$)[0-9]{8}$/);
+
 export const PanelItemResponseSchema = z.object({
   id: dbIdSchema,
-  public_id: z.string().nullable().optional(),
+  public_id: PanelPublicIdSchema,
   activated_at: z.string().nullable().optional(),
   created_at: z.string().nullable().optional(),
   expires_at: z.string().nullable().optional(),
@@ -32,7 +34,7 @@ export const PanelsSummaryResponseSchema = z.object({
 export const PanelActivationResponseSchema = z.object({
   panel: z.object({
     id: dbIdSchema,
-    public_id: z.string(),
+    public_id: PanelPublicIdSchema,
     activated_at: z.string(),
     expires_at: z.string(),
   }),

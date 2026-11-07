@@ -1,9 +1,10 @@
 // Guard marker: Panel activation needs at least 100 EFHCm.
-import React, { useContext, useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { publicApiErrorMessage } from "../lib/publicError";
+import { ApiError } from "../lib/api";
 import {
   usePanelActivation,
   usePanelsSummary,
@@ -71,6 +72,36 @@ export default function PanelsPage(props: {
     : null;
   const generationTier = profile?.is_vip ? "VIP" : "BASE";
   const activating = activationMutation.isPending;
+  const [pendingPurchaseKey, setPendingPurchaseKey] = useState<string | null>(null);
+  const pendingPurchaseRef = useRef<string | null>(null);
+
+  // Unknown transport outcome must never become a new paid activation.
+  // The session key is scoped to the canonical owner, not the current UI view.
+  const purchaseStorageKey = globalId ? `efhc:panel-purchase:pending:${String(globalId)}` : null;
+  useEffect(() => {
+    let saved: string | null = null;
+    if (purchaseStorageKey && typeof window !== "undefined") {
+      try {
+        saved = window.sessionStorage.getItem(purchaseStorageKey);
+      } catch {
+        // Session storage may be unavailable in restricted webviews.
+      }
+    }
+    pendingPurchaseRef.current = saved;
+    setPendingPurchaseKey(saved);
+  }, [purchaseStorageKey]);
+
+  const recordPendingPurchase = (key: string | null) => {
+    pendingPurchaseRef.current = key;
+    setPendingPurchaseKey(key);
+    if (!purchaseStorageKey || typeof window === "undefined") return;
+    try {
+      if (key) window.sessionStorage.setItem(purchaseStorageKey, key);
+      else window.sessionStorage.removeItem(purchaseStorageKey);
+    } catch {
+      // Keep the in-memory key for the current page session.
+    }
+  };
 
   const canActivatePanel = useMemo(() => {
     return cmp8(totalActivationBalance, "100") >= 0;
@@ -78,19 +109,26 @@ export default function PanelsPage(props: {
 
   const activatePanel = async () => {
     if (customization.mutationBlocked) return;
-    if (activating || !canActivatePanel || !globalId) return;
+    if (activating || (!canActivatePanel && !pendingPurchaseKey) || !globalId) return;
     const ok = await confirm(
       "purchase",
       t("panels.activate_panel"),
       t("panels.subtitle_price_100"),
     );
     if (!ok) return;
-    // Server-authoritative panel purchase: test and production share one API contract.
-    const idk = newIdempotencyKey();
+    // Retry a possibly committed purchase under the ORIGINAL key.
+    const idk = pendingPurchaseRef.current ?? newIdempotencyKey();
+    recordPendingPurchase(idk);
     try {
       await activationMutation.mutateAsync(idk);
+      recordPendingPurchase(null);
       toast(t("panels.activate_ok"), "success");
     } catch (error) {
+      // Only definite client-side rejection can free the pending key.
+      // Timeout, transport failure, 5xx and a malformed response cannot.
+      if (error instanceof ApiError && [400, 403, 422].includes(error.status)) {
+        recordPendingPurchase(null);
+      }
       const message = publicApiErrorMessage(
         error,
         t,
@@ -114,7 +152,7 @@ export default function PanelsPage(props: {
 
     telegramMainButtonSet({
       text: t("panels.activate_panel"),
-      enabled: !activating && canActivatePanel,
+      enabled: !activating && (canActivatePanel || Boolean(pendingPurchaseKey)),
       show: true,
     });
 
@@ -133,6 +171,7 @@ export default function PanelsPage(props: {
     settings.haptics_enabled,
     activating,
     canActivatePanel,
+    pendingPurchaseKey,
     customization.mutationBlocked,
   ]);
 
@@ -273,7 +312,7 @@ export default function PanelsPage(props: {
           ) : null}
           <Button
             onClick={activatePanel}
-            disabled={activating || !canActivatePanel}
+            disabled={activating || (!canActivatePanel && !pendingPurchaseKey)}
             className="efhc-panels-activate efhc-theme03-cta"
             data-panel-activation-cta="100-efhc"
             data-panel-activation-debit="bonus-first-main-second"
