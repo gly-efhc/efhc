@@ -13,6 +13,7 @@ const roles = [
   "active", "accent", "accent-soft", "accent-strong", "border",
   "border-strong", "text", "text-muted", "shadow", "glow", "focus",
 ];
+const theme03Expected = {"accent":"#a78bfa","accentStrong":"#7557db","glow":"#7c5cff","focus":"#c4b5fd","text":"#f8fafc","textMuted":"#cbd5e1","border":"rgba(167,139,250,.24)","borderStrong":"rgba(167,139,250,.42)"};
 const neutralRoles = ["canvas", "page", "chrome", "chrome-inset", "hero", "card", "inset", "text", "text-muted", "shadow"];
 const layoutSelectors = [
   ".efhc-game-header", ".efhc-game-header_profile", ".efhc-game-header_balance",
@@ -35,7 +36,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
       await page.locator('.efhc-independent-shell[data-interface-app-mode="user"]').first()
         .waitFor({ state: "attached", timeout: 12000 });
-      const result = await page.evaluate(({ palette, roleNames, neutral, selectors }) => {
+      const result = await page.evaluate(({ palette, roleNames, neutral, selectors, expectedTheme03 }) => {
         const root = document.documentElement;
         const shell = document.querySelector('.efhc-independent-shell[data-interface-app-mode="user"]');
         if (!shell) throw new Error("USER shell not mounted");
@@ -65,6 +66,16 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             const values = Object.fromEntries(roleNames.map(name => [name, get("--efhc-color-" + name)]));
             for (const [name, value] of Object.entries(values)) {
               if (!value) throw new Error("Unresolved role " + name + " / " + entry.id);
+            }
+            if (entry.id === "CT-03") {
+              for (const [key, expected] of Object.entries(expectedTheme03)) {
+                const role = key.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
+                const actual = get("--efhc-color-" + role).toLowerCase();
+                const value = expected.toLowerCase().replace(/\s+/g, "");
+                if (actual !== value) {
+                  throw new Error("Theme03 qualified role differs at " + key + ": " + actual + " expected " + value);
+                }
+              }
             }
             if (get("--efhc-ct-accent").toLowerCase() !== entry.accent.toLowerCase()) {
               throw new Error("Wrong active accent " + entry.id + ": " + get("--efhc-ct-accent"));
@@ -132,7 +143,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
           }
         }
         return { matrix, mismatches };
-      }, { palette: catalog, roleNames: roles, neutral: neutralRoles, selectors: layoutSelectors });
+      }, { palette: catalog, roleNames: roles, neutral: neutralRoles, selectors: layoutSelectors, expectedTheme03: theme03Expected });
       assert.equal(result.matrix.length, 10, "Missing theme on " + route + " at " + width);
       outcomes.push({ route, width, themes: result.matrix.length, measuredElements: result.matrix[0]?.measuredElements || 0 });
       for (const mismatch of result.mismatches) failures.push({ route, width, ...mismatch });
