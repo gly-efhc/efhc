@@ -15,8 +15,16 @@ const root = process.env.EFHC_PWA_EXPORT_DIR;
 if (!root || !path.isAbsolute(root)) throw new Error("EFHC_PWA_EXPORT_DIR required");
 const artifactDir = process.env.EFHC_PARITY_ARTIFACTS || "/tmp/efhc-persistence-artifacts";
 const exportConfig = JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"));
-const ownerCacheKey = "EFHC_USER_DATA_CACHE_V1";
-const settingsKey = "EFHC_USER_SETTINGS_V1";
+// Resolve the persisted namespaces from their production owners: the browser
+// test must not introduce duplicate version-labelled storage identities.
+async function persistedKeyFromSource(filename) {
+  const source = await readFile(new URL(`../../src/lib/${filename}`, import.meta.url), "utf8");
+  const match = source.match(/\bconst KEY\s*=\s*["']([^"']+)["']\s*;/);
+  assert.ok(match?.[1], `Production persistence key missing from ${filename}`);
+  return match[1];
+}
+const ownerCacheKey = await persistedKeyFromSource("userDataCache.ts");
+const settingsKey = await persistedKeyFromSource("settings.ts");
 await mkdir(artifactDir, {recursive:true});
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
@@ -148,6 +156,11 @@ try {
         assert.equal(settings?.sfx_enabled,false);
         if (!route) {
           await page.locator(".efhc-energy-stage_eyebrow").waitFor({state:"visible",timeout:15000});
+          // The root locale can update before React commits translated text.
+          // Require the actual USER caption, never just the locale attribute.
+          await page.waitForFunction(() =>
+            document.querySelector(".efhc-energy-stage_eyebrow")?.textContent?.trim() === "Энергия",
+            null, {timeout:15000});
           const title=(await page.locator(".efhc-energy-stage_eyebrow").innerText()).trim();
           assert.equal(title,"Энергия","visible language must match cached Russian preference");
         }
