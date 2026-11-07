@@ -87,9 +87,9 @@ test("Energy, indicator colors, PNL countdown and progress bars keep their accep
   const indicators = source("components/interface-settings/InterfaceIndicators.tsx");
   assert.ok(indicators.includes("data-indicator-group"));
   const referrals = source("pages/referrals.tsx");
-  assert.match(referrals, /Number\\.isFinite\\(raw\\)/);
-  assert.match(referrals, /Number\\.isFinite\\(rawLevel\\)/);
-  assert.match(referrals, /style=\\{\\{ width: progressPct \\}\\}/);
+  assert.ok(referrals.includes("Number.isFinite(raw)"), "malformed fraction must not produce NaN");
+  assert.ok(referrals.includes("Number.isFinite(rawLevel)"), "malformed level must not produce NaN");
+  assert.ok(referrals.includes("style={{ width: progressPct }}"), "referral progress must bind sanitized percent");
 });
 
 test("Local user settings survive reload without Telegram, remain owner-scoped, and sync after local choice", async () => {
