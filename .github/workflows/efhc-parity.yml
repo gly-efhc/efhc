@@ -71,7 +71,7 @@ jobs:
           cd "$RUNNER_TEMP/efhc-parity-build"
           ./node_modules/.bin/next build --webpack
       - name: Require persistent pages under data failure
-        timeout-minutes: 8
+        timeout-minutes: 12
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-persistence-artifacts
@@ -88,6 +88,8 @@ jobs:
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           export EFHC_REACT_URL="http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/"
           node site/frontend/tests/parity/persistent-pages.mjs
+          export EFHC_PWA_EXPORT_DIR="$RUNNER_TEMP/efhc-parity-build/out"
+          node site/frontend/tests/parity/pwa-cache-integration.mjs
       - name: Retain mandatory persistence verification
         if: always()
         uses: actions/upload-artifact@v4
