@@ -399,7 +399,7 @@ export default function PanelsPortfolioPage(props: {
                 >
                   <div className="min-w-0">
                     <div className="truncate font-semibold tabular-nums">
-                      {p.public_id ? p.public_id : t("panels.panel_id")}
+                      {/^PNL-(?!00000000$)[0-9]{8}$/.test(p.public_id) ? p.public_id : "Ошибка целостности PNL"}
                     </div>
                     <div className="text-xs efhc-text-muted2">
                       {t("panels.panel_id")}

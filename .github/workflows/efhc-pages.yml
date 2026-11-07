@@ -193,7 +193,7 @@ jobs:
       - name: Require configured HTTPS DEMO API before any Pages compilation
         shell: bash
         env:
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
+          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: 'https://efhc-beckend.onrender.com'
         run: |
           python3 - <<'PYTHON'
           import os
@@ -213,7 +213,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_E2E_TONCONNECT_MOCK: '0'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: 'demo_backend'
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
+          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: 'https://efhc-beckend.onrender.com'
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_E2E_DISABLE_TONCONNECT_RESTORE: '1'
           NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'

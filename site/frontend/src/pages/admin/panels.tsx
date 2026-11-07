@@ -24,7 +24,7 @@ type PanelMeta = {
 
 type PanelItem = {
   id: DbId;
-  public_id?: string | null;
+  public_id: string;
   global_id: GlobalId;
   is_active: boolean;
   state?: string | null;

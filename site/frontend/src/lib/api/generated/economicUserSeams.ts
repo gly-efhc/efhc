@@ -20,7 +20,7 @@ export const PANELS_SUMMARY_PATH =
 
 export type PanelItemResponse = {
   id: DbId;
-  public_id?: string | null;
+  public_id: string;
   activated_at?: string | null;
   created_at?: string | null;
   expires_at?: string | null;
