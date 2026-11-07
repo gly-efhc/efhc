@@ -87,9 +87,9 @@ jobs:
           for i in $(seq 1 30); do curl -fsS "http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/" -o /dev/null && break || sleep 1; done
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           export EFHC_REACT_URL="http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/"
-          node site/frontend/tests/parity/persistent-pages.mjs
           export EFHC_PWA_EXPORT_DIR="$RUNNER_TEMP/efhc-parity-build/out"
           node site/frontend/tests/parity/pwa-cache-integration.mjs
+          node site/frontend/tests/parity/persistent-pages.mjs
       - name: Retain mandatory persistence verification
         if: always()
         uses: actions/upload-artifact@v4

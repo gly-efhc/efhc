@@ -117,6 +117,10 @@ try {
   });
   await check("offline reload restores local language, CT theme and audio choices before backend", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    // A real user choice first updates React state, which then persists it.
+    // Writing sessionStorage without notifying a mounted app creates an invalid
+    // race: its previous in-memory settings can overwrite the injected value.
+    await page.waitForFunction(() => Boolean(document.documentElement.dataset.efhcLocale),null,{timeout:15000});
     await page.evaluate(({ownerCacheKey,settingsKey}) => {
       // Restore for the currently active *display owner*, if there is one;
       // never inject another Global ID or create an authorization fixture.
@@ -126,33 +130,17 @@ try {
         theme_mode:"dark",music_enabled:true,sfx_enabled:false,reduce_motion:false,
         interface_settings_version:4,
       }));
+      window.dispatchEvent(new Event("efhc:user-settings-ready"));
     },{ownerCacheKey,settingsKey});
+    await page.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
     await context.setOffline(true);
     try {
       for (const route of ["","panels/",""]) {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
         // Editing-only theme dots are absent in normal USER mode. Verify the
         // real, rendered USER shell color token rather than a hidden editor.
-        await page.waitForTimeout(700);
-        const observed=await page.evaluate(({ownerCacheKey,settingsKey})=>{
-          const ownerCache=JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null");
-          const setting=JSON.parse(sessionStorage.getItem(settingsKey)||"null");
-          const shell=document.querySelector('[data-theme-page-surface="true"]');
-          return {shellPresent:Boolean(shell),theme:shell?.getAttribute("data-color-theme-id")||null,
-            htmlLang:document.documentElement.lang,localeToken:document.documentElement.dataset.efhcLocale||null,
-            nextRouterReady:Boolean(window.next?.router),documentState:document.readyState,
-            scriptCount:document.querySelectorAll("script[src]").length,
-            scriptResources:performance.getEntriesByType("resource").filter(x=>/\\.js(?:\\?|$)/.test(x.name)).length,
-            bodyHasRussianEnergy:document.body.innerText.includes("Энергия"),
-            lang:setting?.lang||null,storedTheme:setting?.color_theme_id||null,
-            ownerInCache:Boolean(ownerCache?.owner),ownerInSettings:Boolean(setting?.settings_owner),
-            sameOwner:Boolean(ownerCache?.owner && ownerCache.owner===setting?.settings_owner),
-            sessionPresent:Boolean(sessionStorage.getItem(settingsKey)),
-            durableOwnerSettings:Boolean(ownerCache?.owner && localStorage.getItem(settingsKey+":"+ownerCache.owner)),
-            anonymousOwner:setting?.settings_owner===null};
-        },{ownerCacheKey,settingsKey});
-        console.log("PWA_SETTINGS_RUNTIME",JSON.stringify(observed));
-        assert.equal(observed.theme,"CT-03","cached CT must be applied on USER shell; diagnostics: "+JSON.stringify(observed));
+        await page.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
+        assert.equal(await page.locator("html").getAttribute("data-efhc-locale"),"ru","offline app must hydrate saved locale");
         const settings=await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)||"null"),settingsKey);
         assert.equal(settings?.lang,"ru");
         assert.equal(settings?.color_theme_id,"CT-03");
@@ -180,6 +168,7 @@ try {
           current.color_theme_id=ct;
           current.global_theme_id=ct.slice(3);
           sessionStorage.setItem(key,JSON.stringify(current));
+          window.dispatchEvent(new Event("efhc:user-settings-ready"));
         },{key:settingsKey,ct});
         for(const route of ["","referrals/"]){
           await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
