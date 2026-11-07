@@ -21,6 +21,14 @@ test('portfolio never substitutes a technical id for missing PNL', () => {
   assert.doesNotMatch(source,/\{p\.public_id \? p\.public_id : t\("panels\.panel_id"\)\}/);
 });
 
+test('USER and Admin consumers surface malformed PNL without inventing an internal ID', () => {
+  const runtime=fs.readFileSync(new URL('../../src/components/dashboard/PanelsPortfolioRuntime.tsx',import.meta.url),'utf8');
+  const admin=fs.readFileSync(new URL('../../src/pages/admin/panels.tsx',import.meta.url),'utf8');
+  assert.match(runtime,/Ошибка целостности PNL/);
+  assert.match(admin,/Ошибка целостности PNL/);
+  assert.doesNotMatch(runtime,/ID.*String\\(panel\\.id\\)/);
+});
+
 test('unknown purchase result retains same owner-scoped idempotency attempt', () => {
   const source=fs.readFileSync(new URL('../../src/pages/panels.tsx',import.meta.url),'utf8');
   assert.match(source,/efhc:panel-purchase:pending:/);
