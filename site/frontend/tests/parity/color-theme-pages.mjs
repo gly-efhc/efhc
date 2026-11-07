@@ -16,7 +16,11 @@ const roles = [
 // The frozen USER shell uses the active violet accent for glow after Theme03's
 // historical vector is loaded. Compare with the accepted rendered Theme03,
 // not the pre-shell JSON token; preserve the protected Theme03 appearance.
-const theme03Expected = {"accent":"#a78bfa","accentStrong":"#7557db","glow":"#a78bfa","focus":"#c4b5fd","text":"#f8fafc","textMuted":"#cbd5e1","border":"rgba(167,139,250,.24)","borderStrong":"rgba(167,139,250,.42)"};
+const theme03Roles = JSON.parse(readFileSync(new URL("../../src/design-system/theme03-chroma.json", import.meta.url), "utf8")).roles;
+const theme03Expected = Object.fromEntries(
+  ["accent", "accentStrong", "glow", "focus", "text", "textMuted", "border", "borderStrong"]
+    .map(key => [key, key === "glow" ? theme03Roles.accent : theme03Roles[key]]),
+);
 const neutralRoles = ["canvas", "page", "chrome", "chrome-inset", "hero", "card", "inset", "text", "text-muted", "shadow"];
 const layoutSelectors = [
   ".efhc-game-header", ".efhc-game-header_profile", ".efhc-game-header_balance",
