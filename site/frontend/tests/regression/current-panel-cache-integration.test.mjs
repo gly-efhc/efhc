@@ -38,7 +38,7 @@ test("The existing PNL card uses a shared local tick, confirmed list and exact D
   const src = source("pages/panels/portfolio.tsx");
   assert.match(src, /projectPanelGeneratedD8\(/);
   assert.match(src, /confirmedPerPanelRateD8/);
-  assert.match(src, /props\.snap\?\.profile\.is_vip/);
+  assert.ok(src.includes("!props.snap.profile.is_vip"), "VIP rate guard must remain in PNL card");
   assert.match(src, /setInterval\(updateNow, 333\)/);
   assert.match(src, /data-panel-countdown-live="client-stopwatch"/);
   assert.match(src, /data-panel-identity=\{p\.public_id \?\? undefined\}/);
