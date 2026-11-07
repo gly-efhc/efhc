@@ -117,7 +117,7 @@ try {
   });
   await check("offline reload restores local language, CT theme and audio choices before backend", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
-    await page.evaluate(() => {
+    await page.evaluate(({ownerCacheKey,settingsKey}) => {
       // Restore for the currently active *display owner*, if there is one;
       // never inject another Global ID or create an authorization fixture.
       const cacheOwner=JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.owner||null;
@@ -126,22 +126,22 @@ try {
         theme_mode:"dark",music_enabled:true,sfx_enabled:false,reduce_motion:false,
         interface_settings_version:4,
       }));
-    });
+    },{ownerCacheKey,settingsKey});
     await context.setOffline(true);
     try {
       for (const route of ["","panels/",""]) {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
-        const diagnostic=await page.evaluate(() => ({
+        const diagnostic=await page.evaluate(({ownerCacheKey,settingsKey}) => ({
           owner:JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.owner||null,
           stored:JSON.parse(sessionStorage.getItem(settingsKey)||"null"),
           localSettingsKeys:Object.keys(localStorage).filter(k=>k.includes("EFHC_USER_SETTINGS")).slice(0,10),
           renderedTheme:[...document.querySelectorAll("[data-color-theme-id]")].slice(0,7).map(el=>el.getAttribute("data-color-theme-id")),
           text:document.querySelector(".efhc-energy-stage_eyebrow")?.textContent||null,
           appMode:document.querySelector("[data-interface-app-mode]")?.getAttribute("data-interface-app-mode")||null,
-        }));
+        }),{ownerCacheKey,settingsKey});
         console.log("PWA_SETTINGS_RESTORE_DIAGNOSTIC",JSON.stringify(diagnostic));
         await page.locator('[data-color-theme-id="CT-03"]').first().waitFor({state:"attached",timeout:15000});
-        const settings=await page.evaluate(() => JSON.parse(sessionStorage.getItem(settingsKey)||"null"));
+        const settings=await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)||"null"),settingsKey);
         assert.equal(settings?.lang,"ru");
         assert.equal(settings?.color_theme_id,"CT-03");
         assert.equal(settings?.music_enabled,true);
