@@ -19638,6 +19638,8 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   --efhc-ct-border:var(--efhc-color-border);
   --efhc-ct-border-strong:var(--efhc-color-border-strong);
   --efhc-ct-accent-soft:var(--efhc-color-accent-soft);
+  --efhc-ct-accent-strong:color-mix(in srgb,var(--efhc-ct-accent) 80%,#12121c 20%);
+  --efhc-common-elevation-shadow:0 14px 34px rgba(0,0,0,.26);
   --efhc-ct-glow:var(--efhc-color-accent-soft);
   --efhc-ct-focus:var(--efhc-color-focus);
   --efhc-route-accent:var(--efhc-ct-accent);
@@ -19654,6 +19656,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   --efhc-color-active:linear-gradient(135deg,rgba(34,25,61,.94),rgba(23,18,43,.96));
   --efhc-color-accent-soft:rgba(124,92,255,.10);
   --efhc-color-accent-strong:#7557db;
+  --efhc-ct-accent-strong:#7557db;
   --efhc-color-glow:#7c5cff;
   --efhc-color-focus:#c4b5fd;
 }
