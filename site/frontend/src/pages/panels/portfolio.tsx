@@ -18,6 +18,7 @@ import { usePanelsList } from "../../queries/usePanels";
 import { useT } from "../../hooks/useT";
 import type { SyncSnapshot } from "../../hooks/useSnapshot";
 import { format8 } from "../../lib/format";
+import { projectPanelGeneratedD8 } from "../../lib/panelDisplayProjection";
 import { hapticSelection } from "../../lib/telegram";
 import { useInterfaceVariantSurface } from
   "../../hooks/useInterfaceVariantSurface";
@@ -79,6 +80,7 @@ export default function PanelsPortfolioPage(props: {
   );
   const [tick, setTick] = useState(0);
   const [nowUtcMs, setNowUtcMs] = useState<number | null>(null);
+  const [elapsedClientMs, setElapsedClientMs] = useState(0);
   const listQuery = usePanelsList(tab, sortDirection);
 
   const items = useMemo(
@@ -153,14 +155,18 @@ export default function PanelsPortfolioPage(props: {
   useEffect(() => {
     if (anchorServerMs === null || anchorClientMs === null) {
       setNowUtcMs(null);
+      setElapsedClientMs(0);
       return undefined;
     }
     const updateNow = () => {
-      setNowUtcMs(anchorServerMs + (performance.now() - anchorClientMs));
+      const elapsed = Math.max(0, performance.now() - anchorClientMs);
+      setNowUtcMs(anchorServerMs + elapsed);
+      setElapsedClientMs(elapsed);
       setTick((value) => value + 1);
     };
     updateNow();
-    const id = globalThis.setInterval(updateNow, 1_000);
+    // One shared local clock animates PNL D8 display values and countdowns.
+    const id = globalThis.setInterval(updateNow, 333);
     return () => globalThis.clearInterval(id);
   }, [anchorServerMs, anchorClientMs]);
 
@@ -435,7 +441,7 @@ export default function PanelsPortfolioPage(props: {
                       {t("panels.generated_kwh")}
                     </div>
                     <div className="font-semibold tabular-nums">
-                      {format8(p.generated_kwh)}
+                      {projectPanelGeneratedD8(p, serverNowIso, elapsedClientMs)}
                     </div>
                   </div>
                   <div

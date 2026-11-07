@@ -209,17 +209,22 @@ function LiveEnergyBlock(props: LiveBlockProps) {
   }, []);
 
   const [displayPct, setDisplayPct] = useState(0);
+  const progressFirstPaint = useRef(false);
 
   useEffect(() => {
     if (prefersReducedMotion) {
+      progressFirstPaint.current = true;
       setDisplayPct(progressPct);
       return;
     }
-    setDisplayPct(0);
-    const id = window.requestAnimationFrame(() => {
-      setDisplayPct(progressPct);
-    });
-    return () => window.cancelAnimationFrame(id);
+    if (!progressFirstPaint.current) {
+      progressFirstPaint.current = true;
+      const id = window.requestAnimationFrame(() => setDisplayPct(progressPct));
+      return () => window.cancelAnimationFrame(id);
+    }
+    // Keep the last painted percentage during each new D8 tick; CSS transitions
+    // smoothly to the updated value instead of visibly resetting to zero.
+    setDisplayPct(progressPct);
   }, [prefersReducedMotion, progressPct]);
 
   const fillClassName = prefersReducedMotion
