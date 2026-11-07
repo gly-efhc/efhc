@@ -94,7 +94,10 @@ try {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile = path.join(root,"sw.js");
     const original = await readFile(workerFile,"utf8");
-    const originalController = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL||"");
+    const originalController = await page.evaluate(() => {
+      window.__EFHC_OLD_SW_CONTROLLER_TEST__ = navigator.serviceWorker.controller;
+      return navigator.serviceWorker.controller?.scriptURL || "";
+    });
     assert.ok(originalController.endsWith("/sw.js"),"existing worker must control active session");
     try {
       await writeFile(workerFile,original+"\n// EFHC_TEST_STAGED_UPDATE_"+Date.now()+"\n","utf8");
@@ -105,11 +108,20 @@ try {
       },null,{timeout:45000});
       const state = await page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
-        reg?.waiting?.postMessage({type:"SKIP_WAITING"});
-        return {waiting:reg?.waiting?.state,controller:navigator.serviceWorker.controller?.scriptURL};
+        return {
+          waiting:reg?.waiting?.state || null,
+          active:reg?.active?.state || null,
+          installing:reg?.installing?.state || null,
+          sameController:navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
+          controller:navigator.serviceWorker.controller?.scriptURL || null,
+          scope:reg?.scope || null,
+        };
       });
-      assert.equal(state.waiting,"installed");
+      console.log("PWA_STAGED_UPDATE_STATE",JSON.stringify(state));
+      assert.equal(state.sameController,true,"SW changed controller during active session");
       assert.equal(state.controller,originalController);
+      assert.equal(state.waiting,"installed","new SW must remain staged until this client closes");
+      await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.waiting?.postMessage({type:"SKIP_WAITING"}));
       await page.waitForTimeout(500);
       assert.equal(await page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting)),true,
         "update activated in the middle of a running session");
