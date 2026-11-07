@@ -252,6 +252,13 @@ export function PwaRuntimeStatus(props: {
       .slice(0, 4);
   }, [router.pathname, staticRoutes]);
 
+  // Keep one SW registration for this mounted app. Route learning may change
+  // continuously, but must not repeatedly restart an update installation.
+  const routerForCacheRef = useRef(router);
+  const routesForCacheRef = useRef(nextRoutes);
+  routerForCacheRef.current = router;
+  routesForCacheRef.current = nextRoutes;
+
   useEffect(() => {
     recordTransition(previousRoute.current, router.pathname);
     previousRoute.current = router.pathname;
@@ -420,7 +427,7 @@ export function PwaRuntimeStatus(props: {
           target?.postMessage({ type: "GET_CACHE_STATUS" });
           if (!connectionAllowsPrefetch()) return;
           void Promise.all(
-            nextRoutes.map((route) => router.prefetch(route)),
+            routesForCacheRef.current.map((route) => routerForCacheRef.current.prefetch(route)),
           ).finally(() => {
             window.setTimeout(() => {
               target?.postMessage({
@@ -452,7 +459,7 @@ export function PwaRuntimeStatus(props: {
       trackedWorker = null;
       navigator.serviceWorker.removeEventListener("message", onMessage);
     };
-  }, [enabled, nextRoutes, router]);
+  }, [enabled]);
 
   // Never activate a new version while the running USER/Admin session is open.
   // A waiting Service Worker takes over only after the old client is closed.
