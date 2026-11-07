@@ -102,21 +102,25 @@ try {
     try {
       await writeFile(workerFile,original+"\n// EFHC_TEST_STAGED_UPDATE_"+Date.now()+"\n","utf8");
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
-      await page.waitForFunction(async () => {
-        const reg = await navigator.serviceWorker.getRegistration();
-        return reg?.waiting?.state === "installed";
-      },null,{timeout:45000});
-      const state = await page.evaluate(async () => {
-        const reg = await navigator.serviceWorker.getRegistration();
-        return {
-          waiting:reg?.waiting?.state || null,
-          active:reg?.active?.state || null,
-          installing:reg?.installing?.state || null,
-          sameController:navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
-          controller:navigator.serviceWorker.controller?.scriptURL || null,
-          scope:reg?.scope || null,
-        };
-      });
+      // Installation revalidates the full precache and is not instantaneous.
+      // Poll the actual registry on the Node side; an async waitForFunction
+      // expression must not accidentally certify a Promise before it resolves.
+      let state = null;
+      for (let attempt = 0; attempt < 180; attempt++) {
+        state = await page.evaluate(async () => {
+          const reg = await navigator.serviceWorker.getRegistration();
+          return {
+            waiting:reg?.waiting?.state || null,
+            active:reg?.active?.state || null,
+            installing:reg?.installing?.state || null,
+            sameController:navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
+            controller:navigator.serviceWorker.controller?.scriptURL || null,
+            scope:reg?.scope || null,
+          };
+        });
+        if (state.waiting === "installed" && state.installing === null) break;
+        await page.waitForTimeout(250);
+      }
       console.log("PWA_STAGED_UPDATE_STATE",JSON.stringify(state));
       assert.equal(state.sameController,true,"SW changed controller during active session");
       assert.equal(state.controller,originalController);
