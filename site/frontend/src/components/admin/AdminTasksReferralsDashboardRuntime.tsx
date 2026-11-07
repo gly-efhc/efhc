@@ -19,8 +19,6 @@ import {
 } from "./AdminDashboardUiKit";
 import type { DbId } from "../../types/db-id";
 
-export const adminTasksReferralsDashboardRuntimeVersion =
-  "EFHC_ADMIN_TASKS_REFERRALS_DASHBOARD_RUNTIME_V1";
 
 export type AdminTaskDashboardItem = {
   id: DbId;

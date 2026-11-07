@@ -9,8 +9,6 @@ import { TelegramSectionRow } from "../ui/telegram/TelegramSectionRow";
 import { TelegramStatusBadge } from "../ui/telegram/TelegramStatusBadge";
 import { AdminSectionCard } from "./AdminSectionCard";
 
-export const adminSystemHealthDashboardRuntimeVersion =
-  "EFHC_ADMIN_SYSTEM_HEALTH_DASHBOARD_RUNTIME_V3_SIMPLE_RU";
 
 type BasicHealth = { status?: string; ok?: boolean };
 type DbHealth = {

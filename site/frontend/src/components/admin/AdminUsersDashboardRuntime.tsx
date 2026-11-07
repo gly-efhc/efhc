@@ -17,8 +17,6 @@ import {
   AdminStatusBadge,
 } from "./AdminDashboardUiKit";
 
-export const adminUsersDashboardRuntimeVersion =
-  "EFHC_ADMIN_USERS_DASHBOARD_RUNTIME_V1";
 
 type UserDashboardItem = {
   username?: string | null;

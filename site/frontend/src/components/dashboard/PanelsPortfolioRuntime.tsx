@@ -537,7 +537,4 @@ export function PanelsPortfolioRuntime(props: PanelsPortfolioRuntimeProps) {
   );
 }
 
-export const panelsPortfolioRuntimeVersion =
-  "EFHC_PANELS_PORTFOLIO_RUNTIME_PORT_V1";
 
-export const panelCardsDeepPolishVersion = "EFHC_PANEL_CARDS_DEEP_POLISH_V1";

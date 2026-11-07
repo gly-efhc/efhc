@@ -95,7 +95,6 @@ export function AdminWithdrawalsMobileDecisionPanel(props: Props) {
   return (
     <section
       className="efhc-admin-withdraw-mobile"
-      data-admin-withdraw-mobile-decision-cycle="1328"
       data-admin-sandbox-source="ui-main:data-table mobile drawer pattern; section-cards; chart-area-interactive; MaterialM dashboard cards"
     >
       <AdminSectionHeader

@@ -116,7 +116,6 @@ export function AdminDiagnosticsTechnicalBoundaryPanel() {
   return (
     <section
       className="efhc-admin-diagnostics-boundary"
-      data-admin-diagnostics-boundary-cycle="1345"
       data-admin-sandbox-source="техническая поверхность диагностики"
     >
       <AdminSectionHeader

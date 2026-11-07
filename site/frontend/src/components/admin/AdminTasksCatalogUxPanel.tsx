@@ -86,7 +86,6 @@ export function AdminTasksCatalogUxPanel(props: Props) {
   return (
     <section
       className="efhc-admin-tasks-catalog"
-      data-admin-tasks-catalog-ux-cycle="1341"
       data-admin-sandbox-source="ui-main data-table; section-cards; chart-area-interactive; MaterialM dashboard cards"
     >
       <AdminSectionHeader

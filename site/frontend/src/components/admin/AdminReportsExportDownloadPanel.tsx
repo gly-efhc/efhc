@@ -180,7 +180,6 @@ export function AdminReportsExportDownloadPanel(props: Props) {
   return (
     <section
       className="efhc-admin-reports-export"
-      data-admin-reports-export-cycle="1344"
       data-admin-sandbox-source="refine useExport; ExportButton; tma downloadFile"
     >
       <AdminSectionHeader

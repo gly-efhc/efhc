@@ -19,8 +19,6 @@ import {
 } from "./AdminDashboardUiKit";
 import type { DbId } from "../../types/db-id";
 
-export const adminWithdrawalsDashboardRuntimeVersion =
-  "EFHC_ADMIN_WITHDRAWALS_DASHBOARD_RUNTIME_V1";
 
 type AdminWithdrawalDashboardStatus =
   | "PENDING"

@@ -186,5 +186,3 @@ export function DashboardFreshnessBadge(
   );
 }
 
-export const dashboardToolbarFoundationVersion =
-  "EFHC_DASHBOARD_TOOLBAR_V1";

@@ -109,4 +109,3 @@ export function PanelChrome(props: PanelChromeProps) {
   );
 }
 
-export const panelChromeVersion = "EFHC_PANEL_CHROME_V1";

@@ -34,11 +34,11 @@ test('OWNER: production role-gate documented as future backend confirmed Global 
 test('Header fix targets approved 53px high profile/balance and four controls',()=>{
  assert.match(css,/3\.315rem!important/);
  assert.match(css,/repeat\(4,minmax\(0,1fr\)\)!important/);
- assert.match(css,/data-canon-header-cycle="0007"/);
+ assert.match(css,/data-canon-header="true"/);
  assert.doesNotMatch(css,/data-interface-app-mode="admin"/);
 });
 test('Energy value uses canonical responsive CSS instead of render-calculated font px',()=>{
- assert.match(home,/data-canon-energy-cycle="0008"/);
+ assert.match(home,/data-canon-energy="true"/);
  assert.match(home,/data-canon-energy-type="css-source-v866"/);
  assert.doesNotMatch(home,/heroFontPx|fontSize: `\$\{heroFontPx\}px`/);
  assert.match(css,/clamp\(1\.55rem,7\.4vw,2\.18rem\)/);

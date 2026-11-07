@@ -506,5 +506,3 @@ export function RanksDashboardSandboxPrototype(
   );
 }
 
-export const ranksDashboardSandboxPrototypeVersion =
-  "EFHC_RANKS_DASHBOARD_SANDBOX_PROTOTYPE_V1";

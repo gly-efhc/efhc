@@ -67,22 +67,22 @@ nav.efhc-game-nav[data-regression-nav-canon="v888"] .efhc-game-nav_grid[data-bn=
    170.609px columns, despite earlier un-overridden CSS rules showing
    1fr/.82fr. Keep the measured final cascade; protect avatar/actions. */
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] {
+ .efhc-game-header[data-canon-header="true"] {
   grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   grid-template-areas:"profile balance" "actions actions";
 }
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] .efhc-game-header_profile {
+ .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile {
   min-width:0;grid-template-columns:2.35rem minmax(0,1fr);
   gap:.55rem;
 }
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] .efhc-game-header_balance {
+ .efhc-game-header[data-canon-header="true"] .efhc-game-header_balance {
   min-width:0;max-width:100% !important;
   overflow:hidden;
 }
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] .efhc-game-header_profile-copy {
+ .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-copy {
   min-width:0;overflow:visible;
 }
 /* Root cause visible in computed geometry: generic 44px button min-height
@@ -90,7 +90,7 @@ nav.efhc-game-nav[data-regression-nav-canon="v888"] .efhc-game-nav_grid[data-bn=
    The profile itself remains clickable; only its nested name button is
    exempted from the global 44px touch min-height to restore status layout. */
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] .efhc-game-header_profile-name-button {
+ .efhc-game-header[data-canon-header="true"] .efhc-game-header_profile-name-button {
   min-height:0 !important;
   height:auto !important;
   padding:0 !important;
@@ -98,7 +98,7 @@ nav.efhc-game-nav[data-regression-nav-canon="v888"] .efhc-game-nav_grid[data-bn=
 }
 
 .efhc-independent-shell[data-interface-app-mode="user"]
- .efhc-game-header[data-canon-header-cycle="0007"] .efhc-game-header_statuses {
+ .efhc-game-header[data-canon-header="true"] .efhc-game-header_statuses {
   min-width:0;max-width:100%;gap:.38rem;overflow:visible;
   flex-wrap:nowrap;white-space:nowrap;
 }

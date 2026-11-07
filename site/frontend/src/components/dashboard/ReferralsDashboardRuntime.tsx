@@ -346,5 +346,3 @@ export function ReferralsDashboardRuntime(
   );
 }
 
-export const referralsDashboardRuntimeVersion =
-  "EFHC_REFERRALS_DASHBOARD_RUNTIME_V1";

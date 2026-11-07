@@ -26,8 +26,6 @@ import { buildSimpleXlsx, downloadBlob } from "../../lib/export/simpleXlsx";
 import type { DbId } from "../../types/db-id";
 import type { GlobalId } from "../../types/identity";
 
-export const adminLogsEventsDashboardRuntimeVersion =
-  "EFHC_ADMIN_LOGS_EVENTS_DASHBOARD_RUNTIME_V1";
 
 type AdminLogTone = "success" | "warning" | "danger" | "neutral" | "info";
 type SeverityFilter = "all" | "attention" | "success" | "info";

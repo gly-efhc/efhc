@@ -227,7 +227,7 @@ export default function TasksPage(props: { snap: SyncSnapshot | null }) {
       {...tasksSurface.handlers}
       data-public-surface="tasks"
       data-tasks-runtime="templates-v162"
-      data-tasks-cycle0013="react-real-runtime-v892"
+      data-tasks-page-runtime="react-server-data"
       data-tg-selection={tasksSurface.selection}
       data-tasks-public-history="forbidden"
       data-eam-family="EAM-TASKS-001"

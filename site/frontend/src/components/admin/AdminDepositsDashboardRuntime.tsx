@@ -13,8 +13,6 @@ import {
   AdminStatusBadge,
 } from "./AdminDashboardUiKit";
 
-export const adminDepositsDashboardRuntimeVersion =
-  "EFHC_ADMIN_DEPOSITS_DASHBOARD_RUNTIME_V2_HUMAN";
 
 export type AdminDepositsRuntimeSummary = {
   ok?: boolean;

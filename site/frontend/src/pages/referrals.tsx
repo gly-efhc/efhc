@@ -130,7 +130,7 @@ export default function ReferralsPage(props: {
       data-public-visual-beauty="tasks-referrals-ranks"
       data-public-surface="referrals"
       data-referrals-runtime="react-query-linkage-1558"
-      data-referrals-v866="true"
+      data-referrals-reference="true"
     >
       <GameHero
         kicker={t("referrals.partner_system")}

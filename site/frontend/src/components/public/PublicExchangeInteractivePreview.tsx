@@ -112,7 +112,6 @@ export function PublicExchangeInteractivePreview(props: Props) {
         ` is-${focus}` +
         (props.previewReady ? " is-ready" : " is-loading")
       }
-      data-public-exchange-preview-cycle="1349"
       data-public-visual-beauty="energy-panels-exchange"
       data-public-surface="exchange"
       data-public-exchange-boundary="kwh-to-efhc-only"

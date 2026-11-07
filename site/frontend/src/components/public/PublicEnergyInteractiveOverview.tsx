@@ -130,7 +130,6 @@ export function PublicEnergyInteractiveOverview(props: Props) {
   return (
     <section
       className={`efhc-public-energy-interactive is-${focus}`}
-      data-public-energy-interactive-cycle="1347"
       data-public-visual-beauty="energy-panels-exchange"
       data-public-surface="energy"
       data-public-ui-no-admin-internals="true"

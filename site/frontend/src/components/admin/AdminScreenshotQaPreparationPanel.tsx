@@ -142,7 +142,6 @@ export function AdminScreenshotQaPreparationPanel() {
   return (
     <section
       className="efhc-admin-screenshot-qa"
-      data-admin-screenshot-qa-preparation-cycle="1354"
       data-admin-screenshot-qa-sandbox-source="ui-main cards; data-table; Telegram cells"
       data-admin-screenshot-qa-ci-boundary="manual"
     >

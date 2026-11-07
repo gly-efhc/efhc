@@ -275,4 +275,3 @@ export function DashboardActivityStrip(
   });
 }
 
-export const miniChartsFoundationVersion = "EFHC_MINI_CHARTS_V1";

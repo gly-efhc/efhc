@@ -11,8 +11,6 @@ import {
   SimStatusPill,
 } from "./SimulationDashboardUiKit";
 
-export const webProfileAccountDashboardVersion =
-  "EFHC_WEB_PROFILE_ACCOUNT_DASHBOARD_V1";
 
 export type WebProfileAccountDashboardLabels = {
   title: string;

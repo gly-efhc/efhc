@@ -17,8 +17,6 @@ import {
 } from "./AdminDashboardUiKit";
 import type { DbId } from "../../types/db-id";
 
-export const adminBankDashboardRuntimeVersion =
-  "EFHC_ADMIN_BANK_DASHBOARD_RUNTIME_V1";
 
 type AdminBankTone = "success" | "warning" | "danger" | "neutral";
 

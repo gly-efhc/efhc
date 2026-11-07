@@ -648,8 +648,4 @@ export function PanelsPortfolioSandboxPrototype(
   );
 }
 
-export const panelsPortfolioSandboxPrototypeVersion =
-  "EFHC_PANELS_PORTFOLIO_SANDBOX_PROTOTYPE_V1";
 
-export const panelsPortfolioFormulaPolishVersion =
-  "EFHC_PANELS_SYNTHETIC_FORMULA_POLISH_V1";

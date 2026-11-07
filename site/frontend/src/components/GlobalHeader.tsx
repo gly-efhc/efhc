@@ -277,8 +277,7 @@ export const GlobalHeader = memo(function GlobalHeader(props: Props) {
         className="efhc-game-header"
         data-hs={headerComposition.shell}
         data-header-theme-variant={headerThemeVariant}
-        data-canon-header-cycle="0007"
-        data-header-owner-cycle="0008"
+        data-canon-header="true"
         data-header-theme-owner="global-theme-plus-individual-override"
         data-header-shell-source={headerComposition.shell}
       >

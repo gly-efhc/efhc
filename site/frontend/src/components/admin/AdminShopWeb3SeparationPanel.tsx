@@ -96,7 +96,6 @@ export function AdminShopWeb3SeparationPanel(props: Props) {
   return (
     <section
       className="efhc-admin-shop-web3"
-      data-admin-shop-web3-separation-cycle="1339"
       data-admin-shop-active-tab={props.activeTab}
       data-admin-sandbox-source="ui-main section-cards; data-table; chart-area-interactive; MaterialM dashboard cards"
     >

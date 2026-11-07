@@ -122,7 +122,6 @@ export function AdminUiKitAdoptionProofPanel() {
   return (
     <section
       className="efhc-admin-ui-kit-proof"
-      data-admin-ui-kit-adoption-proof-cycle="1353"
       data-admin-sandbox-source="ui-main section-cards; data-table; chart-area-interactive; Telegram Mini App cells"
     >
       <AdminSectionHeader

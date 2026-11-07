@@ -313,5 +313,3 @@ export function AdminOverviewDashboardRuntime(
   );
 }
 
-export const adminOverviewDashboardRuntimeVersion =
-  "EFHC_ADMIN_OVERVIEW_DASHBOARD_RUNTIME_V1";

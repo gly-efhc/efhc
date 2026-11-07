@@ -314,4 +314,3 @@ export function DashboardMilestoneProgress(
   );
 }
 
-export const dashboardProgressSystemVersion = "EFHC_PROGRESS_SYSTEM_V1";

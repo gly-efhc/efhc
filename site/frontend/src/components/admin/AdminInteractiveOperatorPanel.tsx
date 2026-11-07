@@ -133,7 +133,6 @@ export function AdminInteractiveOperatorPanel(props: {
   return (
     <section
       className="efhc-admin-operator-panel"
-      data-admin-operator-panel-cycle="1327"
       data-admin-operator-panel-scope={props.scope}
     >
       <AdminSectionHeader

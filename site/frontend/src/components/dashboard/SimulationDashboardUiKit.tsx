@@ -697,26 +697,10 @@ export function SimSkeleton(props: { label?: React.ReactNode }) {
   );
 }
 
-export const simulationDashboardUiKitVersion =
-  "EFHC_SIM_DASHBOARD_UI_KIT_V6_CONSOLIDATED";
 
-export const simulationDashboardUiKitLegacyVersion =
-  "EFHC_SIM_DASHBOARD_UI_KIT_V1";
 
-export const simulationDashboardProgressSystemVersion =
-  "EFHC_SIM_PROGRESS_SYSTEM_V1";
 
-export const simulationDashboardUiKitPanelChromeVersion =
-  "EFHC_SIM_DASHBOARD_UI_KIT_V2_PANEL_CHROME";
 
-export const simulationDashboardMiniChartsVersion =
-  "EFHC_SIM_MINI_CHARTS_V1";
 
-export const simulationDashboardToolbarVersion =
-  "EFHC_SIM_DASHBOARD_TOOLBAR_V1";
 
-export const simulationDashboardVariablesFiltersVersion =
-  "EFHC_SIM_VARIABLES_FILTERS_V1";
 
-export const simulationDashboardReferralScopeFilterVersion =
-  "EFHC_SIM_VARIABLES_FILTERS_V2_REFERRALS";

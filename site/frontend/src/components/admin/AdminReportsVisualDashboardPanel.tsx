@@ -214,7 +214,6 @@ export function AdminReportsVisualDashboardPanel(props: Props) {
       data-admin-reports-no-synthetic="true"
       data-admin-reports-no-write-actions="true"
       data-admin-reports-truth="raw-derived"
-      data-admin-reports-visual-cycle="1343"
       data-admin-sandbox-source={SANDBOX_SOURCE}
     >
       <AdminDashboardToolbar
@@ -484,5 +483,3 @@ function AdminTimeRangeControl(props: {
   );
 }
 
-export const adminReportsGrafanaLikeDashboardVersion =
-  "EFHC_ADMIN_REPORTS_GRAFANA_LIKE_V1";

@@ -7,7 +7,7 @@ const root=fileURLToPath(new URL('../../frontend/',import.meta.url));
 const require=createRequire(process.env.EFHC_FRONTEND_DEPENDENCIES||path.join(root,'package.json'));
 const postcss=require('postcss'),source=postcss.parse(fs.readFileSync(path.join(root,'public/FRONTEND_v866.css'),'utf8'));
 const user='.efhc-independent-shell[data-interface-app-mode="user"]';
-const page='.efhc-referrals-shell[data-referrals-v866="true"]';
+const page='.efhc-referrals-shell[data-referrals-reference="true"]';
 // Preserve source ID specificity without adding a live ID that would alter RP.
 const sourcePage=`:is(#referralsPage,${page})`;
 const map={

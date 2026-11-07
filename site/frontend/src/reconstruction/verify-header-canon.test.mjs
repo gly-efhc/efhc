@@ -21,9 +21,9 @@ test('four visible user actions remain in frozen v866 order with real callbacks'
   assert.doesNotMatch(header,/showAdminEntry|onModeSwitch/);
 });
 test('only approved Header geometry is scoped to User and only cycle 0007',()=>{
-  assert.match(header,/data-canon-header-cycle="0007"/);
+  assert.match(header,/data-canon-header="true"/);
   assert.match(css,/\[data-interface-app-mode="user"\]/);
-  assert.match(css,/\[data-canon-header-cycle="0007"\]/);
+  assert.match(css,/\[data-canon-header="true"\]/);
   assert.match(shell,/data-efhc-canon-migration=\{appMode === "user" \? "v872" : undefined\}/);
   assert.doesNotMatch(css,/\.efhc-admin|data-interface-app-mode="admin"/);
   assert.match(app,/import "\.\.\/styles\/header-layout\.css";/);

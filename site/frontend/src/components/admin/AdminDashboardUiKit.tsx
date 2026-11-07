@@ -998,20 +998,8 @@ export function AdminPanelSkeleton(props: {
   );
 }
 
-export const adminDashboardUiKitVersion =
-  "EFHC_ADMIN_DASHBOARD_UI_KIT_V5_TOOLBAR";
 
-export const adminDashboardProgressSystemVersion =
-  "EFHC_ADMIN_PROGRESS_SYSTEM_V1";
 
-export const adminDashboardUiKitPanelChromeVersion =
-  "EFHC_ADMIN_DASHBOARD_UI_KIT_V2_PANEL_CHROME";
 
-export const adminDashboardMiniChartsVersion =
-  "EFHC_ADMIN_MINI_CHARTS_V1";
 
-export const adminDashboardToolbarVersion =
-  "EFHC_ADMIN_DASHBOARD_TOOLBAR_V1";
 
-export const adminDashboardVariablesFiltersVersion =
-  "EFHC_ADMIN_VARIABLES_FILTERS_V1";

@@ -102,4 +102,3 @@ export type DashboardComponentContract = {
 
 export const dashboardRequiredStates = dashboardPanelStatuses;
 
-export const dashboardContractVersion = "EFHC_DASHBOARD_CONTRACT_V2";

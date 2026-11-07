@@ -18,8 +18,6 @@ import {
 } from "./AdminDashboardUiKit";
 import type { DbId } from "../../types/db-id";
 
-export const adminPanelsDashboardRuntimeVersion =
-  "EFHC_ADMIN_PANELS_DASHBOARD_RUNTIME_V1";
 
 export type AdminPanelsDashboardItem = {
   id: DbId;

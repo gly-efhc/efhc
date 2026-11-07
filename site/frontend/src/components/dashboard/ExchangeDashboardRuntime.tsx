@@ -17,8 +17,6 @@ import {
 
 type ExchangeWidgetScope = "summary" | "flow" | "rules";
 
-export const exchangeDashboardRuntimeVersion =
-  "EFHC_EXCHANGE_DASHBOARD_RUNTIME_V1";
 
 export type ExchangeDashboardRuntimeLabels = {
   title: string;

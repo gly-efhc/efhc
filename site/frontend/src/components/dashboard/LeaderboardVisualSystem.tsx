@@ -3,8 +3,6 @@ import React from "react";
 import type { DashboardMiniChartPoint } from "./MiniCharts";
 import { SimMiniSparkline, SimStatusPill } from "./SimulationDashboardUiKit";
 
-export const leaderboardVisualSystemVersion =
-  "EFHC_LEADERBOARD_VISUAL_SYSTEM_V1";
 
 export type LeaderboardVisualTone = "gold" | "silver" | "bronze" | "normal";
 

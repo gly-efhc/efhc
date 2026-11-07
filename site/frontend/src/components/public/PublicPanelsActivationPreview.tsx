@@ -126,7 +126,6 @@ export function PublicPanelsActivationPreview(props: Props) {
         ` is-${focus}` +
         (props.canActivate ? " is-ready" : " is-locked")
       }
-      data-public-panels-preview-cycle="1348"
       data-public-visual-beauty="energy-panels-exchange"
       data-public-surface="panels"
       data-panel-activation-preview="100-efhc"

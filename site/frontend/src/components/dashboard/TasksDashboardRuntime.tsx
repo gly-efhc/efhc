@@ -312,4 +312,3 @@ export function TasksDashboardRuntime(props: TasksDashboardRuntimeProps) {
   );
 }
 
-export const tasksDashboardRuntimeVersion = "EFHC_TASKS_DASHBOARD_RUNTIME_V1";

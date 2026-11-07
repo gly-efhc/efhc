@@ -252,5 +252,3 @@ export function DashboardVariableBar(props: DashboardVariableBarProps) {
   );
 }
 
-export const dashboardVariablesFiltersSystemVersion =
-  "EFHC_DASHBOARD_VARIABLES_FILTERS_V1";

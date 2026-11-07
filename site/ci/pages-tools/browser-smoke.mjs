@@ -469,7 +469,7 @@ await send('Page.enable');await send('Runtime.enable');await send('Network.enabl
   const tasksProbe=async()=>{
     const reply=await send('Runtime.evaluate',{expression:
       `JSON.stringify((()=>{const shell=document.querySelector('.efhc-independent-shell');
-        const page=document.querySelector('.efhc-tasks-shell[data-tasks-cycle0013]');
+        const page=document.querySelector('.efhc-tasks-shell[data-tasks-page-runtime]');
         const hero=page?.querySelector('.efhc-game-hero');
         const cards=[...(page?.querySelectorAll('[data-task-card="earning"]')||[])];
         const buttons=cards.map(e=>e.querySelector('.efhc-task-card_bottom>button'));
@@ -515,7 +515,7 @@ await send('Page.enable');await send('Runtime.enable');await send('Network.enabl
   const tasksProbe=async()=>{
     const reply=await send('Runtime.evaluate',{expression:
       `JSON.stringify((()=>{const shell=document.querySelector('.efhc-independent-shell');
-        const page=document.querySelector('.efhc-tasks-shell[data-tasks-cycle0013]');
+        const page=document.querySelector('.efhc-tasks-shell[data-tasks-page-runtime]');
         const hero=page?.querySelector('.efhc-game-hero');
         const cards=[...(page?.querySelectorAll('[data-task-card="earning"]')||[])];
         const buttons=cards.map(e=>e.querySelector('.efhc-task-card_bottom>button'));
