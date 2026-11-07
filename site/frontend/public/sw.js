@@ -143,7 +143,7 @@ function isSafeCacheUrl(value, config) {
   try {
     const url = new URL(value, self.location.origin);
     if (url.origin !== self.location.origin || url.search || url.hash || isApiRequest(url.pathname)) return false;
-    if (config.static_export && /\.html$/.test(url.pathname) && relativePath(url.pathname) !== null) return true;
+    if (config.static_export && Array.isArray(config.precache) && config.precache.includes(url.pathname)) return true;
     if (isProtectedPath(url.pathname)) return false;
     return isImmutableAsset(url) || isContentAsset(url);
   } catch {

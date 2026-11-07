@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { activateUserCache, startUserDataPersistence } from "./userDataCache";
+import { activateUserCache, currentUserDataOwner, startUserDataPersistence } from "./userDataCache";
 import { bindWindowSettings, resetSettings, saveSettings } from "./settings";
 import {resetWindowDrafts} from "./ownerDrafts";
 
@@ -18,7 +18,7 @@ export function createEfhcQueryClient() {
       queries: {
         // Mini App: не дергаем API при каждом переходе по вкладкам.
         staleTime: 10_000,
-        gcTime: 300_000,
+        gcTime: 86_400_000,
         networkMode: "always",
         retry: 1,
         refetchOnMount: false,
@@ -34,6 +34,10 @@ export function createEfhcQueryClient() {
   });
   if (typeof window !== "undefined") {
     startUserDataPersistence(client);
+    // Restore confirmed, owner-scoped data before mounting USER pages.
+    // The cache never grants a session, Admin permission, or money action.
+    const cachedOwner = currentUserDataOwner();
+    if (cachedOwner) activateUserCache(client, cachedOwner, false);
   }
   return client;
 }
