@@ -19573,6 +19573,92 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 [data-interface-app-mode="user"][data-global-theme-id="12"]{--efhc-clean-title:#f5eaff;}
 [data-interface-app-mode="user"][data-global-theme-id="13"]{--efhc-clean-title:#fff5b0;}
 
+/* Shared USER semantic material contract: Theme03's 18 roles, ten canonical accents.
+   Only color/material tokens are owned here. Variant geometry, Admin, UI state,
+   Energy PB/EI, brand and financial/status colors remain with their owners. */
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-01"]{
+  --efhc-ct-accent:#6EA8FF;
+  --efhc-ct-accent-rgb:110,168,255;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-02"]{
+  --efhc-ct-accent:#73AEFC;
+  --efhc-ct-accent-rgb:115,174,252;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-03"]{
+  --efhc-ct-accent:#A78BFA;
+  --efhc-ct-accent-rgb:167,139,250;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-04"]{
+  --efhc-ct-accent:#229ED9;
+  --efhc-ct-accent-rgb:34,158,217;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-05"]{
+  --efhc-ct-accent:#E5BF58;
+  --efhc-ct-accent-rgb:229,191,88;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-06"]{
+  --efhc-ct-accent:#D946EF;
+  --efhc-ct-accent-rgb:217,70,239;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-07"]{
+  --efhc-ct-accent:#7FB4FF;
+  --efhc-ct-accent-rgb:127,180,255;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-08"]{
+  --efhc-ct-accent:#8F86FF;
+  --efhc-ct-accent-rgb:143,134,255;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-09"]{
+  --efhc-ct-accent:#58C7B4;
+  --efhc-ct-accent-rgb:88,199,180;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-10"]{
+  --efhc-ct-accent:#C5A15A;
+  --efhc-ct-accent-rgb:197,161,90;
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id]{
+  --efhc-color-canvas:rgba(7,10,18,.98);
+  --efhc-color-page:rgba(12,10,24,.98);
+  --efhc-color-chrome:rgba(12,10,24,.98);
+  --efhc-color-chrome-inset:rgba(28,20,53,.66);
+  --efhc-color-hero:rgba(16,19,36,.98);
+  --efhc-color-card:rgba(18,16,33,.86);
+  --efhc-color-inset:rgba(13,11,25,.96);
+  --efhc-color-active:linear-gradient(135deg,color-mix(in srgb,var(--efhc-ct-accent) 10%,#211b35 90%),color-mix(in srgb,var(--efhc-ct-accent) 6%,#17122b 94%));
+  --efhc-color-accent:var(--efhc-ct-accent);
+  --efhc-color-accent-soft:rgba(var(--efhc-ct-accent-rgb),.10);
+  --efhc-color-accent-strong:color-mix(in srgb,var(--efhc-ct-accent) 80%,#12121c 20%);
+  --efhc-color-border:rgba(var(--efhc-ct-accent-rgb),.24);
+  --efhc-color-border-strong:rgba(var(--efhc-ct-accent-rgb),.42);
+  --efhc-color-text:#f8fafc;
+  --efhc-color-text-muted:#cbd5e1;
+  --efhc-color-shadow:0 14px 34px rgba(0,0,0,.26);
+  --efhc-color-glow:var(--efhc-ct-accent);
+  --efhc-color-focus:color-mix(in srgb,var(--efhc-ct-accent) 65%,#fff 35%);
+  --efhc-ct-border:var(--efhc-color-border);
+  --efhc-ct-border-strong:var(--efhc-color-border-strong);
+  --efhc-ct-accent-soft:var(--efhc-color-accent-soft);
+  --efhc-ct-glow:var(--efhc-color-accent-soft);
+  --efhc-ct-focus:var(--efhc-color-focus);
+  --efhc-route-accent:var(--efhc-ct-accent);
+  --efhc-route-accent-rgb:var(--efhc-ct-accent-rgb);
+  --efhc-route-surface:var(--efhc-color-page);
+  --efhc-route-surface-raised:var(--efhc-color-hero);
+  --efhc-route-border:var(--efhc-color-border);
+  --efhc-route-border-strong:var(--efhc-color-border-strong);
+  --efhc-route-glow:var(--efhc-color-accent-soft);
+  --efhc-clean-title:var(--efhc-color-text);
+}
+/* Theme03 keeps its exact qualified reference values, not color-mix approximations. */
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id="CT-03"]{
+  --efhc-color-active:linear-gradient(135deg,rgba(34,25,61,.94),rgba(23,18,43,.96));
+  --efhc-color-accent-soft:rgba(124,92,255,.10);
+  --efhc-color-accent-strong:#7557db;
+  --efhc-color-glow:#7c5cff;
+  --efhc-color-focus:#c4b5fd;
+}
+/* End shared USER semantic material contract. */
+
 [data-interface-app-mode="user"][data-global-theme-id]{
   --header-balance-accent:var(--efhc-route-accent);
   --header-balance-accent-rgb:var(--efhc-route-accent-rgb);
