@@ -365,18 +365,22 @@ export function bindWindowSettings(): boolean {
   return true;
 }
 
-export async function saveSettingsAsync(
-  s: UserSettings,
-): Promise<void> {
-  saveSettings(s);
-  try {
-    const cloudSafe = cloudSafeSettings(s);
-    await telegramCloudStorageSet(
-      currentUserDataOwner() ? `${CLOUD_KEY}_${currentUserDataOwner()}` : CLOUD_KEY,
-      JSON.stringify(cloudSafe),
-    );
+// Local preferences are authoritative. Serialize cloud synchronization per owner
+// so a slower, older Telegram write cannot overwrite a newer local selection.
+const settingsCloudSync = new Map<string, Promise<void>>();
 
-  } catch {
-    // ignore
-  }
+export async function saveSettingsAsync(s: UserSettings): Promise<void> {
+  saveSettings(s); // Immediate, independent of Telegram and backend availability.
+  const owner = currentUserDataOwner();
+  if (!owner) return; // Never publish one anonymous window's choices globally.
+  const key = `${CLOUD_KEY}_${owner}`;
+  const previous = settingsCloudSync.get(key) || Promise.resolve();
+  const next = previous.catch(() => undefined).then(async () => {
+    if (currentUserDataOwner() !== owner) return;
+    // Re-read the latest choice; an earlier scheduled request cannot undo it.
+    await telegramCloudStorageSet(key, JSON.stringify(cloudSafeSettings(loadSettings())));
+  }).catch(() => undefined);
+  settingsCloudSync.set(key, next);
+  await next;
+  if (settingsCloudSync.get(key) === next) settingsCloudSync.delete(key);
 }
