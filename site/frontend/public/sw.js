@@ -33,7 +33,7 @@ async function loadConfig() {
             max_bytes: 41943040,
           },
         },
-      })));
+      }));
   }
   return configPromise;
 }
