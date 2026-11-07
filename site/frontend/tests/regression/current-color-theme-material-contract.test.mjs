@@ -70,6 +70,16 @@ test("late shell adapter has fully resolved, acyclic color and elevation inputs"
     "A downstream role must not feed its own upstream alias");
 });
 
+test("common USER text metrics do not depend on legacy theme 01..03", () => {
+  const selector = '[data-interface-app-mode="user"][data-color-theme-id] :is(.efhc-main,.efhc-shop-layout_main)';
+  assert.ok(css.includes(selector), "All ten themes must share USER text sizing");
+  const offset = css.indexOf(selector);
+  const block = css.slice(css.indexOf("{", offset) + 1, css.indexOf("}", offset));
+  assert.match(block, /font-size:\s*1rem\s*;/);
+  assert.match(block, /line-height:\s*1\.5\s*;/);
+  assert.doesNotMatch(css, /\[data-global-theme-id="03"\] \.efhc-main,\s*\[data-global-theme-id="01"\] \.efhc-shop-layout_main/);
+});
+
 test("the Theme03 reference is exact and Admin remains outside the USER color bridge", () => {
   for (const name of ["active", "accentSoft", "accentStrong", "glow", "focus"]) {
     const prop = "--efhc-color-" + name.replace(/[A-Z]/g, c => "-" + c.toLowerCase());
