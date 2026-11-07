@@ -63,7 +63,7 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   const worker = readFileSync(path.join(root, "sw.js"), "utf8");
   new vm.Script(worker);
   assert.match(worker, /const EFHC_PWA_BUILD_CONFIG =/);
-  assert.match(worker, /p\\.startsWith\\(\\"\\/assets\\//, "Worker scope-relative asset detection must remain intact");
+  assert.ok(worker.includes('p.startsWith("/assets/")'), "Worker scope-relative asset detection must remain intact");
   const verify = run("verify_export.py", root);
   assert.equal(verify.status, 0, verify.stderr);
   const again = run("fix_pages_assets.py", root);
@@ -100,7 +100,7 @@ test("Cached energy keeps a smooth local D8 display without extrapolating past t
   assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", "2026-11-07T11:59:59Z"), 0);
   assert.equal(projection.energyDisplayProjectionWindowMs("invalid", "2026-11-07T12:00:45Z"), 0);
   assert.equal(projection.energyDisplayProjectionWindowMs("2026-11-07T12:00:00Z", null), Infinity);
-  assert.match(read("src/pages/index.tsx"), /Math\\.min\\(projectUntilMs/);
+  assert.ok(read("src/pages/index.tsx").includes("Math.min(projectUntilMs"), "Local projection must respect the expiry bound");
 });
 
 test("A newer local language/theme choice beats a pending older Telegram cloud response", async () => {

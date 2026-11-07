@@ -149,18 +149,19 @@ test('OWNER-rejected progress and Header adapters stay detached after rollback',
 test('Energy initial SSR/hydration D8 snapshot is deterministic and generation resumes after mount',()=>{
  const source=fs.readFileSync(path.join(root,'src/pages/index.tsx'),'utf8');
  const open='  const localEnergyScaled = useMemo(() => {\n';
- const close='  }, [e0ScaledRaw, props.server_now_iso, tick, vScaled]);';
+ const close='  }, [e0ScaledRaw, props.server_now_iso, projectUntilMs, tick, vScaled]);';
  assert.equal(source.split(open).length,2,'Energy callback must have one definition');
  const rest=source.split(open)[1];
  assert.equal(rest.split(close).length,2,'Energy callback boundary changed');
- const callback=new Function('stateRef','tick','vScaled','performance','clamp','SMOOTH_RESET_MS',rest.split(close)[0]);
+ const callback=new Function('stateRef','tick','vScaled','projectUntilMs','performance','clamp','SMOOTH_RESET_MS',rest.split(close)[0]);
  const base=812312345678n,rate=44000n;
- const invoke=(tick,now,st)=>callback({current:st},tick,rate,{now:()=>now},(v,a,b)=>Math.max(a,Math.min(v,b)),800);
+ const invoke=(tick,now,st,limit=Infinity)=>callback({current:st},tick,rate,limit,{now:()=>now},(v,a,b)=>Math.max(a,Math.min(v,b)),800);
  const fresh=()=>({base_scaled:base,base_client_ms:1000,smooth_delta:0n,smooth_start_ms:0});
  assert.equal(invoke(0,1000,fresh()),base,'SSR must show snapshot at first render');
  assert.equal(invoke(0,1050,fresh()),base,'hydration must not advance with a different clock');
  assert.equal(invoke(1,1001,fresh()),base+44n,'post-mount tick resumes generation at D8 precision');
  assert.equal(invoke(2,1100,fresh()),base+4400n,'subsequent ticks continue generation');
+ assert.equal(invoke(2,1100,fresh(),25),base+1100n,'expiry boundary must stop projection');
  const smoothed={...fresh(),smooth_delta:800n,smooth_start_ms:1100};
  // APP-CORE-031 replaces the previous artificial 800ms correction.
  assert.equal(invoke(2,1500,smoothed),base+22000n,'retired smoothing must not alter the confirmed anchor');
