@@ -340,7 +340,7 @@ export default function App({ Component, pageProps }: AppProps) {
             <link rel="stylesheet" href={`${router.basePath}/responsive-layout.css`} data-efhc-visual-patch="mobile-width-only-v923" />
           </>
         ) : null}
-        {process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW !== "1" ? <link rel="manifest" href={`${router.basePath}/manifest.webmanifest`} /> : null}
+        <link rel="manifest" href={`${router.basePath}/manifest.webmanifest`} />
         <link rel="icon" href={`${router.basePath}/favicon.ico`} />
         <meta name="theme-color" content="black" />
         <meta name="application-name" content="EFHC Bot" />

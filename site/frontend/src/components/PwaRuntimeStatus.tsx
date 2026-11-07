@@ -334,7 +334,7 @@ export function PwaRuntimeStatus(props: {
 
   useEffect(() => {
     if (!enabled || !("serviceWorker" in navigator)) return;
-    const isLocal = window.location.hostname === "localhost";
+    const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (window.location.protocol !== "https:" && !isLocal) return;
     let disposed = false;
     let cleanupIdle: () => void = () => undefined;

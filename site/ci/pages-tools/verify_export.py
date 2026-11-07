@@ -45,6 +45,7 @@ def main():
             missing.append(item)
     if missing:
         raise ValueError(f'PWA resources absent: {missing[:5]}')
+    pages = len(list(root.rglob('*.html')))
     if len([item for item in config['precache'] if item.endswith('.html')]) != pages:
         raise ValueError('PWA does not cover every static HTML page')
     if 'const EFHC_PWA_BUILD_CONFIG =' not in worker.read_text(encoding='utf-8'):
