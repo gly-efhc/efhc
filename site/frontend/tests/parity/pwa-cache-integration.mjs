@@ -133,11 +133,17 @@ try {
         await page.goto(base+route,{waitUntil:"domcontentloaded",timeout:25000});
         // Editing-only theme dots are absent in normal USER mode. Verify the
         // real, rendered USER shell color token rather than a hidden editor.
+        await page.waitForTimeout(700);
         const observed=await page.evaluate(({ownerCacheKey,settingsKey})=>{
           const ownerCache=JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null");
           const setting=JSON.parse(sessionStorage.getItem(settingsKey)||"null");
           const shell=document.querySelector('[data-theme-page-surface="true"]');
           return {shellPresent:Boolean(shell),theme:shell?.getAttribute("data-color-theme-id")||null,
+            htmlLang:document.documentElement.lang,localeToken:document.documentElement.dataset.efhcLocale||null,
+            nextRouterReady:Boolean(window.next?.router),documentState:document.readyState,
+            scriptCount:document.querySelectorAll("script[src]").length,
+            scriptResources:performance.getEntriesByType("resource").filter(x=>/\\.js(?:\\?|$)/.test(x.name)).length,
+            bodyHasRussianEnergy:document.body.innerText.includes("Энергия"),
             lang:setting?.lang||null,storedTheme:setting?.color_theme_id||null,
             ownerInCache:Boolean(ownerCache?.owner),ownerInSettings:Boolean(setting?.settings_owner),
             sameOwner:Boolean(ownerCache?.owner && ownerCache.owner===setting?.settings_owner),
