@@ -119,6 +119,68 @@ try {
       },previous).catch(()=>undefined);
     }
   });
+  await check("verified same-tab owner restores last read-only snapshot offline on reload", async () => {
+    // A real same-tab reload retains the signed-session-derived display owner.
+    // A different tab does not inherit that marker (tested above). This fixture
+    // is local test data, never a real user, network response or credential.
+    const owner = "0000000042";
+    const expected = "204.00000000";
+    const saved = await page.evaluate(({owner,cacheKey}) => {
+      const ownerKey = "efhc:resolved-display-owner";
+      const entries = [ownerKey,cacheKey];
+      const previous = Object.fromEntries(entries.map(key => [key,sessionStorage.getItem(key)]));
+      const durableKey = cacheKey + ":" + owner;
+      const oldDurable = localStorage.getItem(durableKey);
+      const snapshot = {
+        profile:{
+          global_id:owner,username:"Offline Owner",is_vip:false,has_activ:false,
+          main_balance:"200.00000000",bonus_balance:"4.00000000",
+          available_kwh:"12.00000000",total_generated_kwh:"6.00000000",
+          gen_per_sec_base:"0.00000000",gen_per_sec_vip:"0.00000000",
+        },
+        panels:{active_count:2,total_generated_by_panels:"0.00000000",nearest_expire_at:null},
+        exchange_preview:{ok:true,available_kwh:"12.00000000",
+          max_exchangeable_kwh:"12.00000000",rate_kwh_to_efhc:"1.00000000",detail:""},
+        meta:{server_now_iso:"2026-11-08T00:00:00Z",gen_per_sec_effective:"0.00000000",
+          next_scheduler_eta_sec:0,fallback_task_id:null},
+      };
+      sessionStorage.setItem(ownerKey,JSON.stringify({global_id:owner,principal:"browser"}));
+      sessionStorage.setItem(cacheKey,JSON.stringify({owner,entries:[]}));
+      localStorage.setItem(durableKey,JSON.stringify({owner,entries:[
+        {key:["syncSnapshot",owner],data:snapshot,updatedAt:Date.now()-2000},
+      ]}));
+      return {previous,oldDurable,durableKey};
+    },{owner,cacheKey:ownerCacheKey});
+    await context.setOffline(true);
+    try {
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+      await page.locator('[data-header-balance-value="204.00000000"]').first()
+        .waitFor({state:"attached",timeout:12000});
+      const state = await page.evaluate(({owner,expected}) => ({
+        owner:JSON.parse(sessionStorage.getItem("efhc:resolved-display-owner")||"null")?.global_id,
+        displayed:document.querySelector('[data-balance-scope="global-header"]')?.getAttribute("data-header-balance-density"),
+        balance:document.querySelector("[data-header-balance-value]")?.getAttribute("data-header-balance-value"),
+        shell:document.querySelector("#__next")?.innerHTML.length||0,
+        // This is a read-only cached display. No signed write is authorized.
+        authToken:sessionStorage.getItem("efhc.auth.session.v1"),
+      }),{owner,expected});
+      assert.equal(state.owner,owner);
+      assert.equal(state.balance,expected);
+      assert.ok(state.shell>100);
+      assert.equal(state.authToken,null);
+    } finally {
+      await context.setOffline(false);
+      await page.evaluate(({saved,cacheKey}) => {
+        for(const [key,value] of Object.entries(saved.previous)) {
+          if(value===null)sessionStorage.removeItem(key);
+          else sessionStorage.setItem(key,value);
+        }
+        if(saved.oldDurable===null)localStorage.removeItem(saved.durableKey);
+        else localStorage.setItem(saved.durableKey,saved.oldDurable);
+      },{saved,cacheKey:ownerCacheKey}).catch(()=>undefined);
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+    }
+  });
   await check("offline deep links use cached React UI instead of offline fallback", async () => {
     await page.reload({waitUntil:"domcontentloaded",timeout:30000});
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
