@@ -541,6 +541,7 @@ function AppInner(props: {
     loading: snapshotLoading,
     refreshing: snapshotRefreshing,
     refresh: refreshSnapshot,
+    updatedAt: snapshotUpdatedAt,
   } = useSnapshot();
   const currentAccountBalances = useCurrentAccountBalances();
   const authSession = useAuthSessionController();
@@ -855,6 +856,7 @@ function AppInner(props: {
               snapshotStatus={visibleSnapshotStatus}
               snapshotMode={snapshotMode}
               snapshotRefreshing={snapshotRefreshing}
+              snapshotUpdatedAt={snapshotUpdatedAt}
               refreshSnapshot={() => {
                 void refreshSnapshot();
               }}
