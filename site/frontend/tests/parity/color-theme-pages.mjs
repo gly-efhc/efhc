@@ -110,7 +110,30 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
                 if (!node) throw new Error("Missing exchange action " + selector);
                 const appearance = getComputedStyle(node);
                 if (appearance.borderTopColor !== accentRGB || appearance.color !== accentRGB) {
-                  throw new Error("Exchange action ignores " + entry.id + " accent: " + selector + " / " + appearance.borderTopColor + " / " + appearance.color + " / expected=" + accentRGB + " / shellVar=" + get("--efhc-ct-accent") + " / buttonVar=" + appearance.getPropertyValue("--efhc-ct-accent") + " / bodySelectorMatches=" + document.querySelectorAll('body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id] #efhc-main-content .efhc-exchange-shell button.efhc-btn-primary[data-exchange-submit-action="true"]').length + " / rootMode=" + root.getAttribute("data-interface-app-mode") + " / buttonRGB=" + appearance.getPropertyValue("--efhc-ct-accent-rgb") + " / ancestorVars=" + [...(function*() { for(let p=node;p&&p!==shell.parentElement;p=p.parentElement)yield p; })()].map(p=>[p.tagName,p.className?.toString().slice(0,100),p.getAttribute("data-color-theme-id"),getComputedStyle(p).getPropertyValue("--efhc-ct-accent")]).slice(0,8).map(x=>x.join(":")).join("|"));
+                  const matchedRules = [];
+                  const inspect = (rules, owner, layer = "none") => {
+                    for (const rule of rules) {
+                      if (rule.cssRules) inspect(rule.cssRules, owner, rule.name || layer);
+                      else if (rule.selectorText && rule.style) {
+                        const relevant = ["color", "border-color", "border-top-color", "background-color"]
+                          .filter(name => rule.style.getPropertyValue(name));
+                        if (relevant.length) {
+                          try {
+                            if (node.matches(rule.selectorText)) {
+                              matchedRules.push({ sheet: owner, layer, selector: rule.selectorText.slice(0, 280),
+                                props: relevant.map(name => name + "=" + rule.style.getPropertyValue(name) + (rule.style.getPropertyPriority(name) ? "!important" : "")) });
+                            }
+                          } catch { /* Unsupported selector in a different media context. */ }
+                        }
+                      }
+                    }
+                  };
+                  for (const stylesheet of document.styleSheets) {
+                    try { inspect(stylesheet.cssRules, (stylesheet.href || "inline").split("/").slice(-2).join("/")); }
+                    catch { /* Cross-origin stylesheets are not part of EFHC source. */ }
+                  }
+
+                  throw new Error("Exchange action ignores " + entry.id + " accent: " + selector + " / " + appearance.borderTopColor + " / " + appearance.color + " / expected=" + accentRGB + " / shellVar=" + get("--efhc-ct-accent") + " / buttonVar=" + appearance.getPropertyValue("--efhc-ct-accent") + " / bodySelectorMatches=" + document.querySelectorAll('body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id] #efhc-main-content .efhc-exchange-shell button.efhc-btn-primary[data-exchange-submit-action="true"]').length + " / rootMode=" + root.getAttribute("data-interface-app-mode") + " / buttonRGB=" + appearance.getPropertyValue("--efhc-ct-accent-rgb") + " / matchedRules=" + JSON.stringify(matchedRules.slice(-24)) + " / ancestorVars=" + [...(function*() { for(let p=node;p&&p!==shell.parentElement;p=p.parentElement)yield p; })()].map(p=>[p.tagName,p.className?.toString().slice(0,100),p.getAttribute("data-color-theme-id"),getComputedStyle(p).getPropertyValue("--efhc-ct-accent")]).slice(0,8).map(x=>x.join(":")).join("|"));
                 }
               }
             }
