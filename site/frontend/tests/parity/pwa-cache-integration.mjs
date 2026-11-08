@@ -159,7 +159,7 @@ try {
       await page.reload({waitUntil:"domcontentloaded",timeout:30000});
       await page.locator('[data-header-balance-value="204.00000000"]').first()
         .waitFor({state:"attached",timeout:12000});
-      const state = await page.evaluate(({owner,expected}) => ({
+      const state = await page.evaluate(({owner,expected,authKey}) => ({
         owner:JSON.parse(sessionStorage.getItem("efhc:resolved-display-owner")||"null")?.global_id,
         displayed:document.querySelector('[data-balance-scope="global-header"]')?.getAttribute("data-header-balance-density"),
         balance:document.querySelector("[data-header-balance-value]")?.getAttribute("data-header-balance-value"),
