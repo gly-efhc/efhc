@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -335,11 +336,13 @@ export function useAuthSessionController(): AuthSessionController {
   }
   return value;
 }
+const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export function useAuthOwnerGlobalId(): AuthSessionContext["global_id"] | null {
   const session = useAuthSessionController();
   const authenticated = session.status === "authenticated" ? session.context?.global_id ?? null : null;
   const [cachedId, setCachedId] = useState<AuthSessionContext["global_id"] | null>(null);
-  useEffect(() => {
+  useBeforePaintEffect(() => {
     // This association was recorded from a validated server session. It keeps
     // same-owner display/cache stable through transport failures, not API rights.
     const update = () => setCachedId(resolvedDisplayOwner());

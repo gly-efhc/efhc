@@ -11,6 +11,9 @@ const CACHE_PREFIX = "efhc-pwa-";
 const CACHED_AT = "x-efhc-cached-at";
 let configPromise = null;
 let runtimeCachePolicy = null;
+// Ready notifications must come from a rendered client on this exact build.
+// Older open tabs retain their prior hashed bundles until they are replaced.
+const readyBuildClients = new Set();
 
 async function loadConfig() {
   if (!configPromise) {
@@ -232,7 +235,8 @@ async function pruneCache(cacheName, limits) {
 
 async function cacheUrls(urls, reason = "runtime") {
   const names = await cacheNames();
-  const unique = [...new Set(urls)].filter((url) => isSafeCacheUrl(url, names.config));
+  const unique = [...new Set(urls)].filter((url) => isSafeCacheUrl(url, names.config) &&
+    (!names.config.static_export || names.config.precache.includes(new URL(url, self.location.origin).pathname)));
   const failures = [];
   const total = unique.length;
   let completed = 0;
@@ -309,8 +313,12 @@ async function cacheFirst(request) {
     if (retained) return retained;
   }
   const response = await fetch(request);
-  await putSafe(cache, request, response);
-  void pruneCache(names.staticName, cachePolicy(names.config).static);
+  // An old open page may still request previous hashed chunks. Do not put
+  // those obsolete files in the verified new build's immutable asset cache.
+  if (!names.config.static_export || names.config.precache.includes(new URL(request.url).pathname)) {
+    await putSafe(cache, request, response);
+    void pruneCache(names.staticName, cachePolicy(names.config).static);
+  }
   return response;
 }
 
@@ -337,27 +345,50 @@ function isReadOnlyOfflineRoute(url) {
   return legal === "privacy" || legal === "terms";
 }
 
-async function navigationFallback(request) {
+async function navigationFallback(request, event) {
   const config = await loadConfig();
   const url = new URL(request.url);
-  // HTML is mutable across Pages releases. Always check the network first;
-  // keep the fully precached matching-build shell for genuine offline use.
+  // Instant cached-page start: never wait for HTML transport before displaying
+  // a complete installed page. An independent SW update check stages new JS/CSS
+  // and HTML in the background. Never patch a build's HTML with another build's
+  // hashed asset references; that would break offline startup.
+  if (config.static_export && relativePath(url.pathname) !== null) {
+    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\\/$/, "") + "/index.html";
+    const { staticName } = await cacheNames();
+    const cached = await (await caches.open(staticName)).match(html);
+    if (cached) {
+      if (event && self.navigator?.onLine !== false) {
+        event.waitUntil(self.registration.update().catch(() => undefined));
+      }
+      return cached;
+    }
+  }
+  // No installed HTML: fetch it (initial setup, previously unvisited page),
+  // or fall back to the last confirmed offline route.
   try {
     const response = await fetch(request, { cache: "no-store" });
     if (response.ok || !config.static_export) return response;
-  } catch { /* An offline navigation may use the matching installed build. */ }
+  } catch { /* Offline navigation falls back to a complete installed shell. */ }
   if (config.static_export && relativePath(url.pathname) !== null) {
-    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\/$/, "") + "/index.html";
-    // Two build caches may coexist during a safe upgrade. Resolve the
-    // active build first; the global caches.match can select older HTML.
-    const {staticName} = await cacheNames();
-    const cached = await (await caches.open(staticName)).match(html) || await caches.match(html);
+    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\\/$/, "") + "/index.html";
+    const cached = await caches.match(html);
     if (cached) return cached;
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
     status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+async function retireObsoleteBuildsIfSafe() {
+  const {config, staticName, contentName} = await cacheNames();
+  const windows = await self.clients.matchAll({type: "window", includeUncontrolled: true});
+  if (windows.some(client => !readyBuildClients.has(client.id))) return false;
+  const keep = new Set([staticName, contentName]);
+  const obsolete = (await caches.keys()).filter(name => name.startsWith(CACHE_PREFIX) && !keep.has(name));
+  await Promise.all(obsolete.map(name => caches.delete(name)));
+  if (obsolete.length) await notifyClients({type: "CACHE_RETIRED", buildId: config.build_id});
+  return true;
 }
 
 self.addEventListener("install", (event) => {
@@ -400,6 +431,9 @@ self.addEventListener("activate", (event) => {
           .map((key) => caches.delete(key)),
       );
       await self.clients.claim();
+      // If no old documents remain open, obsolete build caches can be removed
+      // immediately. Otherwise, wait for every client to confirm its new shell.
+      await retireObsoleteBuildsIfSafe();
       await notifyClients({
         type: "UPDATE_ACTIVATED",
         buildId: names.config.build_id,
@@ -410,6 +444,20 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
+  if (data.type === "CLIENT_BUILD_READY") {
+    event.waitUntil((async () => {
+      const names = await cacheNames();
+      const assets = data.assets;
+      const source = event.source;
+      const validAssets = Array.isArray(assets) && assets.length > 0 &&
+        assets.some(path => typeof path === "string" && path.startsWith(scoped("_next/static/"))) &&
+        assets.every(path => typeof path === "string" && names.config.precache.includes(path));
+      if (!source?.id || !validAssets || data.buildId !== names.config.build_id) return;
+      readyBuildClients.add(source.id);
+      await retireObsoleteBuildsIfSafe();
+    })());
+    return;
+  }
   if (data.type === "SKIP_WAITING") {
     event.waitUntil(self.skipWaiting());
     return;
@@ -478,7 +526,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (isApiRequest(url.pathname)) return;
   if (request.mode === "navigate") {
-    event.respondWith(navigationFallback(request));
+    event.respondWith(navigationFallback(request, event));
     return;
   }
   if (isProtectedPath(url.pathname)) return;

@@ -36,7 +36,7 @@ export function usePanelsList(
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => getPanelsPage({ tab, cursor: pageParam, signal }),
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    refetchOnMount: false,
+    refetchOnMount: "always",
   });
 }
 

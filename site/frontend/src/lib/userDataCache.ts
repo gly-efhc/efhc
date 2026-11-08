@@ -63,7 +63,9 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
   if (!cache) return false;
   const changed = cache.owner !== null && cache.owner !== owner;
   if (changed) {
-    cache.entries = [];
+    // Another owner may have a valid disk snapshot from an earlier session.
+    // Restore only that owner's display data; never reuse the old owner.
+    cache.entries = durable(owner).entries;
     cache.owner = owner;
     settingsOwner = owner;
     persist(cache, false);
@@ -73,11 +75,11 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
     if (cache.owner === null) cache.entries = durable(owner).entries;
     cache.owner = owner;
     settingsOwner = owner;
-    const entries = [...cache.entries];
-    for (const entry of entries) {
-      if (client.getQueryData(entry.key) === undefined) client.setQueryData(entry.key, entry.data, {updatedAt: entry.updatedAt});
-    }
-    persist(cache, false);
   }
+  // Hydrate after removing any foreign-owner queries and before first paint.
+  for (const entry of [...cache.entries]) {
+    if (client.getQueryData(entry.key) === undefined) client.setQueryData(entry.key, entry.data, {updatedAt: entry.updatedAt});
+  }
+  persist(cache, false);
   return changed;
 }

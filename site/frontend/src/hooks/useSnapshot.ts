@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/router";
 
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
@@ -14,6 +14,7 @@ import {
 export type { SyncSnapshot } from "../services/snapshot.service";
 
 export type SnapshotStatus = "idle" | "loading" | "success" | "error";
+const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function useSnapshot() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export function useSnapshot() {
   const globalId = useAuthOwnerGlobalId();
   const client = useQueryClient();
   const admin = router.pathname === "/admin" || router.pathname.startsWith("/admin/");
-  useEffect(() => { activateUserDataOwner(client, globalId, admin); }, [client, globalId, admin]);
+  useBeforePaintEffect(() => { activateUserDataOwner(client, globalId, admin); }, [client, globalId, admin]);
   const q = useQuery({
     queryKey: queryKeys.snapshot.current(globalId),
     enabled: Boolean(globalId),

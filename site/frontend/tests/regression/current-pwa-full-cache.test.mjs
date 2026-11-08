@@ -92,9 +92,9 @@ test("Complete compiled export is precached, stable on repeated builds and verif
 });
 
 test("Existing USER data and local settings are retained rather than replaced by revalidation", () => {
-  assert.match(read("src/lib/queryClient.ts"), /refetchOnMount: false/);
+  assert.match(read("src/lib/queryClient.ts"), /refetchOnMount: "always"/);
   assert.match(read("src/hooks/useSnapshot.ts"), /refetchOnMount: "always"/);
-  assert.match(read("src/queries/usePanels.ts"), /refetchOnMount: false/);
+  assert.match(read("src/queries/usePanels.ts"), /refetchOnMount: "always"/);
   const settings = read("src/lib/settings.ts");
   const app = read("src/pages/_app.tsx");
   assert.match(app, /setSettingsHydrated\(true\)/);

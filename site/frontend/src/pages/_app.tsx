@@ -11,6 +11,7 @@ import React, {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -102,6 +103,7 @@ const AdminVisualProofRouter = dynamic(
 
 const SHELL_BOOT_TIMEOUT_MS = 1800;
 const SPLASH_FADE_MS = 120;
+const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const SPLASH_UNMOUNT_MS = 420;
 
 function browserSupportsServiceWorker(): boolean {
@@ -207,7 +209,7 @@ export default function App({ Component, pageProps }: AppProps) {
     return () => window.clearTimeout(id);
   }, []);
 
-  useEffect(() => {
+  useBeforePaintEffect(() => {
     if (typeof window === "undefined") return;
     try {
       setTcManifestUrl(buildTonConnectManifestUrl(window.location.origin));

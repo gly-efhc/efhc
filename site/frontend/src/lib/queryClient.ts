@@ -21,9 +21,11 @@ export function createEfhcQueryClient() {
         gcTime: 86_400_000,
         networkMode: "always",
         retry: 1,
-        refetchOnMount: false,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
+        // Keep a restored display snapshot visible, but always refresh
+        // active page data in the background on entry/focus/reconnect.
+        refetchOnMount: "always",
+        refetchOnWindowFocus: "always",
+        refetchOnReconnect: "always",
       },
       mutations: {
         retry: 0,
