@@ -6,6 +6,9 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {sourceRuntime} from '../helpers/source-runtime.mjs';
 import {onlineManager,QueryObserver} from '@tanstack/react-query';
 const A='0000000001',B='0000000002';
+const storedUserKey=readFileSync(new URL('../../src/lib/userDataCache.ts',import.meta.url),'utf8')
+ .match(/const KEY = "([^"]+)"/)?.[1];
+assert.ok(storedUserKey);
 const r=()=>sourceRuntime({overrides:{'../hooks/useT':{useT:()=>key=>key},'../hooks/useInterfaceVariantSurface':{useInterfaceVariantSurface:group=>({variant:group+'-01',handlers:{},ref:null})},'../hooks/useDemoGenerationProjection':{useDemoGenerationProjection:()=>null}}});
 for(const status of ['idle','loading','error','success'])test('Energy retains its full canonical structure with no data: '+status,()=>{
  const h=r(),Page=h.load('pages/index.tsx').default;
@@ -171,7 +174,7 @@ test('verified same-owner marker with empty tab entries recovers durable display
  q.activateUserDataOwner(c,A,false);
  c.setQueryData(['panels',A,'summary'],{active_count:4});
  c.clear();
- const session=new Map([['EFHC_USER_DATA_CACHE_V1',JSON.stringify({owner:A,entries:[]})]]);
+ const session=new Map([[storedUserKey,JSON.stringify({owner:A,entries:[]})]]);
  const second=sourceRuntime({storage:disk,session}),reload=second.load('lib/queryClient.ts'),client=reload.createEfhcQueryClient();
  reload.activateUserDataOwner(client,A,false);
  assert.equal(client.getQueryData(['panels',A,'summary']).active_count,4);
@@ -183,10 +186,10 @@ test('explicit sign-out forgets personal snapshots but preserves generic appeara
  c.setQueryData(['panels',A,'summary'],{active_count:2});
  const settings=h.load('lib/settings.ts');
  settings.saveSettings({...settings.resetSettings(),lang:'ru',color_theme_id:'CT-03'});
- assert.ok(disk.has('EFHC_USER_DATA_CACHE_V1:'+A));
+ assert.ok(disk.has(storedUserKey+':'+A));
  q.forgetSignedOutUser(c);
  assert.equal(c.getQueryData(['panels',A,'summary']),undefined);
- assert.ok(!disk.has('EFHC_USER_DATA_CACHE_V1:'+A));
+ assert.ok(!disk.has(storedUserKey+':'+A));
  assert.equal(h.load('lib/userDataCache.ts').currentUserDataOwner(),null);
  assert.equal(sourceRuntime({storage:disk,session:new Map()}).load('lib/settings.ts').loadSettings().color_theme_id,'CT-03');
  c.clear();
