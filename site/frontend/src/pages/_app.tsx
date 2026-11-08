@@ -153,9 +153,10 @@ export default function App({ Component, pageProps }: AppProps) {
     window.addEventListener("efhc:user-settings-ready", ready);
     return () => {window.removeEventListener("efhc:user-owner-changed", changed);window.removeEventListener("efhc:user-settings-ready", ready);};
   }, []);
-  const [uiDictLoaded, setUiDictLoaded] = useState(false);
-  const [ruDictLoaded, setRuDictLoaded] = useState(false);
-  const [descDictLoaded, setDescDictLoaded] = useState(false);
+  // Embedded dictionaries let the offline shell render without HTTP latency.
+  const [uiDictLoaded, setUiDictLoaded] = useState(true);
+  const [ruDictLoaded, setRuDictLoaded] = useState(true);
+  const [descDictLoaded, setDescDictLoaded] = useState(true);
   const [lang, setLang] = useState<Lang>("en");
   const [uiDict, setUiDict] = useState<Dict>(() =>
     getEmbeddedDict("en"),
@@ -299,7 +300,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     let active = true;
-    setRuDictLoaded(false);
+    setRuDict(getEmbeddedDict("ru"));
     loadDict("ru")
       .then((dict) => {
         if (!active) return;
@@ -319,8 +320,9 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     let active = true;
-    setUiDictLoaded(false);
-    setDescDictLoaded(false);
+    const fallback = getEmbeddedDict(lang);
+    setUiDict(fallback);
+    setDescDict(fallback);
     loadDict(lang)
       .then((dict) => {
         if (!active) return;

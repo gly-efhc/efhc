@@ -25,6 +25,9 @@ async function persistedKeyFromSource(filename) {
 }
 const ownerCacheKey = await persistedKeyFromSource("userDataCache.ts");
 const settingsKey = await persistedKeyFromSource("settings.ts");
+const authSessionKey = (await readFile(new URL("../../src/lib/auth-session.ts",import.meta.url),"utf8"))
+  .match(/\bconst STORAGE_KEY\s*=\s*["']([^"']+)["']/)?.[1];
+assert.ok(authSessionKey,"Auth credential storage key must be found in its owning source");
 await mkdir(artifactDir, {recursive:true});
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
@@ -80,6 +83,106 @@ try {
     assert.ok(info.cachedPaths.some(s=>s.includes("/_next/static/")));
     assert.ok(info.cachedPaths.every(s=>!s.includes("/api/") && !s.includes("runtime-config.json")), "never cache API/credentials");
     results.push({name:"precache_inventory",status:"INFO",count:info.cachedCount});
+  });
+  await check("fresh browser tab restores device visual choices offline without an owner hint", async () => {
+    // This uses only non-sensitive display preferences: no authenticated
+    // account, financial payload, operator credential or fake Global ID.
+    const previous = await page.evaluate(() => {
+      const key = "EFHC_DEVICE_VIEW_PREFERENCES";
+      const old = localStorage.getItem(key);
+      localStorage.setItem(key, JSON.stringify({
+        interface_settings_version:4,lang:"ru",color_theme_id:"CT-03",
+        global_theme_id:"03",theme_mode:"dark",music_enabled:false,
+      }));
+      return old;
+    });
+    const second = await context.newPage();
+    second.setDefaultTimeout(12000);
+    try {
+      await context.setOffline(true);
+      await second.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+      await second.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]')
+        .first().waitFor({state:"attached",timeout:12000});
+      const state = await second.evaluate(() => ({
+        lang:document.documentElement.lang,
+        color:document.querySelector('[data-theme-page-surface="true"]')?.getAttribute("data-color-theme-id"),
+        leakedOwner:sessionStorage.getItem("efhc:resolved-display-owner"),
+        shell:document.querySelector("#__next")?.innerHTML.length || 0,
+      }));
+      assert.equal(state.lang,"ru");
+      assert.equal(state.color,"CT-03");
+      assert.equal(state.leakedOwner,null,"a new browser tab must not inherit a validated owner");
+      assert.ok(state.shell>100,"real React shell must not await backend bootstrap");
+    } finally {
+      await context.setOffline(false);
+      await second.close();
+      await page.evaluate(previous => {
+        if(previous===null)localStorage.removeItem("EFHC_DEVICE_VIEW_PREFERENCES");
+        else localStorage.setItem("EFHC_DEVICE_VIEW_PREFERENCES",previous);
+      },previous).catch(()=>undefined);
+    }
+  });
+  await check("verified same-tab owner restores last read-only snapshot offline on reload", async () => {
+    // A real same-tab reload retains the signed-session-derived display owner.
+    // A different tab does not inherit that marker (tested above). This fixture
+    // is local test data, never a real user, network response or credential.
+    const owner = "0000000042";
+    const expected = "204.00000000";
+    const saved = await page.evaluate(({owner,cacheKey}) => {
+      const ownerKey = "efhc:resolved-display-owner";
+      const entries = [ownerKey,cacheKey];
+      const previous = Object.fromEntries(entries.map(key => [key,sessionStorage.getItem(key)]));
+      const durableKey = cacheKey + ":" + owner;
+      const oldDurable = localStorage.getItem(durableKey);
+      const snapshot = {
+        profile:{
+          global_id:owner,username:"Offline Owner",is_vip:false,has_activ:false,
+          main_balance:"200.00000000",bonus_balance:"4.00000000",
+          available_kwh:"12.00000000",total_generated_kwh:"6.00000000",
+          gen_per_sec_base:"0.00000000",gen_per_sec_vip:"0.00000000",
+        },
+        panels:{active_count:2,total_generated_by_panels:"0.00000000",nearest_expire_at:null},
+        exchange_preview:{ok:true,available_kwh:"12.00000000",
+          max_exchangeable_kwh:"12.00000000",rate_kwh_to_efhc:"1.00000000",detail:""},
+        meta:{server_now_iso:"2026-11-08T00:00:00Z",gen_per_sec_effective:"0.00000000",
+          next_scheduler_eta_sec:0,fallback_task_id:null},
+      };
+      sessionStorage.setItem(ownerKey,JSON.stringify({global_id:owner,principal:"browser"}));
+      sessionStorage.setItem(cacheKey,JSON.stringify({owner,entries:[]}));
+      localStorage.setItem(durableKey,JSON.stringify({owner,entries:[
+        {key:["syncSnapshot",owner],data:snapshot,updatedAt:Date.now()-2000},
+      ]}));
+      return {previous,oldDurable,durableKey};
+    },{owner,cacheKey:ownerCacheKey});
+    await context.setOffline(true);
+    try {
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+      await page.locator('[data-header-balance-value="204.00000000"]').first()
+        .waitFor({state:"attached",timeout:12000});
+      const state = await page.evaluate(({owner,expected,authKey}) => ({
+        owner:JSON.parse(sessionStorage.getItem("efhc:resolved-display-owner")||"null")?.global_id,
+        displayed:document.querySelector('[data-balance-scope="global-header"]')?.getAttribute("data-header-balance-density"),
+        balance:document.querySelector("[data-header-balance-value]")?.getAttribute("data-header-balance-value"),
+        shell:document.querySelector("#__next")?.innerHTML.length||0,
+        // This is a read-only cached display. No signed write is authorized.
+        authToken:sessionStorage.getItem(authKey),
+      }),{owner,expected,authKey:authSessionKey});
+      assert.equal(state.owner,owner);
+      assert.equal(state.balance,expected);
+      assert.ok(state.shell>100);
+      assert.equal(state.authToken,null);
+    } finally {
+      await context.setOffline(false);
+      await page.evaluate(({saved,cacheKey}) => {
+        for(const [key,value] of Object.entries(saved.previous)) {
+          if(value===null)sessionStorage.removeItem(key);
+          else sessionStorage.setItem(key,value);
+        }
+        if(saved.oldDurable===null)localStorage.removeItem(saved.durableKey);
+        else localStorage.setItem(saved.durableKey,saved.oldDurable);
+      },{saved,cacheKey:ownerCacheKey}).catch(()=>undefined);
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+    }
   });
   await check("offline deep links use cached React UI instead of offline fallback", async () => {
     await page.reload({waitUntil:"domcontentloaded",timeout:30000});
