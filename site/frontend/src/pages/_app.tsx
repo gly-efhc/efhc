@@ -539,7 +539,6 @@ function AppInner(props: {
     loading: snapshotLoading,
     refreshing: snapshotRefreshing,
     refresh: refreshSnapshot,
-    updatedAt: snapshotUpdatedAt,
   } = useSnapshot();
   const currentAccountBalances = useCurrentAccountBalances();
   const authSession = useAuthSessionController();
@@ -577,18 +576,15 @@ function AppInner(props: {
     const view=cachedAdminView(globalId);setAdminAccessState(view||"denied");
   }),[globalId]);
 
-  // Financial balances use the newest authenticated database read. Transaction
-  // history and balances must never diverge merely because a PWA snapshot
-  // was restored from disk. Other profile/energy fields remain unchanged.
+  // The signed account read is authoritative for balances. A newer React
+  // Query timestamp on a restored sync snapshot cannot override this read.
+  // Profile/energy fields continue to come from their existing snapshot.
   const visibleSnap = useMemo(() => overlayVerifiedAccountBalances(
     snap ?? emptyOwnerSnapshot(),
     authSession.status === "authenticated" ? currentAccountBalances.data : null,
     globalId,
-    snapshotUpdatedAt,
-    currentAccountBalances.dataUpdatedAt,
   ), [
-    snap, authSession.status, currentAccountBalances.data,
-    currentAccountBalances.dataUpdatedAt, globalId, snapshotUpdatedAt,
+    snap, authSession.status, currentAccountBalances.data, globalId,
   ]);
   const snapshotMode = globalId === null ? "browser-preview" : "live";
   const visibleSnapshotStatus = globalId === null

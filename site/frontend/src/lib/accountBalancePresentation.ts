@@ -1,18 +1,14 @@
 import type { SyncSnapshot } from "../services/snapshot.service";
 import type { CurrentAccountBalances } from "../services/accountBalance.service";
 
-/** Keep the newer, owner-verified financial read over stale PWA snapshots. */
+/** A verified account GET outranks cached snapshots, regardless of client timestamps. */
 export function overlayVerifiedAccountBalances(
   snapshot: SyncSnapshot,
   balances: CurrentAccountBalances | null | undefined,
   owner: string | null,
-  snapshotUpdatedAt: number,
-  balanceUpdatedAt: number,
 ): SyncSnapshot {
   if (!owner || !balances || balances.global_id !== owner ||
-    snapshot.profile.global_id !== owner ||
-    !Number.isFinite(balanceUpdatedAt) || balanceUpdatedAt <= 0 ||
-    (Number.isFinite(snapshotUpdatedAt) && snapshotUpdatedAt >= balanceUpdatedAt)) {
+    snapshot.profile.global_id !== owner) {
     return snapshot;
   }
   if (balances.main_balance === snapshot.profile.main_balance &&

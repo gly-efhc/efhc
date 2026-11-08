@@ -332,16 +332,17 @@ function isReadOnlyOfflineRoute(url) {
 async function navigationFallback(request) {
   const config = await loadConfig();
   const url = new URL(request.url);
+  // HTML is mutable across Pages releases. Always check the network first;
+  // keep the fully precached matching-build shell for genuine offline use.
+  try {
+    const response = await fetch(request, { cache: "no-store" });
+    if (response.ok || !config.static_export) return response;
+  } catch { /* An offline navigation may use the matching installed build. */ }
   if (config.static_export && relativePath(url.pathname) !== null) {
-    // The Pages Router exports trailingSlash routes as immutable HTML shells.
     const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\/$/, "") + "/index.html";
     const cached = await caches.match(html);
     if (cached) return cached;
   }
-  try {
-    const response = await fetch(request);
-    if (response.ok || !config.static_export) return response;
-  } catch { /* Use the existing app route first, fallback only if absent. */ }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
     status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" },

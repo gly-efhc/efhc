@@ -25,10 +25,13 @@ export function useSnapshot() {
   const q = useQuery({
     queryKey: queryKeys.snapshot.current(globalId),
     enabled: Boolean(globalId),
-    staleTime: 30_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    // Persisted snapshots are an offline display fallback, not proof that
+    // today's financial or energy values have been checked with the server.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
+    refetchInterval: globalId ? 30_000 : false,
     queryFn: async ({signal}) => {
       const result = await fetchSyncSnapshot(signal);
       if (result.profile.global_id !== globalId) throw new Error("SNAPSHOT_OWNER_MISMATCH");

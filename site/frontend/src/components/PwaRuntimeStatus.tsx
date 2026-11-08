@@ -347,6 +347,17 @@ export function PwaRuntimeStatus(props: {
     let cleanupIdle: () => void = () => undefined;
     let trackedRegistration: ServiceWorkerRegistration | null = null;
     let trackedWorker: ServiceWorker | null = null;
+    let lastUpdateCheck = 0;
+    const checkForUpdate = () => {
+      if (disposed || !trackedRegistration || !navigator.onLine ||
+          document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastUpdateCheck < 60_000) return;
+      lastUpdateCheck = now;
+      void trackedRegistration.update().catch(() => {
+        // Preserve the installed offline application on transient network failure.
+      });
+    };
     const onWorkerStateChange = () => {
       const worker = trackedWorker;
       const registration = trackedRegistration;
@@ -415,6 +426,10 @@ export function PwaRuntimeStatus(props: {
         trackedRegistration = registration;
         if (registration.waiting) setWaiting(registration.waiting);
         registration.addEventListener("updatefound", onUpdateFound);
+        window.addEventListener("pageshow", checkForUpdate);
+        window.addEventListener("online", checkForUpdate);
+        document.addEventListener("visibilitychange", checkForUpdate);
+        checkForUpdate();
         cleanupIdle = idle(() => {
           const target =
             navigator.serviceWorker.controller || registration.active;
@@ -447,6 +462,9 @@ export function PwaRuntimeStatus(props: {
     return () => {
       disposed = true;
       cleanupIdle();
+      window.removeEventListener("pageshow", checkForUpdate);
+      window.removeEventListener("online", checkForUpdate);
+      document.removeEventListener("visibilitychange", checkForUpdate);
       trackedRegistration?.removeEventListener(
         "updatefound",
         onUpdateFound,

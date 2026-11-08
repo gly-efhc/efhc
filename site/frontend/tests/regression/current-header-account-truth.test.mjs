@@ -20,24 +20,26 @@ const confirmed = (main="392.04647293", bonus="0.00000000", id=owner) => ({
 test("A stale PWA Header and Balance card are replaced by independent signed account truth",()=>{
   const h=sourceRuntime();
   const {overlayVerifiedAccountBalances: overlay}=h.load("lib/accountBalancePresentation.ts");
-  const original=cached(), next=overlay(original,confirmed(),owner,1_000,2_000);
+  const original=cached(), next=overlay(original,confirmed(),owner);
   assert.equal(next.profile.main_balance,"392.04647293");
   assert.equal(next.profile.bonus_balance,"0.00000000");
   assert.equal(next.profile.username,"owner");
   assert.equal(next.panels.active_count,2);
   assert.equal(original.profile.main_balance,"517.18000000");
 });
-test("A more recent mutation receipt or new synchronized snapshot always beats an older account read",()=>{
+test("A late or rehydrated sync snapshot cannot override independently verified account balances",()=>{
   const h=sourceRuntime(), {overlayVerifiedAccountBalances: overlay}=h.load("lib/accountBalancePresentation.ts");
   const fresh=cached("396.00000000","0.00000000");
-  assert.equal(overlay(fresh,confirmed(),owner,5_000,4_000),fresh);
-  assert.equal(overlay(fresh,confirmed(),owner,5_000,5_000),fresh);
+  const presented=overlay(fresh,confirmed(),owner);
+  assert.equal(presented.profile.main_balance,"392.04647293");
+  assert.equal(presented.profile.bonus_balance,"0.00000000");
+  assert.equal(fresh.profile.main_balance,"396.00000000");
 });
-test("Account verification blocks another owner, unauthenticated state, and invalid timestamp",()=>{
+test("Account verification blocks another owner, unauthenticated state and absent reads",()=>{
   const h=sourceRuntime(), {overlayVerifiedAccountBalances: overlay}=h.load("lib/accountBalancePresentation.ts");
   const original=cached();
-  for(const [bal,id,stamp] of [[confirmed("1000","0",other),owner,2_000],[confirmed(),other,2_000],[confirmed(),null,2_000],[confirmed(),owner,0]]) {
-    assert.equal(overlay(original,bal,id,1_000,stamp),original);
+  for(const [bal,id] of [[confirmed("1000","0",other),owner],[confirmed(),other],[confirmed(),null],[null,owner]]) {
+    assert.equal(overlay(original,bal,id),original);
   }
 });
 test("GET /user/me parses nonnegative D8 financial truth and rejects invalid or misowned payloads",async()=>{
@@ -74,8 +76,12 @@ test("Authenticated owner GET revalidates on every mount/focus/reconnect without
   assert.deepEqual([...hook.queryKey],["accountBalance",owner]);
   const app=read("pages/_app.tsx");
   assert.match(app,/overlayVerifiedAccountBalances\(/);
-  assert.match(app,/currentAccountBalances\.dataUpdatedAt/);
-  assert.match(app,/snapshotUpdatedAt/);
+  assert.doesNotMatch(app,/currentAccountBalances\.dataUpdatedAt|snapshotUpdatedAt/);
+  const snapshotHook=read("hooks/useSnapshot.ts");
+  assert.match(snapshotHook,/refetchOnMount: "always"/);
+  assert.match(snapshotHook,/refetchOnWindowFocus: "always"/);
+  assert.match(snapshotHook,/refetchOnReconnect: "always"/);
+  assert.match(snapshotHook,/refetchInterval: globalId \? 30_000 : false/);
   assert.match(app,/const visibleSnap = useMemo\(/);
   const layout=read("components/Layout.tsx");
   assert.match(layout,/mainBalance=\{props\.snapshot\?\.profile\?\.main_balance/);

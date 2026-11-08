@@ -25,6 +25,8 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.match(runtime, /efhc:pwa-registration-failed/);
   assert.match(app, /router\.basePath\}\/manifest\.webmanifest/);
   assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
+  assert.match(runtime, /trackedRegistration\.update\(\)/);
+  assert.match(runtime, /document\.addEventListener\("visibilitychange", checkForUpdate\)/);
 });
 
 test("The Pages deploy workflow requires full offline Chromium acceptance before deployment", () => {
@@ -90,7 +92,7 @@ test("Complete compiled export is precached, stable on repeated builds and verif
 
 test("Existing USER data and local settings are retained rather than replaced by revalidation", () => {
   assert.match(read("src/lib/queryClient.ts"), /refetchOnMount: false/);
-  assert.match(read("src/hooks/useSnapshot.ts"), /refetchOnMount: false/);
+  assert.match(read("src/hooks/useSnapshot.ts"), /refetchOnMount: "always"/);
   assert.match(read("src/queries/usePanels.ts"), /refetchOnMount: false/);
   const settings = read("src/lib/settings.ts");
   const app = read("src/pages/_app.tsx");
@@ -182,4 +184,43 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
   events.get("install")({waitUntil(promise){installing=promise;}});
   await assert.rejects(installing,/EFHC_REQUIRED_PRECACHE_FAILED/);
   assert.ok(stored.has(origin+"/efhc/index.html"),"valid page may stage, but worker must fail until locale is present");
+});
+
+
+// A cached installed build must remain usable offline, but never mask a newer
+// HTML document when the user reopens the online Pages application.
+test("PWA navigation fetches fresh HTML online and falls back to its installed shell offline", async () => {
+  const source = read("public/sw.js");
+  const origin = "https://efhc.example";
+  const scope = origin + "/efhc/";
+  let online = true;
+  const calls = [];
+  const cached = new Response("old installed shell", { status: 200 });
+  const sandbox = {
+    URL, Response, Request, Headers, Blob, Date, console,
+    self: {
+      registration: { scope, active: {} }, location: { origin },
+      addEventListener: () => {}, clients: { matchAll: async () => [] },
+    },
+    EFHC_PWA_BUILD_CONFIG: {
+      build_id: "build-test", static_export: true, precache: [],
+      cache_limits: {
+        static: { max_entries: 100, max_age_seconds: 2592000, max_bytes: 10485760 },
+        content: { max_entries: 40, max_age_seconds: 604800, max_bytes: 5242880 },
+      },
+    },
+    caches: { match: async url => String(url).endsWith("/panels/index.html") ? cached.clone() : undefined },
+    fetch: async (_request, options) => {
+      calls.push(options?.cache);
+      if (!online) throw Error("offline");
+      return new Response("fresh released shell", { status: 200 });
+    },
+  };
+  vm.runInNewContext(source + "\nthis.navigateForTest = navigationFallback;", sandbox);
+  const request = new Request(scope + "panels/");
+  assert.equal(await (await sandbox.navigateForTest(request)).text(), "fresh released shell");
+  assert.equal(calls[0], "no-store");
+  online = false;
+  assert.equal(await (await sandbox.navigateForTest(request)).text(), "old installed shell");
+  assert.equal(calls.length, 2);
 });
