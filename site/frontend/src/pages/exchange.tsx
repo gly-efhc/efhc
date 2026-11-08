@@ -42,13 +42,12 @@ export default function ExchangePage(props: {
   const previewQuery = useExchangePreview();
   const exchangeMutation = useExchangeConvert();
 
-  const snapshotAvailable = format8(
-    props.snap?.profile?.available_kwh || "0",
-  );
+  // Share the same backend-confirmed source used by Energy's available chip.
+  // Never replace a missing preview with an unrelated sync snapshot.
   const preview = previewQuery.data ?? null;
-  const availableKwh = preview?.available_kwh || snapshotAvailable;
+  const availableKwh = preview?.available_kwh ?? null;
   const maxExchangeableKwh =
-    preview?.max_exchangeable_kwh || availableKwh;
+    preview?.max_exchangeable_kwh ?? "0.00000000";
 
   const mainBalance = format8(
     props.snap?.profile?.main_balance || "0",
@@ -120,7 +119,7 @@ export default function ExchangePage(props: {
           <GameStatsGrid>
             <GameStat
               label={t("exchange.dashboard_available")}
-              value={format8(availableKwh)}
+              value={availableKwh === null ? "—" : format8(availableKwh)}
             />
             <GameStat label={t("exchange.rate")} value="1 kWh = 1 EFHCm" />
             <GameStat
