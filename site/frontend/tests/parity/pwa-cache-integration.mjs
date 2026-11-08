@@ -359,7 +359,8 @@ try {
       assert.equal(state.waiting,null);
       assert.equal(state.sameController,false);
       assert.equal(state.reactRoot,true,"running USER app was unexpectedly reloaded");
-      assert.equal(state.oldCache,true,"previous hashed assets must remain for running pages");
+      // The previous build stays available for old live clients, but its
+      // retirement may happen sooner if their loaded assets match this build.
       assert.equal(state.newCache,true,"new offline build was not staged completely");
       // Reopening/reloading uses the newest network HTML without deleting settings.
       await page.reload({waitUntil:"domcontentloaded",timeout:30000});
@@ -372,8 +373,15 @@ try {
       }),{next:newStaticCache});
       assert.equal(after.active,"activated");
       assert.ok(after.controlled && after.root);
-      assert.ok(after.keys.includes(oldStaticCache),"running old pages retain a previous build for compatibility");
       assert.ok(after.nextCache>0);
+      // A verified new page must release the previous build without requiring
+      // the user to clear browser data or uninstall the application.
+      await page.waitForFunction(async old => !(await caches.keys()).includes(old),oldStaticCache,{timeout:15000});
+      const retired = await page.evaluate(async old => ({
+        keys:await caches.keys(),previousPresent:(await caches.keys()).includes(old),
+      }),oldStaticCache);
+      assert.equal(retired.previousPresent,false,"old build cache still persisted after a verified successor loaded");
+      console.log("PWA_OLD_BUILD_RETIRED",JSON.stringify(retired));
     } finally {
       await writeFile(workerFile,original,"utf8");
     }

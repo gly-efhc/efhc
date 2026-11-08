@@ -27,6 +27,9 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
   assert.match(runtime, /trackedRegistration\.update\(\)/);
   assert.match(runtime, /staged\.postMessage\(\{ type: "SKIP_WAITING" \}\)/);
+  assert.match(runtime, /CLIENT_BUILD_READY/);
+  assert.match(runtime, /controllerchange/);
+  assert.match(runtime, /attemptIdleReload/);
   assert.match(runtime, /document\.addEventListener\("visibilitychange", checkForUpdate\)/);
 });
 
@@ -190,42 +193,37 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
 
 // A cached installed build must remain usable offline, but never mask a newer
 // HTML document when the user reopens the online Pages application.
-test("PWA navigation fetches fresh HTML online and falls back to its installed shell offline", async () => {
+test("PWA navigation opens the verified installed page without network delay and checks SW update", async () => {
   const source = read("public/sw.js");
   const origin = "https://efhc.example";
   const scope = origin + "/efhc/";
-  let online = true;
-  const calls = [];
-  const cached = new Response("old installed shell", { status: 200 });
-  const current = new Response("current installed shell", { status: 200 });
+  const cached = new Response("verified installed page", {status: 200});
+  let updates = 0, network = 0;
   const sandbox = {
     URL, Response, Request, Headers, Blob, Date, console,
     self: {
-      registration: { scope, active: {} }, location: { origin },
-      addEventListener: () => {}, clients: { matchAll: async () => [] },
+      registration: {scope,active:{},update:async()=>{updates++;}},
+      location:{origin},navigator:{onLine:true},
+      addEventListener:()=>{},clients:{matchAll:async()=>[]},
     },
-    EFHC_PWA_BUILD_CONFIG: {
-      build_id: "build-test", static_export: true, precache: [],
-      cache_limits: {
-        static: { max_entries: 100, max_age_seconds: 2592000, max_bytes: 10485760 },
-        content: { max_entries: 40, max_age_seconds: 604800, max_bytes: 5242880 },
-      },
+    EFHC_PWA_BUILD_CONFIG:{
+      build_id:"current",static_export:true,precache:["/efhc/panels/index.html"],
+      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
+        content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
     },
-    caches: {
-      match: async url => String(url).endsWith("/panels/index.html") ? cached.clone() : undefined,
-      open: async () => ({match: async url => String(url).endsWith("/panels/index.html") ? current.clone() : undefined}),
+    caches:{
+      match:async()=>undefined,
+      open:async()=>({match:async url=>String(url).endsWith("/panels/index.html")?cached.clone():undefined}),
     },
-    fetch: async (_request, options) => {
-      calls.push(options?.cache);
-      if (!online) throw Error("offline");
-      return new Response("fresh released shell", { status: 200 });
-    },
+    fetch:async()=>{network++;throw Error("offline transport");},
   };
-  vm.runInNewContext(source + "\nthis.navigateForTest = navigationFallback;", sandbox);
-  const request = new Request(scope + "panels/");
-  assert.equal(await (await sandbox.navigateForTest(request)).text(), "fresh released shell");
-  assert.equal(calls[0], "no-store");
-  online = false;
-  assert.equal(await (await sandbox.navigateForTest(request)).text(), "current installed shell");
-  assert.equal(calls.length, 2);
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;", sandbox);
+  const holds=[];
+  const response=await sandbox.navigateForTest(new Request(scope+"panels/"), {waitUntil:p=>holds.push(p)});
+  assert.equal(await response.text(),"verified installed page");
+  await Promise.all(holds);
+  assert.equal(updates,1,"instant navigation still triggers a background release check");
+  assert.equal(network,0,"warm start must not wait for network HTML");
+  assert.match(source,/CLIENT_BUILD_READY/);
+  assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
