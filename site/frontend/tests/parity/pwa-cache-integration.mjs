@@ -320,7 +320,7 @@ try {
       navigator.serviceWorker.addEventListener("message", event => {
         const data = event.data || {};
         if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE"].includes(data.type)) {
-          window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, reason:data.reason, buildId:data.buildId});
+          window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, failedUrls:data.failedUrls, reason:data.reason, buildId:data.buildId});
         }
       });
       window.__EFHC_OLD_SW_CONTROLLER_TEST__ = navigator.serviceWorker.controller;
