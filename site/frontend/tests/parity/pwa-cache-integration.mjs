@@ -311,7 +311,7 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("PWA update remains waiting during the active session", async () => {
+  await check("PWA staged update activates automatically without dropping the running app", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile = path.join(root,"sw.js");
     const original = await readFile(workerFile,"utf8");
@@ -332,60 +332,47 @@ try {
     try {
       await writeFile(workerFile,nextWorker,"utf8");
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
-      // Installation revalidates the full precache and is not instantaneous.
-      // Poll the actual registry on the Node side; an async waitForFunction
-      // expression must not accidentally certify a Promise before it resolves.
+      // Wait for complete offline staging AND automatic controller takeover.
+      // The running React page must remain mounted; no forced reload during
+      // an in-flight USER financial interaction.
       let state = null;
       for (let attempt = 0; attempt < 180; attempt++) {
-        state = await page.evaluate(async () => {
+        state = await page.evaluate(async names => {
           const reg = await navigator.serviceWorker.getRegistration();
+          const keys = await caches.keys();
           return {
-            waiting:reg?.waiting?.state || null,
-            active:reg?.active?.state || null,
-            installing:reg?.installing?.state || null,
-            sameController:navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
-            controller:navigator.serviceWorker.controller?.scriptURL || null,
-            scope:reg?.scope || null,
+            waiting: reg?.waiting?.state || null,
+            active: reg?.active?.state || null,
+            installing: reg?.installing?.state || null,
+            sameController: navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
+            oldCache: keys.includes(names.old),
+            newCache: keys.includes(names.next),
+            reactRoot: Boolean(document.querySelector("#__next")),
           };
-        });
-        if (state.waiting === "installed" && state.installing === null) break;
+        },{old:oldStaticCache,next:newStaticCache});
+        if (state.active==="activated" && state.waiting===null &&
+            !state.sameController && state.oldCache && state.newCache) break;
         await page.waitForTimeout(250);
       }
-      console.log("PWA_STAGED_UPDATE_STATE",JSON.stringify(state));
-      assert.equal(state.sameController,true,"SW changed controller during active session");
-      assert.equal(state.controller,originalController);
-      assert.equal(state.waiting,"installed","new SW must remain staged until this client closes");
-      await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.waiting?.postMessage({type:"SKIP_WAITING"}));
-      await page.waitForTimeout(500);
-      assert.equal(await page.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration())?.waiting)),true,
-        "update activated in the middle of a running session");
-      const interim=await page.evaluate(async (names) => {
-        const keys=await caches.keys();
-        return {old:keys.includes(names.old),staged:keys.includes(names.next)};
-      },{old:oldStaticCache,next:newStaticCache});
-      assert.equal(interim.old,true,"old app cache must stay available during an active session");
-      assert.equal(interim.staged,true,"new version must be completely staged before takeover");
-
-      // App closes: only now may the browser activate the installed worker.
-      // Reopening the same browser context preserves realistic PWA cache storage.
-      await page.close();
-      page=await context.newPage();
-      page.on("pageerror",error=>errors.push(String(error.message)));
-      await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
-      await page.waitForFunction(async names => {
-        const registration=await navigator.serviceWorker.getRegistration();
-        const keys=await caches.keys();
-        return registration?.active?.state==="activated" &&
-          keys.includes(names.next) && !keys.includes(names.old);
-      },{old:oldStaticCache,next:newStaticCache},{timeout:30000});
+      console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify(state));
+      assert.equal(state.active,"activated","new full PWA did not automatically activate");
+      assert.equal(state.waiting,null);
+      assert.equal(state.sameController,false);
+      assert.equal(state.reactRoot,true,"running USER app was unexpectedly reloaded");
+      assert.equal(state.oldCache,true,"previous hashed assets must remain for running pages");
+      assert.equal(state.newCache,true,"new offline build was not staged completely");
+      // Reopening/reloading uses the newest network HTML without deleting settings.
+      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
       const after=await page.evaluate(async names=>({
         keys:await caches.keys(),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,
         controlled:Boolean(navigator.serviceWorker.controller),
         nextCache:(await (await caches.open(names.next)).keys()).length,
+        root:Boolean(document.querySelector("#__next")),
       }),{next:newStaticCache});
       assert.equal(after.active,"activated");
-      assert.ok(after.controlled);
+      assert.ok(after.controlled && after.root);
+      assert.ok(after.keys.includes(oldStaticCache),"running old pages retain a previous build for compatibility");
       assert.ok(after.nextCache>0);
     } finally {
       await writeFile(workerFile,original,"utf8");

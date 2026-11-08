@@ -300,6 +300,14 @@ async function cacheFirst(request) {
   const cache = await caches.open(names.staticName);
   const cached = await cache.match(request);
   if (cached) return cached;
+  // Fully staged upgrades may take over while an older page remains mounted.
+  // Its content-hashed assets must still be served from the previous build.
+  const previous = (await caches.keys()).filter((key) =>
+    key.startsWith(CACHE_PREFIX) && key.endsWith("-static") && key !== names.staticName);
+  for (const name of previous.reverse()) {
+    const retained = await (await caches.open(name)).match(request);
+    if (retained) return retained;
+  }
   const response = await fetch(request);
   await putSafe(cache, request, response);
   void pruneCache(names.staticName, cachePolicy(names.config).static);
@@ -359,6 +367,10 @@ self.addEventListener("install", (event) => {
           type: "UPDATE_AVAILABLE",
           buildId: config.build_id,
         });
+        // Installation is atomic: never replace a running build unless every
+        // required offline resource has been staged and verified above.
+        // Existing pages stay mounted; the previous hashed assets are retained.
+        await self.skipWaiting();
       }
     })(),
   );
@@ -368,8 +380,17 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const names = await cacheNames();
-      const keep = new Set([names.staticName, names.contentName]);
       const keys = await caches.keys();
+      // Preserve one complete previous build while already-open pages may still
+      // request its immutable JS/CSS. Keep storage bounded to two builds.
+      const previousStatic = keys.filter((key) =>
+        key.startsWith(CACHE_PREFIX) && key.endsWith("-static") && key !== names.staticName);
+      const previousBuild = previousStatic.at(-1)?.slice(0, -"-static".length) || null;
+      const keep = new Set([names.staticName, names.contentName]);
+      if (previousBuild) {
+        keep.add(previousBuild + "-static");
+        keep.add(previousBuild + "-content");
+      }
       await Promise.all(
         keys
           .filter((key) => key.startsWith(CACHE_PREFIX) && !keep.has(key))
@@ -386,7 +407,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
-  if (data.type === "SKIP_WAITING") return; // New version takes over on next open.
+  if (data.type === "SKIP_WAITING") {
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   if (data.type === "CACHE_URLS" && Array.isArray(data.urls)) {
     event.waitUntil(cacheUrls(data.urls, data.reason || "runtime"));
     return;

@@ -479,8 +479,9 @@ export function PwaRuntimeStatus(props: {
     };
   }, [enabled]);
 
-  // Never activate a new version while the running USER/Admin session is open.
-  // A waiting Service Worker takes over only after the old client is closed.
+  // A complete replacement offline build activates without deleting the
+  // previous build's assets. The current React page is never auto-reloaded
+  // during a USER/Admin transaction.
 
   useEffect(() => {
     const syncOnboarding = () => {
