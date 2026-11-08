@@ -316,6 +316,13 @@ try {
     const workerFile = path.join(root,"sw.js");
     const original = await readFile(workerFile,"utf8");
     const originalController = await page.evaluate(() => {
+      window.__EFHC_PWA_EVENTS__ = [];
+      navigator.serviceWorker.addEventListener("message", event => {
+        const data = event.data || {};
+        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE"].includes(data.type)) {
+          window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, reason:data.reason, buildId:data.buildId});
+        }
+      });
       window.__EFHC_OLD_SW_CONTROLLER_TEST__ = navigator.serviceWorker.controller;
       return navigator.serviceWorker.controller?.scriptURL || "";
     });
@@ -348,6 +355,8 @@ try {
         originalHtml.set(file,html);
         let updated=html.replace(`efhc-build-id" content="${oldConfig.build_id}"`,
           `efhc-build-id" content="${newBuildId}"`);
+        assert.ok(updated.includes(`efhc-build-id" content="${newBuildId}"`),
+          "A staged HTML page kept the previous release marker: "+route);
         if (route==="/efhc/index.html") {
           assert.ok(updated.includes("</head>"),"real Pages root must have a head");
           updated=updated.replace("</head>",
@@ -374,6 +383,9 @@ try {
             oldCache: keys.includes(names.old),
             newCache: keys.includes(names.next),
             reactRoot: Boolean(document.querySelector("#__next")),
+            waitingScript: reg?.waiting?.scriptURL || null,
+            cacheNames: keys.filter(key => key.startsWith("efhc-pwa-")),
+            cacheEvents: window.__EFHC_PWA_EVENTS__?.slice(-8) || [],
           };
         },{old:oldStaticCache,next:newStaticCache});
         if (state.active==="activated" && state.waiting===null &&
