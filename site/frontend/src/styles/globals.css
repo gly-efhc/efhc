@@ -23037,6 +23037,17 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 /* Important declarations in a dedicated cascade layer outrank unlayered
    legacy !important styles without editing the frozen source. */
 @layer efhc-ct-route-accents {
+/* Cycle0041 iteration09: project exact accepted Theme03 CTA material to
+   nine other USER palettes; no Theme03, geometry or behavior changes. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]:not([data-color-theme-id="CT-03"]) .efhc-exchange-shell .efhc-theme03-cta {
+  border-color:var(--efhc-color-border-strong);
+  background:color-mix(in srgb,var(--efhc-color-accent) 13%,transparent);
+  color:var(--efhc-color-accent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb,var(--efhc-color-text) 5%,transparent),
+    0 0 12px color-mix(in srgb,var(--efhc-color-glow) 10%,transparent);
+}
+
 /* USER achievement caption transparency and active CT history materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */

@@ -26,7 +26,8 @@ const layoutSelectors = [
   ".efhc-game-header", ".efhc-game-header_profile", ".efhc-game-header_balance",
   ".efhc-game-nav", ".efhc-game-nav_grid", ".efhc-game-hero",
   ".efhc-card", ".efhc-panel-tile", ".efhc-task-card", ".efhc-energy-stage",
-  ".efhc-exchange-panel", ".efhc-hub-choice", ".efhc-faq-shell",
+  ".efhc-exchange-panel", ".efhc-exchange-shell [data-exchange-submit-action=\"true\"]",
+  ".efhc-exchange-shell .efhc-exchange-withdraw-button", ".efhc-hub-choice", ".efhc-faq-shell",
   ".efhc-profile-page", ".efhc-referrals-shell", ".efhc-ranks-shell",
   ".efhc-withdraw-shell",
 ].join(",");
@@ -74,11 +75,12 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
           historyHost.appendChild(historyProbe);
         }
         const expectedRGB = hex => "rgb(" + [1,3,5].map(i => parseInt(hex.slice(i, i + 2),16)).join(", ") + ")";
-        // Disable transitions only for the history-material color probe.
-        // Exchange action styling remains owned by the accepted Theme03 class.
+        // Disable transitions for diagnostic computed-style probes only.
+        // Production UI and Theme03 styles are unchanged.
         const motionProbe = document.createElement("style");
         motionProbe.textContent = `
-          .efhc-withdraw-shell .efhc-withdraw-history-row {
+          .efhc-withdraw-shell .efhc-withdraw-history-row,
+          .efhc-exchange-shell :is([data-exchange-submit-action="true"],.efhc-exchange-withdraw-button) {
             transition-property:none!important;
             transition-duration:0s!important;
           }`;
@@ -111,14 +113,39 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             }
             const accentRGB = expectedRGB(entry.accent);
             if (pageRoute === "/exchange") {
-              for (const selector of [
-                '[data-exchange-submit-action="true"]',
-                '.efhc-exchange-withdraw-button',
-              ]) {
-                const node = shell.querySelector(".efhc-exchange-shell " + selector);
-                if (!node || !node.classList.contains("efhc-theme03-cta")) {
-                  throw new Error("Exchange action lost its accepted Theme03 owner: " + selector);
+              // The reference is painted by the exact Theme03 CTA declarations;
+              // compare actual resolved material, not just a class name.
+              const host = shell.querySelector(".efhc-exchange-shell");
+              if (!host) throw new Error("Missing Exchange USER shell");
+              const reference = document.createElement("span");
+              reference.setAttribute("aria-hidden", "true");
+              reference.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;border:1px solid var(--efhc-color-border-strong);background:color-mix(in srgb,var(--efhc-color-accent) 13%,transparent);color:var(--efhc-color-accent);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--efhc-color-text) 5%,transparent),0 0 12px color-mix(in srgb,var(--efhc-color-glow) 10%,transparent)";
+              host.appendChild(reference);
+              try {
+                const expected = getComputedStyle(reference);
+                const properties = ["borderTopColor","backgroundColor","backgroundImage","color","boxShadow"];
+                for (const selector of [
+                  '[data-exchange-submit-action="true"]',
+                  '.efhc-exchange-withdraw-button',
+                ]) {
+                  const node = shell.querySelector(".efhc-exchange-shell " + selector);
+                  if (!node || !node.classList.contains("efhc-theme03-cta")) {
+                    throw new Error("Exchange action lost its accepted Theme03 owner: " + selector);
+                  }
+                  // Protected Theme03 keeps its previously accepted rendering.
+                  // Nine other CTs must implement the same material semantics.
+                  if (entry.id !== "CT-03") {
+                    const actual = getComputedStyle(node);
+                    for (const property of properties) {
+                      if (actual[property] !== expected[property]) {
+                        throw new Error("Exchange CTA material mismatch " + entry.id + " " + selector +
+                          " " + property + ": " + actual[property] + " expected " + expected[property]);
+                      }
+                    }
+                  }
                 }
+              } finally {
+                reference.remove();
               }
             }
             if (pageRoute === "/referrals") {
