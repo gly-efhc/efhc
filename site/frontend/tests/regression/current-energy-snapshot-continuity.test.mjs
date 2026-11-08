@@ -86,3 +86,24 @@ test("One projection path is used on hydration, each live tick and all refetches
   assert.match(snapshot, /refetchInterval: globalId \? 30_000 : false/);
   assert.doesNotMatch(energy, /rate\s*=\s*0\.00000692/);
 });
+
+test("Cycle 0043: both available-kWh displays use one polled backend exchange preview", () => {
+  const energy = source("pages/index.tsx");
+  const exchange = source("pages/exchange.tsx");
+  const previewHook = source("queries/useExchange.ts");
+  const snapshotHook = source("hooks/useSnapshot.ts");
+
+  assert.match(energy, /import \{ useExchangePreview \} from "\.\.\/queries\/useExchange";/);
+  assert.match(energy, /available_kwh=\{previewQuery\.data\?\.available_kwh \?\? null\}/);
+  assert.match(energy, /props\.available_kwh === null[\s\S]*?formatFixedDown\(props\.available_kwh, 8\)/);
+  assert.doesNotMatch(energy, /toScaled\(props\.available_kwh\)\s*\+\s*\(eLiveScaled\s*-\s*e0ScaledRaw\)/);
+
+  assert.match(exchange, /const availableKwh = preview\?\.available_kwh \?\? null/);
+  assert.doesNotMatch(exchange, /snapshotAvailable/);
+  assert.match(exchange, /value=\{availableKwh === null \? "—" : format8\(availableKwh\)\}/);
+  assert.match(previewHook, /queryKey: queryKeys\.exchange\.preview\(globalId\)/);
+  assert.match(previewHook, /refetchInterval: globalId \? 30_000 : false/);
+  assert.match(previewHook, /refetchOnWindowFocus: "always"/);
+  assert.match(previewHook, /refetchOnReconnect: "always"/);
+  assert.match(snapshotHook, /queryKey: queryKeys\.exchange\.preview\(globalId\),\s*refetchType: "active"/);
+});
