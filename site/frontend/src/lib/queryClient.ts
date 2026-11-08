@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { activateUserCache, startUserDataPersistence } from "./userDataCache";
-import { bindWindowSettings, loadSettings, saveSettings } from "./settings";
+import { bindWindowSettings, resetSettings, saveSettings } from "./settings";
 import {resetWindowDrafts} from "./ownerDrafts";
 
 import {
@@ -54,9 +54,8 @@ export function activateUserDataOwner(client: QueryClient, owner: string | null,
   const changed = activateUserCache(client, owner, admin);
   if (changed) {
     resetWindowDrafts(owner!);
-    // Rehydrate this owner's persisted preferences rather than overwrite them
-    // with defaults when switching back to a previously used Global ID.
-    saveSettings(loadSettings());
+    // Privacy: never inherit another owner's settings after a Global ID switch.
+    saveSettings(resetSettings());
     if (typeof window !== "undefined") window.dispatchEvent?.(new Event("efhc:user-owner-changed"));
   } else if (!admin && owner && bindWindowSettings()) {
     if (typeof window !== "undefined") window.dispatchEvent?.(new Event("efhc:user-settings-ready"));
