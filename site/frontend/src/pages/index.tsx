@@ -9,7 +9,7 @@ import React, {
 import { EnergyVariantIcon } from
   "../components/icons/EnergyVariantIcon";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
-import { energyDisplayProjectionWindowMs, reconcileEnergyAnchor } from "../lib/energyProjection";
+import { energyDisplayProjectionWindowMs, energyElapsedSinceSnapshotMs, projectEnergyD8 } from "../lib/energyProjection";
 import { useT } from "../hooks/useT";
 import type {
   SnapshotStatus,
@@ -76,6 +76,7 @@ type LiveBlockProps = {
   confirmed: boolean;
   server_now_iso: string | null;
   nearest_expire_at: string | null;
+  snapshot_updated_at_ms: number | null;
   lifetime_kwh: string;
   gen_per_sec_effective: string;
   active_panels: string;
@@ -118,29 +119,21 @@ function LiveEnergyBlock(props: LiveBlockProps) {
     [props.server_now_iso, props.nearest_expire_at],
   );
 
-  const stateRef = useRef<{
-    base_scaled: bigint;
-    base_client_ms: number;
-    confirmed_scaled: bigint;
-    confirmed_iso: string | null;
-  }>({
-    base_scaled: e0ScaledRaw < 0n ? 0n : e0ScaledRaw,
-    base_client_ms: performance.now(),
-    confirmed_scaled: e0ScaledRaw,
-    confirmed_iso: props.server_now_iso,
+  // Monotonic live clock with a wall-time origin. Cached snapshots can span
+  // complete page restarts; the authoritative server timestamp anchors both
+  // restored and fresh projections without resetting the counter at refetch.
+  const clockRef = useRef({
+    wall_ms: Date.now(),
+    monotonic_ms: performance.now(),
   });
-  if (stateRef.current.confirmed_scaled !== e0ScaledRaw || stateRef.current.confirmed_iso !== props.server_now_iso) {
-    stateRef.current = {...reconcileEnergyAnchor(stateRef.current, e0ScaledRaw, performance.now()), confirmed_scaled: e0ScaledRaw, confirmed_iso: props.server_now_iso};
-  }
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     setTick((x) => x + 1);
-  }, [e0ScaledRaw, props.server_now_iso, vScaled]);
+  }, [e0ScaledRaw, props.server_now_iso, props.snapshot_updated_at_ms, vScaled]);
 
   useEffect(() => {
-    if (!props.server_now_iso) return;
-    if (vScaled === 0n) return;
+    if (!props.server_now_iso || vScaled === 0n) return;
     const id = window.setInterval(() => {
       setTick((x) => x + 1);
     }, LIVE_TICK_MS);
@@ -148,16 +141,22 @@ function LiveEnergyBlock(props: LiveBlockProps) {
   }, [props.server_now_iso, vScaled]);
 
   const localEnergyScaled = useMemo(() => {
-    const st = stateRef.current;
-    // SSR and the first client render must share the exact D8 snapshot.
-    // The mounted effect triggers tick > 0 and resumes the live projection.
-    if (tick === 0) return st.base_scaled;
-    const now = performance.now();
-    const dtMs = Math.min(projectUntilMs, Math.max(0, now - st.base_client_ms));
-    const add = (vScaled * BigInt(Math.floor(dtMs))) / 1000n;
-    let out = st.base_scaled + add;
-    return out < 0n ? 0n : out;
-  }, [e0ScaledRaw, props.server_now_iso, projectUntilMs, tick, vScaled]);
+    const confirmedScaled = e0ScaledRaw < 0n ? 0n : e0ScaledRaw;
+    // Keep the statically exported first paint identical during hydration.
+    // The mounted tick replays the time elapsed since the cached server stamp.
+    if (tick === 0 || !props.server_now_iso) return confirmedScaled;
+    const monotonicWallMs = clockRef.current.wall_ms
+      + Math.max(0, performance.now() - clockRef.current.monotonic_ms);
+    const clientNowMs = Math.max(Date.now(), monotonicWallMs);
+    const elapsedMs = energyElapsedSinceSnapshotMs(
+      props.server_now_iso,
+      props.snapshot_updated_at_ms,
+      clientNowMs,
+    );
+    // A missing full panel-expiry timeline must not invent post-expiry energy.
+    const safeMs = Math.min(projectUntilMs, elapsedMs);
+    return projectEnergyD8(confirmedScaled, vScaled, safeMs);
+  }, [e0ScaledRaw, props.server_now_iso, props.snapshot_updated_at_ms, projectUntilMs, tick, vScaled]);
 
   const eLiveScaled = localEnergyScaled;
 
@@ -414,6 +413,7 @@ export default function EnergyPage(props: {
   snapshotStatus?: SnapshotStatus;
   snapshotMode?: "live" | "browser-preview";
   snapshotRefreshing?: boolean;
+  snapshotUpdatedAt?: number;
   refreshSnapshot?: () => void;
 }) {
   const t = useT();
@@ -441,6 +441,7 @@ export default function EnergyPage(props: {
         confirmed={Boolean(s.meta.server_now_iso)}
         server_now_iso={s.meta.server_now_iso}
         nearest_expire_at={s.panels.nearest_expire_at ?? null}
+        snapshot_updated_at_ms={props.snapshotUpdatedAt ?? null}
         lifetime_kwh={readStr(
           s,
           ["profile", "lifetime_generated_kwh"],
