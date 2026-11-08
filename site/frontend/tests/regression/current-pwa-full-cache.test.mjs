@@ -232,7 +232,7 @@ test("PWA navigation opens installed page immediately without retaining a worker
   assert.equal(await response.text(),"verified installed page");
   await Promise.all(holds);
   assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
-  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /registration\.update\(\)/);
+  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\.update\(\)/);
   assert.equal(network,0,"warm start must not wait for network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
   assert.match(source,/EFHC_STALE_HTML_BUILD/);
