@@ -84,10 +84,10 @@ test("Authenticated owner GET revalidates on every mount/focus/reconnect without
   assert.match(profile,/const main = readAmount\(profile\.main_balance\)/);
   assert.match(profile,/const bonus = readAmount\(profile\.bonus_balance\)/);
 });
-test("Authenticated GET is not cached as a historical monetary balance, and activity refetch is stale-only",()=>{
+test("Authenticated GET is not persisted as a historical monetary balance, and activity remains active",()=>{
   const cache=read("lib/userDataCache.ts"),activity=read("lib/frontendActivity.ts");
   assert.doesNotMatch(cache,/RESOURCES = new Set\([^\n]*"accountBalance"/);
-  assert.match(activity,/query\.isStale\(\)/);
+  assert.match(activity,/client\.refetchQueries/);
   assert.match(read("queries/usePanels.ts"),/queryKeys\.account\.current\(globalId\)/);
   assert.match(read("queries/useExchange.ts"),/queryKeys\.account\.current\(globalId\)/);
 });
