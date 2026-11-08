@@ -76,7 +76,13 @@ test("Authenticated owner GET revalidates on every mount/focus/reconnect without
   assert.deepEqual([...hook.queryKey],["accountBalance",owner]);
   const app=read("pages/_app.tsx");
   assert.match(app,/overlayVerifiedAccountBalances\(/);
-  assert.doesNotMatch(app,/currentAccountBalances\.dataUpdatedAt|snapshotUpdatedAt/);
+  // The Energy-only receipt timestamp may reach the page component, but
+  // never determines which signed monetary balance takes precedence.
+  assert.doesNotMatch(app,/currentAccountBalances\\.dataUpdatedAt/);
+  const monetaryOverlay = app.slice(app.indexOf("const visibleSnap = useMemo("),
+    app.indexOf("const snapshotMode =", app.indexOf("const visibleSnap = useMemo(")));
+  assert.ok(monetaryOverlay.includes('currentAccountBalances.data'), "signed account balances remain authoritative");
+  assert.doesNotMatch(monetaryOverlay,/snapshotUpdatedAt|dataUpdatedAt/);
   const snapshotHook=read("hooks/useSnapshot.ts");
   assert.match(snapshotHook,/refetchOnMount: "always"/);
   assert.match(snapshotHook,/refetchOnWindowFocus: "always"/);
