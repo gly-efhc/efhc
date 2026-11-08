@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
@@ -143,4 +144,58 @@ test('drafts survive reload as text only and reset for a new USER without cleari
  d1.resetWindowDrafts(B);assert.equal(d1.readOwnerDraft(B,'exchange.amount'),null);
  assert.equal(d2.readOwnerDraft(B,'exchange.amount'),'77');
  assert.equal(d1.readOwnerDraft(null,'exchange.amount'),null);
+});
+
+test('a fresh browser tab restores device-only view choices but never unlocks a previous owner',()=>{
+ const disk=new Map(),first=sourceRuntime({storage:disk}),q=first.load('lib/queryClient.ts'),c=q.createEfhcQueryClient();
+ q.activateUserDataOwner(c,A,false);
+ c.setQueryData(['panels',A,'summary'],{active_count:9});
+ const settings=first.load('lib/settings.ts');
+ settings.saveSettings({...settings.resetSettings(),lang:'ru',color_theme_id:'CT-03',music_enabled:true});
+ const device=disk.get('EFHC_DEVICE_VIEW_PREFERENCES');
+ assert.ok(device?.includes('CT-03'));
+ assert.ok(!device.includes(A) && !device.includes('access_token') && !device.includes('balance'));
+ const second=sourceRuntime({storage:disk,session:new Map()});
+ const preferences=second.load('lib/settings.ts').loadSettings();
+ assert.equal(preferences.lang,'ru');assert.equal(preferences.color_theme_id,'CT-03');
+ assert.equal(preferences.music_enabled,true);
+ assert.equal(second.load('lib/displayOwner.ts').resolvedDisplayOwner(),null);
+ const reload=second.load('lib/queryClient.ts'),client=reload.createEfhcQueryClient();
+ assert.equal(client.getQueryData(['panels',A,'summary']),undefined);
+ reload.activateUserDataOwner(client,A,false);
+ assert.equal(client.getQueryData(['panels',A,'summary']).active_count,9);
+ client.clear();c.clear();
+});
+test('verified same-owner marker with empty tab entries recovers durable display data',()=>{
+ const disk=new Map(),first=sourceRuntime({storage:disk}),q=first.load('lib/queryClient.ts'),c=q.createEfhcQueryClient();
+ q.activateUserDataOwner(c,A,false);
+ c.setQueryData(['panels',A,'summary'],{active_count:4});
+ c.clear();
+ const session=new Map([['EFHC_USER_DATA_CACHE_V1',JSON.stringify({owner:A,entries:[]})]]);
+ const second=sourceRuntime({storage:disk,session}),reload=second.load('lib/queryClient.ts'),client=reload.createEfhcQueryClient();
+ reload.activateUserDataOwner(client,A,false);
+ assert.equal(client.getQueryData(['panels',A,'summary']).active_count,4);
+ client.clear();
+});
+test('explicit sign-out forgets personal snapshots but preserves generic appearance',()=>{
+ const disk=new Map(),h=sourceRuntime({storage:disk}),q=h.load('lib/queryClient.ts'),c=q.createEfhcQueryClient();
+ q.activateUserDataOwner(c,A,false);
+ c.setQueryData(['panels',A,'summary'],{active_count:2});
+ const settings=h.load('lib/settings.ts');
+ settings.saveSettings({...settings.resetSettings(),lang:'ru',color_theme_id:'CT-03'});
+ assert.ok(disk.has('EFHC_USER_DATA_CACHE_V1:'+A));
+ q.forgetSignedOutUser(c);
+ assert.equal(c.getQueryData(['panels',A,'summary']),undefined);
+ assert.ok(!disk.has('EFHC_USER_DATA_CACHE_V1:'+A));
+ assert.equal(h.load('lib/userDataCache.ts').currentUserDataOwner(),null);
+ assert.equal(sourceRuntime({storage:disk,session:new Map()}).load('lib/settings.ts').loadSettings().color_theme_id,'CT-03');
+ c.clear();
+});
+test('embedded locale dictionaries allow immediate shell while network locale refresh is pending',()=>{
+ const app=readFileSync(new URL('../../src/pages/_app.tsx',import.meta.url),'utf8');
+ assert.match(app,/setUiDictLoaded\] = useState\(true\)/);
+ assert.match(app,/setRuDictLoaded\] = useState\(true\)/);
+ assert.match(app,/setDescDictLoaded\] = useState\(true\)/);
+ assert.doesNotMatch(app,/setUiDictLoaded\(false\)|setRuDictLoaded\(false\)|setDescDictLoaded\(false\)/);
+ assert.match(app,/setUiDict\(fallback\)/);
 });
