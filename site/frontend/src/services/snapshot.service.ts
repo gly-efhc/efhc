@@ -39,6 +39,7 @@ const exchangePreviewSchema = z.object({
 
 const syncMetaSchema = z.object({
   server_now_iso: z.string(),
+  generation_checkpoint_at_iso: z.string().nullable().optional(),
   gen_per_sec_effective: decimalStringSchema,
   next_scheduler_eta_sec: z.number().int().nonnegative(),
   fallback_task_id: dbIdSchema.nullable().optional(),
