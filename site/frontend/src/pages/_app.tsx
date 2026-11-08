@@ -43,6 +43,8 @@ import { ShopLayout } from "../components/ShopLayout";
 import { SplashScreen } from "../components/SplashScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useSnapshot } from "../hooks/useSnapshot";
+import { useCurrentAccountBalances } from "../hooks/useCurrentAccountBalances";
+import { overlayVerifiedAccountBalances } from "../lib/accountBalancePresentation";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -537,7 +539,9 @@ function AppInner(props: {
     loading: snapshotLoading,
     refreshing: snapshotRefreshing,
     refresh: refreshSnapshot,
+    updatedAt: snapshotUpdatedAt,
   } = useSnapshot();
+  const currentAccountBalances = useCurrentAccountBalances();
   const authSession = useAuthSessionController();
   const globalId = useAuthOwnerGlobalId();
   const [adminAccessState, setAdminAccessState] = useState<
@@ -573,7 +577,19 @@ function AppInner(props: {
     const view=cachedAdminView(globalId);setAdminAccessState(view||"denied");
   }),[globalId]);
 
-  const visibleSnap = snap ?? emptyOwnerSnapshot();
+  // Financial balances use the newest authenticated database read. Transaction
+  // history and balances must never diverge merely because a PWA snapshot
+  // was restored from disk. Other profile/energy fields remain unchanged.
+  const visibleSnap = useMemo(() => overlayVerifiedAccountBalances(
+    snap ?? emptyOwnerSnapshot(),
+    authSession.status === "authenticated" ? currentAccountBalances.data : null,
+    globalId,
+    snapshotUpdatedAt,
+    currentAccountBalances.dataUpdatedAt,
+  ), [
+    snap, authSession.status, currentAccountBalances.data,
+    currentAccountBalances.dataUpdatedAt, globalId, snapshotUpdatedAt,
+  ]);
   const snapshotMode = globalId === null ? "browser-preview" : "live";
   const visibleSnapshotStatus = globalId === null
     ? "success"

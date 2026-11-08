@@ -53,6 +53,10 @@ export function usePanelActivation() {
           queryKey: queryKeys.snapshot.current(globalId),
         }),
         queryClient.invalidateQueries({
+          queryKey: queryKeys.account.current(globalId),
+          refetchType: "all",
+        }),
+        queryClient.invalidateQueries({
           queryKey: queryKeys.panels.summary(globalId),
         }),
         queryClient.invalidateQueries({

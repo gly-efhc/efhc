@@ -56,5 +56,6 @@ export function useSnapshot() {
     refreshing: Boolean(q.data) && q.isFetching,
     error: q.isError,
     refresh: q.refetch,
+    updatedAt: q.dataUpdatedAt,
   };
 }

@@ -37,6 +37,9 @@ export const queryKeys = {
       globalId,
     ] as const,
   },
+  account: {
+    current: (globalId: Owner) => ["accountBalance", globalId] as const,
+  },
   hub: {
     handoff: ["hub", "efhc-handoff"] as const,
   },

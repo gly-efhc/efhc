@@ -7,10 +7,10 @@ export function startActivitySync(client: QueryClient, target: EventTarget = win
   const sync = () => {
     if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
     const now = Date.now();
-    if (running || now - last < 1000) return;
+    if (running || now - last < 10_000) return;
     last = now; running = true;
     target.dispatchEvent(new Event("efhc:activity-sync"));
-    void client.refetchQueries({type: "active", predicate: query => query.state.fetchStatus === "idle"})
+    void client.refetchQueries({type: "active", predicate: query => query.state.fetchStatus === "idle" && query.isStale()})
       .finally(() => {running = false;});
   };
   for (const event of events) target.addEventListener(event, sync, {passive: true, capture: true});

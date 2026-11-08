@@ -63,6 +63,12 @@ export function useExchangeConvert() {
 
       if (!globalId) return;
       try {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.account.current(globalId),
+          refetchType: "all",
+        });
+      } catch { /* Account balance refresh is read-only. */ }
+      try {
         const confirmed = await fetchSyncSnapshot();
         if (confirmed.profile.global_id !== globalId) return;
         queryClient.setQueryData(snapshotKey, confirmed);

@@ -138,6 +138,7 @@ jobs:
           cd "$RUNNER_TEMP/efhc-demo-build"
           node --test tests/regression/current-demo-backend-transport.test.mjs
           node --test tests/regression/current-panel-balance-after-purchase.test.mjs
+          node --test tests/regression/current-header-account-truth.test.mjs
 
       # OWNER C0035: extensive source/parity tests are release-only,
       # not blockers for iterative Pages preview publication.
@@ -150,6 +151,7 @@ jobs:
           npm run test:html-react-parity
           node --test tests/regression/current-demo-backend-transport.test.mjs
           node --test tests/regression/current-panel-balance-after-purchase.test.mjs
+          node --test tests/regression/current-header-account-truth.test.mjs
           cd "$GITHUB_WORKSPACE"
           EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-demo-build/package.json" node site/ci/parity/generate_shell.mjs --check
           node site/frontend/tests/parity/pages-artifact.test.mjs
