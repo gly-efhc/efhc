@@ -32,6 +32,8 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.match(read("public/sw.js"), /ACTIVE_BUILD/);
   assert.match(runtime, /controllerchange/);
   assert.match(runtime, /attemptIdleReload/);
+  assert.match(runtime, /waitingActivationTimer/);
+  assert.match(runtime, /activateStagedWorker\(trackedRegistration\)/);
   assert.match(runtime, /document\.addEventListener\("visibilitychange", checkForUpdate\)/);
 });
 

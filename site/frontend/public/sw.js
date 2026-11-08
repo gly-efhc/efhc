@@ -411,16 +411,16 @@ self.addEventListener("install", (event) => {
     (async () => {
       const config = await loadConfig();
       await cacheUrls(config.precache || [], "install");
+      // Installation is atomic: all offline resources are already verified.
+      // Request activation as soon as validation ends; the old worker cannot
+      // erase this new build's cache while its active clients are alive.
+      void self.skipWaiting();
       if (self.registration.active) {
         await notifyClients({
           type: "UPDATE_AVAILABLE",
           buildId: config.build_id,
         });
       }
-      // Installation is atomic: all offline resources are already verified.
-      // Skip the waiting phase for both initial and update installations;
-      // retain the prior hashed assets for any still-open React page.
-      await self.skipWaiting();
     })(),
   );
 });

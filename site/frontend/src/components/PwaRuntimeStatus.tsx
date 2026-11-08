@@ -443,6 +443,8 @@ export function PwaRuntimeStatus(props: {
       lastUpdateCheck = now;
       void trackedRegistration.update().catch(() => {
         // Preserve the installed offline application on transient network failure.
+      }).finally(() => {
+        if (!disposed && trackedRegistration) activateStagedWorker(trackedRegistration);
       });
     };
     const onWorkerStateChange = () => {
@@ -513,6 +515,12 @@ export function PwaRuntimeStatus(props: {
       document.addEventListener(name, markActivity, {passive: true});
     cleanupReloadTimer = window.setInterval(attemptIdleReload, 1000);
     const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
+    // An UPDATE_AVAILABLE message may arrive during install, before the
+    // registration exposes its waiting worker. Poll only the installed worker:
+    // no incomplete build can be activated this way.
+    const waitingActivationTimer = window.setInterval(() => {
+      if (!disposed && trackedRegistration?.waiting) activateStagedWorker(trackedRegistration);
+    }, 2500);
     const onPageEntered = () => {lastUpdateCheck = 0; checkForUpdate(); void verifyLoadedBuild();};
     router.events.on("routeChangeComplete", onPageEntered);
     void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/`, updateViaCache: "none" }).then(
@@ -560,6 +568,7 @@ export function PwaRuntimeStatus(props: {
       cleanupIdle();
       router.events.off("routeChangeComplete", onPageEntered);
       window.clearInterval(periodicUpdateTimer);
+      window.clearInterval(waitingActivationTimer);
       if (cleanupReloadTimer !== null) window.clearInterval(cleanupReloadTimer);
       for (const name of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(name, markActivity);
