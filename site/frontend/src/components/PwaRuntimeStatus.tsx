@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { useQueryClient } from "@tanstack/react-query";
 import { appBasePath } from "../lib/appBasePath";
 import React, {
   useCallback,
@@ -215,6 +216,7 @@ export function PwaRuntimeStatus(props: {
   const { t } = props;
   const enabled = props.enabled !== false;
   const previousRoute = useRef(router.pathname);
+  const queryClient = useQueryClient();
   const [cacheProgress, setCacheProgress] = useState(0);
   const [cacheVisible, setCacheVisible] = useState(false);
   const [cacheEntries, setCacheEntries] = useState(0);
@@ -348,6 +350,57 @@ export function PwaRuntimeStatus(props: {
     let trackedRegistration: ServiceWorkerRegistration | null = null;
     let trackedWorker: ServiceWorker | null = null;
     let lastUpdateCheck = 0;
+    let lastInteractionAt = Date.now();
+    let cleanupReloadTimer: number | null = null;
+    let verifyInFlight = false;
+    let autoReloadBuildId = "";
+    const markActivity = () => { lastInteractionAt = Date.now(); };
+    const hasActiveEditor = () => Boolean(document.querySelector(
+      "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
+    ));
+    const attemptIdleReload = () => {
+      if (disposed || !autoReloadBuildId || !navigator.onLine ||
+          document.visibilityState === "hidden" ||
+          Date.now() - lastInteractionAt < 6000 ||
+          queryClient.isMutating() > 0 || hasActiveEditor()) return;
+      const key = "efhc:pwa-reload:" + autoReloadBuildId;
+      try {
+        if (window.sessionStorage.getItem(key) === "1") return;
+        window.sessionStorage.setItem(key, "1");
+      } catch { /* Storage is optional. */ }
+      window.location.reload();
+    };
+    const verifyLoadedBuild = async () => {
+      if (disposed || verifyInFlight || !navigator.serviceWorker.controller) return;
+      verifyInFlight = true;
+      try {
+        const manifest = await fetch(appBasePath() + "/pwa-build.json", {cache: "no-store"})
+          .then(response => response.ok ? response.json() : null);
+        if (!manifest?.build_id || !Array.isArray(manifest.precache)) return;
+        const precached = new Set<string>(manifest.precache);
+        const assets = Array.from(document.querySelectorAll("script[src], link[rel='stylesheet'][href]"))
+          .map(element => (element as HTMLScriptElement | HTMLLinkElement).src ||
+            (element as HTMLLinkElement).href)
+          .filter(Boolean).map(value => new URL(value, window.location.href))
+          .filter(url => url.origin === window.location.origin &&
+            url.pathname.includes("/_next/static/"))
+          .map(url => url.pathname);
+        if (!assets.length) return;
+        if (assets.every(asset => precached.has(asset))) {
+          navigator.serviceWorker.controller?.postMessage({
+            type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
+          });
+          autoReloadBuildId = "";
+        } else if (navigator.onLine) {
+          // A new worker cannot replace an already running React bundle.
+          // Defer an automatic swap until user interactions and mutations finish.
+          autoReloadBuildId = manifest.build_id;
+          attemptIdleReload();
+        }
+      } catch { /* Keep the last usable offline shell. */ }
+      finally { verifyInFlight = false; }
+    };
+    const onControllerChange = () => { void verifyLoadedBuild(); };
     const activateStagedWorker = (registration: ServiceWorkerRegistration) => {
       const staged = registration.waiting;
       if (!staged) return;
@@ -423,11 +476,19 @@ export function PwaRuntimeStatus(props: {
         );
       }
       if (data.type === "UPDATE_ACTIVATED") {
+        void verifyLoadedBuild();
         setUpdateActivated(true);
         window.setTimeout(() => setUpdateActivated(false), 1800);
       }
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    for (const name of ["pointerdown", "keydown", "touchstart"])
+      document.addEventListener(name, markActivity, {passive: true});
+    cleanupReloadTimer = window.setInterval(attemptIdleReload, 1000);
+    const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
+    const onPageEntered = () => {lastUpdateCheck = 0; checkForUpdate(); void verifyLoadedBuild();};
+    router.events.on("routeChangeComplete", onPageEntered);
     void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/` }).then(
       (registration) => {
         if (disposed) return;
@@ -438,6 +499,7 @@ export function PwaRuntimeStatus(props: {
         window.addEventListener("online", checkForUpdate);
         document.addEventListener("visibilitychange", checkForUpdate);
         checkForUpdate();
+        void verifyLoadedBuild();
         cleanupIdle = idle(() => {
           const target =
             navigator.serviceWorker.controller || registration.active;
@@ -470,6 +532,12 @@ export function PwaRuntimeStatus(props: {
     return () => {
       disposed = true;
       cleanupIdle();
+      router.events.off("routeChangeComplete", onPageEntered);
+      window.clearInterval(periodicUpdateTimer);
+      if (cleanupReloadTimer !== null) window.clearInterval(cleanupReloadTimer);
+      for (const name of ["pointerdown", "keydown", "touchstart"])
+        document.removeEventListener(name, markActivity);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("pageshow", checkForUpdate);
       window.removeEventListener("online", checkForUpdate);
       document.removeEventListener("visibilitychange", checkForUpdate);
@@ -487,9 +555,9 @@ export function PwaRuntimeStatus(props: {
     };
   }, [enabled]);
 
-  // A complete replacement offline build activates without deleting the
-  // previous build's assets. The current React page is never auto-reloaded
-  // during a USER/Admin transaction.
+  // A staged update retains old chunks only while legacy pages are open.
+  // After a verified shell is loaded, obsolete CacheStorage is retired.
+  // A mismatched bundle reloads at idle, never during a React Query mutation.
 
   useEffect(() => {
     const syncOnboarding = () => {

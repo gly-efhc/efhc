@@ -767,6 +767,7 @@ function AppInner(props: {
         setLang={handleSetLang}
         setSettings={setSettings}
       >
+        <PwaRuntimeStatus t={t} enabled={browserSupportsServiceWorker()} headless />
         <ErrorBoundary key={router.pathname} title="EFHC Storefront" t={t}>
           <Component
             {...pageProps}

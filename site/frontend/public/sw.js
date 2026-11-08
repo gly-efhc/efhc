@@ -353,7 +353,7 @@ async function navigationFallback(request, event) {
   // and HTML in the background. Never patch a build's HTML with another build's
   // hashed asset references; that would break offline startup.
   if (config.static_export && relativePath(url.pathname) !== null) {
-    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\\/$/, "") + "/index.html";
+    const html = url.pathname.endsWith(".html") ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
     const { staticName } = await cacheNames();
     const cached = await (await caches.open(staticName)).match(html);
     if (cached) {
@@ -370,7 +370,7 @@ async function navigationFallback(request, event) {
     if (response.ok || !config.static_export) return response;
   } catch { /* Offline navigation falls back to a complete installed shell. */ }
   if (config.static_export && relativePath(url.pathname) !== null) {
-    const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\\/$/, "") + "/index.html";
+    const html = url.pathname.endsWith(".html") ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
     const cached = await caches.match(html);
     if (cached) return cached;
   }
