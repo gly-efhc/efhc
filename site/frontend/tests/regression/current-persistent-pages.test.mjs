@@ -175,8 +175,8 @@ test('new tab never adopts a previous owner avatar through unscoped legacy prefe
  const legacy={...settings.resetSettings(),lang:'ru',color_theme_id:'CT-05',
    avatar_source:'social',avatar_social_provider:'telegram',
    avatar_social_url:'https://example.org/person.jpg',
-   avatar_custom_images:['data:image/png;base64,ZmFrZQ=='],
-   avatar_url:'data:image/png;base64,ZmFrZQ=='};
+   avatar_custom_images:[],
+   avatar_url:null};
  disk.set('EFHC_USER_SETTINGS_V1',JSON.stringify(legacy));
  const second=sourceRuntime({storage:disk,session:new Map()});
  const recovered=second.load('lib/settings.ts').loadSettings();
