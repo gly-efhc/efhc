@@ -12,11 +12,11 @@ import {
 import { queryKeys } from "./queryKeys";
 import { fetchSyncSnapshot, type SyncSnapshot } from "../services/snapshot.service";
 
-export function useExchangePreview() {
+export function useExchangePreview(enabled = true) {
   const globalId = useAuthOwnerGlobalId();
   return useQuery({
     queryKey: queryKeys.exchange.preview(globalId),
-    enabled: Boolean(globalId),
+    enabled: Boolean(globalId) && enabled,
     queryFn: getExchangePreview,
     // One server-confirmed available_kwh source for Energy and Exchange.
     staleTime: 0,
