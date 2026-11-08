@@ -56,12 +56,24 @@ function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERAT
  }
  return {load,env,calls,get cleared(){return cleared;}};
 }
-test('DEMO API origin accepts only strict HTTPS origins and never database credentials',()=>{
- const h=harness();assert.equal(h.load('demo/config.ts').demoApiOrigin(),'https://demo-api.example.org');
+test('Backend API origin prefers canonical HTTPS address and accepts legacy variable during migration',()=>{
+ const h=harness(),config=h.load('demo/config.ts');
+ assert.equal(config.demoApiOrigin(),'https://demo-api.example.org','legacy configuration remains compatible');
+ h.env.NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN='https://backend.example.org';
+ assert.equal(config.demoApiOrigin(),'https://backend.example.org','canonical backend address overrides legacy Render origin');
+ h.env.NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN='';
+ assert.equal(config.demoApiOrigin(),'https://demo-api.example.org','legacy fallback is used only when canonical is empty');
+});
+test('Backend API origin rejects insecure, credentialed and malformed destinations',()=>{
+ const h=harness(),config=h.load('demo/config.ts');
  for(const url of ['','http://demo-api.example.org','https://user:secret@demo-api.example.org','https://demo-api.example.org/db','https://demo-api.example.org/?token=1','https://demo-api.example.org/#secret']){
-  h.env.NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN=url;
-  assert.throws(()=>h.load('demo/config.ts').demoApiOrigin(),/EFHC_DEMO_API_ORIGIN/);
+  h.env.NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN='';
+  h.env.NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN=url;
+  assert.throws(()=>config.demoApiOrigin(),/EFHC_BACKEND_API_ORIGIN/);
  }
+ h.env.NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN='http://invalid.example.org';
+ h.env.NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN='https://legacy-valid.example.org';
+ assert.throws(()=>config.demoApiOrigin(),/EFHC_BACKEND_API_ORIGIN/,'invalid canonical endpoint must fail closed');
 });
 test('DEMO business request uses authenticated remote API, Idempotency-Key and server CSRF',async()=>{
  const h=harness(),bridge=h.load('demo/transport.ts');
