@@ -492,7 +492,7 @@ export function PwaRuntimeStatus(props: {
     const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
     const onPageEntered = () => {lastUpdateCheck = 0; checkForUpdate(); void verifyLoadedBuild();};
     router.events.on("routeChangeComplete", onPageEntered);
-    void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/` }).then(
+    void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/`, updateViaCache: "none" }).then(
       (registration) => {
         if (disposed) return;
         trackedRegistration = registration;
