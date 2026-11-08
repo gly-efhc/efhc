@@ -26,6 +26,7 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.match(app, /router\.basePath\}\/manifest\.webmanifest/);
   assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
   assert.match(runtime, /trackedRegistration\.update\(\)/);
+  assert.match(runtime, /staged\.postMessage\(\{ type: "SKIP_WAITING" \}\)/);
   assert.match(runtime, /document\.addEventListener\("visibilitychange", checkForUpdate\)/);
 });
 

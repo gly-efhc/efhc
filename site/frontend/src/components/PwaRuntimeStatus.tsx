@@ -348,6 +348,14 @@ export function PwaRuntimeStatus(props: {
     let trackedRegistration: ServiceWorkerRegistration | null = null;
     let trackedWorker: ServiceWorker | null = null;
     let lastUpdateCheck = 0;
+    const activateStagedWorker = (registration: ServiceWorkerRegistration) => {
+      const staged = registration.waiting;
+      if (!staged) return;
+      setWaiting(staged);
+      // The worker has completed its fail-closed full precache. Ask the
+      // verified new worker to activate without reloading this live page.
+      staged.postMessage({ type: "SKIP_WAITING" });
+    };
     const checkForUpdate = () => {
       if (disposed || !trackedRegistration || !navigator.onLine ||
           document.visibilityState === "hidden") return;
@@ -366,7 +374,7 @@ export function PwaRuntimeStatus(props: {
         registration &&
         navigator.serviceWorker.controller
       ) {
-        setWaiting(registration.waiting || worker);
+        activateStagedWorker(registration);
       }
     };
     const onUpdateFound = () => {
@@ -409,7 +417,7 @@ export function PwaRuntimeStatus(props: {
         void navigator.serviceWorker.getRegistration().then(
           (registration) => {
             if (registration?.waiting) {
-              setWaiting(registration.waiting);
+              activateStagedWorker(registration);
             }
           },
         );
@@ -424,7 +432,7 @@ export function PwaRuntimeStatus(props: {
       (registration) => {
         if (disposed) return;
         trackedRegistration = registration;
-        if (registration.waiting) setWaiting(registration.waiting);
+        activateStagedWorker(registration);
         registration.addEventListener("updatefound", onUpdateFound);
         window.addEventListener("pageshow", checkForUpdate);
         window.addEventListener("online", checkForUpdate);
