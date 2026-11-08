@@ -101,7 +101,7 @@ test("achievement headings stay unbacked and two exchange actions follow all act
   assert.ok(section, "Missing active USER surface material contract");
   assert.match(section, /\[data-referrals-achievements="visible"\]/);
   assert.match(section, /background-color:\s*transparent\s*!important/);
-  assert.match(section, /\.efhc-exchange-shell :is\(\[data-exchange-submit-action="true"\],\.efhc-exchange-withdraw-button\)/);
+  assert.match(section, /#efhc-main-content \.efhc-exchange-shell :is\(button\.efhc-btn-primary\[data-exchange-submit-action="true"\],button\.efhc-btn-secondary\.efhc-exchange-withdraw-button\)/);
   assert.match(section, /border-color:\s*var\(--efhc-ct-accent\)\s*!important/);
   assert.match(section, /background-color:\s*rgba\(var\(--efhc-ct-accent-rgb\),\.13\)/);
   assert.match(section, /\[data-withdraw-history-balance-type-label="semantic"\]\.efhc-withdraw-history-row/);
