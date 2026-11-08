@@ -18,10 +18,10 @@ export function createEfhcQueryClient() {
       queries: {
         // Mini App: не дергаем API при каждом переходе по вкладкам.
         staleTime: 10_000,
-        gcTime: 300_000,
+        gcTime: 86_400_000,
         networkMode: "always",
         retry: 1,
-        refetchOnMount: "always",
+        refetchOnMount: false,
         refetchOnWindowFocus: false,
         refetchOnReconnect: false,
       },
@@ -33,6 +33,8 @@ export function createEfhcQueryClient() {
     },
   });
   if (typeof window !== "undefined") {
+    // Hydrate only after React mount in the owner-bound query hooks; pre-hydrating
+    // would mismatch the statically exported SSR tree on a cached reload.
     startUserDataPersistence(client);
   }
   return client;

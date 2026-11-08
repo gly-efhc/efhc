@@ -18,6 +18,7 @@ import { usePanelsList } from "../../queries/usePanels";
 import { useT } from "../../hooks/useT";
 import type { SyncSnapshot } from "../../hooks/useSnapshot";
 import { format8 } from "../../lib/format";
+import { confirmedPanelRateD8, projectPanelGeneratedD8 } from "../../lib/panelDisplayProjection";
 import { hapticSelection } from "../../lib/telegram";
 import { useInterfaceVariantSurface } from
   "../../hooks/useInterfaceVariantSurface";
@@ -79,6 +80,7 @@ export default function PanelsPortfolioPage(props: {
   );
   const [tick, setTick] = useState(0);
   const [nowUtcMs, setNowUtcMs] = useState<number | null>(null);
+  const [elapsedClientMs, setElapsedClientMs] = useState(0);
   const listQuery = usePanelsList(tab, sortDirection);
 
   const items = useMemo(
@@ -113,6 +115,12 @@ export default function PanelsPortfolioPage(props: {
     listQuery.data?.pages.at(-1)?.server_now_utc ?? null;
   const serverNowIso = listServerNowIso ?? props.snap?.meta?.server_now_iso ?? null;
   const countdownSource = "panel-list-server-now-plus-client-stopwatch";
+  // A VIP owner may have a different effective rate for every active panel.
+  // The exact server snapshot, never the unadjusted base rate, owns that truth.
+  const confirmedPerPanelRateD8 = useMemo(() => confirmedPanelRateD8(
+    props.snap?.meta.gen_per_sec_effective ?? null,
+    props.snap?.panels.active_count ?? null,
+  ), [props.snap?.meta.gen_per_sec_effective, props.snap?.panels.active_count]);
   const [anchorServerMs, setAnchorServerMs] = useState<number | null>(null);
   const [anchorClientMs, setAnchorClientMs] = useState<number | null>(null);
   const panelListViewportRef = useRef<HTMLDivElement | null>(null);
@@ -153,14 +161,18 @@ export default function PanelsPortfolioPage(props: {
   useEffect(() => {
     if (anchorServerMs === null || anchorClientMs === null) {
       setNowUtcMs(null);
+      setElapsedClientMs(0);
       return undefined;
     }
     const updateNow = () => {
-      setNowUtcMs(anchorServerMs + (performance.now() - anchorClientMs));
+      const elapsed = Math.max(0, performance.now() - anchorClientMs);
+      setNowUtcMs(anchorServerMs + elapsed);
+      setElapsedClientMs(elapsed);
       setTick((value) => value + 1);
     };
     updateNow();
-    const id = globalThis.setInterval(updateNow, 1_000);
+    // One shared local clock animates PNL D8 display values and countdowns.
+    const id = globalThis.setInterval(updateNow, 333);
     return () => globalThis.clearInterval(id);
   }, [anchorServerMs, anchorClientMs]);
 
@@ -387,7 +399,7 @@ export default function PanelsPortfolioPage(props: {
                 >
                   <div className="min-w-0">
                     <div className="truncate font-semibold tabular-nums">
-                      {p.public_id ? p.public_id : t("panels.panel_id")}
+                      {/^PNL-(?!00000000$)[0-9]{8}$/.test(p.public_id) ? p.public_id : "Ошибка целостности PNL"}
                     </div>
                     <div className="text-xs efhc-text-muted2">
                       {t("panels.panel_id")}
@@ -435,7 +447,10 @@ export default function PanelsPortfolioPage(props: {
                       {t("panels.generated_kwh")}
                     </div>
                     <div className="font-semibold tabular-nums">
-                      {format8(p.generated_kwh)}
+                      {projectPanelGeneratedD8(
+                        { ...p, base_gen_per_sec: confirmedPerPanelRateD8 ?? (props.snap?.profile && !props.snap.profile.is_vip ? p.base_gen_per_sec : "0.00000000") },
+                        serverNowIso, elapsedClientMs,
+                      )}
                     </div>
                   </div>
                   <div

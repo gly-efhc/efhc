@@ -193,7 +193,7 @@ jobs:
       - name: Require configured HTTPS DEMO API before any Pages compilation
         shell: bash
         env:
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
+          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN }}
         run: |
           python3 - <<'PYTHON'
           import os
@@ -213,7 +213,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_E2E_TONCONNECT_MOCK: '0'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: 'demo_backend'
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
+          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN }}
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_E2E_DISABLE_TONCONNECT_RESTORE: '1'
           NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
@@ -249,11 +249,12 @@ jobs:
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/verify-export.log"
 
       # Page persistence is mandatory; optional visual diagnostics remain separate.
-      - name: Require every static page under authentication and data failure
-        timeout-minutes: 8
+      - name: Require complete offline PWA and persistent React pages before publishing
+        timeout-minutes: 12
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-persistence-artifacts
+          EFHC_PWA_EXPORT_DIR: ${{ runner.temp }}/efhc-demo-build/out
         run: |
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
@@ -266,6 +267,9 @@ jobs:
           for i in $(seq 1 30); do curl -fsS "http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/" -o /dev/null && break || sleep 1; done
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           export EFHC_REACT_URL="http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/"
+          # The same full offline/CT/settings/PNL/staged-update gate as parity CI.
+          # This is blocking for every Pages publication, including fast push.
+          node site/frontend/tests/parity/pwa-cache-integration.mjs
           node site/frontend/tests/parity/persistent-pages.mjs
       - name: Retain mandatory persistence evidence
         if: always()

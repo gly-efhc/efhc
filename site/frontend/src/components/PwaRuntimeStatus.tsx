@@ -1,4 +1,5 @@
 import { useRouter } from "next/router";
+import { appBasePath } from "../lib/appBasePath";
 import React, {
   useCallback,
   useEffect,
@@ -251,6 +252,13 @@ export function PwaRuntimeStatus(props: {
       .slice(0, 4);
   }, [router.pathname, staticRoutes]);
 
+  // Keep one SW registration for this mounted app. Route learning may change
+  // continuously, but must not repeatedly restart an update installation.
+  const routerForCacheRef = useRef(router);
+  const routesForCacheRef = useRef(nextRoutes);
+  routerForCacheRef.current = router;
+  routesForCacheRef.current = nextRoutes;
+
   useEffect(() => {
     recordTransition(previousRoute.current, router.pathname);
     previousRoute.current = router.pathname;
@@ -333,7 +341,7 @@ export function PwaRuntimeStatus(props: {
 
   useEffect(() => {
     if (!enabled || !("serviceWorker" in navigator)) return;
-    const isLocal = window.location.hostname === "localhost";
+    const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
     if (window.location.protocol !== "https:" && !isLocal) return;
     let disposed = false;
     let cleanupIdle: () => void = () => undefined;
@@ -401,7 +409,7 @@ export function PwaRuntimeStatus(props: {
       }
     };
     navigator.serviceWorker.addEventListener("message", onMessage);
-    void navigator.serviceWorker.register("/sw.js").then(
+    void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/` }).then(
       (registration) => {
         if (disposed) return;
         trackedRegistration = registration;
@@ -419,7 +427,7 @@ export function PwaRuntimeStatus(props: {
           target?.postMessage({ type: "GET_CACHE_STATUS" });
           if (!connectionAllowsPrefetch()) return;
           void Promise.all(
-            nextRoutes.map((route) => router.prefetch(route)),
+            routesForCacheRef.current.map((route) => routerForCacheRef.current.prefetch(route)),
           ).finally(() => {
             window.setTimeout(() => {
               target?.postMessage({
@@ -431,7 +439,11 @@ export function PwaRuntimeStatus(props: {
           });
         });
       },
-    ).catch(() => undefined);
+    ).catch((error: unknown) => {
+      // A failed registration must be visible to diagnostics, not silently ignored.
+      console.warn("EFHC_PWA_REGISTRATION_FAILED", error);
+      window.dispatchEvent(new CustomEvent("efhc:pwa-registration-failed"));
+    });
     return () => {
       disposed = true;
       cleanupIdle();
@@ -447,12 +459,10 @@ export function PwaRuntimeStatus(props: {
       trackedWorker = null;
       navigator.serviceWorker.removeEventListener("message", onMessage);
     };
-  }, [enabled, nextRoutes, router]);
+  }, [enabled]);
 
-  useEffect(() => {
-    if (!waiting || financialRoute) return;
-    return idle(() => waiting.postMessage({ type: "SKIP_WAITING" }));
-  }, [financialRoute, waiting]);
+  // Never activate a new version while the running USER/Admin session is open.
+  // A waiting Service Worker takes over only after the old client is closed.
 
   useEffect(() => {
     const syncOnboarding = () => {

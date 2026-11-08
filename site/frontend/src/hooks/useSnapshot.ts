@@ -26,7 +26,7 @@ export function useSnapshot() {
     queryKey: queryKeys.snapshot.current(globalId),
     enabled: Boolean(globalId),
     staleTime: 30_000,
-    refetchOnMount: "always",
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async ({signal}) => {

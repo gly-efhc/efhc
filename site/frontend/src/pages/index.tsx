@@ -9,7 +9,7 @@ import React, {
 import { EnergyVariantIcon } from
   "../components/icons/EnergyVariantIcon";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
-import { reconcileEnergyAnchor } from "../lib/energyProjection";
+import { energyDisplayProjectionWindowMs, reconcileEnergyAnchor } from "../lib/energyProjection";
 import { useT } from "../hooks/useT";
 import type {
   SnapshotStatus,
@@ -75,6 +75,7 @@ function readIntStr(
 type LiveBlockProps = {
   confirmed: boolean;
   server_now_iso: string | null;
+  nearest_expire_at: string | null;
   lifetime_kwh: string;
   gen_per_sec_effective: string;
   active_panels: string;
@@ -109,6 +110,13 @@ function LiveEnergyBlock(props: LiveBlockProps) {
     [props.gen_per_sec_effective],
   );
   const vScaled = vScaledRaw < 0n ? 0n : vScaledRaw;
+  // A cached server snapshot may include an expiry that reduces active panels.
+  // Until the backend confirms the new active count, stop local display
+  // extrapolation at the first known expiry rather than inventing more energy.
+  const projectUntilMs = useMemo(
+    () => energyDisplayProjectionWindowMs(props.server_now_iso, props.nearest_expire_at),
+    [props.server_now_iso, props.nearest_expire_at],
+  );
 
   const stateRef = useRef<{
     base_scaled: bigint;
@@ -145,11 +153,11 @@ function LiveEnergyBlock(props: LiveBlockProps) {
     // The mounted effect triggers tick > 0 and resumes the live projection.
     if (tick === 0) return st.base_scaled;
     const now = performance.now();
-    const dtMs = Math.max(0, now - st.base_client_ms);
+    const dtMs = Math.min(projectUntilMs, Math.max(0, now - st.base_client_ms));
     const add = (vScaled * BigInt(Math.floor(dtMs))) / 1000n;
     let out = st.base_scaled + add;
     return out < 0n ? 0n : out;
-  }, [e0ScaledRaw, props.server_now_iso, tick, vScaled]);
+  }, [e0ScaledRaw, props.server_now_iso, projectUntilMs, tick, vScaled]);
 
   const eLiveScaled = localEnergyScaled;
 
@@ -201,17 +209,22 @@ function LiveEnergyBlock(props: LiveBlockProps) {
   }, []);
 
   const [displayPct, setDisplayPct] = useState(0);
+  const progressFirstPaint = useRef(false);
 
   useEffect(() => {
     if (prefersReducedMotion) {
+      progressFirstPaint.current = true;
       setDisplayPct(progressPct);
       return;
     }
-    setDisplayPct(0);
-    const id = window.requestAnimationFrame(() => {
-      setDisplayPct(progressPct);
-    });
-    return () => window.cancelAnimationFrame(id);
+    if (!progressFirstPaint.current) {
+      progressFirstPaint.current = true;
+      const id = window.requestAnimationFrame(() => setDisplayPct(progressPct));
+      return () => window.cancelAnimationFrame(id);
+    }
+    // Keep the last painted percentage during each new D8 tick; CSS transitions
+    // smoothly to the updated value instead of visibly resetting to zero.
+    setDisplayPct(progressPct);
   }, [prefersReducedMotion, progressPct]);
 
   const fillClassName = prefersReducedMotion
@@ -427,6 +440,7 @@ export default function EnergyPage(props: {
         key={s.profile.global_id}
         confirmed={Boolean(s.meta.server_now_iso)}
         server_now_iso={s.meta.server_now_iso}
+        nearest_expire_at={s.panels.nearest_expire_at ?? null}
         lifetime_kwh={readStr(
           s,
           ["profile", "lifetime_generated_kwh"],
