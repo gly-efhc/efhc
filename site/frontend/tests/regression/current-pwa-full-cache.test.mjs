@@ -236,3 +236,91 @@ test("PWA navigation opens the verified installed page without network delay and
   assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
   assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
+
+
+test("active old worker never deletes a successor's staged build; new worker retires only prior caches", async () => {
+  const source = read("public/sw.js");
+  const origin = "https://efhc.example";
+  const scope = origin + "/efhc/";
+  const cacheNames = new Set(["efhc-pwa-old-static","efhc-pwa-old-content"]);
+  const posted = [];
+  const client = {id:"same-tab",postMessage(message){posted.push(message)}};
+  const cacheStorage = {
+    keys: async () => [...cacheNames],
+    delete: async name => cacheNames.delete(name),
+    open: async name => {
+      cacheNames.add(name);
+      return { match: async () => undefined, keys: async () => [] };
+    },
+    match: async () => undefined,
+  };
+  const makeWorker = buildId => {
+    const events = new Map();
+    const sandbox = {
+      URL, Headers, Response, Request, Blob, Date, console,
+      caches:cacheStorage,
+      self:{
+        registration:{scope,active:{}},
+        location:{origin},
+        clients:{
+          matchAll:async()=>[client],
+          claim:async()=>undefined,
+        },
+        addEventListener:(type,listener)=>events.set(type,listener),
+      },
+      EFHC_PWA_BUILD_CONFIG:{
+        build_id:buildId,static_export:true,
+        precache:["/efhc/_next/static/"+buildId+".js"],
+        cache_limits:{
+          static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
+          content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880},
+        },
+      },
+    };
+    vm.runInNewContext(source,sandbox,{filename:"sw.js"});
+    const dispatch = async (type,options={}) => {
+      let lifetime;
+      const event={
+        data:options.data,source:options.source,
+        waitUntil:promise=>{lifetime=promise;},
+      };
+      events.get(type)(event);
+      if(lifetime) await lifetime;
+    };
+    return {dispatch};
+  };
+  const oldWorker = makeWorker("old");
+  await oldWorker.dispatch("activate");
+  // A successor preinstalls its static and content caches after the old
+  // worker has already activated.
+  cacheNames.add("efhc-pwa-next-static");
+  cacheNames.add("efhc-pwa-next-content");
+  await oldWorker.dispatch("message",{
+    source:client,
+    data:{
+      type:"CLIENT_BUILD_READY",buildId:"old",
+      assets:["/efhc/_next/static/old.js"],
+    },
+  });
+  assert.equal(cacheNames.has("efhc-pwa-next-static"),true,
+    "old active worker erased newly staged successor code");
+  assert.equal(cacheNames.has("efhc-pwa-next-content"),true,
+    "old active worker erased newly staged successor data");
+  const newWorker = makeWorker("next");
+  await newWorker.dispatch("activate");
+  assert.equal(cacheNames.has("efhc-pwa-old-static"),true,
+    "previous assets must survive until new client verifies its build");
+  await newWorker.dispatch("message",{
+    source:client,
+    data:{
+      type:"CLIENT_BUILD_READY",buildId:"next",
+      assets:["/efhc/_next/static/next.js"],
+    },
+  });
+  assert.equal(cacheNames.has("efhc-pwa-old-static"),false,
+    "a verified successor must retire the previous static build");
+  assert.equal(cacheNames.has("efhc-pwa-old-content"),false,
+    "a verified successor must retire the previous content build");
+  assert.equal(cacheNames.has("efhc-pwa-next-static"),true,
+    "the active successor's own assets must never be removed");
+});
