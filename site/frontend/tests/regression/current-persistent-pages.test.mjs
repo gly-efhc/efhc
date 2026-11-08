@@ -188,7 +188,7 @@ test('new tab never adopts a previous owner avatar through unscoped legacy prefe
  assert.equal(recovered.avatar_source,'telegram');
  assert.equal(recovered.avatar_url,null);
  assert.equal(recovered.avatar_social_url,null);
- assert.deepEqual(recovered.avatar_custom_images,[]);
+ assert.equal(recovered.avatar_custom_images.length,0);
 });
 test('verified same-owner marker with empty tab entries recovers durable display data',()=>{
  const disk=new Map(),first=sourceRuntime({storage:disk}),q=first.load('lib/queryClient.ts'),c=q.createEfhcQueryClient();
