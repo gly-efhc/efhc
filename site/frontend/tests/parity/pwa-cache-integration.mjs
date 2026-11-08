@@ -319,7 +319,7 @@ try {
       window.__EFHC_PWA_EVENTS__ = [];
       navigator.serviceWorker.addEventListener("message", event => {
         const data = event.data || {};
-        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE"].includes(data.type)) {
+        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE", "TEST_SKIP_MESSAGE"].includes(data.type)) {
           window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, failedUrls:data.failedUrls, reason:data.reason, buildId:data.buildId});
         }
       });
@@ -345,7 +345,9 @@ try {
     const cssUrl="/efhc/"+cssPath;
     nextBuild.precache=[...nextBuild.precache,scriptUrl,cssUrl];
     const nextWorker="const EFHC_PWA_BUILD_CONFIG = "+JSON.stringify(nextBuild)+";\n"+
-      original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n";
+      original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n"+
+      'self.addEventListener("message", event => { if(event.data?.type==="SKIP_WAITING") '+
+      'event.waitUntil(notifyClients({type:"TEST_SKIP_MESSAGE",buildId:EFHC_PWA_BUILD_CONFIG.build_id})); });\n';
     try {
       await writeFile(path.join(root,scriptPath),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
       await writeFile(path.join(root,cssPath),":root { --efhc-upgrade-css-proof: updated; }","utf8");
@@ -371,7 +373,18 @@ try {
       // The running React page must remain mounted; no forced reload during
       // an in-flight USER financial interaction.
       let state = null;
-      for (let attempt = 0; attempt < 180; attempt++) {
+      let neededDirectProbe = false;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        // Diagnostic probe only, never count a manually forced activation as
+        // automated success; this distinguishes missing client messages from
+        // an SW that ignored them.
+        if (attempt === 48) {
+          neededDirectProbe = true;
+          await page.evaluate(async () => {
+            const registration = await navigator.serviceWorker.getRegistration();
+            registration?.waiting?.postMessage({type:"SKIP_WAITING"});
+          });
+        }
         state = await page.evaluate(async names => {
           const reg = await navigator.serviceWorker.getRegistration();
           const keys = await caches.keys();
@@ -392,7 +405,9 @@ try {
             !state.sameController && state.newCache) break;
         await page.waitForTimeout(250);
       }
-      console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify(state));
+      console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify({...state,neededDirectProbe}));
+      assert.equal(neededDirectProbe,false,
+        "new Service Worker only activated after test manually triggered SKIP_WAITING");
       assert.equal(state.active,"activated","new full PWA did not automatically activate");
       assert.equal(state.waiting,null);
       assert.equal(state.sameController,false);
