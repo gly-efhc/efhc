@@ -3,7 +3,7 @@
  * prime financial data or grant Admin privileges.
  */
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { localPagesBase } from "./pages-base.mjs";
@@ -321,15 +321,41 @@ try {
     });
     assert.ok(originalController.endsWith("/sw.js"),"existing worker must control active session");
     const oldConfig=exportConfig;
-    const newBuildId=oldConfig.build_id+"-staged";
+    const newBuildId=oldConfig.build_id.slice(0,-1)+(oldConfig.build_id.endsWith("a")?"b":"a");
     const oldStaticCache="efhc-pwa-"+oldConfig.build_id+"-static";
     const newStaticCache="efhc-pwa-"+newBuildId+"-static";
     const pinned=/^const EFHC_PWA_BUILD_CONFIG = ([^\n]+);\n/.exec(original);
     assert.ok(pinned,"real exported worker must embed an immutable version configuration");
     const nextBuild={...JSON.parse(pinned[1]),build_id:newBuildId};
+    const configFile=path.join(root,"pwa-build.json");
+    const originalConfigFile=await readFile(configFile,"utf8");
+    const originalHtml=new Map();
+    const nextScriptName="efhc-cycle0042-staged.js";
+    const nextCssName="efhc-cycle0042-staged.css";
+    const scriptPath="_next/static/"+nextScriptName;
+    const cssPath="_next/static/"+nextCssName;
+    const scriptUrl="/efhc/"+scriptPath;
+    const cssUrl="/efhc/"+cssPath;
+    nextBuild.precache=[...nextBuild.precache,scriptUrl,cssUrl];
     const nextWorker="const EFHC_PWA_BUILD_CONFIG = "+JSON.stringify(nextBuild)+";\n"+
       original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n";
     try {
+      await writeFile(path.join(root,scriptPath),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
+      await writeFile(path.join(root,cssPath),":root { --efhc-cycle0042-css-proof: updated; }","utf8");
+      for (const route of nextBuild.precache.filter(url=>url.endsWith(".html"))) {
+        const file=path.join(root,route.replace(/^\/efhc\//,""));
+        const html=await readFile(file,"utf8");
+        originalHtml.set(file,html);
+        let updated=html.replace(`efhc-build-id" content="${oldConfig.build_id}"`,
+          `efhc-build-id" content="${newBuildId}"`);
+        if (route==="/efhc/index.html") {
+          assert.ok(updated.includes("</head>"),"real Pages root must have a head");
+          updated=updated.replace("</head>",
+            `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`);
+        }
+        await writeFile(file,updated,"utf8");
+      }
+      await writeFile(configFile,JSON.stringify(nextBuild,null,2)+"\n","utf8");
       await writeFile(workerFile,nextWorker,"utf8");
       await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
       // Wait for complete offline staging AND automatic controller takeover.
@@ -351,7 +377,7 @@ try {
           };
         },{old:oldStaticCache,next:newStaticCache});
         if (state.active==="activated" && state.waiting===null &&
-            !state.sameController && state.oldCache && state.newCache) break;
+            !state.sameController && state.newCache) break;
         await page.waitForTimeout(250);
       }
       console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify(state));
@@ -362,8 +388,16 @@ try {
       // The previous build stays available for old live clients, but its
       // retirement may happen sooner if their loaded assets match this build.
       assert.equal(state.newCache,true,"new offline build was not staged completely");
-      // Reopening/reloading uses the newest network HTML without deleting settings.
-      await page.reload({waitUntil:"domcontentloaded",timeout:30000});
+      // No manual reload: an already-open old React page must transition
+      // automatically at an idle boundary to the new HTML, JS and CSS.
+      await page.waitForFunction(()=>window.__EFHC_NEW_PWA_ASSET__===true, null, {timeout:35000});
+      const pageVersion=await page.evaluate(()=>({
+        marker:document.querySelector('meta[name="efhc-build-id"]')?.getAttribute("content"),
+        css:getComputedStyle(document.documentElement).getPropertyValue("--efhc-cycle0042-css-proof").trim(),
+      }));
+      assert.equal(pageVersion.marker,newBuildId,"new HTML build marker never replaced old one");
+      assert.equal(pageVersion.css,"updated","new CSS not rendered after automatic upgrade");
+      console.log("PWA_REAL_HTML_JS_CSS_UPGRADE",JSON.stringify(pageVersion));
       const after=await page.evaluate(async names=>({
         keys:await caches.keys(),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,
@@ -384,6 +418,10 @@ try {
       console.log("PWA_OLD_BUILD_RETIRED",JSON.stringify(retired));
     } finally {
       await writeFile(workerFile,original,"utf8");
+      await writeFile(configFile,originalConfigFile,"utf8");
+      for (const [file,html] of originalHtml) await writeFile(file,html,"utf8");
+      await Promise.all([unlink(path.join(root,scriptPath)).catch(()=>undefined),
+        unlink(path.join(root,cssPath)).catch(()=>undefined)]);
     }
   });
   assert.deepEqual(errors,[],"unhandled page errors");
