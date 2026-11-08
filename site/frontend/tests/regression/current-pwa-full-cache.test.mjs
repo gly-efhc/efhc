@@ -184,7 +184,7 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
     self:worker, URL, Headers, Response, Blob, Request:RequestStub, Date, console,
     EFHC_PWA_BUILD_CONFIG:config,
     caches: {open:async () => disk,match:async req=>disk.match(req),keys:async()=>[],delete:async()=>true},
-    fetch:async request => new Response(request.url.endsWith("ru.json") ? "missing" : "html", {
+    fetch:async request => new Response(request.url.endsWith("ru.json") ? "missing" : '<html><meta name="efhc-build-id" content="test-incomplete-locale"></html>', {
       status:request.url.endsWith("ru.json") ? 404 : 200,
     }),
   };
