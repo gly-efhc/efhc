@@ -53,7 +53,11 @@ jobs:
         run: |
           ln -s "$RUNNER_TEMP/efhc-parity-build/node_modules" site/frontend/node_modules
           cd site/frontend
-          npm run test:frontend-regression
+          # Isolate a cache regression deadlock without weakening the full gate.
+          echo EFHC_PWA_REGRESSION_START
+          timeout --signal=TERM --kill-after=10s 120s node --test tests/regression/current-pwa-full-cache.test.mjs
+          echo EFHC_ALL_REGRESSIONS_START
+          timeout --signal=TERM --kill-after=10s 240s npm run test:frontend-regression
           cd "$GITHUB_WORKSPACE"
           EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-parity-build/package.json" node site/ci/parity/generate_shell.mjs --check
           node site/frontend/tests/parity/pages-artifact.test.mjs
