@@ -369,9 +369,10 @@ async function navigationFallback(request, event) {
     const { staticName } = await cacheNames();
     const cached = await (await caches.open(staticName)).match(html);
     if (cached) {
-      if (event && self.navigator?.onLine !== false) {
-        event.waitUntil(self.registration.update().catch(() => undefined));
-      }
+      // Let the controlling React client schedule update checks independently.
+      // Waiting for registration.update() from a navigation fetch event can
+      // keep the old worker alive while its successor attempts skipWaiting().
+      // The HTML response remains immediate, even during an update.
       return cached;
     }
   }

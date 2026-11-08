@@ -202,7 +202,7 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
 
 // A cached installed build must remain usable offline, but never mask a newer
 // HTML document when the user reopens the online Pages application.
-test("PWA navigation opens the verified installed page without network delay and checks SW update", async () => {
+test("PWA navigation opens installed page immediately without retaining a worker update event", async () => {
   const source = read("public/sw.js");
   const origin = "https://efhc.example";
   const scope = origin + "/efhc/";
@@ -231,7 +231,8 @@ test("PWA navigation opens the verified installed page without network delay and
   const response=await sandbox.navigateForTest(new Request(scope+"panels/"), {waitUntil:p=>holds.push(p)});
   assert.equal(await response.text(),"verified installed page");
   await Promise.all(holds);
-  assert.equal(updates,1,"instant navigation still triggers a background release check");
+  assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
+  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /registration\.update\(\)/);
   assert.equal(network,0,"warm start must not wait for network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
   assert.match(source,/EFHC_STALE_HTML_BUILD/);
