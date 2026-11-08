@@ -291,7 +291,8 @@ async function cacheUrls(urls, reason = "runtime") {
     failures.some((url) => /\.html$|\/_next\/static\/.*\.(?:js|css)$/.test(url));
   if (incompleteExport || missingEssentialShell) {
     await notifyClients({ type: "CACHE_FAILED", failed: failures.length +
-      Math.max(0, (names.config.precache || []).length - unique.length), reason });
+      Math.max(0, (names.config.precache || []).length - unique.length),
+      failedUrls: failures.slice(0, 6), reason });
     throw Error("EFHC_REQUIRED_PRECACHE_FAILED:" + failures.length);
   }
   await notifyClients({
