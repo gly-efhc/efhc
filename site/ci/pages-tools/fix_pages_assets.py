@@ -19,6 +19,9 @@ PATTERN = re.compile(
 
 # All assets and HTML shells in the actual exported site are included. No
 # backend endpoints, tokens, environment files or non-public data are embedded.
+# Every exported HTML identifies its own build, including HTML-only changes.
+# Strip the generated marker before digesting for deterministic repeated runs.
+BUILD_META = re.compile(r'<meta name="efhc-build-id" content="[a-f0-9]{24}">')
 PWA_SUFFIXES = {'.html', '.js', '.css', '.json', '.webmanifest', '.woff',
                 '.woff2', '.png', '.jpeg', '.jpg', '.webp', '.avif', '.ico',
                 '.svg', '.mp3'}
@@ -64,7 +67,8 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
         if rel in ('sw.js', 'pwa-build.json', 'runtime-config.json'):
             continue
         data = file.read_bytes()
-        digest.update(rel.encode('utf-8') + b'\x00' + hashlib.sha256(data).digest())
+        canonical = BUILD_META.sub('', data.decode('utf-8')).encode('utf-8') if file.suffix.lower() == '.html' else data
+        digest.update(rel.encode('utf-8') + b'\x00' + hashlib.sha256(canonical).digest())
         included.append(base + '/' + rel)
         total_bytes += len(data)
     html_count = sum(path.endswith('.html') for path in included)
@@ -90,6 +94,19 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
         },
     }
     (root / 'pwa-build.json').write_text(json.dumps(config, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    # The marker is outside Next's React root and changes only at a real build
+    # boundary. Its presence prevents a running previous HTML shell from falsely
+    # confirming a successor just because the hashed JS chunks are identical.
+    marker = '<meta name="efhc-build-id" content="' + config['build_id'] + '">'
+    for page in root.rglob('*.html'):
+        html = BUILD_META.sub('', page.read_text(encoding='utf-8'))
+        if '</head>' in html:
+            html = html.replace('</head>', marker + '</head>', 1)
+        elif '<html' in html:
+            html = re.sub(r'(<html[^>]*>)', lambda m: m.group(1) + marker, html, count=1)
+        else:
+            html = marker + html
+        page.write_text(html, encoding='utf-8')
     raw = worker.read_text(encoding='utf-8')
     # Idempotent on repeated export normalization. The versioned SW cannot
     # accidentally adopt new deployed build metadata during a running session.

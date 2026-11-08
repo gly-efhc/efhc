@@ -386,7 +386,10 @@ export function PwaRuntimeStatus(props: {
             url.pathname.includes("/_next/static/"))
           .map(url => url.pathname);
         if (!assets.length) return;
-        if (assets.every(asset => precached.has(asset))) {
+        const currentDocumentBuild = document.querySelector<HTMLMetaElement>(
+          'meta[name="efhc-build-id"]',
+        )?.content;
+        if (currentDocumentBuild === manifest.build_id && assets.every(asset => precached.has(asset))) {
           navigator.serviceWorker.controller?.postMessage({
             type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
           });

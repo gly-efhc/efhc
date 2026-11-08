@@ -70,6 +70,7 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.equal(first.status, 0, first.stderr);
   const config = JSON.parse(readFileSync(path.join(root, "pwa-build.json"), "utf8"));
   assert.equal(config.static_export, true);
+  assert.match(readFileSync(path.join(root,"index.html"),"utf8"), new RegExp(`efhc-build-id" content="${config.build_id}"`));
   for (const route of ["index.html", "panels/index.html", "admin/users/index.html", "browser-shop/index.html"]) {
     assert.ok(config.precache.includes("/efhc/" + route), "Missing cached page: " + route);
   }
@@ -89,6 +90,7 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   const again = run("fix_pages_assets.py", root);
   assert.equal(again.status, 0, again.stderr);
   assert.equal(readFileSync(path.join(root, "sw.js"), "utf8"), worker, "same build must not prepend another config");
+  assert.equal(readFileSync(path.join(root, "pwa-build.json"),"utf8"),JSON.stringify(config,null,2)+"\n","build manifest must remain deterministic");
   unlinkSync(path.join(root, "admin/users/index.html"));
   const rejected = run("verify_export.py", root);
   assert.notEqual(rejected.status, 0, "missing offline page must block deployment");
