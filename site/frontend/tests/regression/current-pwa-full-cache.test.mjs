@@ -109,8 +109,8 @@ test("Existing USER data and local settings are retained rather than replaced by
   assert.match(settings, /local choice made while the Telegram request was pending/i);
   assert.match(settings, /window\.localStorage\.getItem\(`\$\{KEY\}:\$\{owner\}`\)/);
   const ownerSwitch = read("src/lib/queryClient.ts");
-  assert.match(ownerSwitch, /saveSettings\(loadSettings\(\)\)/);
-  assert.doesNotMatch(ownerSwitch, /saveSettings\(resetSettings\(\)\)/);
+  assert.match(ownerSwitch, /saveSettings\(resetSettings\(\)\)/);
+  assert.doesNotMatch(ownerSwitch, /saveSettings\(loadSettings\(\)\)/);
   const activity = read("src/lib/frontendActivity.ts");
   assert.match(activity, /refetchQueries/);
   const energy = read("src/pages/index.tsx");
