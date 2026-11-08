@@ -63,9 +63,9 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
   if (!cache) return false;
   const changed = cache.owner !== null && cache.owner !== owner;
   if (changed) {
-    // Another owner may have a valid disk snapshot from an earlier session.
-    // Restore only that owner's display data; never reuse the old owner.
-    cache.entries = durable(owner).entries;
+    // OWNER invariant: a Global ID switch invalidates prior display data.
+    // Returning to a previous owner requires a new authoritative read.
+    cache.entries = [];
     cache.owner = owner;
     settingsOwner = owner;
     persist(cache, false);
