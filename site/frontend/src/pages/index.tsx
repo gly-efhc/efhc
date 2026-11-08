@@ -11,6 +11,7 @@ import { EnergyVariantIcon } from
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { energyDisplayProjectionWindowMs, energyElapsedSinceSnapshotMs, projectEnergyD8 } from "../lib/energyProjection";
 import { useT } from "../hooks/useT";
+import { useExchangePreview } from "../queries/useExchange";
 import type {
   SnapshotStatus,
   SyncSnapshot,
@@ -80,7 +81,7 @@ type LiveBlockProps = {
   lifetime_kwh: string;
   gen_per_sec_effective: string;
   active_panels: string;
-  available_kwh: string;
+  available_kwh: string | null;
   thresholds_scaled: bigint[];
   hide_balances: boolean;
   labels: {
@@ -263,9 +264,13 @@ function LiveEnergyBlock(props: LiveBlockProps) {
   const shownRate = props.hide_balances
     ? "••••••••"
     : formatFixedDown(props.gen_per_sec_effective, 8);
+  // Only the backend exchange preview confirms kWh available to exchange.
+  // The local ticker above remains exclusive to lifetime energy and progress.
   const shownAvailable = props.hide_balances
     ? "••••••••"
-    : formatFixedDown(fromScaled(toScaled(props.available_kwh) + (eLiveScaled - e0ScaledRaw)), 8);
+    : props.available_kwh === null
+      ? "—"
+      : formatFixedDown(props.available_kwh, 8);
 
   return (
     <section
@@ -417,6 +422,7 @@ export default function EnergyPage(props: {
   refreshSnapshot?: () => void;
 }) {
   const t = useT();
+  const previewQuery = useExchangePreview();
   const s = props.snap ?? emptyOwnerSnapshot();
 
   const thresholdsKwh = useMemo(
@@ -449,7 +455,7 @@ export default function EnergyPage(props: {
         )}
         gen_per_sec_effective={s.meta.gen_per_sec_effective}
         active_panels={activePanels}
-        available_kwh={s.profile.available_kwh}
+        available_kwh={previewQuery.data?.available_kwh ?? null}
         thresholds_scaled={thresholdsScaled}
         hide_balances={false}
         labels={{
