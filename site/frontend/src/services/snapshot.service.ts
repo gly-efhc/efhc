@@ -13,7 +13,7 @@ import type { PanelsSummary } from "../types/panels";
 function canonicalSnapshotD8(value: unknown): unknown {
   if (typeof value !== "string" && typeof value !== "number") return value;
   const raw = String(value).trim();
-  const match = /^(-?)(\\d+)(?:\\.(\\d+))?(?:[eE]([+-]?\\d{1,3}))?$/.exec(raw);
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:[eE]([+-]?\d{1,3}))?$/.exec(raw);
   if (!match) return value;
   const fraction = match[3] || "";
   const exponent = match[4] ? Number(match[4]) : 0;
@@ -33,7 +33,7 @@ function canonicalSnapshotD8(value: unknown): unknown {
 
 const decimalStringSchema = z.preprocess(
   canonicalSnapshotD8,
-  z.string().regex(/^-?\\d+\\.\\d{8}$/),
+  z.string().regex(/^-?\d+\.\d{8}$/),
 );
 
 const profileSchema = z.object({

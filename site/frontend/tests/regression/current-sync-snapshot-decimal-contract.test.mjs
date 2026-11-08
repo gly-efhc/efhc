@@ -87,9 +87,9 @@ test("Energy renders 13 panels and verified generation, not a zero-owner placeho
   const html = renderToStaticMarkup(React.createElement(Page, {snap, snapshotMode:"live", snapshotStatus:"success"}));
   assert.match(html, /data-energy-mobile-proof="390px"/);
   assert.match(html, /194\.50098168/);
-  assert.match(html, /data-energy-chip="active-panels"[\\s\\S]*?<strong>13<\\/strong>/);
-  assert.match(html, /data-energy-chip="generation-rate"[\\s\\S]*?0\.00008996/);
-  assert.match(html, /data-energy-chip="available-kwh"[\\s\\S]*?4\.63450875/);
+  assert.match(html, /data-energy-chip="active-panels"[\s\S]*?<strong>13<\/strong>/);
+  assert.match(html, /data-energy-chip="generation-rate"[\s\S]*?0\.00008996/);
+  assert.match(html, /data-energy-chip="available-kwh"[\s\S]*?4\.63450875/);
 });
 
 test("My Panels receives the same confirmed per-panel BASE rate from a valid snapshot", () => {
