@@ -11,7 +11,6 @@ import { EnergyVariantIcon } from
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { energyDisplayProjectionWindowMs, energyElapsedSinceSnapshotMs, projectEnergyD8 } from "../lib/energyProjection";
 import { useT } from "../hooks/useT";
-import { useExchangePreview } from "../queries/useExchange";
 import type {
   SnapshotStatus,
   SyncSnapshot,
@@ -415,6 +414,7 @@ const LiveEnergyHeroAndProgress = memo(LiveEnergyBlock);
 
 export default function EnergyPage(props: {
   snap: SyncSnapshot | null;
+  confirmedAvailableKwh?: string | null;
   snapshotStatus?: SnapshotStatus;
   snapshotMode?: "live" | "browser-preview";
   snapshotRefreshing?: boolean;
@@ -422,7 +422,6 @@ export default function EnergyPage(props: {
   refreshSnapshot?: () => void;
 }) {
   const t = useT();
-  const previewQuery = useExchangePreview();
   const s = props.snap ?? emptyOwnerSnapshot();
 
   const thresholdsKwh = useMemo(
@@ -455,7 +454,7 @@ export default function EnergyPage(props: {
         )}
         gen_per_sec_effective={s.meta.gen_per_sec_effective}
         active_panels={activePanels}
-        available_kwh={previewQuery.data?.available_kwh ?? null}
+        available_kwh={props.confirmedAvailableKwh ?? null}
         thresholds_scaled={thresholdsScaled}
         hide_balances={false}
         labels={{
