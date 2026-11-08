@@ -44,6 +44,7 @@ import { ShopLayout } from "../components/ShopLayout";
 import { SplashScreen } from "../components/SplashScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useSnapshot } from "../hooks/useSnapshot";
+import { useExchangePreview } from "../queries/useExchange";
 import { useCurrentAccountBalances } from "../hooks/useCurrentAccountBalances";
 import { overlayVerifiedAccountBalances } from "../lib/accountBalancePresentation";
 import {
@@ -545,6 +546,9 @@ function AppInner(props: {
     refresh: refreshSnapshot,
     updatedAt: snapshotUpdatedAt,
   } = useSnapshot();
+  // Keep server reads in the authenticated app shell so Energy remains
+  // renderable without a session/provider (protected-page persistence).
+  const energyAvailablePreview = useExchangePreview(router.pathname === "/");
   const currentAccountBalances = useCurrentAccountBalances();
   const authSession = useAuthSessionController();
   const globalId = useAuthOwnerGlobalId();
@@ -859,6 +863,7 @@ function AppInner(props: {
               snapshotMode={snapshotMode}
               snapshotRefreshing={snapshotRefreshing}
               snapshotUpdatedAt={snapshotUpdatedAt}
+              confirmedAvailableKwh={energyAvailablePreview.data?.available_kwh ?? null}
               refreshSnapshot={() => {
                 void refreshSnapshot();
               }}
