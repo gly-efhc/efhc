@@ -43,7 +43,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 25000 });
       await page.locator('.efhc-independent-shell[data-interface-app-mode="user"]').first()
         .waitFor({ state: "attached", timeout: 12000 });
-      const result = await page.evaluate(({ palette, roleNames, neutral, selectors, expectedTheme03 }) => {
+      const result = await page.evaluate(({ palette, roleNames, neutral, selectors, expectedTheme03, pageRoute }) => {
         const root = document.documentElement;
         const shell = document.querySelector('.efhc-independent-shell[data-interface-app-mode="user"]');
         if (!shell) throw new Error("USER shell not mounted");
@@ -61,6 +61,19 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
         let expectedGeometry = null;
         const matrix = [];
         const mismatches = [];
+        // A style-only probe permits verification of history card materials even
+        // when the TEST API correctly returns no real balance movements.
+        const historyHost = pageRoute === "/withdraw"
+          ? shell.querySelector(".efhc-withdraw-shell")
+          : null;
+        const historyProbe = historyHost ? document.createElement("div") : null;
+        if (historyProbe) {
+          historyProbe.className = "efhc-withdraw-history-row";
+          historyProbe.setAttribute("data-withdraw-history-balance-type-label", "semantic");
+          historyProbe.setAttribute("aria-hidden", "true");
+          historyHost.appendChild(historyProbe);
+        }
+        const expectedRGB = hex => "rgb(" + [1,3,5].map(i => parseInt(hex.slice(i, i + 2),16)).join(", ") + ")";
         try {
           for (const entry of palette) {
             for (const node of [root, shell]) {
@@ -86,6 +99,37 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             }
             if (get("--efhc-ct-accent").toLowerCase() !== entry.accent.toLowerCase()) {
               throw new Error("Wrong active accent " + entry.id + ": " + get("--efhc-ct-accent"));
+            }
+            const accentRGB = expectedRGB(entry.accent);
+            if (pageRoute === "/exchange") {
+              for (const selector of [
+                '[data-exchange-submit-action="true"]',
+                '.efhc-exchange-withdraw-button',
+              ]) {
+                const node = shell.querySelector(".efhc-exchange-shell " + selector);
+                if (!node) throw new Error("Missing exchange action " + selector);
+                const appearance = getComputedStyle(node);
+                if (appearance.borderTopColor !== accentRGB || appearance.color !== accentRGB) {
+                  throw new Error("Exchange action ignores " + entry.id + " accent: " + selector + " / " + appearance.borderTopColor + " / " + appearance.color);
+                }
+              }
+            }
+            if (pageRoute === "/referrals") {
+              const headings = shell.querySelectorAll('.efhc-referrals-shell [data-referrals-achievements="visible"] .efhc-referral-level-heading, .efhc-referrals-shell [data-referrals-achievements="visible"] .efhc-referral-level-heading > .efhc-referral-card-title');
+              if (headings.length !== 2) throw new Error("Missing achievement heading surfaces");
+              for (const heading of headings) {
+                const appearance = getComputedStyle(heading);
+                if (!["transparent", "rgba(0, 0, 0, 0)"].includes(appearance.backgroundColor) || appearance.backgroundImage !== "none") {
+                  throw new Error("Achievement label still has a backing in " + entry.id + ": " + appearance.backgroundColor + " / " + appearance.backgroundImage);
+                }
+              }
+            }
+            if (pageRoute === "/withdraw") {
+              if (!historyProbe) throw new Error("Missing withdraw history style boundary");
+              const appearance = getComputedStyle(historyProbe);
+              if (appearance.borderTopColor !== accentRGB || appearance.backgroundColor === "rgba(0, 0, 0, 0)") {
+                throw new Error("Withdraw history row ignores " + entry.id + ": " + appearance.borderTopColor + " / " + appearance.backgroundColor);
+              }
             }
             if (!expectedMaterial) expectedMaterial = material;
             else for (const name of neutral) {
@@ -142,6 +186,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             matrix.push({ theme: entry.id, roles: roleNames.length, measuredElements: sample.length });
           }
         } finally {
+          historyProbe?.remove();
           for (const {node,color,legacy} of previous) {
             if (color === null) node.removeAttribute("data-color-theme-id");
             else node.setAttribute("data-color-theme-id", color);
@@ -150,7 +195,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
           }
         }
         return { matrix, mismatches };
-      }, { palette: catalog, roleNames: roles, neutral: neutralRoles, selectors: layoutSelectors, expectedTheme03: theme03Expected });
+      }, { palette: catalog, roleNames: roles, neutral: neutralRoles, selectors: layoutSelectors, expectedTheme03: theme03Expected, pageRoute: route });
       assert.equal(result.matrix.length, 10, "Missing theme on " + route + " at " + width);
       outcomes.push({ route, width, themes: result.matrix.length, measuredElements: result.matrix[0]?.measuredElements || 0 });
       for (const mismatch of result.mismatches) failures.push({ route, width, ...mismatch });

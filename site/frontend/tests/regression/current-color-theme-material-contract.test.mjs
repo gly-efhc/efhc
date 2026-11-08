@@ -93,3 +93,25 @@ test("the Theme03 reference is exact and Admin remains outside the USER color br
   assert.match(app, /PB: COLOR_THEME_PROGRESS_STARTER/);
   assert.match(app, /RP: COLOR_THEME_PROGRESS_STARTER/);
 });
+
+
+test("achievement headings stay unbacked and two exchange actions follow all active CT accents", () => {
+  assert.equal(catalog.length, 10);
+  const section = css.split("/* USER achievement caption transparency and active CT action/ledger materials. */")[1];
+  assert.ok(section, "Missing active USER surface material contract");
+  assert.match(section, /\[data-referrals-achievements="visible"\]/);
+  assert.match(section, /background-color:\s*transparent\s*!important/);
+  assert.match(section, /\.efhc-exchange-shell :is\(\[data-exchange-submit-action="true"\],\.efhc-exchange-withdraw-button\)/);
+  assert.match(section, /border-color:\s*var\(--efhc-ct-accent\)\s*!important/);
+  assert.match(section, /background-color:\s*rgba\(var\(--efhc-ct-accent-rgb\),\.13\)/);
+  assert.match(section, /\[data-withdraw-history-balance-type-label="semantic"\]\.efhc-withdraw-history-row/);
+  assert.match(section, /background-color:\s*rgba\(var\(--efhc-ct-accent-rgb\),\.09\)/);
+  assert.doesNotMatch(section, /(?:width|height|padding|margin|border-radius|font-size|display|position|grid-template-columns)\s*:/,
+    "Only colors and achievement heading overlays may be changed");
+  const exchange = read("src/components/ExchangePanel.tsx");
+  const exchangeRoute = read("src/pages/exchange.tsx");
+  const withdraw = read("src/pages/withdraw.tsx");
+  assert.match(exchange, /data-exchange-submit-action="true"/);
+  assert.match(exchangeRoute, /efhc-exchange-withdraw-button/);
+  assert.match(withdraw, /data-withdraw-history-balance-type-label="semantic"/);
+});
