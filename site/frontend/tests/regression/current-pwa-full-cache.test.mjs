@@ -230,5 +230,7 @@ test("PWA navigation opens the verified installed page without network delay and
   assert.equal(updates,1,"instant navigation still triggers a background release check");
   assert.equal(network,0,"warm start must not wait for network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
+  assert.match(source,/EFHC_STALE_HTML_BUILD/);
+  assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
   assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
