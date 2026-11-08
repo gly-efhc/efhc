@@ -1,13 +1,39 @@
 import { z } from "zod";
 
 import { apiRequest } from "../lib/api";
+import { fromScaledBigint } from "../lib/format";
 import { dbIdSchema } from "../lib/api/db-id";
 import { parseGlobalId } from "../types/identity";
 import type { PanelsSummary } from "../types/panels";
 
+/** Backend Decimal(D8) can serialize exact values as 0E-8 or 1E-8.
+ * Normalize only read-only API values; never use Number/parseFloat for D8.
+ * An invalid or inexact extra fraction remains invalid (no silent rounding).
+ */
+function canonicalSnapshotD8(value: unknown): unknown {
+  if (typeof value !== "string" && typeof value !== "number") return value;
+  const raw = String(value).trim();
+  const match = /^(-?)(\\d+)(?:\\.(\\d+))?(?:[eE]([+-]?\\d{1,3}))?$/.exec(raw);
+  if (!match) return value;
+  const fraction = match[3] || "";
+  const exponent = match[4] ? Number(match[4]) : 0;
+  const shift = 8 + exponent - fraction.length;
+  // Bounded exponent prevents untrusted payloads from creating huge BigInts.
+  if (Math.abs(exponent) > 100 || Math.abs(shift) > 100) return value;
+  let units = BigInt(match[2] + fraction);
+  if (shift >= 0) units *= 10n ** BigInt(shift);
+  else {
+    const divisor = 10n ** BigInt(-shift);
+    if (units % divisor !== 0n) return value;
+    units /= divisor;
+  }
+  if (match[1] === "-") units = -units;
+  return fromScaledBigint(units, 8);
+}
+
 const decimalStringSchema = z.preprocess(
-  (value) => (typeof value === "number" ? String(value) : value),
-  z.string().regex(/^-?\d+(?:\.\d+)?$/),
+  canonicalSnapshotD8,
+  z.string().regex(/^-?\\d+\\.\\d{8}$/),
 );
 
 const profileSchema = z.object({
