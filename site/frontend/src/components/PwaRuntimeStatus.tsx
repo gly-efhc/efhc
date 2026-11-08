@@ -402,9 +402,9 @@ export function PwaRuntimeStatus(props: {
         if (activeBuildId !== manifest.build_id) return;
         const precached = new Set<string>(manifest.precache);
         const assets = Array.from(document.querySelectorAll("script[src], link[rel='stylesheet'][href]"))
-          .map(element => (element as HTMLScriptElement | HTMLLinkElement).src ||
-            (element as HTMLLinkElement).href)
-          .filter(Boolean).map(value => new URL(value, window.location.href))
+          .map(element => element.getAttribute("src") || element.getAttribute("href"))
+          .filter((value): value is string => typeof value === "string" && value.length > 0)
+          .map(value => new URL(value, window.location.href))
           .filter(url => url.origin === window.location.origin &&
             url.pathname.includes("/_next/static/"))
           .map(url => url.pathname);
