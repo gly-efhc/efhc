@@ -451,6 +451,13 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
+  if (data.type === "GET_ACTIVE_BUILD") {
+    event.waitUntil((async () => {
+      const {config} = await cacheNames();
+      event.ports?.[0]?.postMessage({type: "ACTIVE_BUILD", buildId: config.build_id});
+    })());
+    return;
+  }
   if (data.type === "CLIENT_BUILD_READY") {
     event.waitUntil((async () => {
       const names = await cacheNames();
