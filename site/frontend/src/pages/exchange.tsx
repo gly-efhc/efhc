@@ -99,8 +99,8 @@ export default function ExchangePage(props: {
     <GamePageShell
       className="efhc-exchange-shell"
       data-exchange-route-contract="current-user-no-tg-path"
-      data-exchange-contract-proof="1289"
-      data-exchange-runtime-proof="1556-react-query-transaction"
+      data-exchange-contract-proof="current-user"
+      data-exchange-runtime-proof="react-query-transaction"
     >
       <GameHero
         ref={heroSurface.ref}
@@ -170,7 +170,7 @@ export default function ExchangePage(props: {
           type="button"
           className="efhc-exchange-history-link"
           data-exchange-history-link="account-history"
-          data-exchange-history-link-light="1288"
+          data-exchange-history-link-light="true"
           onClick={() => openProfile("history")}
         >
           {t("exchange.open_history")}
