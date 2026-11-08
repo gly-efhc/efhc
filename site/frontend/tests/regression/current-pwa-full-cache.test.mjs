@@ -196,6 +196,7 @@ test("PWA navigation fetches fresh HTML online and falls back to its installed s
   let online = true;
   const calls = [];
   const cached = new Response("old installed shell", { status: 200 });
+  const current = new Response("current installed shell", { status: 200 });
   const sandbox = {
     URL, Response, Request, Headers, Blob, Date, console,
     self: {
@@ -209,7 +210,10 @@ test("PWA navigation fetches fresh HTML online and falls back to its installed s
         content: { max_entries: 40, max_age_seconds: 604800, max_bytes: 5242880 },
       },
     },
-    caches: { match: async url => String(url).endsWith("/panels/index.html") ? cached.clone() : undefined },
+    caches: {
+      match: async url => String(url).endsWith("/panels/index.html") ? cached.clone() : undefined,
+      open: async () => ({match: async url => String(url).endsWith("/panels/index.html") ? current.clone() : undefined}),
+    },
     fetch: async (_request, options) => {
       calls.push(options?.cache);
       if (!online) throw Error("offline");
@@ -221,6 +225,6 @@ test("PWA navigation fetches fresh HTML online and falls back to its installed s
   assert.equal(await (await sandbox.navigateForTest(request)).text(), "fresh released shell");
   assert.equal(calls[0], "no-store");
   online = false;
-  assert.equal(await (await sandbox.navigateForTest(request)).text(), "old installed shell");
+  assert.equal(await (await sandbox.navigateForTest(request)).text(), "current installed shell");
   assert.equal(calls.length, 2);
 });

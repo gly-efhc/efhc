@@ -348,7 +348,10 @@ async function navigationFallback(request) {
   } catch { /* An offline navigation may use the matching installed build. */ }
   if (config.static_export && relativePath(url.pathname) !== null) {
     const html = url.pathname.endsWith(".html") ? url.pathname : url.pathname.replace(/\/$/, "") + "/index.html";
-    const cached = await caches.match(html);
+    // Two build caches may coexist during a safe upgrade. Resolve the
+    // active build first; the global caches.match can select older HTML.
+    const {staticName} = await cacheNames();
+    const cached = await (await caches.open(staticName)).match(html) || await caches.match(html);
     if (cached) return cached;
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
@@ -367,11 +370,11 @@ self.addEventListener("install", (event) => {
           type: "UPDATE_AVAILABLE",
           buildId: config.build_id,
         });
-        // Installation is atomic: never replace a running build unless every
-        // required offline resource has been staged and verified above.
-        // Existing pages stay mounted; the previous hashed assets are retained.
-        await self.skipWaiting();
       }
+      // Installation is atomic: all offline resources are already verified.
+      // Skip the waiting phase for both initial and update installations;
+      // retain the prior hashed assets for any still-open React page.
+      await self.skipWaiting();
     })(),
   );
 });
