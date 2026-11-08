@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { activateUserCache, startUserDataPersistence } from "./userDataCache";
+import { activateUserCache, forgetUserDataOnLogout, startUserDataPersistence } from "./userDataCache";
 import { bindWindowSettings, resetSettings, saveSettings } from "./settings";
 import {resetWindowDrafts} from "./ownerDrafts";
 
@@ -61,4 +61,9 @@ export function activateUserDataOwner(client: QueryClient, owner: string | null,
     if (typeof window !== "undefined") window.dispatchEvent?.(new Event("efhc:user-settings-ready"));
   }
   return changed;
+}
+
+/** Revoke signed-out user display data without invalidating static PWA caches. */
+export function forgetSignedOutUser(client: QueryClient): void {
+  forgetUserDataOnLogout(client);
 }

@@ -72,7 +72,11 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
     // Removing cancels the old queries, including their fetch AbortSignal.
     client.removeQueries({predicate: q => userKey(q.queryKey)});
   } else {
-    if (cache.owner === null) cache.entries = durable(owner).entries;
+    // A recovered tab may retain its verified owner marker while its
+    // session entry list is empty. Restore the same owner's durable snapshot.
+    if (cache.owner === null || (cache.owner === owner && cache.entries.length === 0)) {
+      cache.entries = durable(owner).entries;
+    }
     cache.owner = owner;
     settingsOwner = owner;
   }
@@ -82,4 +86,21 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
   }
   persist(cache, false);
   return changed;
+}
+
+/** An explicit sign-out revokes personal display snapshots. Normal browser
+ * reopening does not call this, preserving same-owner offline warm starts. */
+export function forgetUserDataOnLogout(client: QueryClient): void {
+  const cache = controllers.get(client);
+  if (!cache) return;
+  const owner = cache.owner;
+  cache.owner = null;
+  cache.entries = [];
+  settingsOwner = null;
+  windowStateStorage().removeItem(KEY);
+  if (owner) {
+    try { window.localStorage.removeItem(`${KEY}:${owner}`); }
+    catch { /* Optional storage may be unavailable. */ }
+  }
+  client.removeQueries({predicate: query => userKey(query.queryKey)});
 }

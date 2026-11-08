@@ -76,6 +76,7 @@ export type UserSettings = {
 
 // Single persistent namespace for a new project with no historical users.
 const KEY = "EFHC_USER_SETTINGS_V1";
+const DEVICE_VIEW_KEY = "EFHC_DEVICE_VIEW_PREFERENCES";
 const CLOUD_KEY = "ui_settings_v1";
 
 export const COMMON_DEFAULT_INTERFACE_VARIANTS: InterfaceVariantSettings =
@@ -307,6 +308,24 @@ function normalizeSettings(parsed: any): UserSettings {
   } as UserSettings;
 }
 
+/** Non-sensitive view choices can survive a new tab without restoring user
+ * identity, balances, credentials, avatars, roles or authorization. */
+function safeDevicePreferences(source: UserSettings): Partial<UserSettings> {
+  return {
+    interface_settings_version: 4,
+    lang: source.lang,
+    theme_mode: source.theme_mode,
+    color_theme_id: source.color_theme_id,
+    global_theme_id: source.global_theme_id,
+    interface_variants: source.interface_variants,
+    theme_overrides: source.theme_overrides,
+    music_enabled: source.music_enabled,
+    sfx_enabled: source.sfx_enabled,
+    sfx_volume: source.sfx_volume,
+    haptics_enabled: source.haptics_enabled,
+    reduce_motion: source.reduce_motion,
+  };
+}
 export function loadSettings(): UserSettings {
   if (typeof window === "undefined") return resetSettings();
   try {
@@ -317,6 +336,10 @@ export function loadSettings(): UserSettings {
     const raw = (owner ? window.localStorage.getItem(`${KEY}:${owner}`) : null)
       || (!legacyOwner || legacyOwner === owner ? window.localStorage.getItem(KEY) : null);
     if (raw) return normalizeSettings(JSON.parse(raw) || {});
+    if (!owner) {
+      const device = window.localStorage.getItem(DEVICE_VIEW_KEY);
+      if (device) return normalizeSettings(JSON.parse(device));
+    }
     return resetSettings();
   } catch {
     return resetSettings();
@@ -346,6 +369,9 @@ export function saveSettings(s: UserSettings): void {
     const owner = currentUserDataOwner();
     const raw = JSON.stringify({...s, settings_owner: owner, interface_settings_version: 4});
     windowStateStorage().setItem(KEY, raw);
+    // Persist only generic appearance in long-term storage. Owner-specific
+    // data stays behind a signed or session-bound Global ID.
+    window.localStorage.setItem(DEVICE_VIEW_KEY, JSON.stringify(safeDevicePreferences(s)));
     if (owner) {
       window.localStorage.setItem(`${KEY}:${owner}`, raw);
       if (!window.localStorage.getItem(`${KEY}:legacy-owner`)) window.localStorage.setItem(`${KEY}:legacy-owner`, owner);

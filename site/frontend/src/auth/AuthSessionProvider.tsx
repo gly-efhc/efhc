@@ -29,6 +29,7 @@ import {
   captureReferralStartParamFromFirstEntry,
 } from "../lib/referral-start-param";
 import {beginDisplayOwnerResolution,needsTelegramOwnerResolution,resolvedDisplayOwner,subscribeDisplayOwner} from "../lib/displayOwner";
+import {forgetSignedOutUser} from "../lib/queryClient";
 import { clearDemoSession, isDemoBackendMode, isDemoGuestSession, loginDemoGuest as issueDemoGuest, loginDemo as issueDemoLogin, selectDemoGlobalId as issueDemoSelection, logoutDemo as revokeDemoLogin } from "../demo/session";
 
 export type AuthBootstrapStatus =
@@ -294,6 +295,8 @@ export function AuthSessionProvider(props: {
     } finally {
       clearAuthSession();
       clearDemoSession();
+      forgetSignedOutUser(queryClient);
+      beginDisplayOwnerResolution(true);
       // Do not automatically reissue a public guest after explicit sign-out.
       guestBootstrapStarted.current = true;
       setState({
