@@ -74,6 +74,18 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
           historyHost.appendChild(historyProbe);
         }
         const expectedRGB = hex => "rgb(" + [1,3,5].map(i => parseInt(hex.slice(i, i + 2),16)).join(", ") + ")";
+        // Color themes have authored transition: color/border-color. Inspect
+        // the settled semantic material, not a single synchronous transition
+        // frame immediately after changing the data-color-theme-id attribute.
+        // Only these style probes are frozen; application animations stay intact.
+        const motionProbe = document.createElement("style");
+        motionProbe.textContent = `
+          .efhc-exchange-shell :is([data-exchange-submit-action="true"],.efhc-exchange-withdraw-button),
+          .efhc-withdraw-shell .efhc-withdraw-history-row {
+            transition-property:none!important;
+            transition-duration:0s!important;
+          }`;
+        document.head.appendChild(motionProbe);
         try {
           for (const entry of palette) {
             for (const node of [root, shell]) {
@@ -209,6 +221,7 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
             matrix.push({ theme: entry.id, roles: roleNames.length, measuredElements: sample.length });
           }
         } finally {
+          motionProbe.remove();
           historyProbe?.remove();
           for (const {node,color,legacy} of previous) {
             if (color === null) node.removeAttribute("data-color-theme-id");
