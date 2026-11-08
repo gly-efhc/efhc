@@ -74,6 +74,9 @@ test("One projection path is used on hydration, each live tick and all refetches
   const energy = source("pages/index.tsx");
   const app = source("pages/_app.tsx");
   const snapshot = source("hooks/useSnapshot.ts");
+  const snapshotSchema = source("services/snapshot.service.ts");
+  assert.ok(energy.includes("s.meta.generation_checkpoint_at_iso ?? s.meta.server_now_iso"), "use committed energy boundary with legacy fallback");
+  assert.ok(snapshotSchema.includes("generation_checkpoint_at_iso: z.string().nullable().optional()"), "optional wire compatibility");
   assert.match(energy, /energyElapsedSinceSnapshotMs\(/);
   assert.match(energy, /projectEnergyD8\(/);
   assert.match(energy, /snapshot_updated_at_ms=\{props\.snapshotUpdatedAt \?\? null\}/);
