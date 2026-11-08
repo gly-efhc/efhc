@@ -89,12 +89,17 @@ test("One projection path is used on hydration, each live tick and all refetches
 
 test("Cycle 0043: both available-kWh displays use one polled backend exchange preview", () => {
   const energy = source("pages/index.tsx");
+  const app = source("pages/_app.tsx");
   const exchange = source("pages/exchange.tsx");
   const previewHook = source("queries/useExchange.ts");
   const snapshotHook = source("hooks/useSnapshot.ts");
 
-  assert.match(energy, /import \{ useExchangePreview \} from "\.\.\/queries\/useExchange";/);
-  assert.match(energy, /available_kwh=\{previewQuery\.data\?\.available_kwh \?\? null\}/);
+  // Energy must remain SSR-renderable without a provider: the app shell owns
+  // the backend request, and Energy only renders the confirmed prop.
+  assert.doesNotMatch(energy, /useExchangePreview/);
+  assert.match(energy, /available_kwh=\{props\.confirmedAvailableKwh \?\? null\}/);
+  assert.match(app, /useExchangePreview\(router\.pathname === "\/"\)/);
+  assert.match(app, /confirmedAvailableKwh=\{energyAvailablePreview\.data\?\.available_kwh \?\? null\}/);
   assert.match(energy, /props\.available_kwh === null[\s\S]*?formatFixedDown\(props\.available_kwh, 8\)/);
   assert.doesNotMatch(energy, /toScaled\(props\.available_kwh\)\s*\+\s*\(eLiveScaled\s*-\s*e0ScaledRaw\)/);
 
@@ -102,6 +107,7 @@ test("Cycle 0043: both available-kWh displays use one polled backend exchange pr
   assert.doesNotMatch(exchange, /snapshotAvailable/);
   assert.match(exchange, /value=\{availableKwh === null \? "—" : format8\(availableKwh\)\}/);
   assert.match(previewHook, /queryKey: queryKeys\.exchange\.preview\(globalId\)/);
+  assert.match(previewHook, /enabled: Boolean\(globalId\) && enabled/);
   assert.match(previewHook, /refetchInterval: globalId \? 30_000 : false/);
   assert.match(previewHook, /refetchOnWindowFocus: "always"/);
   assert.match(previewHook, /refetchOnReconnect: "always"/);
