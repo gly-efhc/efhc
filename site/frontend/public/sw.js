@@ -254,8 +254,15 @@ async function cacheUrls(urls, reason = "runtime") {
       const request = new Request(url, { credentials: "same-origin" });
       const cached = await cache.match(request);
       if (!cached) {
-        const response = await fetch(request);
+        // A newly published HTML may have the same URL as the old release.
+        // Never allow an HTTP disk cache to pin previous markup to a new build.
+        const htmlDocument = names.config.static_export && new URL(request.url).pathname.endsWith(".html");
+        const response = await fetch(request, {cache: htmlDocument ? "no-store" : "reload"});
         if (!response.ok) throw Error("Precache HTTP " + response.status);
+        if (htmlDocument && !(await response.clone().text()).includes(
+          'name="efhc-build-id" content="' + names.config.build_id + '"')) {
+          throw Error("EFHC_STALE_HTML_BUILD");
+        }
         await putSafe(cache, request, response);
         completedBytes += await responseBytes(response);
       } else {
