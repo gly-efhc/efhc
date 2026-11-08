@@ -25,6 +25,9 @@ async function persistedKeyFromSource(filename) {
 }
 const ownerCacheKey = await persistedKeyFromSource("userDataCache.ts");
 const settingsKey = await persistedKeyFromSource("settings.ts");
+const authSessionKey = (await readFile(new URL("../../src/lib/auth-session.ts",import.meta.url),"utf8"))
+  .match(/\bconst STORAGE_KEY\s*=\s*["']([^"']+)["']/)?.[1];
+assert.ok(authSessionKey,"Auth credential storage key must be found in its owning source");
 await mkdir(artifactDir, {recursive:true});
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
@@ -162,8 +165,8 @@ try {
         balance:document.querySelector("[data-header-balance-value]")?.getAttribute("data-header-balance-value"),
         shell:document.querySelector("#__next")?.innerHTML.length||0,
         // This is a read-only cached display. No signed write is authorized.
-        authToken:sessionStorage.getItem("efhc.auth.session.v1"),
-      }),{owner,expected});
+        authToken:sessionStorage.getItem(authKey),
+      }),{owner,expected,authKey:authSessionKey});
       assert.equal(state.owner,owner);
       assert.equal(state.balance,expected);
       assert.ok(state.shell>100);

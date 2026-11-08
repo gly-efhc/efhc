@@ -177,7 +177,10 @@ test('new tab never adopts a previous owner avatar through unscoped legacy prefe
    avatar_social_url:'https://example.org/person.jpg',
    avatar_custom_images:[],
    avatar_url:null};
- disk.set('EFHC_USER_SETTINGS_V1',JSON.stringify(legacy));
+ const settingsKey=readFileSync(new URL('../../src/lib/settings.ts',import.meta.url),'utf8')
+   .match(/\bconst KEY\s*=\s*["']([^"']+)["']/)?.[1];
+ assert.ok(settingsKey,'settings storage key must come from production module');
+ disk.set(settingsKey,JSON.stringify(legacy));
  const second=sourceRuntime({storage:disk,session:new Map()});
  const recovered=second.load('lib/settings.ts').loadSettings();
  assert.equal(recovered.lang,'ru');
