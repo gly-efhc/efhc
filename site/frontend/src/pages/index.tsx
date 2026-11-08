@@ -439,7 +439,7 @@ export default function EnergyPage(props: {
       <LiveEnergyHeroAndProgress
         key={s.profile.global_id}
         confirmed={Boolean(s.meta.server_now_iso)}
-        server_now_iso={s.meta.server_now_iso}
+        server_now_iso={s.meta.generation_checkpoint_at_iso ?? s.meta.server_now_iso}
         nearest_expire_at={s.panels.nearest_expire_at ?? null}
         snapshot_updated_at_ms={props.snapshotUpdatedAt ?? null}
         lifetime_kwh={readStr(
