@@ -59,7 +59,8 @@ test("After every successful paid panel, server-confirmed balance replaces persi
   assert.equal(h.client.getQueryData(queryKey).profile.main_balance, "417.18000000");
   assert.equal(h.events.at(-1)[0], "set");
   assert.equal(h.events.at(-2)[0], "fetch");
-  assert.equal(h.events.filter(e => e[0] === "invalidate").length, 3);
+  assert.equal(h.events.filter(e => e[0] === "invalidate").length, 4, "balance, snapshot and both panel caches are invalidated");
+  assert.ok(h.events.some(e => e[0] === "invalidate" && e[1][0] === "accountBalance"));
   confirmed = snapshot("317.18000000");
   await h.hook.onSuccess();
   assert.equal(h.client.getQueryData(queryKey).profile.main_balance, "317.18000000");
