@@ -81,6 +81,44 @@ try {
     assert.ok(info.cachedPaths.every(s=>!s.includes("/api/") && !s.includes("runtime-config.json")), "never cache API/credentials");
     results.push({name:"precache_inventory",status:"INFO",count:info.cachedCount});
   });
+  await check("fresh browser tab restores device visual choices offline without an owner hint", async () => {
+    // This uses only non-sensitive display preferences: no authenticated
+    // account, financial payload, operator credential or fake Global ID.
+    const previous = await page.evaluate(() => {
+      const key = "EFHC_DEVICE_VIEW_PREFERENCES";
+      const old = localStorage.getItem(key);
+      localStorage.setItem(key, JSON.stringify({
+        interface_settings_version:4,lang:"ru",color_theme_id:"CT-03",
+        global_theme_id:"03",theme_mode:"dark",music_enabled:false,
+      }));
+      return old;
+    });
+    const second = await context.newPage();
+    second.setDefaultTimeout(12000);
+    try {
+      await context.setOffline(true);
+      await second.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+      await second.locator('[data-theme-page-surface="true"][data-color-theme-id="CT-03"]')
+        .first().waitFor({state:"attached",timeout:12000});
+      const state = await second.evaluate(() => ({
+        lang:document.documentElement.lang,
+        color:document.querySelector('[data-theme-page-surface="true"]')?.getAttribute("data-color-theme-id"),
+        leakedOwner:sessionStorage.getItem("efhc:resolved-display-owner"),
+        shell:document.querySelector("#__next")?.innerHTML.length || 0,
+      }));
+      assert.equal(state.lang,"ru");
+      assert.equal(state.color,"CT-03");
+      assert.equal(state.leakedOwner,null,"a new browser tab must not inherit a validated owner");
+      assert.ok(state.shell>100,"real React shell must not await backend bootstrap");
+    } finally {
+      await context.setOffline(false);
+      await second.close();
+      await page.evaluate(previous => {
+        if(previous===null)localStorage.removeItem("EFHC_DEVICE_VIEW_PREFERENCES");
+        else localStorage.setItem("EFHC_DEVICE_VIEW_PREFERENCES",previous);
+      },previous).catch(()=>undefined);
+    }
+  });
   await check("offline deep links use cached React UI instead of offline fallback", async () => {
     await page.reload({waitUntil:"domcontentloaded",timeout:30000});
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
