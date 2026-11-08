@@ -330,8 +330,8 @@ try {
     const configFile=path.join(root,"pwa-build.json");
     const originalConfigFile=await readFile(configFile,"utf8");
     const originalHtml=new Map();
-    const nextScriptName="efhc-cycle0042-staged.js";
-    const nextCssName="efhc-cycle0042-staged.css";
+    const nextScriptName="efhc-upgrade-staged.js";
+    const nextCssName="efhc-upgrade-staged.css";
     const scriptPath="_next/static/"+nextScriptName;
     const cssPath="_next/static/"+nextCssName;
     const scriptUrl="/efhc/"+scriptPath;
@@ -341,7 +341,7 @@ try {
       original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n";
     try {
       await writeFile(path.join(root,scriptPath),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
-      await writeFile(path.join(root,cssPath),":root { --efhc-cycle0042-css-proof: updated; }","utf8");
+      await writeFile(path.join(root,cssPath),":root { --efhc-upgrade-css-proof: updated; }","utf8");
       for (const route of nextBuild.precache.filter(url=>url.endsWith(".html"))) {
         const file=path.join(root,route.replace(/^\/efhc\//,""));
         const html=await readFile(file,"utf8");
@@ -393,7 +393,7 @@ try {
       await page.waitForFunction(()=>window.__EFHC_NEW_PWA_ASSET__===true, null, {timeout:35000});
       const pageVersion=await page.evaluate(()=>({
         marker:document.querySelector('meta[name="efhc-build-id"]')?.getAttribute("content"),
-        css:getComputedStyle(document.documentElement).getPropertyValue("--efhc-cycle0042-css-proof").trim(),
+        css:getComputedStyle(document.documentElement).getPropertyValue("--efhc-upgrade-css-proof").trim(),
       }));
       assert.equal(pageVersion.marker,newBuildId,"new HTML build marker never replaced old one");
       assert.equal(pageVersion.css,"updated","new CSS not rendered after automatic upgrade");
