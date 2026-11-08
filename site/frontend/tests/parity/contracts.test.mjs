@@ -143,26 +143,39 @@ test('OWNER-rejected progress and Header adapters stay detached after rollback',
   'Accepted Energy stage JSX must retain the baseline with stable semantic attributes');
 });
 
-// Executes the actual Energy useMemo callback, not a duplicate hand-written formula.
-// Hydration must produce identical D8 text even if the clocks differ on SSR
-// and client, while the first post-mount tick must resume generation.
+// Execute the current Energy useMemo callback, never a duplicate calculation.
+// It must preserve SSR hydration, resume fractional D8 accrual after mount,
+// stop at expiry, and use the server checkpoint across 30-second refetches.
 test('Energy initial SSR/hydration D8 snapshot is deterministic and generation resumes after mount',()=>{
  const source=fs.readFileSync(path.join(root,'src/pages/index.tsx'),'utf8');
  const open='  const localEnergyScaled = useMemo(() => {\n';
- const close='  }, [e0ScaledRaw, props.server_now_iso, projectUntilMs, tick, vScaled]);';
+ const close='  }, [e0ScaledRaw, props.server_now_iso, props.snapshot_updated_at_ms, projectUntilMs, tick, vScaled]);';
  assert.equal(source.split(open).length,2,'Energy callback must have one definition');
  const rest=source.split(open)[1];
  assert.equal(rest.split(close).length,2,'Energy callback boundary changed');
- const callback=new Function('stateRef','tick','vScaled','projectUntilMs','performance','clamp','SMOOTH_RESET_MS',rest.split(close)[0]);
- const base=812312345678n,rate=44000n;
- const invoke=(tick,now,st,limit=Infinity)=>callback({current:st},tick,rate,limit,{now:()=>now},(v,a,b)=>Math.max(a,Math.min(v,b)),800);
- const fresh=()=>({base_scaled:base,base_client_ms:1000,smooth_delta:0n,smooth_start_ms:0});
- assert.equal(invoke(0,1000,fresh()),base,'SSR must show snapshot at first render');
- assert.equal(invoke(0,1050,fresh()),base,'hydration must not advance with a different clock');
- assert.equal(invoke(1,1001,fresh()),base+44n,'post-mount tick resumes generation at D8 precision');
- assert.equal(invoke(2,1100,fresh()),base+4400n,'subsequent ticks continue generation');
- assert.equal(invoke(2,1100,fresh(),25),base+1100n,'expiry boundary must stop projection');
- const smoothed={...fresh(),smooth_delta:800n,smooth_start_ms:1100};
- // APP-CORE-031 replaces the previous artificial 800ms correction.
- assert.equal(invoke(2,1500,smoothed),base+22000n,'retired smoothing must not alter the confirmed anchor');
+ const callback=new Function(
+   'e0ScaledRaw','tick','props','clockRef','performance','Date',
+   'energyElapsedSinceSnapshotMs','projectEnergyD8','projectUntilMs','vScaled',
+   rest.split(close)[0]
+ );
+ const {energyElapsedSinceSnapshotMs,projectEnergyD8}=load('src/lib/energyProjection.ts');
+ const origin=Date.parse('2026-11-08T12:00:00.000Z');
+ const rate=44000n,base=812312345678n;
+ const invoke=(tick,elapsed,confirmed=base,limit=Infinity,boundary=origin)=>callback(
+   confirmed,tick,{server_now_iso:new Date(boundary).toISOString(),snapshot_updated_at_ms:boundary+100},
+   {current:{wall_ms:origin,monotonic_ms:1000}},
+   {now:()=>1000+elapsed},{now:()=>origin+elapsed},
+   energyElapsedSinceSnapshotMs,projectEnergyD8,limit,rate
+ );
+ assert.equal(invoke(0,0),base,'SSR must display only the confirmed snapshot');
+ assert.equal(invoke(0,50),base,'hydration must not advance with a different clock');
+ assert.equal(invoke(1,1),base+44n,'post-mount tick resumes generation at exact D8 precision');
+ assert.equal(invoke(2,100),base+4400n,'subsequent ticks continue generation');
+ assert.equal(invoke(2,100,base,25),base+1100n,'known expiry stops projection');
+ assert.equal(invoke(2,1500),base+66000n,'no artificial smoothing overrides server truth');
+ assert.equal(invoke(2,100,base-500n),base-500n+4400n,'genuine server correction down is respected');
+ const updatedAt30s=origin+30000;
+ const confirmedAt30s=base+rate*30n;
+ assert.equal(invoke(2,30500),invoke(2,30500,confirmedAt30s,Infinity,updatedAt30s),
+   'refetch at the same wall time must not jump or double-generate');
 });
