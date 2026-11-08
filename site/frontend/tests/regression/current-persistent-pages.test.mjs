@@ -169,6 +169,24 @@ test('a fresh browser tab restores device-only view choices but never unlocks a 
  assert.equal(client.getQueryData(['panels',A,'summary']).active_count,9);
  client.clear();c.clear();
 });
+test('new tab never adopts a previous owner avatar through unscoped legacy preferences',()=>{
+ const disk=new Map(),first=sourceRuntime({storage:disk});
+ const settings=first.load('lib/settings.ts');
+ const legacy={...settings.resetSettings(),lang:'ru',color_theme_id:'CT-05',
+   avatar_source:'social',avatar_social_provider:'telegram',
+   avatar_social_url:'https://example.org/person.jpg',
+   avatar_custom_images:['data:image/png;base64,ZmFrZQ=='],
+   avatar_url:'data:image/png;base64,ZmFrZQ=='};
+ disk.set('EFHC_USER_SETTINGS_V1',JSON.stringify(legacy));
+ const second=sourceRuntime({storage:disk,session:new Map()});
+ const recovered=second.load('lib/settings.ts').loadSettings();
+ assert.equal(recovered.lang,'ru');
+ assert.equal(recovered.color_theme_id,'CT-05');
+ assert.equal(recovered.avatar_source,'telegram');
+ assert.equal(recovered.avatar_url,null);
+ assert.equal(recovered.avatar_social_url,null);
+ assert.deepEqual(recovered.avatar_custom_images,[]);
+});
 test('verified same-owner marker with empty tab entries recovers durable display data',()=>{
  const disk=new Map(),first=sourceRuntime({storage:disk}),q=first.load('lib/queryClient.ts'),c=q.createEfhcQueryClient();
  q.activateUserDataOwner(c,A,false);

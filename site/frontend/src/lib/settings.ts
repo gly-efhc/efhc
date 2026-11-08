@@ -333,14 +333,19 @@ export function loadSettings(): UserSettings {
     const local = JSON.parse(windowStateStorage().getItem(KEY) || "null");
     if (local && local.settings_owner === owner) return normalizeSettings(local);
     const legacyOwner = window.localStorage.getItem(`${KEY}:legacy-owner`);
-    const raw = (owner ? window.localStorage.getItem(`${KEY}:${owner}`) : null)
-      || (!legacyOwner || legacyOwner === owner ? window.localStorage.getItem(KEY) : null);
-    if (raw) return normalizeSettings(JSON.parse(raw) || {});
     if (!owner) {
+      // Unscoped legacy settings can contain a former user's avatar/profile.
+      // New browser tabs recover generic preferences, never foreign identity.
       const device = window.localStorage.getItem(DEVICE_VIEW_KEY);
-      if (device) return normalizeSettings(JSON.parse(device));
+      if (device) return normalizeSettings(safeDevicePreferences(normalizeSettings(JSON.parse(device))));
+      const legacy = !legacyOwner ? window.localStorage.getItem(KEY) : null;
+      return legacy
+        ? normalizeSettings(safeDevicePreferences(normalizeSettings(JSON.parse(legacy))))
+        : resetSettings();
     }
-    return resetSettings();
+    const raw = window.localStorage.getItem(`${KEY}:${owner}`)
+      || (legacyOwner === owner ? window.localStorage.getItem(KEY) : null);
+    return raw ? normalizeSettings(JSON.parse(raw) || {}) : resetSettings();
   } catch {
     return resetSettings();
   }
