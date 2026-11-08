@@ -89,3 +89,69 @@ test("An unauthenticated owner does not fetch, change cache or invent financial 
   assert.equal(h.events.some(e => e[0] === "fetch" || e[0] === "set"), false);
   assert.equal(h.financialRequests, 0);
 });
+
+test("A successful kWh exchange updates the shared Header snapshot with server receipt and fresh account data", async () => {
+  const owner = OWNER;
+  const key = ["syncSnapshot", owner];
+  const events = [];
+  const state = new Map([[JSON.stringify(key), snapshot("317.18000000")]]);
+  let conversionCalls = 0;
+  const client = {
+    getQueryData: queryKey => state.get(JSON.stringify(queryKey)),
+    setQueryData: (queryKey, updater) => {
+      const previous = state.get(JSON.stringify(queryKey));
+      const value = typeof updater === "function" ? updater(previous) : updater;
+      events.push(["set", value?.profile?.main_balance]);
+      state.set(JSON.stringify(queryKey), value);
+    },
+    cancelQueries: async () => events.push(["cancel"]),
+    invalidateQueries: async ({queryKey}) => events.push(["invalidate", queryKey]),
+  };
+  const h = sourceRuntime({
+    overrides: {
+      "@tanstack/react-query": {useMutation: cfg => cfg, useQueryClient: () => client},
+      "../auth/AuthSessionProvider": {useAuthOwnerGlobalId: () => owner},
+      "../services/exchange.service": {
+        convertExchange: () => {conversionCalls++; throw Error("must not pay on refresh");},
+      },
+      "../services/snapshot.service": {
+        fetchSyncSnapshot: async () => {
+          events.push(["fetch"]);
+          return snapshot("392.04647293");
+        },
+      },
+    },
+  });
+  const hook = h.load("queries/useExchange.ts").useExchangeConvert();
+  await hook.onSuccess({new__main__balance: "390.00000000", new_available_kwh: "0.00000000"});
+  assert.deepEqual(events.filter(e => e[0] === "set").map(e => e[1]), ["390.00000000", "392.04647293"]);
+  assert.equal(client.getQueryData(key).profile.main_balance, "392.04647293");
+  assert.equal(conversionCalls, 0);
+});
+
+test("Failed exchange refresh retains the confirmed receipt, not the stale Header balance", async () => {
+  const key = ["syncSnapshot", OWNER];
+  const state = new Map([[JSON.stringify(key), snapshot("317.18000000")]]);
+  const client = {
+    getQueryData: q => state.get(JSON.stringify(q)),
+    setQueryData: (q, updater) => {
+      const previous = state.get(JSON.stringify(q));
+      state.set(JSON.stringify(q), typeof updater === "function" ? updater(previous) : updater);
+    },
+    cancelQueries: async () => {},
+    invalidateQueries: async ({refetchType}) => { if (refetchType !== "none") throw Error("cache blocked"); },
+  };
+  const h = sourceRuntime({
+    overrides: {
+      "@tanstack/react-query": {useMutation: opts => opts, useQueryClient: () => client},
+      "../auth/AuthSessionProvider": {useAuthOwnerGlobalId: () => OWNER},
+      "../services/exchange.service": {convertExchange: () => {throw Error("must not pay on read");}},
+      "../services/snapshot.service": {fetchSyncSnapshot: async () => {throw Error("offline");}},
+    },
+  });
+  await assert.doesNotReject(h.load("queries/useExchange.ts").useExchangeConvert().onSuccess({
+    new__main__balance: "392.04647293", new_available_kwh: "5.00000000",
+  }));
+  assert.equal(client.getQueryData(key).profile.main_balance, "392.04647293");
+  assert.equal(client.getQueryData(key).profile.available_kwh, "5.00000000");
+});

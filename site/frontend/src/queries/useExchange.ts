@@ -10,6 +10,7 @@ import {
   getExchangePreview,
 } from "../services/exchange.service";
 import { queryKeys } from "./queryKeys";
+import { fetchSyncSnapshot, type SyncSnapshot } from "../services/snapshot.service";
 
 export function useExchangePreview() {
   const globalId = useAuthOwnerGlobalId();
@@ -25,15 +26,56 @@ export function useExchangeConvert() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: convertExchange,
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.snapshot.current(globalId),
-        }),
-        queryClient.invalidateQueries({
+    onSuccess: async (receipt) => {
+      // The exchange has already committed: never report a successful
+      // financial operation as failed because its display refresh failed.
+      const snapshotKey = queryKeys.snapshot.current(globalId);
+      if (globalId) {
+        try {
+          // Stop any pre-commit snapshot from overwriting the confirmed credit.
+          await queryClient.cancelQueries({ queryKey: snapshotKey });
+          queryClient.setQueryData<SyncSnapshot>(snapshotKey, (previous) => {
+            if (!previous || previous.profile.global_id !== globalId) {
+              return previous;
+            }
+            // The conversion receipt contains authoritative new balances.
+            return {
+              ...previous,
+              profile: {
+                ...previous.profile,
+                main_balance: receipt.new__main__balance,
+                available_kwh: receipt.new_available_kwh,
+              },
+            };
+          });
+        } catch {
+          // A failed display-cache update cannot undo the committed exchange.
+        }
+      }
+
+      try {
+        await queryClient.invalidateQueries({
           queryKey: queryKeys.exchange.preview(globalId),
-        }),
-      ]);
+        });
+      } catch {
+        // Preview is a read-only convenience, not the transfer outcome.
+      }
+
+      if (!globalId) return;
+      try {
+        const confirmed = await fetchSyncSnapshot();
+        if (confirmed.profile.global_id !== globalId) return;
+        queryClient.setQueryData(snapshotKey, confirmed);
+      } catch {
+        // Retry is read-only; the next Refresh button can reconcile the
+        // snapshot without issuing any further financial transaction.
+        try {
+          await queryClient.invalidateQueries({
+            queryKey: snapshotKey,
+            refetchType: "none",
+          });
+        } catch { /* Nonfinancial cache invalidation is best effort. */ }
+      }
     },
   });
 }
