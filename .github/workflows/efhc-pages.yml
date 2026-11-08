@@ -130,6 +130,14 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/npm-ci.log"
 
+      # API origin migration is a narrow transport-contract check, not full visual review.
+      - name: Verify HTTPS backend origin and authenticated transport contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/efhc-demo-build"
+          node --test tests/regression/current-demo-backend-transport.test.mjs
+
       # OWNER C0035: extensive source/parity tests are release-only,
       # not blockers for iterative Pages preview publication.
       - name: Review v866 contract and shared-shell integrity (full review only)
