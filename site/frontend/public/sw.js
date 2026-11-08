@@ -14,6 +14,10 @@ let runtimeCachePolicy = null;
 // Ready notifications must come from a rendered client on this exact build.
 // Older open tabs retain their prior hashed bundles until they are replaced.
 const readyBuildClients = new Set();
+// A worker may clean up only cache generations observed when IT activated.
+// Deleting all non-current keys would erase a NEW build being staged by its
+// successor, which caused perpetual stale UI in an already-installed PWA.
+const previousBuildCachesAtActivation = new Set();
 
 async function loadConfig() {
   if (!configPromise) {
@@ -315,7 +319,7 @@ async function cacheFirst(request) {
   // Fully staged upgrades may take over while an older page remains mounted.
   // Its content-hashed assets must still be served from the previous build.
   const previous = (await caches.keys()).filter((key) =>
-    key.startsWith(CACHE_PREFIX) && key.endsWith("-static") && key !== names.staticName);
+    previousBuildCachesAtActivation.has(key) && key.endsWith("-static"));
   for (const name of previous.reverse()) {
     const retained = await (await caches.open(name)).match(request);
     if (retained) return retained;
@@ -393,7 +397,10 @@ async function retireObsoleteBuildsIfSafe() {
   const windows = await self.clients.matchAll({type: "window", includeUncontrolled: true});
   if (windows.some(client => !readyBuildClients.has(client.id))) return false;
   const keep = new Set([staticName, contentName]);
-  const obsolete = (await caches.keys()).filter(name => name.startsWith(CACHE_PREFIX) && !keep.has(name));
+  // Never delete a new successor's staged cache. It cannot be older than
+  // this active worker, because it did not exist at this worker's activation.
+  const obsolete = (await caches.keys()).filter(name =>
+    previousBuildCachesAtActivation.has(name) && !keep.has(name));
   await Promise.all(obsolete.map(name => caches.delete(name)));
   if (obsolete.length) await notifyClients({type: "CACHE_RETIRED", buildId: config.build_id});
   return true;
@@ -423,6 +430,11 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const names = await cacheNames();
       const keys = await caches.keys();
+      for (const key of keys) {
+        if (key.startsWith(CACHE_PREFIX) && key !== names.staticName && key !== names.contentName) {
+          previousBuildCachesAtActivation.add(key);
+        }
+      }
       // Preserve one complete previous build while already-open pages may still
       // request its immutable JS/CSS. Keep storage bounded to two builds.
       const previousStatic = keys.filter((key) =>
