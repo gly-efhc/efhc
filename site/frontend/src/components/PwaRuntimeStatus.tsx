@@ -377,6 +377,29 @@ export function PwaRuntimeStatus(props: {
         const manifest = await fetch(appBasePath() + "/pwa-build.json", {cache: "no-store"})
           .then(response => response.ok ? response.json() : null);
         if (!manifest?.build_id || !Array.isArray(manifest.precache)) return;
+        // Never navigate based on a new network manifest while the older
+        // controller is still active. The active worker itself must attest
+        // to the same fully installed release before an idle upgrade.
+        const activeBuildId = await new Promise<string | null>(resolve => {
+          const channel = new MessageChannel();
+          let settled = false;
+          const finish = (value: string | null) => {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            channel.port1.close();
+            resolve(value);
+          };
+          const timeout = window.setTimeout(() => finish(null), 1600);
+          channel.port1.onmessage = event => {
+            const value = event.data;
+            finish(value?.type === "ACTIVE_BUILD" ? String(value.buildId) : null);
+          };
+          try {
+            navigator.serviceWorker.controller?.postMessage({type: "GET_ACTIVE_BUILD"}, [channel.port2]);
+          } catch { finish(null); }
+        });
+        if (activeBuildId !== manifest.build_id) return;
         const precached = new Set<string>(manifest.precache);
         const assets = Array.from(document.querySelectorAll("script[src], link[rel='stylesheet'][href]"))
           .map(element => (element as HTMLScriptElement | HTMLLinkElement).src ||
