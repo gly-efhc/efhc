@@ -53,13 +53,25 @@ export function useSnapshot() {
         ? "error"
         : "loading";
 
+  const refresh = () => {
+    // The global Refresh action must also update the available-kWh preview
+    // shared by Energy and Exchange, not only the lifetime snapshot.
+    if (globalId) {
+      void client.invalidateQueries({
+        queryKey: queryKeys.exchange.preview(globalId),
+        refetchType: "active",
+      });
+    }
+    return q.refetch();
+  };
+
   return {
     snap: q.data && q.data.profile.global_id === globalId ? q.data : globalId ? emptyOwnerSnapshot(globalId) : null,
     status,
     loading: status === "loading",
     refreshing: Boolean(q.data) && q.isFetching,
     error: q.isError,
-    refresh: q.refetch,
+    refresh,
     updatedAt: q.dataUpdatedAt,
   };
 }
