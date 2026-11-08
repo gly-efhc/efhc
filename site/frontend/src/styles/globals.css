@@ -23040,8 +23040,7 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 /* USER achievement caption transparency and active CT action/ledger materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
-html[data-interface-app-mode="user"][data-color-theme-id] body
-.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
 #efhc-main-content .efhc-referrals-shell[data-referrals-reference="true"] [data-referrals-achievements="visible"]
 :is(.efhc-referral-level-heading,.efhc-referral-level-heading > .efhc-referral-card-title) {
   background-color: transparent !important;
@@ -23049,8 +23048,7 @@ html[data-interface-app-mode="user"][data-color-theme-id] body
   box-shadow: none !important;
 }
 /* Exchange actions use each active CT accent; do not alter geometry or click behavior. */
-html[data-interface-app-mode="user"][data-color-theme-id] body
-.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
 #efhc-main-content .efhc-exchange-shell :is(button.efhc-btn-primary[data-exchange-submit-action="true"],button.efhc-btn-secondary.efhc-exchange-withdraw-button) {
   border-color: var(--efhc-ct-accent) !important;
   background-color: rgba(var(--efhc-ct-accent-rgb),.13) !important;
@@ -23060,8 +23058,7 @@ html[data-interface-app-mode="user"][data-color-theme-id] body
 }
 /* These are balance-movement history rows only, not withdrawal requests or
    semantic status badges. The current CT supplies color, not transaction data. */
-html[data-interface-app-mode="user"][data-color-theme-id] body
-.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
 #efhc-main-content .efhc-withdraw-shell [data-withdraw-history-balance-type-label="semantic"].efhc-withdraw-history-row {
   border-color: var(--efhc-ct-accent) !important;
   background-color: rgba(var(--efhc-ct-accent-rgb),.09) !important;
