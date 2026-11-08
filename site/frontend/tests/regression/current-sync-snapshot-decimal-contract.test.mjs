@@ -72,7 +72,8 @@ test("D8 rejects lossy 9th fractional digit, invalid exponent and invalid identi
   }
   const wrongOwner = structuredClone(backendFixture);
   wrongOwner.profile.global_id = "wrong";
-  assert.equal(syncSnapshotSchema.safeParse(wrongOwner).success, false);
+  // parseGlobalId raises a typed identity error instead of a Zod issue.
+  assert.throws(() => syncSnapshotSchema.parse(wrongOwner), /Global ID/);
 });
 
 test("Energy renders 13 panels and verified generation, not a zero-owner placeholder", () => {
