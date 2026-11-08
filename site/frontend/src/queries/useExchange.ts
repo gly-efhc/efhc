@@ -18,6 +18,12 @@ export function useExchangePreview() {
     queryKey: queryKeys.exchange.preview(globalId),
     enabled: Boolean(globalId),
     queryFn: getExchangePreview,
+    // One server-confirmed available_kwh source for Energy and Exchange.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
+    refetchInterval: globalId ? 30_000 : false,
   });
 }
 
