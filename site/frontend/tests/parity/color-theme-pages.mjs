@@ -133,8 +133,9 @@ export async function verifyColorThemePages(page, { base, artifacts }) {
                     throw new Error("Exchange action lost its accepted Theme03 owner: " + selector);
                   }
                   // Protected Theme03 keeps its previously accepted rendering.
-                  // Nine other CTs must implement the same material semantics.
-                  if (entry.id !== "CT-03") {
+                  // The nine other CTs must implement the same material semantics
+                  // while preserving the canonical neutral disabled state.
+                  if (entry.id !== "CT-03" && !node.matches(":disabled")) {
                     const actual = getComputedStyle(node);
                     for (const property of properties) {
                       if (actual[property] !== expected[property]) {

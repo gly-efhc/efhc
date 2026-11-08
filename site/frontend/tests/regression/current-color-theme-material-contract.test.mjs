@@ -121,7 +121,7 @@ test("achievement heading and withdrawal history keep CT styling without repaint
 test("nine CT Exchange actions reuse the exact Theme03 material without touching protected Theme03", () => {
   const source = read("src/styles/theme03-panels-exchange-chroma.css");
   const canonical = /\.efhc-independent-shell\[data-interface-app-mode="user"\]\[data-global-theme-id="03"\] \.efhc-theme03-cta \{([\s\S]*?)\n\}/.exec(source);
-  const mirrored = /\.efhc-independent-shell\[data-interface-app-mode="user"\]\[data-color-theme-id\]:not\(\[data-color-theme-id="CT-03"\]\) \.efhc-exchange-shell \.efhc-theme03-cta \{([\s\S]*?)\n\}/.exec(css);
+  const mirrored = /\.efhc-independent-shell\[data-interface-app-mode="user"\]\[data-color-theme-id\]:not\(\[data-color-theme-id="CT-03"\]\) \.efhc-exchange-shell \.efhc-theme03-cta:not\(:disabled\) \{([\s\S]*?)\n\}/.exec(css);
   assert.ok(canonical && mirrored, "Missing one of the two canonical CTA material rules");
   assert.equal(mirrored[1], canonical[1], "Material differs from original Theme03");
   assert.doesNotMatch(mirrored[1], /!important|(?:width|height|padding|margin|border-radius|font-size|display|position)\s*:/,
