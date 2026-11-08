@@ -95,24 +95,24 @@ test("the Theme03 reference is exact and Admin remains outside the USER color br
 });
 
 
-test("achievement headings stay unbacked and two exchange actions follow all active CT accents", () => {
+test("achievement heading and withdrawal history keep CT styling without repainting Theme03 exchange buttons", () => {
   assert.equal(catalog.length, 10);
-  const section = css.split("/* USER achievement caption transparency and active CT action/ledger materials. */")[1];
-  assert.ok(css.includes("@layer efhc-ct-route-accents {"), "Legacy important rules must not outrank the limited CT action and caption layer");
-  assert.ok(section, "Missing active USER surface material contract");
-  assert.match(section, /\[data-referrals-achievements="visible"\]/);
-  assert.match(section, /background-color:\s*transparent\s*!important/);
-  assert.match(section, /#efhc-main-content \.efhc-exchange-shell :is\(button\.efhc-btn-primary\[data-exchange-submit-action="true"\],button\.efhc-btn-secondary\.efhc-exchange-withdraw-button\)/);
-  assert.match(section, /border-color:\s*var\(--efhc-ct-accent\)\s*!important/);
-  assert.match(section, /background-color:\s*rgba\(var\(--efhc-ct-accent-rgb\),\.13\)/);
-  assert.match(section, /\[data-withdraw-history-balance-type-label="semantic"\]\.efhc-withdraw-history-row/);
-  assert.match(section, /background-color:\s*rgba\(var\(--efhc-ct-accent-rgb\),\.09\)/);
-  assert.doesNotMatch(section, /(?:width|height|padding|margin|border-radius|font-size|display|position|grid-template-columns)\s*:/,
+  const section = css.split("/* USER achievement caption transparency and active CT history materials. */")[1];
+  assert.ok(css.includes("@layer efhc-ct-route-accents {"));
+  assert.ok(section, "Missing limited USER accent contract");
+  assert.match(section, /\\[data-referrals-achievements="visible"\\]/);
+  assert.match(section, /background-color:\\s*transparent\\s*!important/);
+  assert.doesNotMatch(section, /#efhc-main-content \\.efhc-exchange-shell/,
+    "Exchange buttons must retain their accepted Theme03 appearance, not arbitrary CT overrides");
+  assert.match(section, /\\[data-withdraw-history-balance-type-label="semantic"\\]\\.efhc-withdraw-history-row/);
+  assert.match(section, /background-color:\\s*rgba\\(var\\(--efhc-ct-accent-rgb\\),\\.09\\)/);
+  assert.doesNotMatch(section, /(?:width|height|padding|margin|border-radius|font-size|display|position|grid-template-columns)\\s*:/,
     "Only colors and achievement heading overlays may be changed");
   const exchange = read("src/components/ExchangePanel.tsx");
   const exchangeRoute = read("src/pages/exchange.tsx");
   const withdraw = read("src/pages/withdraw.tsx");
-  assert.match(exchange, /data-exchange-submit-action="true"/);
-  assert.match(exchangeRoute, /efhc-exchange-withdraw-button/);
+  assert.match(exchange, /className="mt-3 w-full efhc-theme03-cta"/);
+  assert.match(exchangeRoute, /className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"/);
   assert.match(withdraw, /data-withdraw-history-balance-type-label="semantic"/);
 });
+
