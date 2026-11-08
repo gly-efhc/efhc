@@ -23034,6 +23034,9 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 }
 
 
+/* Important declarations in a dedicated cascade layer outrank unlayered
+   legacy !important styles without editing the frozen source. */
+@layer efhc-ct-route-accents {
 /* USER achievement caption transparency and active CT action/ledger materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
@@ -23063,4 +23066,5 @@ html[data-interface-app-mode="user"][data-color-theme-id] body
   border-color: var(--efhc-ct-accent) !important;
   background-color: rgba(var(--efhc-ct-accent-rgb),.09) !important;
   background-image: none !important;
+}
 }
