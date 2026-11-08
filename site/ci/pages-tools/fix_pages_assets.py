@@ -70,7 +70,7 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
         canonical = BUILD_META.sub('', data.decode('utf-8')).encode('utf-8') if file.suffix.lower() == '.html' else data
         digest.update(rel.encode('utf-8') + b'\x00' + hashlib.sha256(canonical).digest())
         included.append(base + '/' + rel)
-        total_bytes += len(data)
+        total_bytes += len(canonical)
     html_count = sum(path.endswith('.html') for path in included)
     if not html_count or not any('/_next/static/' in path for path in included):
         raise ValueError('PWA requires exported HTML routes and compiled Next assets')
