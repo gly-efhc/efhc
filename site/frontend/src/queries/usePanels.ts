@@ -13,6 +13,7 @@ import {
   type PanelTab,
 } from "../services/panels.service";
 import { queryKeys } from "./queryKeys";
+import { fetchSyncSnapshot } from "../services/snapshot.service";
 
 export function usePanelsSummary() {
   const globalId = useAuthOwnerGlobalId();
@@ -45,7 +46,9 @@ export function usePanelActivation() {
   return useMutation({
     mutationFn: activatePanel,
     onSuccess: async () => {
-      await Promise.all([
+      // Payment already committed on the server. A secondary read failure must
+      // not appear as a failed purchase and must never trigger a new payment.
+      await Promise.allSettled([
         queryClient.invalidateQueries({
           queryKey: queryKeys.snapshot.current(globalId),
         }),
@@ -54,11 +57,31 @@ export function usePanelActivation() {
         }),
         queryClient.invalidateQueries({
           queryKey: queryKeys.panels.all(globalId),
-          // Portfolio is inactive on the activation route, and shared query
-          // defaults disable refetch-on-mount. Refresh its cached pages now.
+          // Portfolio may be inactive; refresh cached pages for next open.
           refetchType: "all",
         }),
       ]);
+
+      if (!globalId) return;
+      try {
+        // Explicitly replace the owner-bound balance snapshot with an
+        // authoritative post-commit API read, even with persistent UI caches.
+        const confirmed = await fetchSyncSnapshot();
+        if (confirmed.profile.global_id !== globalId) return;
+        queryClient.setQueryData(
+          queryKeys.snapshot.current(globalId),
+          confirmed,
+        );
+      } catch {
+        // Preserve a valid paid result; the existing manual Refresh action
+        // can safely retry only this read without charging the user again.
+        try {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.snapshot.current(globalId),
+            refetchType: "none",
+          });
+        } catch { /* Cache invalidation is nonfinancial. */ }
+      }
     },
   });
 }
