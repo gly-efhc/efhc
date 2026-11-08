@@ -98,6 +98,7 @@ test("the Theme03 reference is exact and Admin remains outside the USER color br
 test("achievement headings stay unbacked and two exchange actions follow all active CT accents", () => {
   assert.equal(catalog.length, 10);
   const section = css.split("/* USER achievement caption transparency and active CT action/ledger materials. */")[1];
+  assert.ok(css.includes("@layer efhc-ct-route-accents {"), "Legacy important rules must not outrank the limited CT action and caption layer");
   assert.ok(section, "Missing active USER surface material contract");
   assert.match(section, /\[data-referrals-achievements="visible"\]/);
   assert.match(section, /background-color:\s*transparent\s*!important/);
