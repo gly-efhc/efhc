@@ -1,9 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { sourceRuntime } from "../helpers/source-runtime.mjs";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const owner = "0000000088";
-const key = "EFHC_USER_DATA_CACHE_V1";
+const key = /const KEY = "([^"]+)"/.exec(readFileSync(
+  fileURLToPath(new URL("../../src/lib/userDataCache.ts", import.meta.url)), "utf8",
+))?.[1];
+assert.ok(key, "Personal cache storage key must be present in owner source");
 const days = 7 * 24 * 60 * 60 * 1000;
 const dataKey = ["panels", owner, "list", "active"];
 const oldData = { pages: [{items: [{public_id: "PNL-00000001"}]}], pageParams: [null] };
