@@ -6,6 +6,17 @@ export function shopSelectionWindowOpen(selectedAtMs: number, nowMs = Date.now()
     nowMs - selectedAtMs < SHOP_SELECTION_WINDOW_MS;
 }
 
+/** Only an explicitly interrupted linking flow may reuse a prior Buy key. */
+export function canResumeShopChoice(
+  previous: { sku: string; method: string; choiceOwner: string; resumeAfterLink?: boolean } | null,
+  next: { sku: string; method: string },
+  ownerGlobalId: string,
+): boolean {
+  return Boolean(previous?.resumeAfterLink === true &&
+    previous.sku === next.sku && previous.method === next.method &&
+    (!previous.choiceOwner || previous.choiceOwner === ownerGlobalId));
+}
+
 /** Compare financial D2 prices exactly, without floating-point arithmetic. */
 export function sameShopPriceD2(clientDisplay: string, serverDisplay: string): boolean {
   const cents = (raw: string): bigint | null => {
