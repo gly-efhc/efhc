@@ -10,6 +10,7 @@ import { EnergyVariantIcon } from
   "../components/icons/EnergyVariantIcon";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { energyDisplayProjectionWindowMs, energyElapsedSinceSnapshotMs, projectEnergyD8 } from "../lib/energyProjection";
+import { levelProgressPct } from "../lib/energyLevelProgress";
 import { useT } from "../hooks/useT";
 import type {
   SnapshotStatus,
@@ -182,24 +183,25 @@ function LiveEnergyBlock(props: LiveBlockProps) {
     return props.thresholds_scaled[level] ?? null;
   }, [level, props.thresholds_scaled]);
 
-  const progressPct = useMemo(() => {
-    if (level >= 12) return 100;
-    if (!endScaled) return 50;
-    const span = endScaled - startScaled;
-    if (span <= 0n) return 50;
+  const progressPct = useMemo(() => levelProgressPct(
+    eLiveScaled,
+    props.thresholds_scaled[level - 1] ?? null,
+    endScaled,
+    level,
+  ), [eLiveScaled, endScaled, level, props.thresholds_scaled]);
 
-    let num = eLiveScaled - startScaled;
-    if (num < 0n) num = 0n;
-    if (num > span) num = span;
-
-    const pct = (num * 100n) / span;
-    const v = parseInt(pct.toString(), 10);
-    const basePct = !Number.isFinite(v) ? 0 : v < 0 ? 0 : v > 100 ? 100 : v;
-    // FRONTEND_v127 owner decision: the user-level progress presentation is
-    // advanced by +50 percentage points, capped at 100. Level thresholds,
-    // generated kWh and backend economy semantics remain unchanged.
-    return Math.min(100, basePct + 50);
-  }, [eLiveScaled, endScaled, level, startScaled]);
+  // Diagnose malformed level thresholds once per changed range, not on each live tick.
+  useEffect(() => {
+    if (level >= 12) return;
+    const start = props.thresholds_scaled[level - 1];
+    if (start === undefined || endScaled === null || endScaled <= start) {
+      console.warn("EFHC_INVALID_ENERGY_LEVEL_RANGE", {
+        level,
+        start: start === undefined ? null : fromScaled(start),
+        end: endScaled === null ? null : fromScaled(endScaled),
+      });
+    }
+  }, [endScaled, level, props.thresholds_scaled]);
 
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === "undefined") return true;
@@ -334,7 +336,6 @@ function LiveEnergyBlock(props: LiveBlockProps) {
           <div
             className="efhc-energy-progress-track"
             data-pb={progressSurface.variant}
-            data-level-progress-boost-pp="50"
             data-level-progress-centered="true"
             data-progress-canon="true"
           >
