@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {sourceRuntime} from '../helpers/source-runtime.mjs';
 function service(payload){return sourceRuntime({overrides:{'../lib/api':{apiRequest:async()=>payload}}}).load('services/tasks.service.ts');}
 const item=bonus=>({id:'1',code:'TASK_PUBLIC_TEST',title:'Task',bonus_efhc:bonus,is_active:true});
