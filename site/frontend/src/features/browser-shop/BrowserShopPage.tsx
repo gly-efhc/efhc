@@ -7,6 +7,7 @@ import { TonConnectWalletChooser } from "../../components/wallet/TonConnectWalle
 import { RouteSkeleton } from "../../components/ui/RouteSkeleton";
 import { useT } from "../../hooks/useT";
 import { useSnapshot } from "../../hooks/useSnapshot";
+import { useCurrentAccountBalances } from "../../hooks/useCurrentAccountBalances";
 import {
   useBrowserShopAccessKey,
   useBrowserShopBootstrap,
@@ -330,6 +331,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const activeTab: ShopPageView = view;
   const auth = useAuthState();
   const snapshot = useSnapshot();
+  const accountBalances = useCurrentAccountBalances();
   const {
     address: walletAddress,
     listWallets,
@@ -544,7 +546,10 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const accountLinked = visualProof || auth.authenticated || Boolean(token && (profileQ.data?.global_id || bootstrap?.global_id));
   const linkedGlobalId = visualProof ? "0000001568" : profileQ.data?.global_id || bootstrap?.global_id || auth.globalId || "";
   const walletLinked = visualProof || Boolean(token && bootstrap?.wallet_linked && !walletSyncRequired);
-  const mainBalance = visualProof ? "1250.00000000" : snapshot.snap?.profile.main_balance || "—";
+  const mainBalance = visualProof ? "1250.00000000"
+    : auth.authenticated && linkedGlobalId && accountBalances.data?.global_id === linkedGlobalId
+      ? accountBalances.data.main_balance
+      : snapshot.snap?.profile.main_balance || "—";
   const username = visualProof ? "EFHC Player" : snapshot.snap?.profile.username || (linkedGlobalId ? `ID ${linkedGlobalId}` : "EFHC");
   const paidOrders = useMemo(
     () => (profileQ.data?.orders || []).filter(isPaidOrder).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
@@ -851,7 +856,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     } catch (caught) {
       // A signed server intent survives a rejected wallet gesture. Restore the
       // exact original selection; never create a new nonce for a retry.
-      if (intentCreated && shopSelectionWindowOpen(selection.selectedAtMs)) setCheckout(selection);
+      // Never re-offer signing when the result might already have broadcast.
+      // Only an explicit wallet rejection proves the user did not authorize it.
+      if (intentCreated && isUserRejected(caught) && shopSelectionWindowOpen(selection.selectedAtMs)) setCheckout(selection);
       if (caught instanceof Error && caught.message === "PRIMARY_WALLET_MISMATCH") {
         setWalletTxPhase("error");
         setLocalError(t("wallet.primary_mismatch"));
@@ -941,7 +948,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
 
   const originalIntentRetry = Boolean(checkout && activeIntentId &&
-    ["rejected", "error"].includes(walletTxPhase) &&
+    walletTxPhase === "rejected" &&
     shopSelectionWindowOpen(checkout.selectedAtMs, nowMs));
   const busy = createIntent.isPending || purchaseEfhc.isPending || walletTxPhase === "signing" ||
     ((state === "checking" || state === "pending" || resumeIntent) && !originalIntentRetry) || actionDenied;
