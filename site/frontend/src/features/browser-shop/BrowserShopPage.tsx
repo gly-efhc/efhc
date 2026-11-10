@@ -35,6 +35,7 @@ import {
 } from "../../lib/wallet-provider";
 import { useAuthState } from "../../hooks/auth/useAuthState";
 import { newIdempotencyKey } from "../../lib/idempotency";
+import { shopSelectionWindowOpen, SHOP_SELECTION_WINDOW_MS } from "./shopSelection";
 import { ApiError } from "../../lib/api";
 import { makePrimaryWallet } from "../../services/profile.service";
 import {
@@ -57,11 +58,16 @@ type VipMode = "any" | "selected";
 type InitialContext = { token: string; sku: string; method: PayMethod };
 type CheckoutSelection = {
   item: BrowserShopCatalogItem;
+  choiceKey: string;
+  selectedAtMs: number;
+  choiceOwner: string;
+
   method: PayMethod;
   vipMode?: VipMode;
   vipNumber?: string;
   customEfhcAmountD8?: string;
 };
+type NewCheckoutSelection = Omit<CheckoutSelection, "choiceKey" | "selectedAtMs" | "choiceOwner">;
 type PaymentUiState = "idle" | "pending" | "checking" | "done" | "error";
 
 const FIXED_EFHC_PACKAGE_AMOUNTS = ["10", "50", "100", "150", "200", "250", "300", "350", "500", "750", "1000", "1500", "2000", "2500", "3000"] as const;
@@ -501,6 +507,13 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }, [activeIntentId, bootstrap?.active_payment]);
   useEffect(() => { rememberCheckout(token, selectedSku, globalMethod); }, [globalMethod, selectedSku, token]);
   useEffect(() => {
+    if (!checkout) return;
+    const timeout = window.setTimeout(() => {
+      setCheckout((current) => current?.choiceKey === checkout.choiceKey ? null : current);
+    }, Math.max(0, SHOP_SELECTION_WINDOW_MS - (Date.now() - checkout.selectedAtMs)));
+    return () => window.clearTimeout(timeout);
+  }, [checkout?.choiceKey, checkout?.selectedAtMs]);
+  useEffect(() => {
     if (!expiresAt || ["done", "error"].includes(state)) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
@@ -670,8 +683,12 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     void router.push(path);
   }
   function chooseGlobalMethod(method: PayMethod) { setGlobalMethod(method); rememberCheckout(token, selectedSku, method); }
-  function openCheckout(selection: CheckoutSelection) {
-    setSelectedSku(selection.item.sku); setGlobalMethod(selection.method); setCheckout(selection); setLocalError(""); setLocalNotice("");
+  function openCheckout(selection: NewCheckoutSelection) {
+    setSelectedSku(selection.item.sku); setGlobalMethod(selection.method);
+    // Every deliberate selection (including an independent browser tab) gets
+    // its own immutable retry key and 15-minute clock from the first click.
+    setCheckout({ ...selection, choiceKey: newIdempotencyKey(), selectedAtMs: Date.now(), choiceOwner: linkedGlobalId });
+    setLocalError(""); setLocalNotice("");
   }
   function openOrderDetail(order: BrowserShopProfileOrder, initiator: HTMLElement | null) {
     orderDetailInitiatorRef.current = initiator;
@@ -690,7 +707,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     setCustomEfhcAmount(normalized);
     const amountD8 = customEfhcAmountD8(normalized);
     setCheckout((current) => current && isCustomEfhcPackage(current.item)
-      ? { ...current, customEfhcAmountD8: amountD8 || undefined }
+      ? { ...current, customEfhcAmountD8: amountD8 || undefined, choiceKey: newIdempotencyKey() }
       : current);
   }
   function openVipNumberCheckout() {
@@ -802,6 +819,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       setLocalError(t("wallet.primary_mismatch"));
       return;
     }
+    let intentCreated = false;
     try {
       const parsed = await createIntent.mutateAsync({
         token,
@@ -809,8 +827,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         quantity: 1,
         pay_method: method,
         custom_efhc_amount_d8: isCustomEfhcPackage(item) ? selection.customEfhcAmountD8 || null : null,
-        client_nonce: globalThis.crypto?.randomUUID?.(),
+        client_nonce: selection.choiceKey,
       });
+      intentCreated = true;
       setActiveIntentId(parsed.intent_id); setCreatedExpiresAt(parsed.expires_at);
       if (selection.vipNumber) setReservedVipNumber(selection.vipNumber);
       setCheckout(null);
@@ -830,6 +849,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       }
       setWalletTxPhase("signing"); await sendTransaction(tx); setWalletTxPhase("signed");
     } catch (caught) {
+      // A signed server intent survives a rejected wallet gesture. Restore the
+      // exact original selection; never create a new nonce for a retry.
+      if (intentCreated && shopSelectionWindowOpen(selection.selectedAtMs)) setCheckout(selection);
       if (caught instanceof Error && caught.message === "PRIMARY_WALLET_MISMATCH") {
         setWalletTxPhase("error");
         setLocalError(t("wallet.primary_mismatch"));
@@ -844,6 +866,16 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
 
   async function executePayment(selection: CheckoutSelection) {
+    if (!shopSelectionWindowOpen(selection.selectedAtMs) ||
+      (selection.choiceOwner && selection.choiceOwner !== linkedGlobalId)) {
+      setCheckout(null);
+      setLocalError(t("portal.browser_shop.reservation_expired"));
+      return;
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setLocalError(t("portal.browser_shop.open_failed_clean_detail"));
+      return;
+    }
     const { item, method } = selection;
     setSelectedSku(item.sku); rememberCheckout(token, item.sku, method);
     setLocalError(""); setLocalNotice(""); setWalletTxPhase("idle"); setEfhcVipPurchased(false); setConfirmedOrderId("");
@@ -858,7 +890,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       const handoffGlobalId = String(bootstrap?.global_id || "").trim();
       if (handoffGlobalId && handoffGlobalId !== String(auth.globalId)) { setLocalError(t("portal.browser_shop.efhc_auth_mismatch")); return; }
       try {
-        const result = await purchaseEfhc.mutateAsync({ sku: item.sku, quantity: 1, idempotencyKey: newIdempotencyKey() });
+        const result = await purchaseEfhc.mutateAsync({ sku: item.sku, quantity: 1, idempotencyKey: selection.choiceKey });
         const orderId = shopOrderIdFromUnknown(result);
         setConfirmedOrderId(orderId); setEfhcVipPurchased(true);
         if (selection.vipNumber) setReservedVipNumber(selection.vipNumber);
@@ -908,7 +940,11 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     await executePayment(checkout);
   }
 
-  const busy = createIntent.isPending || purchaseEfhc.isPending || walletTxPhase === "signing" || state === "checking" || state === "pending" || actionDenied || resumeIntent;
+  const originalIntentRetry = Boolean(checkout && activeIntentId &&
+    ["rejected", "error"].includes(walletTxPhase) &&
+    shopSelectionWindowOpen(checkout.selectedAtMs, nowMs));
+  const busy = createIntent.isPending || purchaseEfhc.isPending || walletTxPhase === "signing" ||
+    ((state === "checking" || state === "pending" || resumeIntent) && !originalIntentRetry) || actionDenied;
   const checkoutOpen = Boolean(checkout);
 
   useEffect(() => {
