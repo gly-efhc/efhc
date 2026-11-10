@@ -51,6 +51,7 @@ import {
 const TOKEN_KEY = "efhc.browserShop.token.v1";
 const SKU_KEY = "efhc.browserShop.sku.v1";
 const METHOD_KEY = "efhc.browserShop.method.v1";
+const CHOICE_KEY = "efhc.browserShop.choice.v1";
 const VIP_NUMBER_PAGE = 100;
 const ORDERS_PAGE = 20;
 const VIP_0000_IMAGE = "/assets/efhc/efhc_vip_nft_0000.jpg";
@@ -82,6 +83,37 @@ const LEGACY_VIP_PAYMENT_SKUS = new Set(["VIP_NFT_TON", "VIP_NFT_USDT", "VIP_NFT
 function safeSessionRead(key: string): string {
   if (typeof window === "undefined") return "";
   try { return window.sessionStorage.getItem(key) || ""; } catch { return ""; }
+}
+
+/** Transient same-tab selection identity, never a payment authorization. */
+function readShopChoice(): Pick<CheckoutSelection, "choiceKey" | "selectedAtMs" | "choiceOwner"> & {
+  sku: string; method: "TON" | "USDT"; customEfhcAmountD8?: string;
+} | null {
+  try {
+    const raw = window.sessionStorage.getItem(CHOICE_KEY);
+    const value = JSON.parse(raw || "null");
+    if (!value || !["TON", "USDT"].includes(value.method) ||
+        typeof value.sku !== "string" || !value.sku ||
+        typeof value.choiceKey !== "string" || !value.choiceKey ||
+        typeof value.choiceOwner !== "string" ||
+        !shopSelectionWindowOpen(value.selectedAtMs)) return null;
+    return value;
+  } catch { return null; }
+}
+function rememberShopChoice(selection: CheckoutSelection): void {
+  if (typeof window === "undefined" || selection.method === "EFHC") return;
+  try {
+    window.sessionStorage.setItem(CHOICE_KEY, JSON.stringify({
+      sku: selection.item.sku, method: selection.method,
+      choiceKey: selection.choiceKey, selectedAtMs: selection.selectedAtMs,
+      choiceOwner: selection.choiceOwner,
+      customEfhcAmountD8: selection.customEfhcAmountD8,
+    }));
+  } catch { /* Session storage is optional; server verifies all rights. */ }
+}
+function clearShopChoice(): void {
+  if (typeof window === "undefined") return;
+  try { window.sessionStorage.removeItem(CHOICE_KEY); } catch { /* optional */ }
 }
 
 function readInitialContext(): InitialContext {
@@ -763,10 +795,18 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     setSelectedSku(selection.item.sku); setGlobalMethod(selection.method);
     // Every deliberate selection (including an independent browser tab) gets
     // its own immutable retry key and 15-minute clock from the first click.
+    const previous = selection.method !== "EFHC" &&
+      !isCustomEfhcPackage(selection.item) ? readShopChoice() : null;
+    const reuse = previous && previous.sku === selection.item.sku &&
+      previous.method === selection.method &&
+      (!previous.choiceOwner || previous.choiceOwner === linkedGlobalId);
     const chosen: CheckoutSelection = {
-      ...selection, choiceKey: newIdempotencyKey(),
-      selectedAtMs: Date.now(), choiceOwner: linkedGlobalId,
+      ...selection,
+      choiceKey: reuse ? previous.choiceKey : newIdempotencyKey(),
+      selectedAtMs: reuse ? previous.selectedAtMs : Date.now(),
+      choiceOwner: linkedGlobalId,
     };
+    rememberShopChoice(chosen);
     setCheckout(chosen);
     if (chosen.method !== "EFHC" && !isCustomEfhcPackage(chosen.item)) {
       void ensureExternalShopSelection(chosen).catch(() => undefined);
@@ -789,9 +829,15 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     const normalized = /^\d*$/.test(value) ? value.replace(/^0+(?=\d)/, "") : customEfhcAmount;
     setCustomEfhcAmount(normalized);
     const amountD8 = customEfhcAmountD8(normalized);
-    setCheckout((current) => current && isCustomEfhcPackage(current.item)
-      ? { ...current, customEfhcAmountD8: amountD8 || undefined, choiceKey: newIdempotencyKey() }
-      : current);
+    setCheckout((current) => {
+      if (!current || !isCustomEfhcPackage(current.item)) return current;
+      const updated = {
+        ...current, customEfhcAmountD8: amountD8 || undefined,
+        choiceKey: newIdempotencyKey(),
+      };
+      rememberShopChoice(updated);
+      return updated;
+    });
   }
   function openVipNumberCheckout() {
     const selected = vipNumberItems.find((entry) => entry.number === selectedVipNumber);
@@ -935,6 +981,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         throw new Error("PRIMARY_WALLET_MISMATCH");
       }
       setWalletTxPhase("signing"); await sendTransaction(tx); setWalletTxPhase("signed");
+      clearShopChoice();
     } catch (caught) {
       // A signed server intent survives a rejected wallet gesture. Restore the
       // exact original selection; never create a new nonce for a retry.
