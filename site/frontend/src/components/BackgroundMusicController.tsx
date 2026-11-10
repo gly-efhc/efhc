@@ -23,7 +23,7 @@ export function primeBackgroundMusicFromGesture(): void {
   } catch { /* Unsupported/blocked device audio context. */ }
 }
 
-/** One OWNER-approved background composition, opt-in and gapless buffered loop. */
+/** One OWNER-approved background composition with a user-controlled gapless loop. */
 export function BackgroundMusicController({ enabled }: { enabled: boolean }) {
   const { basePath } = useRouter();
   useEffect(() => {
@@ -50,7 +50,6 @@ export function BackgroundMusicController({ enabled }: { enabled: boolean }) {
       try {
         const response = await fetch(`${basePath}/audio/background/1.mp3`, {
           signal: controller.signal,
-          cache: "no-store",
         });
         if (!response.ok) throw new Error("background track unavailable");
         const bytes = await response.arrayBuffer();

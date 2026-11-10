@@ -7,6 +7,7 @@ import { TonConnectWalletChooser } from "../../components/wallet/TonConnectWalle
 import { RouteSkeleton } from "../../components/ui/RouteSkeleton";
 import { useT } from "../../hooks/useT";
 import { useSnapshot } from "../../hooks/useSnapshot";
+import { useCurrentAccountBalances } from "../../hooks/useCurrentAccountBalances";
 import {
   useBrowserShopAccessKey,
   useBrowserShopBootstrap,
@@ -324,6 +325,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const activeTab: ShopPageView = view;
   const auth = useAuthState();
   const snapshot = useSnapshot();
+  const accountBalances = useCurrentAccountBalances();
   const {
     address: walletAddress,
     listWallets,
@@ -531,7 +533,10 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const accountLinked = visualProof || auth.authenticated || Boolean(token && (profileQ.data?.global_id || bootstrap?.global_id));
   const linkedGlobalId = visualProof ? "0000001568" : profileQ.data?.global_id || bootstrap?.global_id || auth.globalId || "";
   const walletLinked = visualProof || Boolean(token && bootstrap?.wallet_linked && !walletSyncRequired);
-  const mainBalance = visualProof ? "1250.00000000" : snapshot.snap?.profile.main_balance || "—";
+  const mainBalance = visualProof ? "1250.00000000"
+    : auth.authenticated && linkedGlobalId && accountBalances.data?.global_id === linkedGlobalId
+      ? accountBalances.data.main_balance
+      : snapshot.snap?.profile.main_balance || "—";
   const username = visualProof ? "EFHC Player" : snapshot.snap?.profile.username || (linkedGlobalId ? `ID ${linkedGlobalId}` : "EFHC");
   const paidOrders = useMemo(
     () => (profileQ.data?.orders || []).filter(isPaidOrder).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),

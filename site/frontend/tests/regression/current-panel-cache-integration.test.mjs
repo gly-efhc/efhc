@@ -110,6 +110,7 @@ test("Local user settings survive reload without Telegram, remain owner-scoped, 
   reloadQuery.activateUserDataOwner(client2,"0000000044",false);
   const otherSettings=other.load("lib/settings.ts").loadSettings();
   assert.equal(otherSettings.color_theme_id,"CT-01");
-  assert.equal(otherSettings.music_enabled,false);
+  // OWNER: a newly bound Global ID receives the current default (ON), not a previous owner's setting.
+  assert.equal(otherSettings.music_enabled,true);
   client.clear();client2.clear();
 });

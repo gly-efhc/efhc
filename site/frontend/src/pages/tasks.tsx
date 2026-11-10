@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import { LayoutContext } from "../components/Layout";
@@ -14,6 +14,7 @@ import { useInterfaceVariantSurface } from "../hooks/useInterfaceVariantSurface"
 import { useT } from "../hooks/useT";
 import type { SyncSnapshot } from "../hooks/useSnapshot";
 import { AdManager, adManagerErrorCode } from "../lib/ads/AdManager";
+import { readAdDailyLimits, writeAdDailyLimits, utcAdDay } from "../lib/ads/dailyLimitCache";
 import { isSystemAdPlacementCode } from "../lib/ads/systemPlacements";
 import type { AdRunPhase } from "../lib/ads/types";
 import { formatD8ToHuman } from "../lib/format";
@@ -60,7 +61,19 @@ export default function TasksPage(props: { snap: SyncSnapshot | null }) {
   const [adOpen, setAdOpen] = useState(false);
   const [adTaskCode, setAdTaskCode] = useState<string | null>(null);
   const [adPhase, setAdPhase] = useState<AdRunPhase | null>(null);
-  const [dailyLimitedCodes, setDailyLimitedCodes] = useState<Set<string>>(() => new Set());
+  const [dailyLimits, setDailyLimits] = useState(() => ({
+    owner: globalId, day: utcAdDay(), codes: readAdDailyLimits(globalId),
+  }));
+  const dailyLimitedCodes = dailyLimits.owner === globalId && dailyLimits.day === utcAdDay()
+    ? dailyLimits.codes : new Set<string>();
+  useEffect(() => {
+    const restore = () => setDailyLimits({
+      owner: globalId, day: utcAdDay(), codes: readAdDailyLimits(globalId),
+    });
+    restore();
+    window.addEventListener("efhc:activity-sync", restore);
+    return () => window.removeEventListener("efhc:activity-sync", restore);
+  }, [globalId]);
   const catalogQuery = useTasksCatalog();
   const myTasksQuery = useMyTasks();
   const earningsQuery = useTaskEarnings();
@@ -156,11 +169,10 @@ export default function TasksPage(props: { snap: SyncSnapshot | null }) {
     try {
       const result = await AdManager.runRewardedAd({ taskCode: item.code, appLanguage: lang, onPhase: setAdPhase });
       if (result.session.rewarded) {
-        setDailyLimitedCodes((current) => {
-          const next = new Set(current);
-          next.delete(item.code);
-          return next;
-        });
+        const next = readAdDailyLimits(globalId);
+        next.delete(item.code);
+        writeAdDailyLimits(globalId, next);
+        setDailyLimits({ owner: globalId, day: utcAdDay(), codes: next });
         await refreshTaskState();
         const bonus = formatD8ToHuman(result.rewardEfhcb);
         const text = t("tasks.ad_bonus_ok").replace("{{bonus}}", bonus);
@@ -175,7 +187,10 @@ export default function TasksPage(props: { snap: SyncSnapshot | null }) {
     } catch (error: unknown) {
       const code = adManagerErrorCode(error);
       if (code === "DAILY_LIMIT_REACHED") {
-        setDailyLimitedCodes((current) => new Set(current).add(item.code));
+        const next = readAdDailyLimits(globalId);
+        next.add(item.code);
+        writeAdDailyLimits(globalId, next);
+        setDailyLimits({ owner: globalId, day: utcAdDay(), codes: next });
         await refreshTaskState();
       }
       const key = code === "NO_FILL"

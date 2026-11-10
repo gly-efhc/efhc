@@ -14,6 +14,7 @@ import {
   purchaseBrowserShopWithEfhc,
 } from "../services/browserShop.service";
 import { queryKeys } from "./queryKeys";
+import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import type { DbId } from "../types/db-id";
 
 const TERMINAL = new Set([
@@ -97,12 +98,25 @@ export function useBrowserShopCreateIntent(token: string) {
 
 export function useBrowserShopEfhcPurchase() {
   const queryClient = useQueryClient();
+  const globalId = useAuthOwnerGlobalId();
   return useMutation({
     mutationFn: purchaseBrowserShopWithEfhc,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["browser-shop"],
-      });
+      // Payment has already committed. A read failure cannot reverse it or
+      // cause the UI to submit a second charge for the same purchase.
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: ["browser-shop"] }),
+        ...(globalId ? [
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.account.current(globalId),
+            refetchType: "active",
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.snapshot.current(globalId),
+            refetchType: "active",
+          }),
+        ] : []),
+      ]);
     },
   });
 }
