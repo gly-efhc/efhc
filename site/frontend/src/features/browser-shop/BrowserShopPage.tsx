@@ -16,6 +16,7 @@ import {
   useBrowserShopEfhcPurchase,
   useBrowserShopIntentStatus,
   useBrowserShopProfile,
+  useBrowserShopSelect,
 } from "../../queries/useBrowserShop";
 import { normalizeTonConnectTx } from "./browserShopTonTx";
 import { BrowserShopPreSignChecklist } from "./BrowserShopPreSignChecklist";
@@ -36,7 +37,8 @@ import {
 } from "../../lib/wallet-provider";
 import { useAuthState } from "../../hooks/auth/useAuthState";
 import { newIdempotencyKey } from "../../lib/idempotency";
-import { shopSelectionWindowOpen, SHOP_SELECTION_WINDOW_MS } from "./shopSelection";
+import { shopSelectionWindowOpen, SHOP_SELECTION_WINDOW_MS, sameShopPriceD2 } from "./shopSelection";
+import type { BrowserShopSelectionResponse } from "../../services/browserShopSelection.service";
 import { ApiError } from "../../lib/api";
 import { makePrimaryWallet } from "../../services/profile.service";
 import {
@@ -355,6 +357,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const [efhcVipPurchased, setEfhcVipPurchased] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState("");
   const [checkout, setCheckout] = useState<CheckoutSelection | null>(null);
+  const serverSelectionPromisesRef = useRef(new Map<string, Promise<BrowserShopSelectionResponse>>());
   const [pendingWalletPayment, setPendingWalletPayment] = useState<CheckoutSelection | null>(null);
   const [walletChooserOpen, setWalletChooserOpen] = useState(false);
   const walletChooserBackdropRef = useRef<HTMLDivElement>(null);
@@ -397,6 +400,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const profileQ = useBrowserShopProfile(token);
   const accessKey = useBrowserShopAccessKey();
   const createIntent = useBrowserShopCreateIntent(token);
+  const selectShop = useBrowserShopSelect();
   const purchaseEfhc = useBrowserShopEfhcPurchase();
   const statusQ = useBrowserShopIntentStatus(token, activeIntentId);
 
@@ -550,6 +554,14 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     : auth.authenticated && linkedGlobalId && accountBalances.data?.global_id === linkedGlobalId
       ? accountBalances.data.main_balance
       : snapshot.snap?.profile.main_balance || "—";
+  // Custom quantities can be quoted only after a valid D8 amount is known.
+  // The existing checkout input and visual layout stay unchanged.
+  useEffect(() => {
+    if (!checkout || checkout.method === "EFHC" ||
+        !isCustomEfhcPackage(checkout.item) || !checkout.customEfhcAmountD8 ||
+        !token || !linkedGlobalId) return;
+    void ensureExternalShopSelection(checkout).catch(() => undefined);
+  }, [checkout?.choiceKey, checkout?.customEfhcAmountD8, token, linkedGlobalId]);
   const username = visualProof ? "EFHC Player" : snapshot.snap?.profile.username || (linkedGlobalId ? `ID ${linkedGlobalId}` : "EFHC");
   const paidOrders = useMemo(
     () => (profileQ.data?.orders || []).filter(isPaidOrder).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)),
@@ -687,12 +699,78 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     rememberCheckout(token, selectedSku, globalMethod);
     void router.push(path);
   }
+  async function ensureExternalShopSelection(
+    selection: CheckoutSelection,
+  ): Promise<BrowserShopSelectionResponse> {
+    if (selection.method === "EFHC") throw new Error("SHOP_SELECTION_EXTERNAL_REQUIRED");
+    if (!shopSelectionWindowOpen(selection.selectedAtMs) ||
+        (selection.choiceOwner && selection.choiceOwner !== linkedGlobalId)) {
+      throw new Error("SHOP_SELECTION_EXPIRED");
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      throw new Error("SHOP_SELECTION_OFFLINE");
+    }
+    if (!token || !linkedGlobalId) throw new Error("SHOP_SELECTION_AUTH_REQUIRED");
+    if (isCustomEfhcPackage(selection.item) && !selection.customEfhcAmountD8) {
+      throw new Error("SHOP_SELECTION_CUSTOM_AMOUNT_REQUIRED");
+    }
+    const cached = serverSelectionPromisesRef.current.get(selection.choiceKey);
+    if (cached) return cached;
+    const promise = selectShop.mutateAsync({
+      token,
+      sku: selection.item.sku,
+      quantity: 1,
+      pay_method: selection.method,
+      custom_efhc_amount_d8: isCustomEfhcPackage(selection.item)
+        ? selection.customEfhcAmountD8 || null : null,
+      client_nonce: selection.choiceKey,
+    }).then((selected) => {
+      if (selected.global_id !== linkedGlobalId ||
+          (selection.choiceOwner && selected.global_id !== selection.choiceOwner)) {
+        throw new Error("SHOP_SELECTION_OWNER_MISMATCH");
+      }
+      const originalExpiryMs = selection.selectedAtMs + SHOP_SELECTION_WINDOW_MS;
+      const confirmedExpiryMs = Date.parse(selected.expires_at);
+      if (!Number.isFinite(confirmedExpiryMs) || confirmedExpiryMs <= Date.now() ||
+          !shopSelectionWindowOpen(selection.selectedAtMs)) {
+        throw new Error("SHOP_SELECTION_EXPIRED");
+      }
+      // The backend is authoritative. If a cached card differs from the
+      // immutable server quote, do NOT sign a transaction for unseen prices.
+      const displayed = isCustomEfhcPackage(selection.item)
+        ? multiplyD2ByWhole(
+          selection.item.methods?.[selection.method]?.price,
+          normalizedCustomEfhcWhole(
+            String(selection.customEfhcAmountD8 || "").split(".")[0],
+          ),
+        )
+        : priceAmountOnly(selection.item, selection.method);
+      if (!displayed || !sameShopPriceD2(displayed, selected.external_amount_display)) {
+        throw new Error("SHOP_SELECTION_PRICE_CHANGED");
+      }
+      if (originalExpiryMs <= Date.now()) throw new Error("SHOP_SELECTION_EXPIRED");
+      return selected;
+    }).catch((error: unknown) => {
+      serverSelectionPromisesRef.current.delete(selection.choiceKey);
+      throw error;
+    });
+    serverSelectionPromisesRef.current.set(selection.choiceKey, promise);
+    return promise;
+  }
+
   function chooseGlobalMethod(method: PayMethod) { setGlobalMethod(method); rememberCheckout(token, selectedSku, method); }
   function openCheckout(selection: NewCheckoutSelection) {
     setSelectedSku(selection.item.sku); setGlobalMethod(selection.method);
     // Every deliberate selection (including an independent browser tab) gets
     // its own immutable retry key and 15-minute clock from the first click.
-    setCheckout({ ...selection, choiceKey: newIdempotencyKey(), selectedAtMs: Date.now(), choiceOwner: linkedGlobalId });
+    const chosen: CheckoutSelection = {
+      ...selection, choiceKey: newIdempotencyKey(),
+      selectedAtMs: Date.now(), choiceOwner: linkedGlobalId,
+    };
+    setCheckout(chosen);
+    if (chosen.method !== "EFHC" && !isCustomEfhcPackage(chosen.item)) {
+      void ensureExternalShopSelection(chosen).catch(() => undefined);
+    }
     setLocalError(""); setLocalNotice("");
   }
   function openOrderDetail(order: BrowserShopProfileOrder, initiator: HTMLElement | null) {
@@ -826,6 +904,10 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     }
     let intentCreated = false;
     try {
+      const selected = await ensureExternalShopSelection(selection);
+      if (Date.parse(selected.expires_at) <= Date.now()) {
+        throw new Error("SHOP_SELECTION_EXPIRED");
+      }
       const parsed = await createIntent.mutateAsync({
         token,
         sku: item.sku,
