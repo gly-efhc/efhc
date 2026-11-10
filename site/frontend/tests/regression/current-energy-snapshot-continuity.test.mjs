@@ -11,6 +11,7 @@ const {
   projectEnergyD8: project,
   reconcileEnergyAnchor: reconcile,
 } = h.load("lib/energyProjection.ts");
+const { levelProgressPct } = h.load("lib/energyLevelProgress.ts");
 
 test("Fresh 30-second sync does not rewind the local BASE/VIP counter", () => {
   const serverA = "2026-11-08T12:00:00.000Z";
@@ -112,4 +113,34 @@ test("Cycle 0043: both available-kWh displays use one polled backend exchange pr
   assert.match(previewHook, /refetchOnWindowFocus: "always"/);
   assert.match(previewHook, /refetchOnReconnect: "always"/);
   assert.match(snapshotHook, /queryKey: queryKeys\.exchange\.preview\(globalId\),\s*refetchType: "active"/);
+});
+
+test("Energy level progress uses exact D8 floor without demonstration boost", () => {
+  const d8 = value => {
+    const [integer, fraction = ""] = value.split(".");
+    return BigInt(integer) * 100000000n + BigInt(fraction.padEnd(8, "0"));
+  };
+  const start = d8("7500.00000000");
+  const end = d8("10000.00000000");
+  for (const [energy, percent] of [
+    ["7500.00000000", 0],
+    ["8136.22047628", 25],
+    ["8750.00000000", 50],
+    ["9999.99999999", 99],
+  ]) {
+    assert.equal(levelProgressPct(d8(energy), start, end, 9), percent, energy);
+  }
+  assert.equal(levelProgressPct(d8("10000.00000000"), end, d8("15000.00000000"), 10), 0);
+  assert.equal(levelProgressPct(d8("20000.00000000"), null, null, 12), 100);
+  assert.equal(levelProgressPct(d8("7499.99999999"), start, end, 9), 0);
+  assert.equal(levelProgressPct(d8("11000.00000000"), start, end, 9), 100);
+  assert.equal(levelProgressPct(d8("8750.00000000"), null, end, 9), 0);
+  assert.equal(levelProgressPct(d8("8750.00000000"), start, null, 9), 0);
+  assert.equal(levelProgressPct(d8("8750.00000000"), end, start, 9), 0);
+  assert.equal(levelProgressPct(d8("8750.00000000"), start, start, 9), 0);
+
+  const energyPage = source("pages/index.tsx");
+  assert.match(energyPage, /levelProgressPct\(/);
+  assert.match(energyPage, /console\.warn\("EFHC_INVALID_ENERGY_LEVEL_RANGE"/);
+  assert.doesNotMatch(energyPage, /basePct\s*\+\s*50|data-level-progress-boost-pp/);
 });
