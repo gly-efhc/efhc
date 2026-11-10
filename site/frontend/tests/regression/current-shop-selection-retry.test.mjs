@@ -24,7 +24,7 @@ test("Shop one selection keeps the same nonce on repeated external and EFHC atte
   assert.match(code, /idempotencyKey: selection\.choiceKey/);
   assert.doesNotMatch(code, /client_nonce: globalThis\.crypto\?\.randomUUID/);
   assert.doesNotMatch(code, /idempotencyKey: newIdempotencyKey\(\)/);
-  assert.match(code, /intentCreated && shopSelectionWindowOpen\(selection\.selectedAtMs\)/);
+  assert.match(code, /intentCreated && isUserRejected\(caught\) && shopSelectionWindowOpen\(selection\.selectedAtMs\)/);
   assert.match(code, /selection\.choiceOwner !== linkedGlobalId/);
   assert.match(code, /SHOP_SELECTION_WINDOW_MS - \(Date\.now\(\) - checkout\.selectedAtMs\)/);
   assert.match(code, /navigator\.onLine === false/);
