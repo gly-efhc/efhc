@@ -13,6 +13,7 @@ import {
   getBrowserShopProfile,
   purchaseBrowserShopWithEfhc,
 } from "../services/browserShop.service";
+import { selectBrowserShop } from "../services/browserShopSelection.service";
 import { queryKeys } from "./queryKeys";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import type { DbId } from "../types/db-id";
@@ -23,6 +24,10 @@ const TERMINAL = new Set([
   "CANCELED",
   "FAILED",
 ]);
+
+export function useBrowserShopSelect() {
+  return useMutation({mutationFn:selectBrowserShop});
+}
 
 export function useBrowserShopAccessKey() {
   return useMutation({ mutationFn: createBrowserShopAccessKey });
