@@ -17,11 +17,25 @@ test("Shop selection guard anchors one 15-minute window at the original Buy clic
   assert.equal(shopSelectionWindowOpen(start, start - 1), false);
   for (const invalid of [0,-1,NaN,Infinity]) assert.equal(shopSelectionWindowOpen(invalid,start), false);
 });
+test("Independent Buy uses a fresh key; post-link continuation alone can reuse it", () => {
+  const { canResumeShopChoice } = sourceRuntime().load("features/browser-shop/shopSelection.ts");
+  const previous = {sku:"EFHC_PACKAGE_10",method:"TON",choiceOwner:"0000000042",resumeAfterLink:false};
+  const same = {sku:"EFHC_PACKAGE_10",method:"TON"};
+  assert.equal(canResumeShopChoice(previous,same,"0000000042"),false);
+  assert.equal(canResumeShopChoice({...previous,resumeAfterLink:true},same,"0000000042"),true);
+  assert.equal(canResumeShopChoice({...previous,resumeAfterLink:true},same,"0000000099"),false);
+  assert.equal(canResumeShopChoice({...previous,resumeAfterLink:true},{...same,method:"USDT"},"0000000042"),false);
+  assert.equal(canResumeShopChoice({...previous,resumeAfterLink:true},{...same,sku:"EFHC_PACKAGE_50"},"0000000042"),false);
+  assert.equal(canResumeShopChoice(null,same,"0000000042"),false);
+});
+
 test("Shop one selection keeps the same nonce on repeated external and EFHC attempts", () => {
   const code = read("features/browser-shop/BrowserShopPage.tsx");
-  assert.match(code, /choiceKey: reuse \? previous\.choiceKey : newIdempotencyKey\(\)/);
-  assert.match(code, /selectedAtMs: reuse \? previous\.selectedAtMs : Date\.now\(\)/);
+  assert.match(code, /choiceKey: reuse && previous/);
+  assert.match(code, /selectedAtMs: reuse && previous/);
   assert.match(code, /rememberShopChoice\(chosen\)/);
+  assert.match(code, /rememberShopChoice\(selection, true\)/);
+  assert.match(code, /canResumeShopChoice\(previous,/);
   assert.match(code, /clearShopChoice\(\)/);
   assert.match(code, /client_nonce: selection\.choiceKey/);
   assert.match(code, /idempotencyKey: selection\.choiceKey/);
