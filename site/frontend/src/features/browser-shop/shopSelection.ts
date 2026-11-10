@@ -9,7 +9,7 @@ export function shopSelectionWindowOpen(selectedAtMs: number, nowMs = Date.now()
 /** Compare financial D2 prices exactly, without floating-point arithmetic. */
 export function sameShopPriceD2(clientDisplay: string, serverDisplay: string): boolean {
   const cents = (raw: string): bigint | null => {
-    const match = /^\\d+(?:\\.\\d{1,2})?$/.exec(raw);
+    const match = /^\d+(?:\.\d{1,2})?$/.exec(raw);
     if (!match) return null;
     const [whole, fraction = ""] = raw.split(".");
     return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
