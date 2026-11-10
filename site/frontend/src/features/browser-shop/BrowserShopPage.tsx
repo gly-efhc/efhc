@@ -37,7 +37,7 @@ import {
 } from "../../lib/wallet-provider";
 import { useAuthState } from "../../hooks/auth/useAuthState";
 import { newIdempotencyKey } from "../../lib/idempotency";
-import { shopSelectionWindowOpen, SHOP_SELECTION_WINDOW_MS, sameShopPriceD2 } from "./shopSelection";
+import { canResumeShopChoice, shopSelectionWindowOpen, SHOP_SELECTION_WINDOW_MS, sameShopPriceD2 } from "./shopSelection";
 import type { BrowserShopSelectionResponse } from "../../services/browserShopSelection.service";
 import { ApiError } from "../../lib/api";
 import { makePrimaryWallet } from "../../services/profile.service";
@@ -87,7 +87,7 @@ function safeSessionRead(key: string): string {
 
 /** Transient same-tab selection identity, never a payment authorization. */
 function readShopChoice(): Pick<CheckoutSelection, "choiceKey" | "selectedAtMs" | "choiceOwner"> & {
-  sku: string; method: "TON" | "USDT"; customEfhcAmountD8?: string;
+  sku: string; method: "TON" | "USDT"; customEfhcAmountD8?: string; resumeAfterLink?: boolean;
 } | null {
   try {
     const raw = window.sessionStorage.getItem(CHOICE_KEY);
@@ -100,13 +100,14 @@ function readShopChoice(): Pick<CheckoutSelection, "choiceKey" | "selectedAtMs" 
     return value;
   } catch { return null; }
 }
-function rememberShopChoice(selection: CheckoutSelection): void {
+function rememberShopChoice(selection: CheckoutSelection, resumeAfterLink = false): void {
   if (typeof window === "undefined" || selection.method === "EFHC") return;
   try {
     window.sessionStorage.setItem(CHOICE_KEY, JSON.stringify({
       sku: selection.item.sku, method: selection.method,
       choiceKey: selection.choiceKey, selectedAtMs: selection.selectedAtMs,
       choiceOwner: selection.choiceOwner,
+      resumeAfterLink,
       customEfhcAmountD8: selection.customEfhcAmountD8,
     }));
   } catch { /* Session storage is optional; server verifies all rights. */ }
@@ -704,7 +705,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
   async function linkWebAccount(selection?: CheckoutSelection) {
     setLocalError(""); setLocalNotice("");
-    if (selection) { setSelectedSku(selection.item.sku); setGlobalMethod(selection.method); }
+    if (selection) { setSelectedSku(selection.item.sku); setGlobalMethod(selection.method); rememberShopChoice(selection, true); }
     if (!auth.authenticated) { openWebProfile(); return; }
     try {
       const out = await accessKey.mutateAsync();
@@ -797,13 +798,11 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     // its own immutable retry key and 15-minute clock from the first click.
     const previous = selection.method !== "EFHC" &&
       !isCustomEfhcPackage(selection.item) ? readShopChoice() : null;
-    const reuse = previous && previous.sku === selection.item.sku &&
-      previous.method === selection.method &&
-      (!previous.choiceOwner || previous.choiceOwner === linkedGlobalId);
+    const reuse = canResumeShopChoice(previous, { sku: selection.item.sku, method: selection.method }, linkedGlobalId);
     const chosen: CheckoutSelection = {
       ...selection,
-      choiceKey: reuse ? previous.choiceKey : newIdempotencyKey(),
-      selectedAtMs: reuse ? previous.selectedAtMs : Date.now(),
+      choiceKey: reuse && previous ? previous.choiceKey : newIdempotencyKey(),
+      selectedAtMs: reuse && previous ? previous.selectedAtMs : Date.now(),
       choiceOwner: linkedGlobalId,
     };
     rememberShopChoice(chosen);
