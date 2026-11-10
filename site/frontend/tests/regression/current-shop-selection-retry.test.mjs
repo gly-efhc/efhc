@@ -19,7 +19,10 @@ test("Shop selection guard anchors one 15-minute window at the original Buy clic
 });
 test("Shop one selection keeps the same nonce on repeated external and EFHC attempts", () => {
   const code = read("features/browser-shop/BrowserShopPage.tsx");
-  assert.match(code, /choiceKey: newIdempotencyKey\(\), selectedAtMs: Date\.now\(\)/);
+  assert.match(code, /choiceKey: reuse \? previous\.choiceKey : newIdempotencyKey\(\)/);
+  assert.match(code, /selectedAtMs: reuse \? previous\.selectedAtMs : Date\.now\(\)/);
+  assert.match(code, /rememberShopChoice\(chosen\)/);
+  assert.match(code, /clearShopChoice\(\)/);
   assert.match(code, /client_nonce: selection\.choiceKey/);
   assert.match(code, /idempotencyKey: selection\.choiceKey/);
   assert.doesNotMatch(code, /client_nonce: globalThis\.crypto\?\.randomUUID/);
