@@ -1,6 +1,6 @@
 /** Owner-scoped UTC daily-limit display cache. No rewards or advertisement media. */
 const PREFIX = "efhc.tasks.ad-limits";
-const VALID_OWNER = /^\\d{10}$/;
+const VALID_OWNER = /^\d{10}$/;
 export function utcAdDay(nowMs = Date.now()): string {
   return new Date(nowMs).toISOString().slice(0, 10);
 }
