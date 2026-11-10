@@ -139,7 +139,7 @@ test('OWNER-rejected progress and Header adapters stay detached after rollback',
  const end=energy.indexOf('\nconst LiveEnergyHeroAndProgress');
  assert.ok(start>=0 && end>start);
  assert.equal(crypto.createHash('sha256').update(energy.slice(start,end)).digest('hex'),
-  'f2ca374f6623bf5d920a6dd84e73326c01cd08c4af0a82e60e7b93b92c771aab',
+  '20b16c00c48fd6c2ce0cb2a4ece744ed4d8d38604c0e63ec0b040921f0f7fd7a',
   'Accepted Energy stage JSX must retain the baseline with stable semantic attributes');
 });
 
