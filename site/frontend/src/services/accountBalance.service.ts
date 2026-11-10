@@ -4,7 +4,7 @@ import { parseGlobalId } from "../types/identity";
 
 // Independent read-only account truth. Both Header and Balance share this,
 // while transaction history is fetched through a separate paged resource.
-const decimal = z.string().regex(/^\d+(?:\.\d+)?$/);
+const decimal = z.string().regex(/^\d+(?:\.\d{1,8})?$/);
 export const currentAccountBalancesSchema = z.object({
   global_id: z.string().transform(parseGlobalId),
   main_balance: decimal,

@@ -326,6 +326,9 @@ export async function performProductionHttpRequest<T>(
         ? JSON.stringify(opts.body)
         : undefined,
     credentials: "include",
+    // Owner-facing GETs must not be silently served from the browser HTTP cache.
+    // Offline display comes from validated React Query data, not stale HTTP.
+    cache: method === "GET" ? "no-store" : "default",
     signal: opts.signal,
   });
 

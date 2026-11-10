@@ -21,7 +21,8 @@ async function invalidateTaskState(
   queryClient: ReturnType<typeof useQueryClient>,
   globalId: GlobalId | null,
 ): Promise<void> {
-  await Promise.all([
+  // A confirmed reward is not a failed claim if any follow-up read fails.
+  await Promise.allSettled([
     queryClient.invalidateQueries({
       queryKey: queryKeys.tasks.mine(globalId),
     }),
@@ -30,6 +31,10 @@ async function invalidateTaskState(
     }),
     queryClient.invalidateQueries({
       queryKey: queryKeys.tasks.earnings(globalId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.account.current(globalId),
+      refetchType: "active",
     }),
   ]);
 }

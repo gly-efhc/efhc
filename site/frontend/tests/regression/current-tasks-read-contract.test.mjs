@@ -42,3 +42,32 @@ test('actual Tasks observers reject old malformed cached amounts before the form
   observer.destroy();
  }}finally{c.clear();}
 });
+
+test("Claimed task bonus refreshes account balances; a failed read never reports the paid claim as failed", async () => {
+  const invalidations = [];
+  const h = sourceRuntime({overrides:{
+    "@tanstack/react-query":{
+      useMutation: options => options,
+      useQuery: options => options,
+      useQueryClient: () => ({ invalidateQueries: options => {
+        invalidations.push(options);
+        return options.queryKey[0] === "accountBalance" ? Promise.reject(new Error("offline read")) : Promise.resolve();
+      }}),
+    },
+    "../auth/AuthSessionProvider": {useAuthOwnerGlobalId:()=> "0000000088"},
+    "../services/tasks.service":{
+      claimTask: () => {},getMyTasks:()=>{},getTaskEarnings:()=>{},getTasksCatalog:()=>{},
+      selectTaskCatalog:()=>{},selectMyTasks:()=>{},selectTaskEarnings:()=>{},
+    },
+  }});
+  const mutation = h.load("queries/useTasks.ts").useClaimTask();
+  await assert.doesNotReject(mutation.onSuccess());
+  assert.ok(invalidations.some(options => options.queryKey[0] === "accountBalance" && options.queryKey[1] === "0000000088"));
+  assert.ok(invalidations.some(options => options.queryKey[0] === "tasksMy"));
+  assert.ok(invalidations.some(options => options.queryKey[0] === "tasksEarnings"));
+});
+test("Task catalog is persisted as a public catalog without persisting personal balances", () => {
+  const file = readFileSync(fileURLToPath(new URL("../../src/lib/publicCatalogPersistence.ts",import.meta.url)),"utf8");
+  assert.match(file, /key\.length === 1 && key\[0\] === "tasksCatalog"/);
+  assert.doesNotMatch(file, /key\[0\] === "accountBalance"/);
+});

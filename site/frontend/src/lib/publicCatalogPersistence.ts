@@ -12,7 +12,11 @@ type StoredEntry = {
 };
 
 function isSafeKey(key: QueryKey): boolean {
-  return Array.isArray(key) && (key[0] === SAFE_PREFIX || (key.length === 2 && key[0] === "browser-shop" && key[1] === "catalog"));
+  return Array.isArray(key) && (
+    key[0] === SAFE_PREFIX ||
+    (key.length === 1 && key[0] === "tasksCatalog") ||
+    (key.length === 2 && key[0] === "browser-shop" && key[1] === "catalog")
+  );
 }
 
 function readEntries(): StoredEntry[] {

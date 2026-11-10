@@ -57,6 +57,12 @@ export function useSnapshot() {
     // The global Refresh action must also update the available-kWh preview
     // shared by Energy and Exchange, not only the lifetime snapshot.
     if (globalId) {
+      // Header and profile balances have a separate signed source of truth.
+      // Refresh both read-only resources without replaying financial commands.
+      void client.invalidateQueries({
+        queryKey: queryKeys.account.current(globalId),
+        refetchType: "active",
+      });
       void client.invalidateQueries({
         queryKey: queryKeys.exchange.preview(globalId),
         refetchType: "active",

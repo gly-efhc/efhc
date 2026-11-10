@@ -103,3 +103,40 @@ test("Authenticated GET is not persisted as a historical monetary balance, and a
   assert.match(read("queries/usePanels.ts"),/queryKeys\.account\.current\(globalId\)/);
   assert.match(read("queries/useExchange.ts"),/queryKeys\.account\.current\(globalId\)/);
 });
+
+
+test("Manual Refresh revalidates signed account balances and energy without a financial mutation", () => {
+  const source = read("hooks/useSnapshot.ts");
+  const refresh = source.slice(source.indexOf("const refresh = () =>"), source.indexOf("return {", source.indexOf("const refresh = () =>")));
+  assert.match(refresh, /queryKeys\.account\.current\(globalId\)/);
+  assert.match(refresh, /queryKeys\.exchange\.preview\(globalId\)/);
+  assert.match(refresh, /refetchType: "active"/);
+  assert.doesNotMatch(refresh, /mutate|POST|sendTransaction/);
+});
+test("Shop EFHC payment success revalidates account and snapshot without a second payment", async () => {
+  const invalidations = [];
+  let success;
+  const h = sourceRuntime({overrides: {
+    "@tanstack/react-query": {
+      useMutation: option => { success = option.onSuccess; return option; },
+      useQueryClient: () => ({invalidateQueries: options => {
+        invalidations.push(options);
+        return options.queryKey[0] === "accountBalance" ? Promise.reject(new Error("read offline")) : Promise.resolve();
+      }}),
+    },
+    "../auth/AuthSessionProvider": { useAuthOwnerGlobalId: () => owner },
+    "../services/browserShop.service": {
+      createBrowserShopAccessKey: () => {},
+      createBrowserShopIntent: () => {},
+      getBrowserShopBootstrap: () => {},
+      getBrowserShopCatalog: () => {},
+      getBrowserShopIntentStatus: () => {},
+      getBrowserShopProfile: () => {},
+      purchaseBrowserShopWithEfhc: () => {},
+    },
+  }});
+  h.load("queries/useBrowserShop.ts").useBrowserShopEfhcPurchase();
+  await assert.doesNotReject(success());
+  assert.deepEqual(invalidations.map(x => x.queryKey[0]), ["browser-shop","accountBalance","syncSnapshot"]);
+  assert.equal(invalidations[1].queryKey[1], owner);
+});
