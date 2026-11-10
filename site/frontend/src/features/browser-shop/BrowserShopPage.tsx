@@ -51,7 +51,7 @@ import {
 const TOKEN_KEY = "efhc.browserShop.token.v1";
 const SKU_KEY = "efhc.browserShop.sku.v1";
 const METHOD_KEY = "efhc.browserShop.method.v1";
-const CHOICE_KEY = "efhc.browserShop.choice.v1";
+const CHOICE_KEY = `${SKU_KEY}:choice`;
 const VIP_NUMBER_PAGE = 100;
 const ORDERS_PAGE = 20;
 const VIP_0000_IMAGE = "/assets/efhc/efhc_vip_nft_0000.jpg";
