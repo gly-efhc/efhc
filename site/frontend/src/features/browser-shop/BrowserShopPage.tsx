@@ -586,12 +586,12 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     : auth.authenticated && linkedGlobalId && accountBalances.data?.global_id === linkedGlobalId
       ? accountBalances.data.main_balance
       : snapshot.snap?.profile.main_balance || "—";
-  // Custom quantities can be quoted only after a valid D8 amount is known.
+  // First-click selection is retried with its ORIGINAL key when identity
+  // finishes loading; custom products wait for a valid quantity.
   // The existing checkout input and visual layout stay unchanged.
   useEffect(() => {
-    if (!checkout || checkout.method === "EFHC" ||
-        !isCustomEfhcPackage(checkout.item) || !checkout.customEfhcAmountD8 ||
-        !token || !linkedGlobalId) return;
+    if (!checkout || checkout.method === "EFHC" || !token || !linkedGlobalId ||
+        (isCustomEfhcPackage(checkout.item) && !checkout.customEfhcAmountD8)) return;
     void ensureExternalShopSelection(checkout).catch(() => undefined);
   }, [checkout?.choiceKey, checkout?.customEfhcAmountD8, token, linkedGlobalId]);
   const username = visualProof ? "EFHC Player" : snapshot.snap?.profile.username || (linkedGlobalId ? `ID ${linkedGlobalId}` : "EFHC");
