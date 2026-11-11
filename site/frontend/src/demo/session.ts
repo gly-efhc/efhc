@@ -25,13 +25,13 @@ function saveGuestResumeToken(token: string | null): void {
     else window.localStorage.removeItem(GUEST_RESUME_KEY);
   } catch { /* Local storage may be disabled; server always validates owners. */ }
 }
-type DemoScope = "guest" | "operator" | "preview" | "visual";
+type DemoScope = "guest" | "operator" | "visual";
 
 export function currentDemoSessionScope(): DemoScope | null {
   if (typeof window === "undefined") return null;
   try {
     const value = window.sessionStorage.getItem(DEMO_SCOPE_KEY);
-    return value === "guest" || value === "operator" || value === "preview" || value === "visual" ? value : null;
+    return value === "guest" || value === "operator" || value === "visual" ? value : null;
   } catch { return null; }
 }
 
@@ -44,7 +44,7 @@ function setDemoSessionScope(scope: DemoScope | null): void {
 }
 
 export function isDemoGuestSession(): boolean {
-  return isDemoBackendMode() && ["guest", "preview", "visual"].includes(currentDemoSessionScope() || "");
+  return isDemoBackendMode() && ["guest", "visual"].includes(currentDemoSessionScope() || "");
 }
 
 type SessionInfo = { ok: boolean; global_id: string; csrf: string; mode: string };
@@ -103,7 +103,7 @@ function acceptIssuedDemoSession(value: IssuedDemoSession): SessionInfo {
     saveGuestResumeToken(value.guest_resume_token);
   }
   // Scope is only a UI hint; the TEST server checks session.scope and owner.
-  setDemoSessionScope(value.scope === "guest" || value.scope === "preview" || value.scope === "visual" ? value.scope : "operator");
+  setDemoSessionScope(value.scope === "guest" || value.scope === "visual" ? value.scope : "operator");
   // Never return the secret to the UI or console; the backend owns the identity.
   return {ok: value.ok, global_id: value.global_id, csrf: value.csrf, mode: value.mode};
 }
@@ -159,7 +159,7 @@ export async function loginDemoGuest(): Promise<SessionInfo> {
   const result = await writeControl<IssuedDemoSession>(
     "guest", resume_token ? {resume_token} : {}, true
   );
-  if (result.scope !== "guest" && result.scope !== "preview") throw new Error("DEMO_GUEST_SCOPE_INVALID");
+  if (result.scope !== "guest") throw new Error("DEMO_GUEST_SCOPE_INVALID");
   return acceptIssuedDemoSession(result);
 }
 
