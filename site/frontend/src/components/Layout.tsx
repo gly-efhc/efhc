@@ -585,6 +585,15 @@ export function Layout(
       ? await prepareProof().catch(() => null)
       : null;
     setProofState(prepared);
+    if (mode === "binding" && !prepared) {
+      // Binding requires a fresh server-issued TON Proof challenge. Never
+      // offer a wallet connection that cannot be verified by the backend.
+      setWalletModalOpened(false);
+      restoreTelegramMainButtonAfterWalletModal();
+      setConnectionPhase("error");
+      setWalletHint(t("wallet.restore_requires_proof"));
+      return;
+    }
     // Connection and cryptographic owner verification remain separate.
     // The official TonConnect UI owns wallet selection and return/deep links.
     setWalletHint(prepared
