@@ -5,6 +5,7 @@ on:
       - '**'
     paths:
       - site/frontend/src/lib/wallet-provider/**
+      - site/frontend/src/features/browser-shop/BrowserShopPage.tsx
       - site/frontend/src/lib/tonconnect.ts
       - site/frontend/src/components/Layout.tsx
       - site/frontend/src/features/browser-shop/BrowserShopPage.tsx
@@ -55,6 +56,8 @@ jobs:
           if (config.compilerOptions?.paths?.["@tonconnect/ui-react"]) throw Error("CUSTOM_ALIAS_ACTIVE");
           if (layout.includes("TonConnectWalletChooser")) throw Error("CUSTOM_PICKER_ACTIVE");
           if (shop.includes("TonConnectWalletChooser")) throw Error("SHOP_CUSTOM_PICKER_ACTIVE");
+          const primary=fs.readFileSync("src/lib/wallet-provider/primaryWalletRouting.ts","utf8");
+          if (primary.includes("args.connectWallet(target)")) throw Error("PRIMARY_WALLET_CUSTOM_CONNECTOR_ACTIVE");
           if (fs.existsSync("src/components/wallet/TonConnectWalletChooser.tsx")) throw Error("CUSTOM_PICKER_SOURCE_REMAINS");
           if (fs.existsSync("src/lib/vendor/tonconnect-ui-react-compat.tsx")) throw Error("COMPATIBILITY_LAYER_REMAINS");
           if (adapter.includes("connectWallet(wallet.walletKey)")) throw Error("CUSTOM_CONNECTOR_ACTIVE");
