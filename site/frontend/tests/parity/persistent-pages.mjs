@@ -97,7 +97,7 @@ try{
   });
   await check('operator console remains accessible without remote API',async()=>{
     await visit('dev/neon/');
-    await page.locator('input[type="password"]').waitFor({state:'visible'});
+    await page.getByPlaceholder('Пароль TEST оператора').waitFor({state:'visible'});
     assert.ok((await page.locator('body').innerText()).includes('Neon TEST'));
     assert.ok(!(await page.locator('body').innerText()).includes('Application error'));
   });
