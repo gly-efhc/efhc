@@ -50,7 +50,7 @@ try {
   await visit('web-profile/','[data-profile-global-id]');
   await page.waitForFunction(() => {
     const gid=document.querySelector('[data-profile-global-id]')?.getAttribute('data-profile-global-id')||'';
-    return /^\\d{10}$/.test(gid) && Number(gid)>=3001 && Number(gid)<=4000;
+    return /^[0-9]{10}$/.test(gid) && Number(gid)>=3001 && Number(gid)<=4000;
   },null,{timeout:60000});
   console.log('GENESIS_REAL_USER_PROFILE_ID_PASS');
   await visit('panels/','#efhc-main-content');
@@ -67,7 +67,7 @@ try {
   // Check all static routes still render their protected shell without
   // exposing privileged data or operations.
   for(const route of ['admin/','admin/users/','admin/bank/','admin/panels/','admin/reports/']) {
-    const normalized='/'+route.replace(/\\/$/,'');
+    const normalized='/'+(route.endsWith('/')?route.slice(0,-1):route);
     await visit(route,`[data-admin-route="${normalized}"]`);
     await page.getByText('Доступ запрещён.',{exact:true}).waitFor({state:'visible',timeout:40000});
     assert.equal(await page.getByText('Административные модули',{exact:true}).count(),0,
