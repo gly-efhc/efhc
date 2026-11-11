@@ -1,6 +1,7 @@
 import { Address, beginCell, toNano } from "@ton/core";
 import { JettonWallet, TonClient, type TupleItemSlice } from "@ton/ton";
 import type { JettonTransferPlan, TonConnectTx } from "./tx";
+import { isGenesisTestRuntime } from "./testnet-guard";
 
 const JETTON_TRANSFER_OPCODE = 0x0f8a7ea5;
 
@@ -81,7 +82,7 @@ export function buildJettonTransferTonConnectTx(
   const payload = buildJettonTransferBodyBase64(plan);
   return {
     validUntil: Math.floor(Date.now() / 1000) + 600,
-    network: "-239",
+    network: isGenesisTestRuntime() ? "-3" : "-239",
     messages: [
       {
         address: senderJettonWallet,
