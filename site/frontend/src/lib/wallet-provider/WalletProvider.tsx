@@ -140,73 +140,72 @@ const DISCONNECTED_WALLET_CONTEXT: WalletProviderValue = {
  * Single application-facing wallet root. TonConnect is mounted as one
  * adapter; no page or feature imports its SDK directly.
  */
+type TonConnectRuntimeSnapshot = {
+  tonConnectUI: any;
+  tonWallet: any;
+  tonAddress: string;
+  restoreSettled: boolean;
+  modalOpened: boolean;
+};
+
+/**
+ * Stable EFHC application shell. The official provider is a sibling of
+ * application pages, not their parent: loading its browser-only SDK must
+ * never unmount protected pages after their first render.
+ */
 export function WalletProvider(props: WalletProviderProps) {
   const [hydrated, setHydrated] = useState(false);
+  const [tonRuntime, setTonRuntime] = useState<TonConnectRuntimeSnapshot | null>(null);
   useEffect(() => setHydrated(true), []);
 
-  if (!hydrated) {
-    return (
-      <WalletProviderContext.Provider value={DISCONNECTED_WALLET_CONTEXT}>
-        {props.children}
-      </WalletProviderContext.Provider>
-    );
-  }
-
   return (
-    <OfficialTonConnectProvider
-      manifestUrl={props.manifestUrl}
-      restoreConnection={props.restoreConnection}
-      actionsConfiguration={{
-        twaReturnUrl: props.returnUrl as `${string}://${string}`,
-      }}
-      uiPreferences={{
-        theme: tonConnectTheme(
-          props.themeMode,
-          props.telegramScheme,
-        ) as any,
-      }}
-      walletsPreferredFeatures={{
-        sendTransaction: { minMessages: 1 },
-      }}
-    >
-      <WalletProviderRuntime
-        language={props.language}
-        themeMode={props.themeMode}
-        telegramScheme={props.telegramScheme}
-      >
-        {props.children}
-      </WalletProviderRuntime>
-    </OfficialTonConnectProvider>
+    <WalletProviderRuntime runtime={tonRuntime}>
+      {props.children}
+      {hydrated ? (
+        <OfficialTonConnectProvider
+          manifestUrl={props.manifestUrl}
+          restoreConnection={props.restoreConnection}
+          actionsConfiguration={{
+            twaReturnUrl: props.returnUrl as `${string}://${string}`,
+          }}
+          uiPreferences={{
+            theme: tonConnectTheme(props.themeMode, props.telegramScheme) as any,
+          }}
+          walletsPreferredFeatures={{
+            sendTransaction: { minMessages: 1 },
+          }}
+        >
+          <TonConnectRuntimeBridge
+            language={props.language}
+            themeMode={props.themeMode}
+            telegramScheme={props.telegramScheme}
+            onUpdate={setTonRuntime}
+          />
+        </OfficialTonConnectProvider>
+      ) : null}
+    </WalletProviderRuntime>
   );
 }
 
-function WalletProviderRuntime(
-  props: React.PropsWithChildren<{
-    language: Lang;
-    themeMode: "auto" | "dark" | "light";
-    telegramScheme: "light" | "dark";
-  }>,
-) {
+/** Only this bridge is nested under the browser-only official provider. */
+function TonConnectRuntimeBridge(props: {
+  language: Lang;
+  themeMode: "auto" | "dark" | "light";
+  telegramScheme: "light" | "dark";
+  onUpdate: (value: TonConnectRuntimeSnapshot) => void;
+}) {
   const [tonConnectUI, setTonConnectOptions] = useTonConnectUI();
   const tonWallet = useTonWallet() as any;
   const tonAddress = useTonAddress();
   const restoreSettled = useIsConnectionRestored();
-  const [tonModalOpened, setTonModalOpened] = useState(false);
-  const [adapterRevision, setAdapterRevision] = useState(0);
-  const [activeAdapterId, setActiveAdapterId] =
-    useState<WalletAdapterId>(
-    DEFAULT_ADAPTER,
-  );
+  const [modalOpened, setModalOpened] = useState(false);
 
   useEffect(() => {
     try {
       setTonConnectOptions({
         language: tonConnectLanguage(props.language) as any,
         uiPreferences: {
-          theme: tonConnectTheme(
-            props.themeMode,
-            props.telegramScheme,
-          ) as any,
+          theme: tonConnectTheme(props.themeMode, props.telegramScheme) as any,
         },
       });
     } catch {
@@ -223,7 +222,7 @@ function WalletProviderRuntime(
     const api = tonConnectUI as any;
     if (typeof api?.onModalStateChange !== "function") return;
     const unsubscribe = api.onModalStateChange((state: any) => {
-      setTonModalOpened(Boolean(
+      setModalOpened(Boolean(
         state?.status === "opened" || state?.open === true,
       ));
     });
@@ -235,6 +234,42 @@ function WalletProviderRuntime(
       }
     };
   }, [tonConnectUI]);
+
+  useEffect(() => {
+    props.onUpdate({
+      tonConnectUI,
+      tonWallet,
+      tonAddress,
+      restoreSettled,
+      modalOpened,
+    });
+  }, [
+    modalOpened,
+    props.onUpdate,
+    restoreSettled,
+    tonAddress,
+    tonConnectUI,
+    tonWallet,
+  ]);
+
+  return null;
+}
+
+function WalletProviderRuntime(
+  props: React.PropsWithChildren<{
+    runtime: TonConnectRuntimeSnapshot | null;
+  }>,
+) {
+  const tonConnectUI = props.runtime?.tonConnectUI ?? null;
+  const tonWallet = props.runtime?.tonWallet ?? null;
+  const tonAddress = props.runtime?.tonAddress ?? "";
+  const restoreSettled = props.runtime?.restoreSettled ?? false;
+  const tonModalOpened = props.runtime?.modalOpened ?? false;
+  const [adapterRevision, setAdapterRevision] = useState(0);
+  const [activeAdapterId, setActiveAdapterId] =
+    useState<WalletAdapterId>(
+      DEFAULT_ADAPTER,
+    );
 
   const adapters = useMemo<WalletAdapter[]>(() => [
     createTonConnectAdapter({
@@ -403,7 +438,7 @@ function WalletProviderRuntime(
   ]);
 
   return (
-    <WalletProviderContext.Provider value={value}>
+    <WalletProviderContext.Provider value={props.runtime ? value : DISCONNECTED_WALLET_CONTEXT}>
       {props.children}
     </WalletProviderContext.Provider>
   );
