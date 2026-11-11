@@ -8,7 +8,7 @@ import { demoFetch } from "./request";
 let csrf: string | null = null;
 let sessionVersion = 0;
 const DEMO_SCOPE_KEY = "efhc.demo.session.scope.v1";
-const GUEST_RESUME_KEY = "efhc.demo.genesis.guest.resume.v1";
+const GUEST_RESUME_KEY = "efhc.demo.guest.resume";
 
 function readGuestResumeToken(): string | null {
   if (typeof window === "undefined") return null;
