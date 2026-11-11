@@ -16,6 +16,11 @@ export default function NeonTestConsole(): React.JSX.Element {
   // Server independently denies guest/operator impersonation; the console also hides controls.
   const authorized = auth.status === "authenticated" && currentDemoSessionScope() === "operator" && Boolean(auth.context?.global_id);
   const visualOnly = auth.status === "authenticated" && currentDemoSessionScope() === "visual";
+  const guestReady = auth.status === "authenticated"
+    && currentDemoSessionScope() === "guest"
+    && /^[0-9]{10}$/.test(auth.context?.global_id || "")
+    && Number(auth.context?.global_id) >= 3001
+    && Number(auth.context?.global_id) <= 4000;
   useEffect(() => { if (auth.context?.global_id) setCandidate(auth.context.global_id); }, [auth.context?.global_id]);
   const call = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true); setMessage("");
@@ -65,6 +70,19 @@ export default function NeonTestConsole(): React.JSX.Element {
         <button style={style} disabled={busy || !authorized} onClick={()=>void call(()=>transportRequest("/staging/topup","POST",{body:{amount_efhc:amount},idempotencyKey:globalThis.crypto.randomUUID()}))}>Тестовое пополнение через банк</button>
         <button style={style} disabled={busy || !authorized} onClick={()=>void call(()=>transportRequest("/staging/energy/tick","POST"))}>Генерация энергии</button>
       </section>
+      {guestReady ? (
+        <section style={{display:"grid",gap:10,border:"1px solid #9995",borderRadius:10,padding:16}} data-genesis-topup="test-only">
+          <strong>TEST-пополнение EFHCm — без реальных средств</strong>
+          <p>Пополнение только Global ID вашей текущей DEMO-сессии из тестового Банка. Операция проводится через зеркальный финансовый журнал и отменяется при восстановлении стартового аккаунта.</p>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <input style={style} value={amount} onChange={event=>setAmount(event.target.value)} aria-label="Сумма TEST-пополнения EFHC" inputMode="decimal" />
+            <button style={style} disabled={busy || !/^(?:[0-9]+)(?:\\.[0-9]{1,8})?$/.test(amount) || Number(amount) <= 0} onClick={()=>void call(async()=>transportRequest("/staging/guest-topup","POST",{
+              body:{amount_efhc:amount},
+              idempotencyKey:globalThis.crypto.randomUUID(),
+            }))}>Пополнить TEST-баланс</button>
+          </div>
+        </section>
+      ) : null}
       {message ? <p role="alert">{message}</p> : null}
       <pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",maxHeight:480,overflowY:"auto"}}>{JSON.stringify(result,null,2)}</pre>
     </main>
