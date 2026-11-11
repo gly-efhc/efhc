@@ -117,11 +117,18 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:19240${EFHC_DEMO_BASEPATH}/ -o /dev/null && break || sleep 1; done
           export EFHC_REACT_URL="http://127.0.0.1:19240${EFHC_DEMO_BASEPATH}/"
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
-          node site/frontend/tests/parity/panels-colors.mjs
-          node site/frontend/tests/parity/browser.mjs
-          node site/frontend/tests/parity/interactions.mjs
-          node site/frontend/tests/parity/templates.mjs
-          node site/frontend/tests/parity/routes.mjs
+          # Exercise every suite even when an earlier material check fails.
+          # Preserve the FAIL gate: diagnostics must not bypass visual acceptance.
+          failed=0
+          for suite in panels-colors browser interactions templates routes; do
+            if node "site/frontend/tests/parity/${suite}.mjs"; then
+              echo "FULL_REVIEW_SUITE_PASS ${suite}"
+            else
+              echo "FULL_REVIEW_SUITE_FAIL ${suite}"
+              failed=1
+            fi
+          done
+          test "$failed" -eq 0
       - name: Retain visual review and precise results
         if: ${{ always() && (inputs.full_review == true || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react'))) }}
         uses: actions/upload-artifact@v4
