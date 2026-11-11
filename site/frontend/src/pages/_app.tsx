@@ -543,6 +543,7 @@ function AppInner(props: {
     status: snapshotStatus,
     loading: snapshotLoading,
     refreshing: snapshotRefreshing,
+    verifiedAfterMount: snapshotVerifiedAfterMount,
     refresh: refreshSnapshot,
     updatedAt: snapshotUpdatedAt,
   } = useSnapshot();
@@ -863,6 +864,7 @@ function AppInner(props: {
               snapshotMode={snapshotMode}
               snapshotRefreshing={snapshotRefreshing}
               snapshotUpdatedAt={snapshotUpdatedAt}
+              snapshotVerifiedAfterMount={snapshotVerifiedAfterMount}
               confirmedAvailableKwh={energyAvailablePreview.data?.available_kwh ?? null}
               refreshSnapshot={() => {
                 void refreshSnapshot();
