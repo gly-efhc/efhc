@@ -12,6 +12,8 @@ import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { energyDisplayProjectionWindowMs, energyElapsedSinceSnapshotMs, projectEnergyD8 } from "../lib/energyProjection";
 import { levelProgressPct } from "../lib/energyLevelProgress";
 import { useT } from "../hooks/useT";
+import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
+import { usePanelsSummary } from "../queries/usePanels";
 import type {
   SnapshotStatus,
   SyncSnapshot,
@@ -420,10 +422,13 @@ export default function EnergyPage(props: {
   snapshotMode?: "live" | "browser-preview";
   snapshotRefreshing?: boolean;
   snapshotUpdatedAt?: number;
+  snapshotVerifiedAfterMount?: boolean;
   refreshSnapshot?: () => void;
 }) {
   const t = useT();
   const s = props.snap ?? emptyOwnerSnapshot();
+  const globalId = useAuthOwnerGlobalId();
+  const panelsSummary = usePanelsSummary();
 
   const thresholdsKwh = useMemo(
     () => USER_LEVEL_SKINS.map((item) => String(item.min_kwh)),
@@ -434,7 +439,17 @@ export default function EnergyPage(props: {
     return thresholdsKwh.map((x) => toScaled(`${x}.00000000`));
   }, [thresholdsKwh]);
 
-  const activePanels = readIntStr(s, ["panels", "active_count"], "0");
+  // Dedicated panels summary is the authoritative count for this indicator.
+  // Do not present an old persisted number as current during online bootstrap.
+  // Offline/failed reads remain unknown rather than a fictitious zero.
+  const verifiedOwner = Boolean(globalId && globalId === s.profile.global_id);
+  const summaryConfirmed = verifiedOwner && panelsSummary.isFetchedAfterMount &&
+    panelsSummary.isSuccess && !panelsSummary.isRefetchError && panelsSummary.data;
+  const activePanels = summaryConfirmed
+    ? String(panelsSummary.data.active_count)
+    : verifiedOwner && props.snapshotVerifiedAfterMount && props.snapshotStatus === "success"
+      ? readIntStr(s, ["panels", "active_count"], "—")
+      : props.snapshotMode === "browser-preview" ? "0" : "—";
 
   return (
     <div
