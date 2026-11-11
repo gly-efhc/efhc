@@ -78,3 +78,14 @@ test("official TON hydration never replaces the already-mounted application tree
   assert.match(src, /value=\{props\.runtime \? value : DISCONNECTED_WALLET_CONTEXT\}/);
   assert.doesNotMatch(src, /if \(!hydrated\)\s*\{[\s\S]*?return \(\s*<WalletProviderContext/);
 });
+
+test("EFHC owns Android Back and binding requires a matching server challenge", () => {
+  const provider = get("src/lib/wallet-provider/WalletProvider.tsx");
+  const layout = get("src/components/Layout.tsx");
+  const proof = get("src/lib/tonconnect.ts");
+  assert.match(provider, /enableAndroidBackHandler=\{false\}/);
+  assert.match(layout, /if \(mode === "binding" && !prepared\) \{/);
+  assert.match(layout, /setProofState\(prepared\)/);
+  assert.match(proof, /String\(proof\.payload \?\? ""\) !== proofState\.ton_proof_payload/);
+  assert.match(proof, /return await connectVerifiedTonWallet/);
+});
