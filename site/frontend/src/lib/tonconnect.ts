@@ -240,11 +240,13 @@ export function isTonConnectUserRejected(error: unknown): boolean {
 export async function sendTonConnectTransaction(
   tonConnectUI: any,
   tx: unknown,
+  wallet: unknown = null,
 ): Promise<{ boc: string | null; traceId: string | null }> {
   try {
     const request = tx as { network?: unknown } | null;
+    const connected = wallet as { account?: { chain?: unknown } } | null;
     requireGenesisTransactionNetwork(
-      request?.network, tonConnectUI?.wallet?.account?.chain,
+      request?.network, connected?.account?.chain,
     );
     const out = await tonConnectUI.sendTransaction(tx as any);
     // The SDK SendTransactionResponse requires a signed BOC. A malformed
