@@ -8,13 +8,13 @@ import { demoFetch } from "./request";
 let csrf: string | null = null;
 let sessionVersion = 0;
 const DEMO_SCOPE_KEY = "efhc.demo.session.scope.v1";
-type DemoScope = "guest" | "operator" | "preview";
+type DemoScope = "guest" | "operator" | "preview" | "visual";
 
 export function currentDemoSessionScope(): DemoScope | null {
   if (typeof window === "undefined") return null;
   try {
     const value = window.sessionStorage.getItem(DEMO_SCOPE_KEY);
-    return value === "guest" || value === "operator" || value === "preview" ? value : null;
+    return value === "guest" || value === "operator" || value === "preview" || value === "visual" ? value : null;
   } catch { return null; }
 }
 
@@ -27,7 +27,7 @@ function setDemoSessionScope(scope: DemoScope | null): void {
 }
 
 export function isDemoGuestSession(): boolean {
-  return isDemoBackendMode() && ["guest", "preview"].includes(currentDemoSessionScope() || "");
+  return isDemoBackendMode() && ["guest", "preview", "visual"].includes(currentDemoSessionScope() || "");
 }
 
 type SessionInfo = { ok: boolean; global_id: string; csrf: string; mode: string };
@@ -67,7 +67,7 @@ function acceptIssuedDemoSession(value: IssuedDemoSession): SessionInfo {
     expires_at: new Date(value.expires_at_epoch * 1000).toISOString(),
   });
   // Scope is only a UI hint; the TEST server checks session.scope and owner.
-  setDemoSessionScope(value.scope === "guest" || value.scope === "preview" ? value.scope : "operator");
+  setDemoSessionScope(value.scope === "guest" || value.scope === "preview" || value.scope === "visual" ? value.scope : "operator");
   // Never return the secret to the UI or console; the backend owns the identity.
   return {ok: value.ok, global_id: value.global_id, csrf: value.csrf, mode: value.mode};
 }
@@ -129,6 +129,14 @@ export async function loginDemo(password: string): Promise<SessionInfo> {
   const result = await writeControl<IssuedDemoSession>("login", {password}, true);
   return acceptIssuedDemoSession(result);
 }
+/** Temporary server-validated frontend layout preview. NEVER an Admin role. */
+export async function loginDemoVisual(key: string): Promise<SessionInfo> {
+  sessionVersion++;
+  const result = await writeControl<IssuedDemoSession>("visual-access", {key}, true);
+  if (result.scope !== "visual") throw new Error("DEMO_VISUAL_SCOPE_INVALID");
+  return acceptIssuedDemoSession(result);
+}
+
 export async function selectDemoGlobalId(global_id: string): Promise<SessionInfo> {
   if (!/^\d{10}$/.test(global_id) || global_id === "0000000000") throw new Error("INVALID_GLOBAL_ID");
   sessionVersion++;
