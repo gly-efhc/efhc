@@ -94,6 +94,9 @@ function proofEnvelope(
   const proof = wallet?.connectItems?.tonProof?.proof;
   const address = String(wallet?.account?.address || "").trim();
   if (!proofState || !proof || !address) return null;
+  // Never bind a restored or stale signature to a newly issued challenge.
+  // The backend still verifies the signed payload and its cryptographic proof.
+  if (String(proof.payload ?? "") !== proofState.ton_proof_payload) return null;
   requireGenesisWalletNetwork(wallet?.account?.chain);
   return {
     address,
