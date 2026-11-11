@@ -21,7 +21,11 @@ export function usePanelsSummary() {
     queryKey: queryKeys.panels.summary(globalId),
     enabled: Boolean(globalId),
     queryFn: getPanelsSummary,
-    staleTime: 10_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchOnReconnect: "always",
+    refetchInterval: globalId ? 30_000 : false,
   });
 }
 
