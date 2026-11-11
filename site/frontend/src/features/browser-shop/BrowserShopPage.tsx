@@ -749,10 +749,14 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       ? await prepareProof().catch(() => null)
       : null;
     setTonConnectProofState(proof);
-    // Wallet connection can succeed without a provider-verified identity,
-    // but checkout cannot proceed without an independently verified binding.
+    // A new account binding must have a fresh, server-authorized challenge.
+    // Keep checkout visible so a failed challenge does not strand payment.
     if (requireProof && !proof) {
+      setTonConnectBindingRequested(false);
+      setPendingPrimaryPayment(null);
+      setWalletTxPhase("error");
       setLocalError(t("wallet.restore_requires_proof"));
+      return;
     }
     try {
       // Close the local checkout overlay so it cannot mark the official
