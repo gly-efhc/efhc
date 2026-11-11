@@ -9,7 +9,7 @@ import { demoFetch } from "./request";
 export async function demoRawRequest(
   path: string, method: HttpMethod, options: ApiRequestOptions = {},
 ): Promise<Response> {
-  const guest = currentDemoSessionScope() === "guest";
+  const guest = ["guest", "visual"].includes(currentDemoSessionScope() || "");
   const normalized = normalizeApiPath(path);
   // C0034 preview writes use canonical TEST APIs, guest scope remains read-only.
   // Both are enforced on the isolated Neon TEST backend.
