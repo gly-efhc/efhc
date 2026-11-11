@@ -33,7 +33,7 @@ jobs:
           pages = os.environ["PAGES"]
           origin = "https://gly-efhc.github.io"
           
-          def request(path, method="GET", bearer=None, csrf=None):
+          def request(path, method="GET", bearer=None, csrf=None, payload=None):
               url = api + path
               headers = {"Origin": origin, "Accept": "application/json"}
               if bearer:
@@ -42,7 +42,11 @@ jobs:
                   headers["Content-Type"] = "application/json"
                   if csrf:
                       headers["X-EFHC-Test-CSRF"] = csrf
-              req = urllib.request.Request(url, method=method, data=b"{}" if method == "POST" else None, headers=headers)
+              req = urllib.request.Request(
+                  url, method=method,
+                  data=json.dumps(payload if payload is not None else {}).encode("utf-8") if method == "POST" else None,
+                  headers=headers,
+              )
               last = None
               for attempt in range(4):
                   try:
@@ -61,7 +65,7 @@ jobs:
                           time.sleep(3)
               raise AssertionError(f"{method} {path} failed: {last}")
           
-          # C0045: public Genesis TEST guests must receive a private slot.
+          # Public Genesis TEST guests must receive a private slot.
           # Global ID 88 is reserved for the protected SuperAdmin identity.
           status, hdr, guest = request("/api/staging/guest", "POST")
           gid = guest.get("global_id", "")
@@ -129,6 +133,12 @@ jobs:
               html = response.read(2000000).decode("utf-8", "replace")
           assert "EFHC" in html and "html" in html.lower(), "Pages entry missing"
           print("PUBLIC_PAGES_HTML=PASS")
+          # Release the TEST slot; CI must not consume the finite guest pool.
+          status, _, result = request(
+              "/api/staging/logout", "POST", bearer=token, csrf=guest["csrf"],
+              payload={"resume_token":guest["guest_resume_token"]},
+          )
+          assert status == 200 and result.get("ok") is True, "Guest lease cleanup failed"
           print("GENESIS_GUEST_HTTP_AND_ADMIN_DENIAL_SMOKE=PASS")
           PY
       - name: Checkout real React route manifest for Chrome smoke
