@@ -14,7 +14,7 @@ async function visit(page, base, route) {
   await page.locator('body').waitFor({state:'visible'});
   await page.waitForFunction(() =>
     [...document.styleSheets].some(sheet =>
-      sheet.href?.endsWith('/frame-thickness-contract.css')
+      /\/frame-thickness-contract\.[a-f0-9]{16}\.css$/.test(sheet.href || '')
     ), {timeout:15000});
 }
 export async function verifyFrameThickness(page,{base}) {
