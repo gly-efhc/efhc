@@ -2,7 +2,7 @@ name: EFHC Official TonConnect UI React runtime - isolated acceptance
 on:
   push:
     branches:
-      - cycle0045/iteration22-official-tonconnect-ui-react
+      - '**'
     paths:
       - site/frontend/src/lib/wallet-provider/**
       - site/frontend/src/lib/tonconnect.ts
@@ -19,16 +19,17 @@ concurrency:
   cancel-in-progress: true
 jobs:
   react:
+    if: contains(github.ref, 'official-tonconnect-ui-react')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
       run:
         working-directory: site/frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
           cache: npm
@@ -63,7 +64,6 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: demo_backend
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: https://efhc-cycle0032-demo-api.onrender.com
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
           NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
