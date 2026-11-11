@@ -190,6 +190,10 @@ export async function selectDemoGlobalId(global_id: string): Promise<SessionInfo
 }
 export async function logoutDemo(): Promise<void> {
   const resume_token = currentDemoSessionScope() ? readGuestResumeToken() : null;
-  try { await writeControl("logout", resume_token ? {resume_token} : {}); }
-  finally { clearDemoSession(); clearAuthSession(); }
+  // An unsafe or incomplete financial reset returns 409. Preserve the
+  // browser's resume secret so the same owner can retry or seek assistance;
+  // do not release the identity to another visitor by clearing it locally.
+  await writeControl("logout", resume_token ? {resume_token} : {});
+  clearDemoSession();
+  clearAuthSession();
 }
