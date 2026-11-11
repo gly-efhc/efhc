@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
+import { useAuthOwnerGlobalId, useAuthSessionController } from "../auth/AuthSessionProvider";
 import type { Dict, Lang } from "../lib/i18n";
 import { tFromDicts } from "../lib/i18n";
 import type { UserSettings } from "../lib/settings";
@@ -248,6 +248,12 @@ export function Layout(
   >([]);
 
   const globalId = useAuthOwnerGlobalId();
+  const authSession = useAuthSessionController();
+  // Public flags never grant Admin access. Protected API checks remain server-owned.
+  const canRenderAdminPage = Boolean(props.isAdmin) || (
+    isDemoBackendMode() && authSession.status === "authenticated" &&
+    currentDemoSessionScope() === "visual"
+  );
   const { avatar: resolvedAvatar } = useAvatarPreference();
 
   const qc = useQueryClient();
@@ -666,7 +672,7 @@ export function Layout(
         td,
         isVip: props.isVip,
         isAdmin: props.isAdmin,
-        canRenderAdminPage: props.isAdmin || (isDemoBackendMode() && (currentDemoSessionScope() === "visual" || process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW === "1")),
+        canRenderAdminPage,
         appMode,
         settings: props.settings,
         setLang: props.setLang,
@@ -776,7 +782,13 @@ export function Layout(
           }}
         >
           {showBrowserTelegramLogin ? <BrowserTelegramLogin t={t} /> : null}
-          {props.children}
+          {isAdminRoute && !canRenderAdminPage ? (
+            <section aria-label="Admin access required" data-admin-access="denied" style={{maxWidth:640,margin:"24px auto",padding:20}}>
+              <h1>EFHC Admin</h1>
+              <p>Доступ к административным страницам закрыт. Для временного просмотра войдите по ключу.</p>
+              <a href="/dev/neon/">Ввести ключ просмотра Admin</a>
+            </section>
+          ) : props.children}
         </FrontendShellMain>
         </FrontendShellFrame>
 
