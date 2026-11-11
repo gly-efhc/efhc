@@ -45,6 +45,7 @@ import { SplashScreen } from "../components/SplashScreen";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useSnapshot } from "../hooks/useSnapshot";
 import { useExchangePreview } from "../queries/useExchange";
+import { usePanelsSummary } from "../queries/usePanels";
 import { useCurrentAccountBalances } from "../hooks/useCurrentAccountBalances";
 import { overlayVerifiedAccountBalances } from "../lib/accountBalancePresentation";
 import {
@@ -550,6 +551,7 @@ function AppInner(props: {
   // Keep server reads in the authenticated app shell so Energy remains
   // renderable without a session/provider (protected-page persistence).
   const energyAvailablePreview = useExchangePreview(router.pathname === "/");
+  const energyPanelsSummary = usePanelsSummary(router.pathname === "/");
   const currentAccountBalances = useCurrentAccountBalances();
   const authSession = useAuthSessionController();
   const globalId = useAuthOwnerGlobalId();
@@ -600,6 +602,12 @@ function AppInner(props: {
   const visibleSnapshotStatus = globalId === null
     ? "success"
     : snapshotStatus;
+  const confirmedActivePanels =
+    globalId && visibleSnap.profile.global_id === globalId &&
+    energyPanelsSummary.isFetchedAfterMount &&
+    energyPanelsSummary.isSuccess && !energyPanelsSummary.isRefetchError
+      ? energyPanelsSummary.data?.active_count ?? null
+      : null;
 
   const isVip = Boolean(visibleSnap.profile.is_vip);
   // Admin access is server-authoritative via /admin/access.
@@ -865,6 +873,7 @@ function AppInner(props: {
               snapshotRefreshing={snapshotRefreshing}
               snapshotUpdatedAt={snapshotUpdatedAt}
               snapshotVerifiedAfterMount={snapshotVerifiedAfterMount}
+              confirmedActivePanels={confirmedActivePanels}
               confirmedAvailableKwh={energyAvailablePreview.data?.available_kwh ?? null}
               refreshSnapshot={() => {
                 void refreshSnapshot();
