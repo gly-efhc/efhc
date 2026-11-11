@@ -66,6 +66,9 @@ export function hydratePublicCatalogQueries(
   client: QueryClient,
 ): void {
   for (const entry of readEntries()) {
+    // Hydration is an offline fallback, never a second source allowed to
+    // replace a response that already reached the current QueryClient.
+    if (client.getQueryData(entry.key) !== undefined) continue;
     client.setQueryData(entry.key, entry.data, {
       updatedAt: entry.updatedAt,
     });
