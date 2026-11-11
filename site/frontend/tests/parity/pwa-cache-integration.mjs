@@ -84,6 +84,18 @@ try {
     assert.ok(info.cachedPaths.every(s=>!s.includes("/api/") && !s.includes("runtime-config.json")), "never cache API/credentials");
     results.push({name:"precache_inventory",status:"INFO",count:info.cachedCount});
   });
+  await check("rendered public CSS links use content-addressed paths for every root stylesheet", async () => {
+    await page.locator("#__next").waitFor({state:"attached"});
+    const links = await page.evaluate(() => [...document.querySelectorAll("link[rel='stylesheet'][href]")]
+      .map(link => new URL(link.href).pathname)
+      .filter(name => name.startsWith("/efhc/") &&
+        !name.includes("/_next/") && name.endsWith(".css")));
+    assert.ok(links.length > 0, "Expected public visual stylesheet links");
+    for (const link of links) {
+      assert.match(link,/\.[a-f0-9]{16}\.css$/,"Public CSS is not release-specific: "+link);
+      assert.ok(exportConfig.precache.includes(link),"Hashed public stylesheet missing from cache: "+link);
+    }
+  });
   await check("fresh browser tab restores device visual choices offline without an owner hint", async () => {
     // This uses only non-sensitive display preferences: no authenticated
     // account, financial payload, operator credential or fake Global ID.
@@ -547,6 +559,27 @@ try {
       }),oldStaticCache);
       assert.equal(retired.previousPresent,false,"old build cache still persisted after a verified successor loaded");
       console.log("PWA_OLD_BUILD_RETIRED",JSON.stringify(retired));
+      // B3: after retiring the last old generation, opening a completely new
+      // offline tab must render ONLY the fully installed successor shell.
+      const reopened = await context.newPage();
+      try {
+        await context.setOffline(true);
+        await reopened.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+        const offlineBuild = await reopened.evaluate(() => ({
+          buildId:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          script:Boolean(window.__EFHC_NEW_PWA_ASSET__),
+          css:getComputedStyle(document.documentElement)
+            .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+          root:Boolean(document.querySelector("#__next")),
+        }));
+        assert.deepEqual(offlineBuild,{
+          buildId:newBuildId,script:true,css:"updated",root:true,
+        },"Offline reopen mixed old and new build generations");
+        console.log("PWA_OFFLINE_LATEST_AFTER_RETIREMENT",JSON.stringify(offlineBuild));
+      } finally {
+        await context.setOffline(false);
+        await reopened.close();
+      }
     } finally {
       await writeFile(workerFile,original,"utf8");
       await writeFile(configFile,originalConfigFile,"utf8");
