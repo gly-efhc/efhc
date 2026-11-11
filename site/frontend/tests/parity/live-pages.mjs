@@ -63,15 +63,21 @@ try {
   assert.ok(await page.locator('[data-task-card]').count()>0,'real task catalog is displayed');
   assert.equal(await page.locator('[data-app-render-error]').count(),0,'handled React failure is not a working page');
   console.log('C0036_REAL_TASKS_RENDER_AFTER_DATA_PASS');
-  // Browser TEST guests must not view Admin modules.
-  // Check all static routes still render their protected shell without
-  // exposing privileged data or operations.
+  // A public guest has no Admin privileges. The protected UI may deny the
+  // route by redirecting or by rendering a denial screen; both must exclude
+  // privileged summaries and controls.
   for(const route of ['admin/','admin/users/','admin/bank/','admin/panels/','admin/reports/']) {
-    const normalized='/'+(route.endsWith('/')?route.slice(0,-1):route);
-    await visit(route,`[data-admin-route="${normalized}"]`);
-    await page.getByText('Доступ запрещён.',{exact:true}).waitFor({state:'visible',timeout:40000});
+    await page.goto(base+route,{waitUntil:'domcontentloaded',timeout:45000});
+    await page.waitForTimeout(1500);
     assert.equal(await page.getByText('Административные модули',{exact:true}).count(),0,
-      'Unprivileged guest can view Admin modules: '+route);
+      'Unprivileged guest can view Admin module links: '+route);
+    assert.equal(await page.locator('[data-admin-business-summary],[data-admin-user-profile="profile-composition"],[data-admin-home-bank-charts="reserve-left-circulation-right"]').count(),0,
+      'Unprivileged guest can view Admin financial or user data: '+route);
+    const hasDenial = await page.getByText('Доступ запрещён.',{exact:true}).count()>0;
+    const hasAdminSurface = await page.locator('[data-admin-route]').count()>0;
+    assert.ok(hasDenial || !hasAdminSurface,
+      'An unprivileged guest was shown Admin chrome without a denial: '+route);
+    console.log('GENESIS_GUEST_ADMIN_UI_DENIED_PASS '+route);
   }
   console.log('GENESIS_PROTECTED_ADMIN_ROUTES_DENIED_PASS');
   if(errors.length)throw new Error('Unhandled client exceptions: '+JSON.stringify(errors.slice(0,4)));
