@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import vm from "node:vm";
+import ts from "typescript";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const get = (name) => readFileSync(resolve(root, name), "utf8");
@@ -100,4 +102,48 @@ test("public Pages manifest identifies its actual hosted app, not a different do
   assert.equal(manifest.iconUrl, origin + "/icon.png");
   assert.equal(manifest.termsOfUseUrl, origin + "/web-profile?legal=terms");
   assert.equal(manifest.privacyPolicyUrl, origin + "/web-profile?legal=privacy");
+});
+
+test("live challenge preflight rejects wrong domain, stale payloads and expiry", () => {
+  // Run the actual TypeScript helper, not a duplicate JS interpretation.
+  const source = get("src/lib/ton/ton-proof-challenge.ts");
+  const js = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2020,
+    },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(js, { exports }, { timeout: 1000 });
+  const preflight = exports.assertFreshTonProofChallenge;
+  assert.equal(typeof preflight, "function");
+
+  const now = Date.parse("2026-11-12T00:00:00.000Z");
+  const challenge = {
+    ton_proof_payload: "server-issued-challenge",
+    payload_token: "server-signed-token",
+    domain: "gly-efhc.github.io",
+    expires_at: new Date(now + 600_000).toISOString(),
+  };
+  assert.doesNotThrow(() => preflight(challenge, "gly-efhc.github.io", now));
+  assert.doesNotThrow(() => preflight(challenge, "GLY-EFHC.GITHUB.IO.", now));
+  assert.throws(() => preflight({ ...challenge, domain: "efhc.app" }, "gly-efhc.github.io", now), /TON_PROOF_DOMAIN_MISMATCH/);
+  assert.throws(() => preflight(challenge, "efhc.app", now), /TON_PROOF_DOMAIN_MISMATCH/);
+  assert.throws(() => preflight({ ...challenge, expires_at: "invalid-date" }, "gly-efhc.github.io", now), /TON_PROOF_CHALLENGE_EXPIRED/);
+  assert.throws(() => preflight({ ...challenge, expires_at: new Date(now + 29_000).toISOString() }, "gly-efhc.github.io", now), /TON_PROOF_CHALLENGE_EXPIRED/);
+  assert.throws(() => preflight({ ...challenge, payload_token: "" }, "gly-efhc.github.io", now), /TON_PROOF_CHALLENGE_INVALID/);
+  assert.throws(() => preflight({ ...challenge, ton_proof_payload: "" }, "gly-efhc.github.io", now), /TON_PROOF_CHALLENGE_INVALID/);
+  assert.match(get("src/lib/tonconnect.ts"), /assertFreshTonProofChallenge\(out, window\.location\.hostname\)/);
+});
+
+test("Browser Shop does not open a wallet modal when a new binding lacks a proof", () => {
+  const src = get("src/features/browser-shop/BrowserShopPage.tsx");
+  const from = src.indexOf('if (requireProof && !proof) {');
+  const until = src.indexOf('await connectWallet();', from);
+  assert.ok(from >= 0 && until > from);
+  const gate = src.slice(from, until);
+  assert.match(gate, /setTonConnectBindingRequested\(false\)/);
+  assert.match(gate, /setPendingPrimaryPayment\(null\)/);
+  assert.match(gate, /return;/);
+  assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?"https:\/\/testnet\.toncenter\.com\/api\/v2\/jsonRPC"/);
 });
