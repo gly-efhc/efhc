@@ -389,32 +389,38 @@ function isReadOnlyOfflineRoute(url) {
 async function navigationFallback(request, event) {
   const config = await loadConfig();
   const url = new URL(request.url);
-  // Instant cached-page start: never wait for HTML transport before displaying
-  // a complete installed page. An independent SW update check stages new JS/CSS
-  // and HTML in the background. Never patch a build's HTML with another build's
-  // hashed asset references; that would break offline startup.
-  if (config.static_export && relativePath(url.pathname) !== null) {
-    const html = url.pathname.endsWith(".html") ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
-    const { staticName } = await cacheNames();
-    const cached = await (await caches.open(staticName)).match(html);
-    if (cached) {
-      // Let the controlling React client schedule update checks independently.
-      // Waiting for registration.update() from a navigation fetch event can
-      // keep the old worker alive while its successor attempts skipWaiting().
-      // The HTML response remains immediate, even during an update.
-      return cached;
-    }
+  const path = relativePath(url.pathname);
+  const html = path === null ? null : url.pathname.endsWith(".html")
+    ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
+
+  // A cache-first HTML navigation makes the OLDEST controlling worker paint
+  // before the newly published HTML/JS/CSS can be activated. Online documents
+  // must instead come from the same published network release. The verified
+  // offline build remains the fallback when the network is unavailable.
+  if (self.navigator?.onLine !== false) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
+    try {
+      const response = await fetch(request, {cache: "no-store", signal: controller.signal});
+      if (response.ok) {
+        if (!config.static_export) return response;
+        const markup = await response.clone().text();
+        // Fail closed on incomplete/non-EFHC HTML. Never cache this remote
+        // document inside the previous worker's immutable static generation.
+        if (/name="efhc-build-id" content="[a-zA-Z0-9_-]+"/.test(markup)) {
+          return response;
+        }
+      }
+    } catch { /* Use the complete installed offline shell. */ }
+    finally { clearTimeout(timeout); }
   }
-  // No installed HTML: fetch it (initial setup, previously unvisited page),
-  // or fall back to the last confirmed offline route.
-  try {
-    const response = await fetch(request, { cache: "no-store" });
-    if (response.ok || !config.static_export) return response;
-  } catch { /* Offline navigation falls back to a complete installed shell. */ }
-  if (config.static_export && relativePath(url.pathname) !== null) {
-    const html = url.pathname.endsWith(".html") ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
-    const cached = await caches.match(html);
+  if (config.static_export && html) {
+    const {staticName} = await cacheNames();
+    const cached = await (await caches.open(staticName)).match(html);
     if (cached) return cached;
+    // Only offline failure recovery may search predecessor buckets.
+    const predecessor = await caches.match(html);
+    if (predecessor) return predecessor;
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
