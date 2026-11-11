@@ -374,25 +374,9 @@ export function Layout(
       .catch(() => setAvailableWallets([]));
   }, [activeAdapterId, listWallets]);
 
-  useEffect(() => {
-    if (!props.telegramProviderId) return;
-    setProofState(null);
-    prepareProof()
-      .then((state) => {
-        setProofState(state);
-        if (!state) {
-          setConnectionPhase("error");
-          setWalletHint(t("wallet.proof_failed"));
-          return;
-        }
-        if (!sessionConnected) setConnectionPhase("proof_ready");
-        setWalletHint(t("wallet.proof_ready"));
-      })
-      .catch(() => {
-        setConnectionPhase("error");
-        setWalletHint(t("wallet.proof_failed"));
-      });
-  }, [activeAdapterId, prepareProof, props.telegramProviderId, sessionConnected, t]);
+  // Acquire TON Proof only for the explicit wallet connection action below.
+  // Background refreshes while a wallet is connecting would replace its
+  // challenge and make the signed envelope fail server verification.
 
   useEffect(() => {
     if (
