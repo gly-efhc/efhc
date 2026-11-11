@@ -1,6 +1,10 @@
 import { Address, beginCell, toNano } from "@ton/core";
 import { JettonWallet, TonClient, type TupleItemSlice } from "@ton/ton";
 import type { JettonTransferPlan, TonConnectTx } from "./tx";
+import {
+  isGenesisTestRuntime,
+  requireGenesisJsonRpcEndpoint,
+} from "./testnet-guard";
 
 const JETTON_TRANSFER_OPCODE = 0x0f8a7ea5;
 
@@ -13,6 +17,7 @@ export type ResolveSenderJettonWalletArgs = {
 export async function resolveSenderJettonWallet(
   args: ResolveSenderJettonWalletArgs,
 ): Promise<string> {
+  requireGenesisJsonRpcEndpoint(args.endpoint);
   const client = new TonClient({ endpoint: args.endpoint });
   const owner = Address.parse(args.ownerAddress);
   const ownerCell = beginCell().storeAddress(owner).endCell();
@@ -81,7 +86,7 @@ export function buildJettonTransferTonConnectTx(
   const payload = buildJettonTransferBodyBase64(plan);
   return {
     validUntil: Math.floor(Date.now() / 1000) + 600,
-    network: "-239",
+    network: isGenesisTestRuntime() ? "-3" : "-239",
     messages: [
       {
         address: senderJettonWallet,
@@ -95,6 +100,7 @@ export function buildJettonTransferTonConnectTx(
 export async function resolveSenderJettonBalance(
   args: ResolveSenderJettonWalletArgs,
 ): Promise<bigint> {
+  requireGenesisJsonRpcEndpoint(args.endpoint);
   const client = new TonClient({ endpoint: args.endpoint });
   const walletAddress = await resolveSenderJettonWallet(args);
   const wallet = client.open(

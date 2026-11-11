@@ -1,5 +1,9 @@
 import type { Lang } from "./i18n";
 import {
+  requireGenesisTransactionNetwork,
+  requireGenesisWalletNetwork,
+} from "./ton/testnet-guard";
+import {
   checkTonProofEnvelope,
   connectVerifiedTonWallet,
   getTonProofPayload,
@@ -90,6 +94,7 @@ function proofEnvelope(
   const proof = wallet?.connectItems?.tonProof?.proof;
   const address = String(wallet?.account?.address || "").trim();
   if (!proofState || !proof || !address) return null;
+  requireGenesisWalletNetwork(wallet?.account?.chain);
   return {
     address,
     wallet_app: walletTransportAppName(wallet),
@@ -235,8 +240,14 @@ export function isTonConnectUserRejected(error: unknown): boolean {
 export async function sendTonConnectTransaction(
   tonConnectUI: any,
   tx: unknown,
+  wallet: unknown = null,
 ): Promise<{ boc: string | null; traceId: string | null }> {
   try {
+    const request = tx as { network?: unknown } | null;
+    const connected = wallet as { account?: { chain?: unknown } } | null;
+    requireGenesisTransactionNetwork(
+      request?.network, connected?.account?.chain,
+    );
     const out = await tonConnectUI.sendTransaction(tx as any);
     // The SDK SendTransactionResponse requires a signed BOC. A malformed
     // fulfilled RPC response is not a successful wallet-sign acknowledgement.
