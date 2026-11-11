@@ -48,7 +48,7 @@ import type { InterfaceAppMode, InterfaceVariantGroup } from
 import { useAvatarPreference } from "../queries/useAvatarPreference";
 import { getThemePageDescriptor } from "../lib/themePageRegistry";
 import { sameTonAddress } from "../lib/wallet-provider/primaryWalletRouting";
-import { isDemoBackendMode } from "../demo/session";
+import { isDemoBackendMode, currentDemoSessionScope } from "../demo/session";
 
 export type LayoutContextValue = {
   lang: Lang;
@@ -666,7 +666,7 @@ export function Layout(
         td,
         isVip: props.isVip,
         isAdmin: props.isAdmin,
-        canRenderAdminPage: props.isAdmin || (process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW === "1" && isDemoBackendMode()),
+        canRenderAdminPage: props.isAdmin || (isDemoBackendMode() && currentDemoSessionScope() === "visual"),
         appMode,
         settings: props.settings,
         setLang: props.setLang,
