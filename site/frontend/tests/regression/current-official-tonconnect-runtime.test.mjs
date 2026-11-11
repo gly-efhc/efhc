@@ -67,3 +67,14 @@ test("TON Proof is prepared once on explicit connection, never rotated by sessio
   assert.match(src, /mode === "binding"\s*\? await prepareProof\(\)/);
   assert.match(src, /setProofState\(prepared\)/);
 });
+
+test("official TON hydration never replaces the already-mounted application tree", () => {
+  const src = get("src/lib/wallet-provider/WalletProvider.tsx");
+  assert.match(src, /<WalletProviderRuntime runtime=\{tonRuntime\}>/);
+  assert.match(src, /\{props\.children\}\s*\{hydrated\s*\?\s*\(/);
+  assert.match(src, /<OfficialTonConnectProvider[\s\S]*?<TonConnectRuntimeBridge/);
+  assert.match(src, /function TonConnectRuntimeBridge\(/);
+  assert.match(src, /function WalletProviderRuntime\(/);
+  assert.match(src, /value=\{props\.runtime \? value : DISCONNECTED_WALLET_CONTEXT\}/);
+  assert.doesNotMatch(src, /if \(!hydrated\)\s*\{[\s\S]*?return \(\s*<WalletProviderContext/);
+});
