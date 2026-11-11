@@ -145,7 +145,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: C0034_REAL_PAGES_CHROME_VISIBILITY
+      - name: Protected Genesis browser routes and panels
         timeout-minutes: 12
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-c0034-browser-tools/package.json
