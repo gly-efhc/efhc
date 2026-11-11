@@ -41,6 +41,9 @@ test("connect uses the official UI modal without the former custom chooser", () 
   const browserShop = get("src/features/browser-shop/BrowserShopPage.tsx");
   assert.doesNotMatch(browserShop, /TonConnectWalletChooser/);
   assert.match(browserShop, /await connectWallet\(\)/);
+  const primary = get("src/lib/wallet-provider/primaryWalletRouting.ts");
+  assert.match(primary, /await args\.connectWallet\(\)/);
+  assert.doesNotMatch(primary, /args\.connectWallet\(target\)/);
   assert.match(adapter, /await ui\.openModal\(\)/);
   assert.doesNotMatch(adapter, /ui\.connectWallet\(wallet\.walletKey\)/);
   assert.match(adapter, /ui\.setConnectionNetwork\(TON_TESTNET_CHAIN\)/);
