@@ -15,11 +15,11 @@ import {
 import { queryKeys } from "./queryKeys";
 import { fetchSyncSnapshot } from "../services/snapshot.service";
 
-export function usePanelsSummary() {
+export function usePanelsSummary(energyPageActive = true) {
   const globalId = useAuthOwnerGlobalId();
   return useQuery({
     queryKey: queryKeys.panels.summary(globalId),
-    enabled: Boolean(globalId),
+    enabled: Boolean(globalId) && energyPageActive,
     queryFn: getPanelsSummary,
     staleTime: 0,
     refetchOnMount: "always",
