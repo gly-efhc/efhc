@@ -89,3 +89,15 @@ test("EFHC owns Android Back and binding requires a matching server challenge", 
   assert.match(proof, /String\(proof\.payload \?\? ""\) !== proofState\.ton_proof_payload/);
   assert.match(proof, /return await connectVerifiedTonWallet/);
 });
+
+test("public Pages manifest identifies its actual hosted app, not a different domain", () => {
+  const manifest = JSON.parse(get("public/tonconnect-manifest.json"));
+  const origin = "https://gly-efhc.github.io/efhc";
+  assert.deepEqual(Object.keys(manifest).sort(), [
+    "iconUrl", "name", "privacyPolicyUrl", "termsOfUseUrl", "url",
+  ]);
+  assert.equal(manifest.url, origin);
+  assert.equal(manifest.iconUrl, origin + "/icon.png");
+  assert.equal(manifest.termsOfUseUrl, origin + "/web-profile?legal=terms");
+  assert.equal(manifest.privacyPolicyUrl, origin + "/web-profile?legal=privacy");
+});
