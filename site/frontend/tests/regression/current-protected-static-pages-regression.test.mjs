@@ -67,7 +67,10 @@ test("all OWNER-protected React pages exist independent of backend state", () =>
 test("backend/auth failure must not redirect away from a protected Admin route", () => {
   const source = readFileSync(resolve(frontend, "src/pages/_app.tsx"), "utf8");
   assert.doesNotMatch(source, /void router\.replace\((["'])\/\1\)/);
-  assert.match(source, /&& !isOpenTestPagesRuntime\s*&& adminGuardCanDecide/);
-  assert.match(source, /&& !isOpenTestPagesRuntime\s*&& !isAdmin/);
+  // Public TEST must not bypass live server authorization for Admin routes.
+  assert.doesNotMatch(source, /adminRouteBlocked = isAdminRoute\s*&& !isOpenTestPagesRuntime/);
+  assert.match(source, /const adminRouteBlocked = isAdminRoute\s*&& adminGuardCanDecide/);
+  assert.match(source, /const adminRouteChecking = isAdminRoute\s*&& !isAdmin/);
+  assert.match(source, /authSession\.status === "authenticated"/);
   assert.match(source, /AdminRouteGuardState/);
 });
