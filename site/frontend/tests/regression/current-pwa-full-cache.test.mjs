@@ -323,8 +323,8 @@ test("active old worker never deletes a successor's staged build; new worker ret
   const scope = origin + "/efhc/";
   const cacheNames = new Set(["efhc-pwa-old-static","efhc-pwa-old-content"]);
   const posted = [];
-  const client = {id:"same-tab",postMessage(message){posted.push(message)}};
-  const oldClient = {id:"old-tab",postMessage(message){posted.push(message)}};
+  const client = {id:"same-tab",url:scope,postMessage(message){posted.push(message)}};
+  const oldClient = {id:"old-tab",url:scope+"panels/",postMessage(message){posted.push(message)}};
   let openClients = [client, oldClient];
   const buckets = new Map();
   const cacheStorage = {
@@ -377,6 +377,8 @@ test("active old worker never deletes a successor's staged build; new worker ret
     };
     return {dispatch};
   };
+  const oldStatic = await cacheStorage.open("efhc-pwa-old-static");
+  await oldStatic.put("/efhc/index.html",new Response("verified old HTML"));
   const oldWorker = makeWorker("old");
   await oldWorker.dispatch("activate");
   // A successor preinstalls its static and content caches after the old
