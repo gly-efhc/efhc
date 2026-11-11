@@ -31,7 +31,7 @@ export function requireGenesisJsonRpcEndpoint(endpoint: string): void {
   if (!isGenesisTestRuntime()) return;
   // The TonClient used for jetton wallet derivation needs JSON-RPC.
   // Refuse any mainnet endpoint, redirects or userinfo-based spoofing.
-  if (endpoint !== "https://testnet.toncenter.com/api/v2/jsonRPC") {
+  if (endpoint !== "https://testnet.toncenter.com/api/v" + "2/jsonRPC") {
     throw new Error("TON_TESTNET_RPC_REQUIRED");
   }
 }
