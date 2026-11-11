@@ -7,7 +7,6 @@ import type { Dict, Lang } from "../lib/i18n";
 import { tFromDicts } from "../lib/i18n";
 import type { UserSettings } from "../lib/settings";
 import { DepositModal } from "./DepositModal";
-import { TonConnectWalletChooser } from "./wallet/TonConnectWalletChooser";
 import {
   getTelegramWebApp,
   hapticError,
@@ -598,53 +597,30 @@ export function Layout(
     setWalletModalOpened(true);
     setConnectionPhase("connecting");
     setWalletHint(t("wallet.connection_waiting"));
-    const wallets = await listWallets()
-      .catch(() => [] as WalletView[]);
-    setAvailableWallets(wallets);
     const prepared = mode === "binding"
       ? await prepareProof().catch(() => null)
       : null;
     setProofState(prepared);
-    // Do not block choosing a wallet when a TEST proof endpoint is unavailable.
-    // Binding remains unverified until the backend accepts signed TonProof.
-    setConnectionPhase(prepared ? "proof_ready" : "disconnected");
+    // Connection and cryptographic owner verification remain separate.
+    // The official TonConnect UI owns wallet selection and return/deep links.
     setWalletHint(prepared
       ? t("wallet.proof_ready")
       : mode === "binding"
         ? t("wallet.restore_requires_proof")
         : t("wallet.connection_ready"));
-  }
-
-  async function connectSelectedWallet(wallet: WalletView) {
-    setConnectionPhase("connecting");
-    setWalletHint(t("wallet.connection_waiting"));
     try {
-      if (walletSession) {
-        await disconnectWallet().catch(() => undefined);
-      }
-      await connectWallet(wallet);
+      await connectWallet();
+      // openModal resolves when opened, not when a wallet is connected.
+      // React hooks + backend TON Proof determine connection state.
+    } catch (error) {
       setWalletModalOpened(false);
       restoreTelegramMainButtonAfterWalletModal();
-    } catch (error) {
-      if (isUserRejected(error)) {
-        setConnectionPhase("rejected");
-        setWalletHint(t("wallet.connection_rejected"));
-        toast(t("wallet.connection_rejected"), "info");
-        return;
-      }
-      setConnectionPhase("error");
-      setWalletHint(t("wallet.connection_failed"));
-      toast(t("wallet.connection_failed"), "error");
+      setConnectionPhase(isUserRejected(error) ? "rejected" : "error");
+      const key = isUserRejected(error)
+        ? "wallet.connection_rejected" : "wallet.connection_failed";
+      setWalletHint(t(key));
+      toast(t(key), isUserRejected(error) ? "info" : "error");
     }
-  }
-
-  function closeWalletChooser() {
-    setWalletModalOpened(false);
-    if (!sessionConnected) {
-      setConnectionPhase("disconnected");
-      setWalletHint(t("wallet.connection_rejected"));
-    }
-    restoreTelegramMainButtonAfterWalletModal();
   }
 
   async function disconnectWalletSession() {
@@ -883,21 +859,6 @@ export function Layout(
           </div>
         ) : null}
 
-
-        <TonConnectWalletChooser
-          open={walletModalOpened}
-          title={t("wallet.connect_button")}
-          description={t("wallet.recommended_wallets")}
-          wallets={availableWallets}
-          busy={connectionPhase === "connecting"}
-          emptyLabel={t("wallet.error_body")}
-          closeLabel={t("common.close")}
-          tr={t}
-          onClose={closeWalletChooser}
-          onSelect={(wallet) => {
-            void connectSelectedWallet(wallet);
-          }}
-        />
 
         <DepositModal
           open={depositOpen}
