@@ -356,6 +356,10 @@ async function cacheUrls(urls, reason = "runtime") {
     await notifyClients({ type: "CACHE_FAILED", failed: failures.length +
       Math.max(0, (names.config.precache || []).length - unique.length),
       failedUrls: failures.slice(0, 6), reason });
+    // A failed install must not leave an orphan generation that a later
+    // cache lookup could mistake for a successfully installed release.
+    await caches.delete(names.staticName);
+    await caches.delete(names.contentName);
     throw Error("EFHC_REQUIRED_PRECACHE_FAILED:" + failures.length);
   }
   await notifyClients({
@@ -451,9 +455,16 @@ async function navigationFallback(request, event) {
     const {staticName} = await cacheNames();
     const cached = await (await caches.open(staticName)).match(html);
     if (cached) return cached;
-    // Only offline failure recovery may search predecessor buckets.
-    const predecessor = await caches.match(html);
-    if (predecessor) return predecessor;
+    // CacheStorage is ordered by insertion, not by a build hash. Search the
+    // retained owned predecessor buckets newest FIRST. Never fall through to
+    // arbitrary caches on another app within the same github.io origin.
+    await restoreRetirementState(await cacheNames());
+    const previous = (await caches.keys()).filter(name =>
+      previousBuildCachesAtActivation.has(name) && name.endsWith("-static"));
+    for (const name of previous.reverse()) {
+      const predecessor = await (await caches.open(name)).match(html);
+      if (predecessor) return predecessor;
+    }
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
@@ -626,6 +637,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (isProtectedPath(url.pathname)) return;
+  if (url.pathname === BUILD_CONFIG_URL) {
+    // A no-store request for build metadata must never receive the previous
+    // release's stale-while-revalidate manifest.
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(request, {cache: "no-store"});
+        if (fresh.ok) return fresh;
+      } catch { /* Offline install can still read the last known metadata. */ }
+      return (await caches.match(request)) || Response.error();
+    })());
+    return;
+  }
   if (isImmutableAsset(url)) {
     event.respondWith(cacheFirst(request));
     return;
