@@ -1,0 +1,71 @@
+name: EFHC Official TonConnect UI React runtime - isolated acceptance
+on:
+  push:
+    branches:
+      - cycle0045/iteration22-official-tonconnect-ui-react
+    paths:
+      - site/frontend/src/lib/wallet-provider/**
+      - site/frontend/src/lib/tonconnect.ts
+      - site/frontend/src/components/Layout.tsx
+      - site/frontend/tsconfig.json
+      - site/frontend/package.json
+      - site/frontend/package-lock.json
+      - .github/workflows/tonconnect-official-runtime-branch-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: efhc-official-tonconnect-migration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  react:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: site/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/frontend/package-lock.json
+      - name: Deterministic dependency installation
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify actual official UI dependency and absence of compatibility aliases
+        run: |
+          npm ls @tonconnect/ui-react @tonconnect/ui @tonconnect/sdk
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const pkg=require("./package.json");
+          const config=JSON.parse(fs.readFileSync("tsconfig.json","utf8"));
+          const layout=fs.readFileSync("src/components/Layout.tsx","utf8");
+          const adapter=fs.readFileSync("src/lib/wallet-provider/adapters/TonConnectAdapter.ts","utf8");
+          const provider=fs.readFileSync("src/lib/wallet-provider/WalletProvider.tsx","utf8");
+          if (!pkg.dependencies["@tonconnect/ui-react"]) throw Error("OFFICIAL_UI_PACKAGE_MISSING");
+          if (config.compilerOptions?.paths?.["@tonconnect/ui-react"]) throw Error("CUSTOM_ALIAS_ACTIVE");
+          if (layout.includes("TonConnectWalletChooser")) throw Error("CUSTOM_PICKER_ACTIVE");
+          if (adapter.includes("connectWallet(wallet.walletKey)")) throw Error("CUSTOM_CONNECTOR_ACTIVE");
+          if (!adapter.includes("ui.openModal()")) throw Error("OFFICIAL_MODAL_NOT_USED");
+          if (!provider.includes("OfficialTonConnectProvider")) throw Error("OFFICIAL_SINGLETON_MISSING");
+          const resolved=require.resolve("@tonconnect/ui-react");
+          if (!resolved.includes("node_modules")) throw Error("VENDOR_FALLBACK_ACTIVE");
+          console.log("OFFICIAL_TONCONNECT_RUNTIME_STATIC_ACCEPTANCE_PASS");
+          NODE
+      - name: Type-check actual official React hooks and provider
+        run: npm run typecheck
+      - name: Regressions for protected EFHC pages
+        run: npm run test:frontend-regression
+      - name: Build browser React/Next.js with official module
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_EFHC_DATA_SOURCE: demo_backend
+          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: https://efhc-cycle0032-demo-api.onrender.com
+          NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
+          NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
+          NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: ./node_modules/.bin/next build --webpack
