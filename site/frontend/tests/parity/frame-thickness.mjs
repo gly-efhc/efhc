@@ -74,8 +74,19 @@ export async function verifyFrameThickness(page,{base}) {
 
   await visit(page,base,'admin/');
   const admin=await page.evaluate(()=>{
-    const root=document.querySelector('[data-interface-app-mode="admin"]');
-    if(!root)throw Error('Missing rendered Admin app mode');
+    // The public Pages build must NOT expose the Admin UI without a signed
+    // operator session. Measure its existing CSS using a temporary isolated
+    // host when the real Admin page correctly renders Access Denied.
+    let root=document.querySelector('[data-interface-app-mode="admin"]');
+    const isolated=!root;
+    if(isolated){
+      if(!document.querySelector('[data-admin-access="denied"]'))
+        throw Error('Missing private Admin guard and styling host');
+      root=document.createElement('div');
+      root.setAttribute('data-interface-app-mode','admin');
+      root.dataset.efhcFrameIsolatedProbe='true';
+      document.body.appendChild(root);
+    }
     const results=[];
     for(const cls of ['efhc-admin-tasks-catalog_card','efhc-admin-reports-visual_metric']){
       const node=document.createElement('button');
@@ -86,6 +97,7 @@ export async function verifyFrameThickness(page,{base}) {
         results.push({kind:cls,border:s.borderLeftWidth,style:s.borderLeftStyle,shadow:s.boxShadow});
       }finally{node.remove();}
     }
+    if(isolated)root.remove();
     return results;
   });
   for(const r of admin){
@@ -117,7 +129,15 @@ export async function verifyFrameThickness(page,{base}) {
   ]){
     await visit(page,base,route);
     const marker=await page.evaluate(selector=>{
-      const root=document.querySelector(selector);
+      let root=document.querySelector(selector);
+      if(!root && selector==='[data-interface-app-mode="admin"]'){
+        if(!document.querySelector('[data-admin-access="denied"]'))
+          throw Error('Missing private Admin access guard');
+        root=document.createElement('div');
+        root.setAttribute('data-interface-app-mode','admin');
+        root.dataset.efhcFrameIsolatedProbe='true';
+        document.body.appendChild(root);
+      }
       if(!root)throw Error('Missing focus renderer '+selector);
       const button=document.createElement('button');
       button.type='button';button.dataset.frameFocusProof='true';
@@ -139,7 +159,10 @@ export async function verifyFrameThickness(page,{base}) {
       else throw Error(marker+' focus-visible state not measurable: '+JSON.stringify(focused));
       cases.push({surface:marker+' focus',...focused});
     }finally{
-      await page.evaluate(()=>document.querySelector('[data-frame-focus-proof="true"]')?.remove());
+      await page.evaluate(()=>{
+        document.querySelector('[data-frame-focus-proof="true"]')?.remove();
+        document.querySelector('[data-efhc-frame-isolated-probe="true"]')?.remove();
+      });
     }
   }
   return cases;
