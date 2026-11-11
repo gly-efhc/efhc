@@ -96,7 +96,7 @@ export async function openPrimaryWalletSession(args: {
   primary: PrimaryWalletDescriptor;
   currentSessionAddress: string | null | undefined;
   listWallets: () => Promise<WalletView[]>;
-  connectWallet: (wallet: WalletView) => Promise<void>;
+  connectWallet: (wallet?: WalletView) => Promise<void>;
   disconnectWallet: () => Promise<void>;
 }): Promise<"ready" | "opened" | "transport_unavailable"> {
   if (primaryWalletSessionMatches(args.primary, args.currentSessionAddress)) {
@@ -108,7 +108,11 @@ export async function openPrimaryWalletSession(args: {
   if (String(args.currentSessionAddress || "").trim()) {
     await args.disconnectWallet().catch(() => undefined);
   }
-  await args.connectWallet(target);
+  // A server-verified primary wallet remains authoritative. The official
+  // TON Connect modal must let the person select an app themselves; never
+  // invoke the removed per-wallet custom connector. The returned wallet
+  // address is independently checked against the primary before payment.
+  await args.connectWallet();
   return "opened";
 }
 
@@ -124,7 +128,7 @@ export async function routePrimaryWalletExecution<
   wallets: readonly T[] | null | undefined;
   currentSessionAddress: string | null | undefined;
   listWallets: () => Promise<WalletView[]>;
-  connectWallet: (wallet: WalletView) => Promise<void>;
+  connectWallet: (wallet?: WalletView) => Promise<void>;
   disconnectWallet: () => Promise<void>;
   openChooser: (reason: PrimaryWalletExecutionReason) => Promise<void> | void;
   markPending: (primary: T | null) => void;
