@@ -26,14 +26,14 @@ test('Energy active panel chip does not reveal an obsolete saved count before se
    snap:snapshot,snapshotStatus:'success',snapshotMode:'live',...props,
  }));
  const chip=(markup)=>markup.split('data-energy-chip="active-panels"')[1]?.split('data-energy-chip=')[0]||'';
- assert.match(chip(render({snapshotVerifiedAfterMount:false})),/>—<\/strong>/,
+ assert.match(chip(render({})),/>—<\/strong>/,
    'old owner-scoped snapshot is not a verified current panel count');
- assert.match(chip(render({confirmedActivePanels:4,snapshotVerifiedAfterMount:false})),/>4<\/strong>/,
+ assert.match(chip(render({confirmedActivePanels:4})),/>4<\/strong>/,
    'independent server panels summary replaces stale cached count');
  assert.match(chip(render({confirmedActivePanels:0})),/>0<\/strong>/,
    'server confirmed zero overrides cached positive count');
- assert.match(chip(render({snapshotVerifiedAfterMount:true})),/>9<\/strong>/,
-   'freshly verified sync snapshot remains a read-only fallback');
+ assert.match(chip(render({snapshotStatus:'success'})),/>—<\/strong>/,
+   'sync snapshot alone cannot claim to verify current active panel count');
 });
 
 test('server correction is accepted immediately, even when lower than a local projection',()=>{
