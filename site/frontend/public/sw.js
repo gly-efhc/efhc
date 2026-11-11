@@ -9,6 +9,8 @@ function relativePath(path) {
 }
 const CACHE_PREFIX = "efhc-pwa-";
 const CACHED_AT = "x-efhc-cached-at";
+// Private metadata inside the current content cache survives worker shutdown.
+const RETIREMENT_STATE_URL = scoped("__cache_retirement_state__");
 let configPromise = null;
 let runtimeCachePolicy = null;
 // Ready notifications must come from a rendered client on this exact build.
@@ -121,6 +123,32 @@ async function cacheNames() {
   };
 }
 
+// An activated worker is routinely terminated by browsers. Its in-memory Set
+// cannot be the sole record of which caches predate this release: the next
+// CLIENT_BUILD_READY may arrive in an entirely new worker instance.
+async function saveRetirementState(names, obsoleteNames) {
+  const cache = await caches.open(names.contentName);
+  await cache.put(RETIREMENT_STATE_URL, new Response(JSON.stringify({
+    build_id: names.config.build_id,
+    obsolete_names: obsoleteNames,
+  }), {headers: {"content-type": "application/json"}}));
+}
+async function restoreRetirementState(names) {
+  const cache = await caches.open(names.contentName);
+  const stored = await cache.match(RETIREMENT_STATE_URL);
+  if (!stored) return;
+  try {
+    const state = await stored.json();
+    if (state?.build_id !== names.config.build_id || !Array.isArray(state.obsolete_names)) return;
+    for (const name of state.obsolete_names) {
+      if (typeof name === "string" && name.startsWith(CACHE_PREFIX) &&
+          name !== names.staticName && name !== names.contentName) {
+        previousBuildCachesAtActivation.add(name);
+      }
+    }
+  } catch { /* Corrupt metadata must never authorize deletion. */ }
+}
+
 function isApiRequest(pathname) {
   const p = relativePath(pathname);
   return p === null || p === "/api" || p.startsWith("/api/");
@@ -206,6 +234,7 @@ async function pruneCache(cacheName, limits) {
   const pinned = config.static_export && cacheName.endsWith("-static")
     ? new Set(config.precache.map((url) => new URL(url, self.location.origin).href))
     : new Set();
+  if (cacheName.endsWith("-content")) pinned.add(new URL(RETIREMENT_STATE_URL, self.location.origin).href);
   const entries = [];
   for (const request of keys) {
     const response = await cache.match(request);
@@ -394,7 +423,9 @@ async function navigationFallback(request, event) {
 }
 
 async function retireObsoleteBuildsIfSafe() {
-  const {config, staticName, contentName} = await cacheNames();
+  const names = await cacheNames();
+  const {config, staticName, contentName} = names;
+  await restoreRetirementState(names);
   const windows = await self.clients.matchAll({type: "window", includeUncontrolled: true});
   if (windows.some(client => !readyBuildClients.has(client.id))) return false;
   const keep = new Set([staticName, contentName]);
@@ -431,26 +462,12 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const names = await cacheNames();
       const keys = await caches.keys();
-      for (const key of keys) {
-        if (key.startsWith(CACHE_PREFIX) && key !== names.staticName && key !== names.contentName) {
-          previousBuildCachesAtActivation.add(key);
-        }
-      }
-      // Preserve one complete previous build while already-open pages may still
-      // request its immutable JS/CSS. Keep storage bounded to two builds.
-      const previousStatic = keys.filter((key) =>
-        key.startsWith(CACHE_PREFIX) && key.endsWith("-static") && key !== names.staticName);
-      const previousBuild = previousStatic.at(-1)?.slice(0, -"-static".length) || null;
-      const keep = new Set([names.staticName, names.contentName]);
-      if (previousBuild) {
-        keep.add(previousBuild + "-static");
-        keep.add(previousBuild + "-content");
-      }
-      await Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && !keep.has(key))
-          .map((key) => caches.delete(key)),
-      );
+      const obsolete = keys.filter((key) =>
+        key.startsWith(CACHE_PREFIX) && key !== names.staticName && key !== names.contentName);
+      for (const key of obsolete) previousBuildCachesAtActivation.add(key);
+      // Persist the predecessor inventory BEFORE claiming clients. Do not
+      // remove assets still needed by any open tab from an older build.
+      await saveRetirementState(names, obsolete);
       await self.clients.claim();
       // If no old documents remain open, obsolete build caches can be removed
       // immediately. Otherwise, wait for every client to confirm its new shell.
@@ -517,6 +534,9 @@ self.addEventListener("message", (event) => {
   if (data.type === "GET_CACHE_STATUS") {
     event.waitUntil(
       (async () => {
+        // A closed old tab cannot notify the worker. Recheck whenever a
+        // surviving client inspects its cache, even after worker restart.
+        await retireObsoleteBuildsIfSafe();
         const names = await cacheNames();
         const staticCache = await caches.open(names.staticName);
         const contentCache = await caches.open(names.contentName);
