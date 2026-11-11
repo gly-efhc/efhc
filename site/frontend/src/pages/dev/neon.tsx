@@ -7,6 +7,7 @@ import { transportRequest } from "../../data/transport";
 export default function NeonTestConsole(): React.JSX.Element {
   const auth = useAuthSessionController();
   const [password, setPassword] = useState("");
+  const [visualKey, setVisualKey] = useState("");
   const [candidate, setCandidate] = useState("0000000002");
   const [amount, setAmount] = useState("100.00000000");
   const [message, setMessage] = useState("");
@@ -14,6 +15,7 @@ export default function NeonTestConsole(): React.JSX.Element {
   const [busy, setBusy] = useState(false);
   // Server independently denies guest/operator impersonation; the console also hides controls.
   const authorized = auth.status === "authenticated" && currentDemoSessionScope() === "operator" && Boolean(auth.context?.global_id);
+  const visualOnly = auth.status === "authenticated" && currentDemoSessionScope() === "visual";
   useEffect(() => { if (auth.context?.global_id) setCandidate(auth.context.global_id); }, [auth.context?.global_id]);
   const call = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true); setMessage("");
@@ -32,6 +34,19 @@ export default function NeonTestConsole(): React.JSX.Element {
         <button style={style} disabled={busy} onClick={()=>void call(async()=>{const ctx=await auth.loginDemo(password);setPassword("");return ctx;})}>Войти</button>
         <button style={style} disabled={busy} onClick={()=>void call(async()=>{await auth.logout();return {logged_out:true};})}>Выйти</button>
         <button style={style} disabled={busy} onClick={()=>void call(sessionInfo)}>Сессия</button>
+      </section>
+      <section style={{display:"grid",gap:10,border:"1px solid #9995",borderRadius:10,padding:16}}>
+        <strong>Временный доступ для разработки интерфейса Admin</strong>
+        <p>Только просмотр макетов административных страниц. Полномочия SuperAdmin, доступ к административным данным и операции изменения не предоставляются.</p>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <input type="password" autoComplete="off" aria-label="Временный ключ просмотра Admin" placeholder="Ключ просмотра Admin" value={visualKey} onChange={event=>setVisualKey(event.target.value)} style={{...style,minWidth:240,flex:"1"}} />
+          <button style={style} disabled={busy || !visualKey} onClick={()=>void call(async()=>{
+            const ctx=await auth.loginDemoVisual(visualKey);
+            setVisualKey("");
+            return {visual_preview:true,global_id:ctx.global_id,readonly:true};
+          })}>Войти для просмотра</button>
+        </div>
+        {visualOnly ? <a href="/admin" style={{fontWeight:700}}>Открыть страницы Admin (только интерфейс)</a> : null}
       </section>
       <section style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         <input style={style} value={candidate} onChange={event=>setCandidate(event.target.value)} maxLength={10} aria-label="Global ID" />
