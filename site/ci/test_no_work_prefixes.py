@@ -134,6 +134,76 @@ class PrefixGuardTests(unittest.TestCase):
         self.commit()
         self.check(1, base)
 
+
+    def test_exact_workflow_metadata_is_not_runtime_code(self):
+        branch = 'cycle' + '0045/iteration' + '22-official-tonconnect-ui-react'
+        action = 'actions/checkout@' + 'v' + '4'
+        message = 'build(c' + '0045): completed official wallet migration'
+        workflow = '\n'.join([
+            'on:',
+            '  push:',
+            '    branches:',
+            '      - ' + branch,
+            'jobs:',
+            '  install:',
+            '    if: github.ref == ' + repr('refs/heads/' + branch),
+            '    steps:',
+            '      - uses: ' + action,
+            '      - run: |',
+            "          git commit -m '" + message + "'",
+            '          git push origin HEAD:refs/heads/' + branch,
+        ]) + '\n'
+        self.put('.github/workflows/official-wallet.yml', workflow)
+        self.commit()
+        self.check(0)
+
+    def test_workflow_script_and_unrelated_values_remain_guarded(self):
+        marker = 'widgetCycle' + '0045'
+        branch = 'cycle' + '0045/iteration' + '22-wallet'
+        self.put('.github/workflows/official-wallet.yml', '\n'.join([
+            'on:',
+            '  push:',
+            '    branches:',
+            '      - ' + branch,
+            'jobs:',
+            '  build:',
+            '    steps:',
+            '      - uses: actions/checkout@' + 'v' + '4',
+            '      - run: |',
+            '          const ' + marker + ' = true;',
+        ]))
+        self.commit()
+        self.assertTrue(any(marker in row['identity'] for row in self.check(1)['violations']))
+        self.put('src/code.ts', 'const ' + marker + ' = 1;')
+        self.commit()
+        self.check(1)
+
+    def test_only_exact_external_action_fields_are_exempt(self):
+        action = 'actions/checkout@' + 'v' + '4'
+        self.put('.github/workflows/action.yml', 'env:\n  EXTERNAL: ' + action + '\n')
+        self.commit()
+        self.check(1)
+
+    def test_npm_integrity_is_data_but_application_names_remain_guarded(self):
+        digest = 'sha' + '512-b' + 'V' + '4' + 'A' * 83 + '=='
+        self.assertEqual(len(base64.b64decode(digest[7:], validate=True)), 64)
+        lock = {'name': 'frontend', 'lockfileVersion': 3, 'packages': {
+            '': {'integrity': digest}
+        }}
+        self.put('site/frontend/package-lock.json', json.dumps(lock))
+        self.commit()
+        self.check(0)
+        lock['packages']['']['runtimeName'] = 'buttonCycle' + '0045'
+        self.put('site/frontend/package-lock.json', json.dumps(lock))
+        self.commit()
+        self.check(1)
+        del lock['packages']['']['runtimeName']
+        lock['packages']['']['integrity'] = 'sha512-' + 'AAAA'
+        self.put('site/frontend/package-lock.json', json.dumps(lock))
+        self.commit()
+        self.check(2)
+
+
     def test_candidate_cannot_grant_itself_exception(self):
         self.policy['exceptions'] = [{'path': 'src/other.ts', 'literal': '/api/' + 'v' + '1', 'kind': 'protocol', 'reason': 'self-approved'}]
         self.put(guard.POLICY_PATH, json.dumps(self.policy))
