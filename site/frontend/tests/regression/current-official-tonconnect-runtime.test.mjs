@@ -60,3 +60,10 @@ test("real wallet Proof, chain and financial-send gates remain separate", () => 
   assert.match(testnet, /TON_TESTNET_CHAIN\s*=\s*"-3"/);
   assert.match(proof, /TONCONNECT_TRANSACTION_RESPONSE_INVALID/);
 });
+
+test("TON Proof is prepared once on explicit connection, never rotated by session effects", () => {
+  const src = get("src/components/Layout.tsx");
+  assert.equal([...src.matchAll(/\\bprepareProof\\s*\\(/g)].length, 1);
+  assert.match(src, /mode === "binding"\\s*\\? await prepareProof\\(\\)/);
+  assert.match(src, /setProofState\\(prepared\\)/);
+});
