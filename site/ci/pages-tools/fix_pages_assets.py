@@ -27,6 +27,39 @@ PWA_SUFFIXES = {'.html', '.js', '.css', '.json', '.webmanifest', '.woff',
                 '.svg', '.mp3'}
 
 
+FINGERPRINTED_CSS = re.compile(r'\.[a-f0-9]{16}\.css$')
+
+
+def fingerprint_public_stylesheets(root: Path) -> int:
+    """Create content-addressed copies of public CSS for the export only.
+
+    Next can reference public CSS from compiled JS as well as HTML. Rewrite
+    those paths, never the original stylesheet names or authored styling.
+    Repeating export normalization is deterministic.
+    """
+    mapping: dict[str, str] = {}
+    for stylesheet in sorted(root.glob('*.css')):
+        if FINGERPRINTED_CSS.search(stylesheet.name):
+            continue
+        raw = stylesheet.read_bytes()
+        hashed_name = f'{stylesheet.stem}.{hashlib.sha256(raw).hexdigest()[:16]}.css'
+        hashed = root / hashed_name
+        if not hashed.is_file() or hashed.read_bytes() != raw:
+            hashed.write_bytes(raw)
+        mapping[stylesheet.name] = hashed_name
+
+    for artifact in sorted(root.rglob('*')):
+        if not artifact.is_file() or artifact.suffix not in {'.html', '.js'} or artifact.name == 'sw.js':
+            continue
+        original = artifact.read_text(encoding='utf-8')
+        updated = original
+        for old, new in mapping.items():
+            updated = updated.replace('/' + old, '/' + new)
+        if updated != original:
+            artifact.write_text(updated, encoding='utf-8')
+    return len(mapping)
+
+
 def configure_pwa(root: Path, base: str) -> tuple[int, int]:
     worker = root / 'sw.js'
     manifest_file = root / 'manifest.webmanifest'
@@ -135,8 +168,9 @@ def main():
         if updated != original:
             p.write_text(updated, encoding='utf-8')
             changed += 1
+    fingerprinted = fingerprint_public_stylesheets(root)
     pages, resources = configure_pwa(root, base)
-    print(f'EFHC_DEMO_PUBLIC_ASSET_BASEPATH_OK files_rewritten={changed} pages_cached={pages} resources_cached={resources}')
+    print(f'EFHC_DEMO_PUBLIC_ASSET_BASEPATH_OK files_rewritten={changed} pages_cached={pages} resources_cached={resources} fingerprinted_css={fingerprinted}')
 
 
 if __name__ == '__main__':
