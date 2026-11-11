@@ -8,6 +8,23 @@ import { demoFetch } from "./request";
 let csrf: string | null = null;
 let sessionVersion = 0;
 const DEMO_SCOPE_KEY = "efhc.demo.session.scope.v1";
+const GUEST_RESUME_KEY = "efhc.demo.genesis.guest.resume.v1";
+
+function readGuestResumeToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const token = window.localStorage.getItem(GUEST_RESUME_KEY);
+    return token && /^[a-zA-Z0-9_-]{32,256}$/.test(token) ? token : null;
+  } catch { return null; }
+}
+
+function saveGuestResumeToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) window.localStorage.setItem(GUEST_RESUME_KEY, token);
+    else window.localStorage.removeItem(GUEST_RESUME_KEY);
+  } catch { /* Local storage may be disabled; server always validates owners. */ }
+}
 type DemoScope = "guest" | "operator" | "preview" | "visual";
 
 export function currentDemoSessionScope(): DemoScope | null {
@@ -35,9 +52,16 @@ type IssuedDemoSession = SessionInfo & {
   demo_bearer_token: string;
   expires_at_epoch: number;
   scope?: DemoScope;
+  guest_resume_token?: string;
+  guest_lease_expires_at?: string;
 };
 
-export function clearDemoSession(): void { sessionVersion++; csrf = null; setDemoSessionScope(null); }
+export function clearDemoSession(): void {
+  sessionVersion++;
+  csrf = null;
+  setDemoSessionScope(null);
+  saveGuestResumeToken(null);
+}
 /** Only the credential used by the failed request can be invalidated.
  * A delayed 401 must not revoke a newer login/owner selected in this tab. */
 export function invalidateDemoCredential(authorization: string | null): void {
@@ -66,6 +90,14 @@ function acceptIssuedDemoSession(value: IssuedDemoSession): SessionInfo {
     token_type: "Bearer",
     expires_at: new Date(value.expires_at_epoch * 1000).toISOString(),
   });
+  // A stable browser lease survives Render restarts; the actual bearer remains
+  // session-scoped and never grants Admin or financial privileges.
+  if (value.scope === "guest") {
+    if (!value.guest_resume_token || !/^[a-zA-Z0-9_-]{32,256}$/.test(value.guest_resume_token)) {
+      throw new Error("GENESIS_GUEST_LEASE_MISSING");
+    }
+    saveGuestResumeToken(value.guest_resume_token);
+  }
   // Scope is only a UI hint; the TEST server checks session.scope and owner.
   setDemoSessionScope(value.scope === "guest" || value.scope === "preview" || value.scope === "visual" ? value.scope : "operator");
   // Never return the secret to the UI or console; the backend owns the identity.
@@ -119,7 +151,10 @@ async function writeControl<T>(route: string, body?: unknown, login = false): Pr
 
 export async function loginDemoGuest(): Promise<SessionInfo> {
   sessionVersion++;
-  const result = await writeControl<IssuedDemoSession>("guest", undefined, true);
+  const resume_token = readGuestResumeToken();
+  const result = await writeControl<IssuedDemoSession>(
+    "guest", resume_token ? {resume_token} : {}, true
+  );
   if (result.scope !== "guest" && result.scope !== "preview") throw new Error("DEMO_GUEST_SCOPE_INVALID");
   return acceptIssuedDemoSession(result);
 }
@@ -144,6 +179,7 @@ export async function selectDemoGlobalId(global_id: string): Promise<SessionInfo
   return acceptIssuedDemoSession(result);
 }
 export async function logoutDemo(): Promise<void> {
-  try { await writeControl("logout"); }
+  const resume_token = currentDemoSessionScope() === "guest" ? readGuestResumeToken() : null;
+  try { await writeControl("logout", resume_token ? {resume_token} : {}); }
   finally { clearDemoSession(); clearAuthSession(); }
 }
