@@ -30,8 +30,15 @@ async function assertSurface(page,route){
  else assert.ok((await main.innerText()).trim().length>10,'actual route content remains present');
  assert.equal(await page.locator('[data-admin-client-route-guard]').count(),0,'TEST never substitutes a route with an auth screen');
  if(route==='admin'||route.startsWith('admin/')){
-  if(['admin/users','admin/user-history'].includes(route)){await page.locator('[data-admin-user-profile="profile-composition"] input').first().waitFor({state:'visible'});}
-  else{assert.equal(await page.locator('[data-app-navigation="exit-admin"]').count(),1,'Admin navigation must exist before permissions finish');assert.ok(await main.locator('button,a,input').count()>0);}
+  // Explicit owner policy: public/anonymous Pages must never render Admin.
+  // Any protected admin page is visible only with a server-attested session.
+  await page.locator('[data-admin-access="denied"]').waitFor({state:'visible'});
+  assert.equal(await page.locator('[data-admin-primitive="page"]').count(),0,
+    'Anonymous browser must not render protected Admin components');
+  assert.equal(await page.locator('[data-app-navigation="exit-admin"]').count(),0,
+    'Anonymous browser must not render Admin navigation');
+  assert.equal(await page.locator('[data-admin-user-profile="profile-composition"]').count(),0,
+    'Anonymous browser must not render Admin profile data');
  }else{
   assert.equal(await page.locator('.efhc-game-nav a').count(),6,'persistent six-way USER navigation');
   if(['','app'].includes(route)){assert.equal(await page.locator('[data-energy-chip]').count(),3);assert.equal(await page.locator('.efhc-energy-progress-track').count(),1);}
