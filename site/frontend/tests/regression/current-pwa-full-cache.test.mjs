@@ -34,7 +34,8 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.match(runtime, /attemptIdleReload/);
   assert.match(runtime, /waitingActivationTimer/);
   assert.match(runtime, /activateStagedWorker\(trackedRegistration\)/);
-  assert.match(runtime, /document\.addEventListener\("visibilitychange", checkForUpdate\)/);
+  assert.match(runtime, /document\.addEventListener\("visibilitychange", onPageResumed\)/);
+  assert.match(runtime, /const onPageResumed = \(\) => \{checkForUpdate\(\); void verifyLoadedBuild\(\);\}/);
 });
 
 test("The Pages deploy workflow requires full offline Chromium acceptance before deployment", () => {
