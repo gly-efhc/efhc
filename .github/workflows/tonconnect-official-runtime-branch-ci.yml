@@ -69,6 +69,8 @@ jobs:
           NODE
       - name: Type-check actual official React hooks and provider
         run: npm run typecheck
+      - name: Official UI targeted regression contract
+        run: npm run test:tonconnect-update-acceptance
       - name: Regressions for protected EFHC pages
         run: npm run test:frontend-regression
       - name: Build browser React/Next.js with official module
