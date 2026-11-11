@@ -90,6 +90,67 @@ def read_policy(ref):
     return policy
 
 
+# Exempt recognized metadata values, never entire files, source names or scripts.
+WORKFLOW_FILE = re.compile(r'^\.github/workflows/[^/]+\.ya?ml$')
+OFFICIAL_ACTION_USE = re.compile(
+    r'(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*)'
+    r'(actions/(?:checkout|setup-node)@v\d+(?:\.\d+)*)'
+    r'([ \t]*(?:#.*)?)$'
+)
+BRANCH_NAME = r'cycle\d{4}/iteration\d{2}-[a-z0-9][a-z0-9._-]*'
+BRANCH_ITEM = re.compile(r'^([ \t]*-[ \t]+)(' + BRANCH_NAME + r')([ \t]*(?:#.*)?)$')
+BRANCH_REF = re.compile(r'\brefs/heads/' + BRANCH_NAME + r'\b')
+GIT_COMMIT_MESSAGE = re.compile(
+    r'''(?m)^([ \t]*git[ \t]+commit[ \t]+-m[ \t]+)(['"])(.*?)\2([ \t]*)$'''
+)
+LOCK_INTEGRITY = re.compile(
+    r'("integrity"\s*:\s*")sha(256|384|512)-([A-Za-z0-9+/]+={0,2})(")'
+)
+
+
+def mask_external_metadata(path, text):
+    if WORKFLOW_FILE.fullmatch(path):
+        text = OFFICIAL_ACTION_USE.sub(
+            lambda match: match[1] + 'official-action-reference' + match[3], text
+        )
+        text = BRANCH_REF.sub('git-branch-reference', text)
+        text = GIT_COMMIT_MESSAGE.sub(
+            lambda match: match[1] + match[2] + 'commit-message' + match[2] + match[4],
+            text,
+        )
+        # Only items directly nested under a workflow branches: filter.
+        branch_indent = None
+        lines = []
+        for line in text.splitlines(keepends=True):
+            stripped = line.rstrip('\r\n')
+            spaces = len(stripped) - len(stripped.lstrip(' '))
+            branch_key = re.fullmatch(r'[ \t]*branches:[ \t]*(?:#.*)?', stripped)
+            if branch_key:
+                branch_indent = spaces
+            elif stripped.strip() and branch_indent is not None:
+                if spaces <= branch_indent:
+                    branch_indent = None
+                else:
+                    line = BRANCH_ITEM.sub(
+                        lambda match: match[1] + 'git-branch-reference' + match[3],
+                        stripped,
+                    ) + line[len(stripped):]
+            lines.append(line)
+        text = ''.join(lines)
+    elif path == 'site/frontend/package-lock.json':
+        lock = json.loads(text)
+        if (not isinstance(lock, dict)
+                or not isinstance(lock.get('lockfileVersion'), int)
+                or not isinstance(lock.get('packages'), dict)):
+            raise ValueError('invalid npm package-lock metadata')
+        def mask_integrity(match):
+            digest = base64.b64decode(match[3], validate=True)
+            if len(digest) != {'256': 32, '384': 48, '512': 64}[match[2]]:
+                raise ValueError('invalid npm integrity digest')
+            return match[1] + 'npm-integrity-digest' + match[4]
+        text = LOCK_INTEGRITY.sub(mask_integrity, text)
+    return text
+
 def identities(path, content, policy):
     found = Counter()
     for part in path.split('/'):
@@ -119,6 +180,7 @@ def identities(path, content, policy):
     text = SVG_PATH.sub('"svg-path"', text)
     text = BINARY_IMAGE.sub(binary_image, text)
     text = CSS_DECLARATION.sub(lambda match: match[1] + HEX_COLOR.sub('color', match[2]), text)
+    text = mask_external_metadata(path, text)
     for match in TOKEN.finditer(text):
         token = match.group()
         if SEGMENT.search(token) or CAMEL.search(token):
