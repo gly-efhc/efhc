@@ -227,7 +227,7 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
 
 // A cached installed build must remain usable offline, but never mask a newer
 // HTML document when the user reopens the online Pages application.
-test("PWA navigation opens installed page immediately without retaining a worker update event", async () => {
+test("PWA offline navigation opens a complete installed page without waiting for a worker update", async () => {
   const source = read("public/sw.js");
   const origin = "https://efhc.example";
   const scope = origin + "/efhc/";
@@ -237,7 +237,7 @@ test("PWA navigation opens installed page immediately without retaining a worker
     URL, Response, Request, Headers, Blob, Date, console,
     self: {
       registration: {scope,active:{},update:async()=>{updates++;}},
-      location:{origin},navigator:{onLine:true},
+      location:{origin},navigator:{onLine:false},
       addEventListener:()=>{},clients:{matchAll:async()=>[]},
     },
     EFHC_PWA_BUILD_CONFIG:{
@@ -258,13 +258,64 @@ test("PWA navigation opens installed page immediately without retaining a worker
   await Promise.all(holds);
   assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
   assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\.update\(\)/);
-  assert.equal(network,0,"warm start must not wait for network HTML");
+  assert.equal(network,0,"an offline navigation must not request network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
   assert.match(source,/EFHC_STALE_HTML_BUILD/);
   assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
   assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
 
+
+test("Online PWA navigation uses the published HTML instead of displaying an obsolete installed build", async () => {
+  const source = read("public/sw.js");
+  const origin = "https://efhc.example";
+  const scope = origin + "/efhc/";
+  const oldPage = new Response('<meta name="efhc-build-id" content="old">OLD', {status:200});
+  const newest = new Response('<meta name="efhc-build-id" content="new">LATEST', {status:200});
+  let networkReads = 0;
+  const cache = {match:async () => oldPage.clone()};
+  const sandbox = {
+    URL, Response, Request, Headers, Blob, Date, console,
+    AbortController, setTimeout, clearTimeout,
+    self:{
+      registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
+      addEventListener:()=>{},clients:{matchAll:async()=>[]},
+    },
+    EFHC_PWA_BUILD_CONFIG:{
+      build_id:"old",static_export:true,precache:["/efhc/index.html"],
+      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
+      content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
+    },
+    caches:{open:async()=>cache,match:async()=>oldPage.clone()},
+    fetch:async()=>{networkReads++;return newest.clone();},
+  };
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
+  const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
+  assert.match(await result.text(),/LATEST/);
+  assert.equal(networkReads,1,"online navigation must request the current release HTML");
+  assert.doesNotMatch(read("public/sw.js"),/Instant cached-page start: never wait for HTML transport/);
+});
+
+test("When online HTML is incomplete, keep the verified offline version", async () => {
+  const source = read("public/sw.js");
+  const origin = "https://efhc.example", scope = origin + "/efhc/";
+  const verified = new Response("verified old offline page",{status:200});
+  const sandbox = {
+    URL,Response,Request,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
+    self:{registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
+      addEventListener:()=>{},clients:{matchAll:async()=>[]}},
+    EFHC_PWA_BUILD_CONFIG:{
+      build_id:"old",static_export:true,precache:["/efhc/index.html"],
+      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
+      content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
+    },
+    caches:{open:async()=>({match:async()=>verified.clone()}),match:async()=>verified.clone()},
+    fetch:async()=>new Response("incomplete publication",{status:200}),
+  };
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
+  const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
+  assert.equal(await result.text(),"verified old offline page");
+});
 
 test("active old worker never deletes a successor's staged build; new worker retires only prior caches", async () => {
   const source = read("public/sw.js");
