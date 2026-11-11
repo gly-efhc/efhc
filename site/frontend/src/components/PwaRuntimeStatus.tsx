@@ -365,9 +365,21 @@ export function PwaRuntimeStatus(props: {
           queryClient.isMutating() > 0 || hasActiveEditor()) return;
       const key = "efhc:pwa-reload:" + autoReloadBuildId;
       try {
-        if (window.sessionStorage.getItem(key) === "1") return;
-        window.sessionStorage.setItem(key, "1");
-      } catch { /* Storage is optional. */ }
+        const attempts = Math.max(0, Number(window.sessionStorage.getItem(key) || 0));
+        if (attempts >= 3) {
+          console.warn("EFHC_PWA_UPGRADE_STALLED", autoReloadBuildId, attempts);
+          window.dispatchEvent(new CustomEvent("efhc:pwa-upgrade-stalled", {
+            detail: { buildId: autoReloadBuildId, attempts },
+          }));
+          autoReloadBuildId = "";
+          return;
+        }
+        const lastAttemptAt = Number(window.sessionStorage.getItem(key + ":at") || 0);
+        const retryDelayMs = attempts * 2500;
+        if (Date.now() - lastAttemptAt < retryDelayMs) return;
+        window.sessionStorage.setItem(key, String(attempts + 1));
+        window.sessionStorage.setItem(key + ":at", String(Date.now()));
+      } catch { /* Storage is optional; a live reload is still bounded by unload. */ }
       window.location.reload();
     };
     const verifyLoadedBuild = async () => {
@@ -416,6 +428,11 @@ export function PwaRuntimeStatus(props: {
           navigator.serviceWorker.controller?.postMessage({
             type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
           });
+          const verifiedKey = "efhc:pwa-reload:" + manifest.build_id;
+          try {
+            window.sessionStorage.removeItem(verifiedKey);
+            window.sessionStorage.removeItem(verifiedKey + ":at");
+          } catch { /* Storage is optional. */ }
           autoReloadBuildId = "";
         } else if (navigator.onLine) {
           // A new worker cannot replace an already running React bundle.
