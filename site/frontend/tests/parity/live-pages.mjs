@@ -47,7 +47,12 @@ try {
     assert.ok(!/Application error|ZodError/.test(await page.locator('body').innerText()),'React application error on '+route);
     console.log('C0034_BROWSER_ROUTE_PASS '+route);
   }
-  await visit('web-profile/','[data-profile-global-id="0000000088"]');
+  await visit('web-profile/','[data-profile-global-id]');
+  await page.waitForFunction(() => {
+    const gid=document.querySelector('[data-profile-global-id]')?.getAttribute('data-profile-global-id')||'';
+    return /^\\d{10}$/.test(gid) && Number(gid)>=3001 && Number(gid)<=4000;
+  },null,{timeout:60000});
+  console.log('C0045_REAL_USER_PROFILE_GENESIS_ID_PASS');
   await visit('panels/','#efhc-main-content');
   const taskReads=['/api/tasks/catalog','/api/tasks/my','/api/tasks/earnings/me'].map(path=>
     page.waitForResponse(response=>new URL(response.url()).pathname===path&&response.status()===200));
@@ -58,22 +63,21 @@ try {
   assert.ok(await page.locator('[data-task-card]').count()>0,'real task catalog is displayed');
   assert.equal(await page.locator('[data-app-render-error]').count(),0,'handled React failure is not a working page');
   console.log('C0036_REAL_TASKS_RENDER_AFTER_DATA_PASS');
-  await visit('admin/','[data-admin-route="/admin"]');
-  assert.equal(await page.getByText('Доступ запрещён.',{exact:true}).count(),0,'Admin is still blocked by the client');
-  await page.getByText('Административные модули',{exact:true}).waitFor({state:'visible',timeout:40000});
-  console.log('C0034_REAL_ADMIN_HOME_PASS');
-  // Admin Users is a dedicated frozen profile composition, NOT AdminPage.
-  await visit('admin/users/','[data-admin-user-profile="profile-composition"]');
-  assert.equal(await page.getByText('Доступ запрещён.',{exact:true}).count(),0,'Blocked Admin Users');
-  for(const route of ['admin/bank/','admin/panels/','admin/reports/']) {
-    const normalized='/'+route.replace(/\/$/,'');
+  // C0045: an anonymous browser TEST guest must not view Admin modules.
+  // Check all static routes still render their protected shell without
+  // exposing privileged data or operations.
+  for(const route of ['admin/','admin/users/','admin/bank/','admin/panels/','admin/reports/']) {
+    const normalized='/'+route.replace(/\\/$/,'');
     await visit(route,`[data-admin-route="${normalized}"]`);
-    assert.equal(await page.getByText('Доступ запрещён.',{exact:true}).count(),0,'Blocked Admin module: '+route);
+    await page.getByText('Доступ запрещён.',{exact:true}).waitFor({state:'visible',timeout:40000});
+    assert.equal(await page.getByText('Административные модули',{exact:true}).count(),0,
+      'Unprivileged guest can view Admin modules: '+route);
   }
+  console.log('C0045_PROTECTED_ADMIN_ROUTES_DENIED_PASS');
   if(errors.length)throw new Error('Unhandled client exceptions: '+JSON.stringify(errors.slice(0,4)));
-  console.log('C0034_LIVE_BROWSER_PREVIEW_PASS');
+  console.log('C0045_LIVE_BROWSER_GENESIS_GUEST_PASS');
 } catch(error) {
-  console.error('C0034_LIVE_BROWSER_PREVIEW_FAILED '+String(error.message||error));
+  console.error('C0045_LIVE_BROWSER_GENESIS_GUEST_FAILED '+String(error.message||error));
   if(page) {
     await page.screenshot({path:path.join(artifacts,'c0034-failure.png'),fullPage:true}).catch(()=>{});
   }
