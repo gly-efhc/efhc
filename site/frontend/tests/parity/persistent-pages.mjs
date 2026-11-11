@@ -101,17 +101,19 @@ try{
     assert.ok((await page.locator('body').innerText()).includes('Neon TEST'));
     assert.ok(!(await page.locator('body').innerText()).includes('Application error'));
   });
-  await check('offline keeps the protected Admin page visible in OWNER-approved TEST Pages',async()=>{
+  await check('offline Admin remains private before server-attested key login',async()=>{
     await visit('admin/');
-    // GitHub Pages is an isolated public TEST preview, not production Admin
-    // authorization. Its static route and page shell must survive API failure.
-    await page.locator('[data-admin-primitive="page"]').first().waitFor({state:'visible'});
+    // Owner policy: neither a public Pages flag nor offline cache is proof
+    // of Admin authorization. Fail closed while the real API is unavailable.
+    await page.locator('[data-admin-access="denied"]').waitFor({state:'visible'});
     const pathname=new URL(page.url()).pathname;
     assert.ok(pathname.endsWith('/admin/')||pathname.endsWith('/admin'),
-      'Admin deep link must never redirect to home because API is down');
-    assert.equal(await page.locator('[data-admin-client-route-guard]').count(),0,
-      'TEST route is not replaced by an authorization loading/denied screen');
-    assert.ok((await page.locator('body').innerText()).trim().length>25);
+      'Admin deep link should remain addressable without exposing the page');
+    assert.equal(await page.locator('[data-admin-primitive="page"]').count(),0,
+      'Anonymous/offline user must never receive Admin UI');
+    assert.equal(await page.locator('[data-app-navigation="exit-admin"]').count(),0,
+      'Anonymous/offline user must never see Admin navigation');
+    assert.ok((await page.locator('body').innerText()).includes('Доступ'));
   });
   await check('Browser Shop remains a full local page without external requests',async()=>{
     await visit('browser-shop/');
