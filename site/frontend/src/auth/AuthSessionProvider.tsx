@@ -30,7 +30,7 @@ import {
 } from "../lib/referral-start-param";
 import {beginDisplayOwnerResolution,needsTelegramOwnerResolution,resolvedDisplayOwner,subscribeDisplayOwner} from "../lib/displayOwner";
 import {forgetSignedOutUser} from "../lib/queryClient";
-import { clearDemoSession, isDemoBackendMode, isDemoGuestSession, loginDemoGuest as issueDemoGuest, loginDemo as issueDemoLogin, selectDemoGlobalId as issueDemoSelection, logoutDemo as revokeDemoLogin } from "../demo/session";
+import { clearDemoSession, isDemoBackendMode, isDemoGuestSession, loginDemoGuest as issueDemoGuest, loginDemo as issueDemoLogin, loginDemoVisual as issueDemoVisual, selectDemoGlobalId as issueDemoSelection, logoutDemo as revokeDemoLogin } from "../demo/session";
 
 export type AuthBootstrapStatus =
   | "anonymous"
@@ -56,6 +56,7 @@ type AuthSessionController = AuthState & {
   loginTelegram: () => Promise<AuthSessionContext>;
   loginTon: (proofRequest: unknown) => Promise<AuthSessionContext>;
   loginDemo: (password: string) => Promise<AuthSessionContext>;
+  loginDemoVisual: (key: string) => Promise<AuthSessionContext>;
   selectDemoGlobalId: (globalId: string) => Promise<AuthSessionContext>;
 };
 
@@ -278,6 +279,14 @@ export function AuthSessionProvider(props: {
     return context;
   }, []);
 
+  const loginDemoVisual = useCallback(async (key: string): Promise<AuthSessionContext> => {
+    if (!isDemoBackendMode()) throw new Error("DEMO_BACKEND_DISABLED");
+    await issueDemoVisual(key);
+    const context = await fetchAuthSessionContext();
+    setState({ status: "authenticated", context, errorCode: null });
+    return context;
+  }, []);
+
   const selectDemoGlobalId = useCallback(async (globalId: string): Promise<AuthSessionContext> => {
     if (!isDemoBackendMode()) throw new Error("DEMO_BACKEND_DISABLED");
     // The backend validates owner existence and issues a new session token.
@@ -314,6 +323,7 @@ export function AuthSessionProvider(props: {
     loginTelegram,
     loginTon,
     loginDemo,
+    loginDemoVisual,
     selectDemoGlobalId,
   }), [
     state,
@@ -322,6 +332,7 @@ export function AuthSessionProvider(props: {
     loginTelegram,
     loginTon,
     loginDemo,
+    loginDemoVisual,
     selectDemoGlobalId,
   ]);
 
