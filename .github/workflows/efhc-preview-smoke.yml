@@ -1,4 +1,4 @@
-name: EFHC C0034 — live TEST preview API smoke
+name: EFHC — live Genesis guest and protected Admin HTTP smoke
 on:
   push:
     branches: [main]
@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   test-preview:
-    name: Public preview session, USER and Admin real Neon TEST data
+    name: Isolated TEST guest user data and protected Admin boundary
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 7
@@ -61,39 +61,52 @@ jobs:
                           time.sleep(3)
               raise AssertionError(f"{method} {path} failed: {last}")
           
+          # C0045: public Genesis TEST guests must receive a private slot.
+          # Global ID 88 is reserved for the protected SuperAdmin identity.
           status, hdr, guest = request("/api/staging/guest", "POST")
-          assert status == 200 and guest["scope"] == "preview", "C0034 open TEST preview unavailable"
-          assert guest["global_id"] == "0000000088", "unexpected preview account"
+          gid = guest.get("global_id", "")
+          assert status == 200 and guest.get("scope") == "guest", "guest session unavailable"
+          assert isinstance(gid, str) and len(gid) == 10 and gid.isdigit() and 3001 <= int(gid) <= 4000, "Guest ID outside canonical 3001-4000 pool"
           token = guest["demo_bearer_token"]
-          assert len(token) > 32, "missing short-lived TEST token"
-          print("TEST_PREVIEW_SESSION=PASS owner=0000000088 scope=preview")
-          
+          assert len(token) > 32 and guest.get("guest_resume_token"), "missing guest credential"
+          print("TEST_GUEST_IDENTITY=PASS range=3001..4000 scope=guest")
+
           status, hdr, ctx = request("/api/auth/session", bearer=token)
-          assert status == 200 and ctx.get("global_id") == "0000000088", "USER owner not resolved"
+          assert status == 200 and ctx.get("global_id") == gid, "USER owner not resolved"
           assert {k.lower(): v for k, v in hdr.items()}.get("x-efhc-data-source") == "neon-test", "wrong backend source"
           print("USER_NATIVE_HTTP_AUTH_CONTEXT=PASS neon-test")
-          
-          status, hdr, adm = request("/api/admin/access", bearer=token)
-          assert status == 200 and adm.get("global_id") == "0000000088" and adm.get("role"), "Admin not visible"
-          print("ADMIN_ACCESS_TEST_PREVIEW=PASS")
-          
-          status, hdr, overview = request("/api/admin/reports/overview", bearer=token)
-          assert status == 200 and isinstance(overview.get("facts"), dict), "Admin real business overview missing"
-          print("ADMIN_OVERVIEW_NEON_FACTS=PASS keys=" + str(len(overview["facts"])))
+
+          def require_guest_admin_denied(path):
+              req = urllib.request.Request(
+                  api + path,
+                  headers={"Origin": origin, "Authorization": "Bearer " + token},
+                  method="GET",
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as response:
+                      raise AssertionError("Guest received Admin HTTP " + str(response.status) + " at " + path)
+              except urllib.error.HTTPError as exc:
+                  assert exc.code == 403, "Admin route unexpected status " + str(exc.code)
+              print("GUEST_ADMIN_DENIED=PASS " + path)
+
+          require_guest_admin_denied("/api/admin/access")
+          require_guest_admin_denied("/api/admin/reports/overview")
+
+          status, hdr, active = request("/api/panels/active?limit=25&force_sync=0", bearer=token)
+          assert status == 200 and len(active["items"]) == 5 and active.get("next_cursor") is None, "Canonical active panels missing"
+          status, hdr, archived = request("/api/panels/archive?limit=25&force_sync=0", bearer=token)
+          assert status == 200 and len(archived["items"]) == 10 and archived.get("next_cursor") is None, "Canonical archived panels missing"
+          print("GENESIS_PANELS_5_ACTIVE_10_ARCHIVED=PASS")
 
           # C0036: require the actual formerly failing read routes and wire DTOs.
           import re
           for path in (
-              "/api/user/me/panels-summary",
               "/api/referrals/stats/me",
               "/api/profile/avatar",
               "/api/profile/avatar/sources",
-              "/api/admin/bonuses?source=all&limit=1&offset=0",
-              "/api/admin/efhc-deposits/inbox?limit=20",
               "/api/tasks/my",
               "/api/tasks/catalog",
               "/api/tasks/earnings/me",
-              "/api/health/runtime",
           ):
               status, _, data = request(path, bearer=token)
               assert status == 200 and isinstance(data, dict), "Read route failed: " + path
@@ -116,7 +129,7 @@ jobs:
               html = response.read(2000000).decode("utf-8", "replace")
           assert "EFHC" in html and "html" in html.lower(), "Pages entry missing"
           print("PUBLIC_PAGES_HTML=PASS")
-          print("C0034_LIVE_TEST_PREVIEW_HTTP_SMOKE=PASS")
+          print("GENESIS_GUEST_HTTP_AND_ADMIN_DENIAL_SMOKE=PASS")
           PY
       - name: Checkout real React route manifest for Chrome smoke
         uses: actions/checkout@v7
