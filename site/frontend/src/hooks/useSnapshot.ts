@@ -76,6 +76,8 @@ export function useSnapshot() {
     status,
     loading: status === "loading",
     refreshing: Boolean(q.data) && q.isFetching,
+    // A persisted snapshot is not a fresh server confirmation of panel count.
+    verifiedAfterMount: q.isFetchedAfterMount && q.isSuccess && !q.isRefetchError,
     error: q.isError,
     refresh,
     updatedAt: q.dataUpdatedAt,
