@@ -48,7 +48,7 @@ import type { InterfaceAppMode, InterfaceVariantGroup } from
 import { useAvatarPreference } from "../queries/useAvatarPreference";
 import { getThemePageDescriptor } from "../lib/themePageRegistry";
 import { sameTonAddress } from "../lib/wallet-provider/primaryWalletRouting";
-import { isDemoBackendMode, currentDemoSessionScope } from "../demo/session";
+import { isDemoBackendMode } from "../demo/session";
 
 export type LayoutContextValue = {
   lang: Lang;
@@ -252,7 +252,7 @@ export function Layout(
   // Public flags never grant Admin access. Protected API checks remain server-owned.
   const canRenderAdminPage = Boolean(props.isAdmin) || (
     isDemoBackendMode() && authSession.status === "authenticated" &&
-    currentDemoSessionScope() === "visual"
+    authSession.context?.roles.includes("test_visual") === true
   );
   const { avatar: resolvedAvatar } = useAvatarPreference();
 
@@ -786,7 +786,7 @@ export function Layout(
             <section aria-label="Admin access required" data-admin-access="denied" style={{maxWidth:640,margin:"24px auto",padding:20}}>
               <h1>EFHC Admin</h1>
               <p>Доступ к административным страницам закрыт. Для временного просмотра войдите по ключу.</p>
-              <a href="/dev/neon/">Ввести ключ просмотра Admin</a>
+              <Link href="/dev/neon/">Ввести ключ просмотра Admin</Link>
             </section>
           ) : props.children}
         </FrontendShellMain>
