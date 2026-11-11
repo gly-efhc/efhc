@@ -145,5 +145,8 @@ test("Browser Shop does not open a wallet modal when a new binding lacks a proof
   assert.match(gate, /setTonConnectBindingRequested\(false\)/);
   assert.match(gate, /setPendingPrimaryPayment\(null\)/);
   assert.match(gate, /return;/);
-  assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?"https:\/\/testnet\.toncenter\.com\/api\/v2\/jsonRPC"/);
+  assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?\? TON_TESTNET_JSON_RPC_ENDPOINT/);
+  const networkPolicy = get("src/lib/ton/testnet-guard.ts");
+  assert.match(networkPolicy, /export const TON_TESTNET_JSON_RPC_ENDPOINT/);
+  assert.match(networkPolicy, /endpoint !== TON_TESTNET_JSON_RPC_ENDPOINT/);
 });
