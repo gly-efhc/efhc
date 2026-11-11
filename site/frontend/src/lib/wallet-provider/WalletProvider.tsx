@@ -164,6 +164,7 @@ export function WalletProvider(props: WalletProviderProps) {
       {hydrated ? (
         <OfficialTonConnectProvider
           manifestUrl={props.manifestUrl}
+          enableAndroidBackHandler={false}
           restoreConnection={props.restoreConnection}
           actionsConfiguration={{
             twaReturnUrl: props.returnUrl as `${string}://${string}`,
