@@ -92,9 +92,13 @@ function acceptIssuedDemoSession(value: IssuedDemoSession): SessionInfo {
   });
   // A stable browser lease survives Render restarts; the actual bearer remains
   // session-scoped and never grants Admin or financial privileges.
-  if (value.scope === "guest") {
-    if (!value.guest_resume_token || !/^[a-zA-Z0-9_-]{32,256}$/.test(value.guest_resume_token)) {
-      throw new Error("GENESIS_GUEST_LEASE_MISSING");
+  if (value.scope === "guest" &&
+      (!value.guest_resume_token || !/^[a-zA-Z0-9_-]{32,256}$/.test(value.guest_resume_token))) {
+    throw new Error("GENESIS_GUEST_LEASE_MISSING");
+  }
+  if (value.guest_resume_token) {
+    if (!/^[a-zA-Z0-9_-]{32,256}$/.test(value.guest_resume_token)) {
+      throw new Error("GENESIS_GUEST_LEASE_INVALID");
     }
     saveGuestResumeToken(value.guest_resume_token);
   }
@@ -161,13 +165,19 @@ export async function loginDemoGuest(): Promise<SessionInfo> {
 
 export async function loginDemo(password: string): Promise<SessionInfo> {
   sessionVersion++;
-  const result = await writeControl<IssuedDemoSession>("login", {password}, true);
+  const resume_token = readGuestResumeToken();
+  const result = await writeControl<IssuedDemoSession>(
+    "login", resume_token ? {password, resume_token} : {password}, true
+  );
   return acceptIssuedDemoSession(result);
 }
 /** Temporary server-validated frontend layout preview. NEVER an Admin role. */
 export async function loginDemoVisual(key: string): Promise<SessionInfo> {
   sessionVersion++;
-  const result = await writeControl<IssuedDemoSession>("visual-access", {key}, true);
+  const resume_token = readGuestResumeToken();
+  const result = await writeControl<IssuedDemoSession>(
+    "visual-access", resume_token ? {key, resume_token} : {key}, true
+  );
   if (result.scope !== "visual") throw new Error("DEMO_VISUAL_SCOPE_INVALID");
   return acceptIssuedDemoSession(result);
 }
@@ -179,7 +189,7 @@ export async function selectDemoGlobalId(global_id: string): Promise<SessionInfo
   return acceptIssuedDemoSession(result);
 }
 export async function logoutDemo(): Promise<void> {
-  const resume_token = currentDemoSessionScope() === "guest" ? readGuestResumeToken() : null;
+  const resume_token = currentDemoSessionScope() ? readGuestResumeToken() : null;
   try { await writeControl("logout", resume_token ? {resume_token} : {}); }
   finally { clearDemoSession(); clearAuthSession(); }
 }
