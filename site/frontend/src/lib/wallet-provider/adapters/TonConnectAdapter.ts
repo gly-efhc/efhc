@@ -114,7 +114,7 @@ export function createTonConnectAdapter(args: {
       // User-confirmed transactions use the actual wallet transport and the
       // existing upstream business-contract checks; no Pages blanket block.
       try {
-        const out = await sendTonConnectTransaction(requireUi(), tx);
+        const out = await sendTonConnectTransaction(requireUi(), tx, args.wallet);
         return { ...out, provider: "tonconnect" as const };
       } catch (error) {
         if (
