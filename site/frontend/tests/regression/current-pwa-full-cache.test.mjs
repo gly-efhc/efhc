@@ -102,7 +102,8 @@ test("Complete compiled export is precached, stable on repeated builds and verif
 
 test("Public offline catalog never overwrites a verified newer response after mount", async () => {
   const { sourceRuntime } = await import("../helpers/source-runtime.mjs");
-  const key = "efhc_public_catalog_queries_v1";
+  const key = /const STORAGE_KEY = "([^"]+)"/.exec(read("src/lib/publicCatalogPersistence.ts"))?.[1];
+  assert.ok(key, "Reuse the existing public catalogue storage identity");
   const timestamp = Date.now() - 60_000;
   const old = {items:[{sku:"previous"}]};
   const fresh = {items:[{sku:"current"}]};
