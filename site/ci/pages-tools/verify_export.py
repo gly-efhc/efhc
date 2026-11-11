@@ -1,6 +1,8 @@
 """Reject missing, incomplete or unsafe compiled Next.js Pages artifacts."""
 import argparse
+import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -45,6 +47,25 @@ def main():
             missing.append(item)
     if missing:
         raise ValueError(f'PWA resources absent: {missing[:5]}')
+    fingerprinted = re.compile(r'\.[a-f0-9]{16}\.css$')
+    compiled_assets = [
+        entry for entry in root.rglob('*')
+        if entry.is_file() and entry.suffix in {'.html', '.js'} and entry.name != 'sw.js'
+    ]
+    for stylesheet in sorted(root.glob('*.css')):
+        if fingerprinted.search(stylesheet.name):
+            continue
+        raw = stylesheet.read_bytes()
+        hashed_name = f'{stylesheet.stem}.{hashlib.sha256(raw).hexdigest()[:16]}.css'
+        hashed = root / hashed_name
+        if not hashed.is_file() or hashed.read_bytes() != raw:
+            raise ValueError('Public stylesheet fingerprint missing: ' + stylesheet.name)
+        if expected + hashed_name not in config['precache']:
+            raise ValueError('Fingerprint stylesheet not precached: ' + hashed_name)
+        for entry in compiled_assets:
+            if '/' + stylesheet.name in entry.read_text(encoding='utf-8'):
+                raise ValueError('Unversioned public CSS in compiled asset: ' + stylesheet.name)
+
     pages = len(list(root.rglob('*.html')))
     if len([item for item in config['precache'] if item.endswith('.html')]) != pages:
         raise ValueError('PWA does not cover every static HTML page')
