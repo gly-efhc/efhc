@@ -318,6 +318,20 @@ export async function performProductionHttpRequest<T>(
     headers["Idempotency-Key"] = String(opts.idempotencyKey);
   }
 
+  // The normal authenticated transport also serves browser-issued Genesis
+  // TEST guests. Their three canonical economy writes require an additional
+  // server-issued CSRF proof; never attach it to other origins or operations.
+  if (method === "POST" && [
+    "/api/panels/activate",
+    "/api/exchange/convert",
+    "/api/staging/guest-topup",
+  ].includes(normalizeApiPath(path))) {
+    const demo = await import("../demo/session");
+    if (demo.isDemoBackendMode() && demo.currentDemoSessionScope() === "guest") {
+      headers["X-EFHC-Test-CSRF"] = await demo.sessionCsrf();
+    }
+  }
+
   const res = await fetch(getApiBase() + normalizeApiPath(path), {
     method,
     headers,
