@@ -420,7 +420,6 @@ export default function EnergyPage(props: {
   snapshotMode?: "live" | "browser-preview";
   snapshotRefreshing?: boolean;
   snapshotUpdatedAt?: number;
-  snapshotVerifiedAfterMount?: boolean;
   confirmedActivePanels?: number | null;
   refreshSnapshot?: () => void;
 }) {
@@ -440,9 +439,7 @@ export default function EnergyPage(props: {
   // without an auth provider or network in standalone/offline contexts.
   const activePanels = props.confirmedActivePanels != null
     ? String(props.confirmedActivePanels)
-    : props.snapshotVerifiedAfterMount && props.snapshotStatus === "success"
-      ? readIntStr(s, ["panels", "active_count"], "—")
-      : props.snapshotMode === "browser-preview" ? "0" : "—";
+    : props.snapshotMode === "browser-preview" ? "0" : "—";
 
   return (
     <div
