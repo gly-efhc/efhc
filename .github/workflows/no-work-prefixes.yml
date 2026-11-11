@@ -32,7 +32,12 @@ jobs:
         run: |
           set -euo pipefail
           base="$EVENT_BASE"
-          if [[ -z "$base" || "$base" =~ ^0+$ ]]; then
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            # Always use the current trusted target, not a stale PR event base.
+            # A pull request cannot replace this checker or its policy.
+            test "$GITHUB_BASE_REF" = 'main'
+            base="$(git rev-parse --verify 'refs/remotes/origin/main^{commit}')"
+          elif [[ -z "$base" || "$base" =~ ^0+$ ]]; then
             # New branches/manual runs compare to main; they cannot invent a base.
             base="$(git merge-base HEAD origin/main)"
           fi
