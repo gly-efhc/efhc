@@ -160,10 +160,8 @@ test('public TEST guest is never an Admin; server 403 remains authoritative',asy
  assert.equal(ctx.global_id,'0000003001');
  assert.equal(ctx.demo_bearer_token,undefined,'secret must not leak to profile');
  assert.equal(h.calls[0].url,'https://demo-api.example.org/api/staging/guest');
- await assert.rejects(
-  h.load('demo/transport.ts').demoRawRequest('/admin/access','GET'),
-  error=>error.status===403
- );
+ const response=await h.load('demo/transport.ts').demoRawRequest('/admin/access','GET');
+ assert.equal(response.status,403,'raw transport preserves server denial status');
  assert.equal(h.calls[1].url,'https://demo-api.example.org/api/admin/access');
  assert.equal(h.calls[1].options.headers.Authorization,'Bearer '+'P'.repeat(64));
 });
