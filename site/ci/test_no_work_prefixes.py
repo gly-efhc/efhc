@@ -137,7 +137,7 @@ class PrefixGuardTests(unittest.TestCase):
 
     def test_exact_workflow_metadata_is_not_runtime_code(self):
         branch = 'cycle' + '0045/iteration' + '22-official-tonconnect-ui-react'
-        action = 'actions/checkout@' + 'v4'
+        action = 'actions/checkout@' + 'v' + '4'
         message = 'build(c' + '0045): completed official wallet migration'
         workflow = '\n'.join([
             'on:',
@@ -168,7 +168,7 @@ class PrefixGuardTests(unittest.TestCase):
             'jobs:',
             '  build:',
             '    steps:',
-            '      - uses: actions/checkout@' + 'v4',
+            '      - uses: actions/checkout@' + 'v' + '4',
             '      - run: |',
             '          const ' + marker + ' = true;',
         ]))
@@ -179,7 +179,7 @@ class PrefixGuardTests(unittest.TestCase):
         self.check(1)
 
     def test_only_exact_external_action_fields_are_exempt(self):
-        action = 'actions/checkout@' + 'v4'
+        action = 'actions/checkout@' + 'v' + '4'
         self.put('.github/workflows/action.yml', 'env:\n  EXTERNAL: ' + action + '\n')
         self.commit()
         self.check(1)
