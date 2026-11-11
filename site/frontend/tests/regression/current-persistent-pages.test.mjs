@@ -18,6 +18,24 @@ for(const status of ['idle','loading','error','success'])test('Energy retains it
  assert.match(html,/data-energy-chip-count="3"/);
  assert.doesNotMatch(html,/data-energy-state="(?:loading|recoverable-error)"/);
 });
+test('Energy active panel chip does not reveal an obsolete saved count before server confirmation',()=>{
+ const h=r(),Page=h.load('pages/index.tsx').default;
+ const snapshot=h.load('lib/browserFallback.ts').emptyOwnerSnapshot(A);
+ snapshot.panels.active_count=9;
+ const render=(props)=>renderToStaticMarkup(React.createElement(Page,{
+   snap:snapshot,snapshotStatus:'success',snapshotMode:'live',...props,
+ }));
+ const chip=(markup)=>markup.split('data-energy-chip="active-panels"')[1]?.split('data-energy-chip=')[0]||'';
+ assert.match(chip(render({snapshotVerifiedAfterMount:false})),/>—<\/strong>/,
+   'old owner-scoped snapshot is not a verified current panel count');
+ assert.match(chip(render({confirmedActivePanels:4,snapshotVerifiedAfterMount:false})),/>4<\/strong>/,
+   'independent server panels summary replaces stale cached count');
+ assert.match(chip(render({confirmedActivePanels:0})),/>0<\/strong>/,
+   'server confirmed zero overrides cached positive count');
+ assert.match(chip(render({snapshotVerifiedAfterMount:true})),/>9<\/strong>/,
+   'freshly verified sync snapshot remains a read-only fallback');
+});
+
 test('server correction is accepted immediately, even when lower than a local projection',()=>{
  const h=sourceRuntime();
  const {reconcileEnergyAnchor}=h.load('lib/energyProjection.ts');
