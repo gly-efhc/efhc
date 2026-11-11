@@ -522,6 +522,7 @@ export function PwaRuntimeStatus(props: {
       if (!disposed && trackedRegistration?.waiting) activateStagedWorker(trackedRegistration);
     }, 2500);
     const onPageEntered = () => {lastUpdateCheck = 0; checkForUpdate(); void verifyLoadedBuild();};
+    const onPageResumed = () => {checkForUpdate(); void verifyLoadedBuild();};
     router.events.on("routeChangeComplete", onPageEntered);
     void navigator.serviceWorker.register(`${appBasePath()}/sw.js`, { scope: `${appBasePath() || ""}/`, updateViaCache: "none" }).then(
       (registration) => {
@@ -529,9 +530,9 @@ export function PwaRuntimeStatus(props: {
         trackedRegistration = registration;
         activateStagedWorker(registration);
         registration.addEventListener("updatefound", onUpdateFound);
-        window.addEventListener("pageshow", checkForUpdate);
-        window.addEventListener("online", checkForUpdate);
-        document.addEventListener("visibilitychange", checkForUpdate);
+        window.addEventListener("pageshow", onPageResumed);
+        window.addEventListener("online", onPageResumed);
+        document.addEventListener("visibilitychange", onPageResumed);
         checkForUpdate();
         void verifyLoadedBuild();
         cleanupIdle = idle(() => {
@@ -573,9 +574,9 @@ export function PwaRuntimeStatus(props: {
       for (const name of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(name, markActivity);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
-      window.removeEventListener("pageshow", checkForUpdate);
-      window.removeEventListener("online", checkForUpdate);
-      document.removeEventListener("visibilitychange", checkForUpdate);
+      window.removeEventListener("pageshow", onPageResumed);
+      window.removeEventListener("online", onPageResumed);
+      document.removeEventListener("visibilitychange", onPageResumed);
       trackedRegistration?.removeEventListener(
         "updatefound",
         onUpdateFound,
