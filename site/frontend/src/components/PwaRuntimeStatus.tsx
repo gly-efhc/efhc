@@ -501,6 +501,9 @@ export function PwaRuntimeStatus(props: {
         setCacheBytes(Number(data.completedBytes || 0));
         window.setTimeout(() => setCacheVisible(false), 900);
       }
+      if (data.type === "CACHE_RETIREMENT_PENDING") {
+        void verifyLoadedBuild();
+      }
       if (data.type === "CACHE_STATUS") {
         setCacheEntries(
           Number(data.staticEntries || 0) +

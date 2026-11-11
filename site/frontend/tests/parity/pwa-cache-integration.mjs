@@ -435,7 +435,7 @@ try {
       window.__EFHC_PWA_EVENTS__ = [];
       navigator.serviceWorker.addEventListener("message", event => {
         const data = event.data || {};
-        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE", "TEST_SKIP_MESSAGE"].includes(data.type)) {
+        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE", "TEST_SKIP_MESSAGE", "CACHE_RETIREMENT_PENDING"].includes(data.type)) {
           window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, failedUrls:data.failedUrls, reason:data.reason, buildId:data.buildId});
         }
       });
@@ -541,6 +541,20 @@ try {
       assert.equal(pageVersion.marker,newBuildId,"new HTML build marker never replaced old one");
       assert.equal(pageVersion.css,"updated","new CSS not rendered after automatic upgrade");
       console.log("PWA_REAL_HTML_JS_CSS_UPGRADE",JSON.stringify(pageVersion));
+      const readiness = await page.evaluate(async () => {
+        const manifest = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+        const scriptPaths = [...document.querySelectorAll("script[src]")].map(x=>new URL(x.src).pathname)
+          .filter(x=>x.includes("/_next/static/"));
+        return {
+          manifestBuild:manifest.build_id,
+          documentBuild:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          controller:Boolean(navigator.serviceWorker.controller),
+          scripts:scriptPaths.length,
+          missingAssets:scriptPaths.filter(x=>!manifest.precache.includes(x)).slice(0,5),
+          events:window.__EFHC_PWA_EVENTS__?.slice(-12)||[],
+        };
+      });
+      console.log("PWA_READY_DIAGNOSTIC",JSON.stringify(readiness));
       const after=await page.evaluate(async names=>({
         keys:await caches.keys(),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,

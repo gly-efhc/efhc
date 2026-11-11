@@ -481,7 +481,14 @@ async function retireObsoleteBuildsIfSafe() {
     !isPassiveOfflineWindow(client));
   // Unrelated applications under the same origin cannot gate this scope.
   // A rendered old document inside scope still protects its old bundles.
-  if (windows.some(client => !readyBuildClients.has(client.id))) return false;
+  const blocked = windows.filter(client => !readyBuildClients.has(client.id));
+  if (blocked.length) {
+    // Ask surviving app shells to re-attest their loaded build, but never
+    // delete old assets while any in-scope window remains unverified.
+    await notifyClients({type: "CACHE_RETIREMENT_PENDING",
+      buildId: config.build_id, blockedCount: blocked.length});
+    return false;
+  }
   const keep = new Set([staticName, contentName]);
   // Never delete a new successor's staged cache. It cannot be older than
   // this active worker, because it did not exist at this worker's activation.
