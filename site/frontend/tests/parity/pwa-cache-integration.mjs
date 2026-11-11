@@ -319,13 +319,14 @@ try {
     results.push({name:"ten_theme_progress_inventory",status:"INFO",count:verified});
   });
   await check("one-pixel frame CSS stays cached and paints offline", async () => {
-    const framePath = new URL("frame-thickness-contract.css", base).pathname;
-    assert.ok(exportConfig.precache.includes(framePath), "1px frame contract is not in full offline precache");
+    const framePath = exportConfig.precache.find(asset =>
+      /\/frame-thickness-contract\.[a-f0-9]{16}\.css$/.test(asset));
+    assert.ok(framePath, "1px frame contract must have a hashed URL in full offline precache");
     await context.setOffline(true);
     try {
       await page.goto(base, { waitUntil: "domcontentloaded", timeout: 25000 });
-      await page.waitForFunction(() => [...document.styleSheets].some(sheet =>
-        sheet.href?.endsWith("/frame-thickness-contract.css")), null, { timeout: 12000 });
+      await page.waitForFunction(cssPath => [...document.styleSheets].some(sheet =>
+        sheet.href && new URL(sheet.href).pathname === cssPath), framePath, { timeout: 12000 });
       const proof = await page.evaluate(async (cssPath) => {
          const cachesList = await caches.keys();
         let cached = false;
