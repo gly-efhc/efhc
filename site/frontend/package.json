@@ -28,6 +28,7 @@
     "@ton/crypto-primitives": "2.1.0",
     "@ton/ton": "16.3.0",
     "@tonconnect/sdk": "5.0.0",
+    "@tonconnect/ui-react": "5.0.1",
     "@twa-dev/sdk": "^8.0.2",
     "axios": "1.20.0",
     "buffer": "^6.0.3",
