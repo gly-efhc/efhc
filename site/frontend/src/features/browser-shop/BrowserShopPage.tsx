@@ -326,8 +326,10 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const accountBalances = useCurrentAccountBalances();
   const {
     address: walletAddress,
+    listWallets,
     prepareProof,
     connect: connectWallet,
+    disconnect: disconnectWallet,
     bindWallet,
     sendTransaction,
     isUserRejected,
