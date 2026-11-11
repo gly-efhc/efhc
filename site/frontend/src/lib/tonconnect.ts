@@ -1,4 +1,5 @@
 import type { Lang } from "./i18n";
+import { assertFreshTonProofChallenge } from "./ton/ton-proof-challenge";
 import {
   requireGenesisTransactionNetwork,
   requireGenesisWalletNetwork,
@@ -76,17 +77,7 @@ export async function prepareTonProof(
   tonConnectUI.setConnectRequestParameters({ state: "loading" });
   try {
     const out = await getTonProofPayload();
-    // TON Proof signs the dApp origin, not the backend API hostname.
-    // A different server-issued domain cannot be verified for this page.
-    const visibleDomain = window.location.hostname.toLowerCase().replace(/\.$/, "");
-    if (out.domain !== visibleDomain) {
-      throw new Error("TON_PROOF_DOMAIN_MISMATCH");
-    }
-    // Never display a wallet QR for an already-expired server challenge.
-    const expiresAt = Date.parse(out.expires_at);
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() + 30_000) {
-      throw new Error("TON_PROOF_CHALLENGE_EXPIRED");
-    }
+    assertFreshTonProofChallenge(out, window.location.hostname);
     tonConnectUI.setConnectRequestParameters({
       state: "ready",
       value: { tonProof: out.ton_proof_payload },
