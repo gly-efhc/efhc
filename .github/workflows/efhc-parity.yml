@@ -47,7 +47,7 @@ jobs:
           cd "$RUNNER_TEMP/efhc-parity-build"
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Install browser driver for full review
-        if: ${{ inputs.full_review == true }}
+        if: ${{ inputs.full_review == true || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
         run: npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
       - name: Check immutable HTML contracts and generated shared shell
         run: |
@@ -103,7 +103,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Check actual rendered selections, colors, sizing and routes
-        if: ${{ inputs.full_review == true }}
+        if: ${{ inputs.full_review == true || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-parity-artifacts
@@ -123,7 +123,7 @@ jobs:
           node site/frontend/tests/parity/templates.mjs
           node site/frontend/tests/parity/routes.mjs
       - name: Retain visual review and precise results
-        if: ${{ always() && inputs.full_review == true }}
+        if: ${{ always() && (inputs.full_review == true || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react'))) }}
         uses: actions/upload-artifact@v4
         with:
           name: efhc-parity-${{ github.sha }}
