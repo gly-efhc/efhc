@@ -32,10 +32,10 @@ function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERAT
  const context=vm.createContext({process:{env},URL,URLSearchParams,AbortController,AbortSignal,Response,Headers,Blob,console,Promise,Date,Error,JSON,setTimeout,clearTimeout,fetch:async(url,opts={})=>{
   calls.push({url:String(url),options:opts});
   if(onRequest)return onRequest(String(url),opts);
-  if(String(url).endsWith('/api/staging/session'))return Response.json({ok:true,global_id:issued?.access_token?.startsWith('S')?'0000000088':'0000000002',csrf:issued?.access_token?.startsWith('S')?'next-csrf':'csrf-token',mode:'operator'});
-  if(String(url).endsWith('/api/staging/guest'))return Response.json({ok:true,global_id:'0000000088',csrf:'test-preview-csrf',mode:'neon-test-preview',scope:'preview',demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
+  if(String(url).endsWith('/api/staging/session'))return Response.json({ok:true,global_id:issued?.access_token?.startsWith('S')?'0000003001':'0000000002',csrf:issued?.access_token?.startsWith('S')?'next-csrf':'csrf-token',mode:'operator'});
+  if(String(url).endsWith('/api/staging/guest'))return Response.json({ok:true,global_id:'0000003001',csrf:'test-guest-csrf',mode:'genesis-test-guest',scope:'guest',guest_resume_token:'R'.repeat(48),demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
   if(String(url).endsWith('/api/staging/login'))return Response.json({ok:true,global_id:'0000000002',csrf:'login-csrf',mode:'operator',demo_bearer_token:'L'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
-  if(String(url).endsWith('/api/staging/select-global-id'))return Response.json({ok:true,global_id:'0000000088',csrf:'next-csrf',mode:'operator',demo_bearer_token:'S'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
+  if(String(url).endsWith('/api/staging/select-global-id'))return Response.json({ok:true,global_id:'0000003001',csrf:'next-csrf',mode:'operator',demo_bearer_token:'S'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
   if(String(url).endsWith('/api/staging/logout'))return Response.json({ok:true});
   if(String(url).endsWith('/api/sync/me'))return Response.json({profile:{global_id:'0000000002'}});
   return Response.json({code:'not-found'},{status:404});
@@ -107,13 +107,13 @@ test('DEMO operator login and Global ID switching preserve server-issued bearer 
  const session=await s.sessionInfo();
  assert.equal(session.global_id,'0000000002');
  assert.equal(h.calls[1].options.headers.Authorization,'Bearer '+'L'.repeat(64));
- const selected=await s.selectDemoGlobalId('0000000088');
- assert.equal(selected.global_id,'0000000088');
+ const selected=await s.selectDemoGlobalId('0000003001');
+ assert.equal(selected.global_id,'0000003001');
  assert.equal(selected.demo_bearer_token,undefined);
  assert.equal(h.calls[2].options.headers['X-EFHC-Test-CSRF'],'csrf-token');
  assert.equal(h.calls[2].options.headers.Authorization,'Bearer '+'L'.repeat(64));
  assert.equal(h.calls[2].options.credentials,'include');
- assert.deepEqual(JSON.parse(h.calls[2].options.body),{global_id:'0000000088'});
+ assert.deepEqual(JSON.parse(h.calls[2].options.body),{global_id:'0000003001'});
  const renewed=await s.sessionInfo();
  assert.equal(renewed.ok,true);
  assert.equal(h.calls[3].options.headers.Authorization,'Bearer '+'S'.repeat(64));
@@ -142,14 +142,28 @@ test('registered transport preserves request options and raw binary response pat
  assert.equal(seen[1][0],'/admin/logs/export.csv');
 });
 
-test('C0034 public TEST preview is server-issued for owner 0000000088 and can call Admin data API',async()=>{
- const h=harness({auth:null}),session=h.load('demo/session.ts');
+test('public TEST guest is never an Admin; server 403 remains authoritative',async()=>{
+ const h=harness({auth:null,onRequest:async(url)=>{
+  if(url.endsWith('/api/staging/guest'))return Response.json({
+   ok:true,global_id:'0000003001',csrf:'guest-csrf',mode:'genesis-test-guest',
+   scope:'guest',guest_resume_token:'R'.repeat(48),
+   demo_bearer_token:'P'.repeat(64),
+   expires_at_epoch:Math.floor(Date.now()/1000)+3600
+  });
+  if(url.endsWith('/api/admin/access'))return Response.json(
+   {detail:'TEST_ADMIN_GLOBAL_ID_NOT_ALLOWED'},{status:403}
+  );
+  return Response.json({});
+ }});
+ const session=h.load('demo/session.ts');
  const ctx=await session.loginDemoGuest();
- assert.equal(ctx.global_id,'0000000088');
- assert.equal(ctx.demo_bearer_token,undefined,'secret must not leak to visible profile state');
+ assert.equal(ctx.global_id,'0000003001');
+ assert.equal(ctx.demo_bearer_token,undefined,'secret must not leak to profile');
  assert.equal(h.calls[0].url,'https://demo-api.example.org/api/staging/guest');
- const tr=h.load('demo/transport.ts');
- await tr.demoRawRequest('/admin/access','GET');
+ await assert.rejects(
+  h.load('demo/transport.ts').demoRawRequest('/admin/access','GET'),
+  error=>error.status===403
+ );
  assert.equal(h.calls[1].url,'https://demo-api.example.org/api/admin/access');
  assert.equal(h.calls[1].options.headers.Authorization,'Bearer '+'P'.repeat(64));
 });
@@ -158,7 +172,7 @@ test('late 401 from an older request must not revoke a newly issued TEST session
  let finish;
  const pendingResponse=new Promise(resolve=>{finish=resolve;});
  const h=harness({onRequest:async(url)=>{
-  if(url.endsWith('/api/staging/guest'))return Response.json({ok:true,global_id:'0000000088',csrf:'fresh-csrf',mode:'neon-test-preview',scope:'preview',demo_bearer_token:'N'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
+  if(url.endsWith('/api/staging/guest'))return Response.json({ok:true,global_id:'0000003001',csrf:'fresh-csrf',mode:'genesis-test-guest',scope:'guest',guest_resume_token:'R'.repeat(48),demo_bearer_token:'N'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600});
   return pendingResponse;
  }});
  const transport=h.load('demo/transport.ts');
@@ -168,7 +182,7 @@ test('late 401 from an older request must not revoke a newly issued TEST session
  assert.equal(h.cleared,0,'an old response must not destroy the newer session');
 });
 
-test('a failed operator password must preserve the existing TEST preview session',async()=>{
+test('a failed operator password must preserve the existing TEST guest session',async()=>{
  const h=harness({onRequest:async()=>Response.json({detail:'DEMO_BAD_CREDENTIALS'},{status:401})});
  await assert.rejects(h.load('demo/session.ts').loginDemo('wrong'),/HTTP_401/);
  assert.equal(h.cleared,0,'invalid replacement credentials do not revoke the current session');
@@ -186,7 +200,7 @@ test('failed CSRF synchronization does not send a protected operation with an em
  assert.equal(h.calls.length,1,'stop at failed CSRF session read, do not submit the operation');
 });
 
-test('late public preview issuance cannot replace a newer operator session', async()=>{
+test('late public guest issuance cannot replace a newer operator session', async()=>{
  let finishGuest;
  const h=harness({auth:null,onRequest:async(url)=>{
   if(url.endsWith('/guest'))return await new Promise(resolve=>{finishGuest=resolve;});
@@ -196,7 +210,7 @@ test('late public preview issuance cannot replace a newer operator session', asy
  }});
  const s=h.load('demo/session.ts'), old=s.loginDemoGuest();
  await s.loginDemo('test-password');
- finishGuest(Response.json({ok:true,global_id:'0000000088',csrf:'old-csrf',mode:'preview',scope:'preview',demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600}));
+ finishGuest(Response.json({ok:true,global_id:'0000003001',csrf:'old-csrf',mode:'genesis-test-guest',scope:'guest',guest_resume_token:'R'.repeat(48),demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600}));
  await assert.rejects(()=>old,/DEMO_SESSION_REPLACED/);
  await s.sessionInfo();
  assert.equal(h.calls.at(-1).options.headers.Authorization,'Bearer '+'L'.repeat(64));
@@ -212,7 +226,7 @@ test('late session metadata cannot apply CSRF proof from a superseded credential
  }});
  const s=h.load('demo/session.ts'), old=s.sessionInfo();
  await s.loginDemo('test-password');
- finishSession(Response.json({ok:true,global_id:'0000000088',csrf:'old-csrf',mode:'preview'}));
+ finishSession(Response.json({ok:true,global_id:'0000003001',csrf:'old-csrf',mode:'genesis-test-guest'}));
  await assert.rejects(()=>old,/DEMO_SESSION_REPLACED/);
  assert.equal(await s.sessionCsrf(),'new-csrf');
 });
@@ -226,7 +240,7 @@ test('obsolete auth proof cannot replace the display owner of a newer session', 
  }});
  const client=h.load('lib/auth-session-client.ts'), old=client.fetchAuthSessionContext();
  authorization='Bearer NEW_PROOF';
- resolveProof({global_id:'0000000088',provider:'preview',roles:['admin']});
+ resolveProof({global_id:'0000003001',provider:'guest',roles:['admin']});
  await assert.rejects(()=>old,/AUTH_SESSION_REPLACED/);
  assert.deepEqual(owners,[],'stale response must never bind or restore another owner cache');
  const current=client.fetchAuthSessionContext();
@@ -235,7 +249,7 @@ test('obsolete auth proof cannot replace the display owner of a newer session', 
  assert.deepEqual(owners,['0000000002']);
 });
 
-test('anonymous 401 must not cancel an in-flight public preview issuance',async()=>{
+test('anonymous 401 must not cancel an in-flight public guest issuance',async()=>{
  let finishGuest;
  const h=harness({auth:null,onRequest:async url=>{
   if(url.endsWith('/guest'))return new Promise(resolve=>{finishGuest=resolve;});
@@ -243,6 +257,6 @@ test('anonymous 401 must not cancel an in-flight public preview issuance',async(
  }});
  const s=h.load('demo/session.ts'),guest=s.loginDemoGuest();
  await assert.rejects(()=>h.load('demo/transport.ts').demoBackendTransport.request('/tasks/catalog','GET',{}));
- finishGuest(Response.json({ok:true,global_id:'0000000088',csrf:'preview-csrf',mode:'preview',scope:'preview',demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600}));
- assert.equal((await guest).global_id,'0000000088');assert.equal(h.cleared,0);
+ finishGuest(Response.json({ok:true,global_id:'0000003001',csrf:'guest-csrf',mode:'genesis-test-guest',scope:'guest',guest_resume_token:'R'.repeat(48),demo_bearer_token:'P'.repeat(64),expires_at_epoch:Math.floor(Date.now()/1000)+3600}));
+ assert.equal((await guest).global_id,'0000003001');assert.equal(h.cleared,0);
 });
