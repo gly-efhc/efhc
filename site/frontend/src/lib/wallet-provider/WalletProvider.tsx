@@ -1,3 +1,4 @@
+import dynamic from "next/dynamic";
 import React, {
   createContext,
   useCallback,
@@ -107,13 +108,52 @@ type WalletProviderProps = React.PropsWithChildren<{
 const WalletProviderContext =
   createContext<WalletProviderValue | null>(null);
 
+// Pages Router must not mount the official provider during SSR. Keep the
+// pre-hydration EFHC shell visible (including protected static pages) and
+// switch to the single real TON provider after the browser hydrates.
+const OfficialTonConnectProvider = dynamic(
+  () => import("@tonconnect/ui-react").then((mod) => mod.TonConnectUIProvider),
+  { ssr: false },
+);
+const DISCONNECTED_WALLET_CONTEXT: WalletProviderValue = {
+  activeAdapterId: "tonconnect",
+  activeAdapterLabel: "TON Connect",
+  adapters: [
+    { id: "tonconnect", label: "TON Connect", available: false, connected: false },
+  ],
+  session: null,
+  address: "",
+  providerName: "tonconnect",
+  restoreSettled: false,
+  modalOpened: false,
+  selectAdapter: () => { throw new WalletAdapterUnavailableError("tonconnect"); },
+  listWallets: async () => [],
+  prepareProof: async () => null,
+  connect: async () => { throw new WalletAdapterUnavailableError("tonconnect"); },
+  bindWallet: async () => null,
+  disconnect: async () => undefined,
+  sendTransaction: async () => { throw new WalletAdapterUnavailableError("tonconnect"); },
+  isUserRejected: () => false,
+};
+
 /**
  * Single application-facing wallet root. TonConnect is mounted as one
  * adapter; no page or feature imports its SDK directly.
  */
 export function WalletProvider(props: WalletProviderProps) {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  if (!hydrated) {
+    return (
+      <WalletProviderContext.Provider value={DISCONNECTED_WALLET_CONTEXT}>
+        {props.children}
+      </WalletProviderContext.Provider>
+    );
+  }
+
   return (
-    <TonConnectUIProvider
+    <OfficialTonConnectProvider
       manifestUrl={props.manifestUrl}
       restoreConnection={props.restoreConnection}
       actionsConfiguration={{
@@ -136,7 +176,7 @@ export function WalletProvider(props: WalletProviderProps) {
       >
         {props.children}
       </WalletProviderRuntime>
-    </TonConnectUIProvider>
+    </OfficialTonConnectProvider>
   );
 }
 
