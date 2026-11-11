@@ -100,6 +100,29 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.notEqual(rejected.status, 0, "missing offline page must block deployment");
 });
 
+test("Public offline catalog never overwrites a verified newer response after mount", async () => {
+  const { sourceRuntime } = await import("../helpers/source-runtime.mjs");
+  const key = "efhc_public_catalog_queries_v1";
+  const timestamp = Date.now() - 60_000;
+  const old = {items:[{sku:"previous"}]};
+  const fresh = {items:[{sku:"current"}]};
+  const storage = new Map([[key,JSON.stringify([{
+    key:["tasksCatalog"],data:old,updatedAt:timestamp,
+  }])]]);
+  const runtime = sourceRuntime({storage,session:new Map()});
+  const client = runtime.load("lib/queryClient.ts").createEfhcQueryClient();
+  const catalog = runtime.load("lib/publicCatalogPersistence.ts");
+  const queryKey = ["tasksCatalog"];
+  client.setQueryData(queryKey,fresh,{updatedAt:Date.now()});
+  catalog.hydratePublicCatalogQueries(client);
+  assert.deepEqual(JSON.parse(JSON.stringify(client.getQueryData(queryKey))),fresh);
+  // An empty in-memory query still receives the last valid offline catalog.
+  client.removeQueries({queryKey});
+  catalog.hydratePublicCatalogQueries(client);
+  assert.deepEqual(JSON.parse(JSON.stringify(client.getQueryData(queryKey))),old);
+  client.clear();
+});
+
 test("Existing USER data and local settings are retained rather than replaced by revalidation", () => {
   assert.match(read("src/lib/queryClient.ts"), /refetchOnMount: "always"/);
   assert.match(read("src/hooks/useSnapshot.ts"), /refetchOnMount: "always"/);
@@ -248,12 +271,21 @@ test("active old worker never deletes a successor's staged build; new worker ret
   const cacheNames = new Set(["efhc-pwa-old-static","efhc-pwa-old-content"]);
   const posted = [];
   const client = {id:"same-tab",postMessage(message){posted.push(message)}};
+  const oldClient = {id:"old-tab",postMessage(message){posted.push(message)}};
+  let openClients = [client, oldClient];
+  const buckets = new Map();
   const cacheStorage = {
     keys: async () => [...cacheNames],
-    delete: async name => cacheNames.delete(name),
+    delete: async name => {buckets.delete(name);return cacheNames.delete(name);},
     open: async name => {
       cacheNames.add(name);
-      return { match: async () => undefined, keys: async () => [] };
+      if (!buckets.has(name)) buckets.set(name,new Map());
+      const values = buckets.get(name);
+      return {
+        match: async req => values.get(String(req))?.clone(),
+        put: async (req,response) => {values.set(String(req),response.clone());},
+        keys: async () => [...values.keys()].map(url=>({url})),
+      };
     },
     match: async () => undefined,
   };
@@ -266,7 +298,7 @@ test("active old worker never deletes a successor's staged build; new worker ret
         registration:{scope,active:{}},
         location:{origin},
         clients:{
-          matchAll:async()=>[client],
+          matchAll:async()=>openClients,
           claim:async()=>undefined,
         },
         addEventListener:(type,listener)=>events.set(type,listener),
@@ -313,13 +345,22 @@ test("active old worker never deletes a successor's staged build; new worker ret
   await newWorker.dispatch("activate");
   assert.equal(cacheNames.has("efhc-pwa-old-static"),true,
     "previous assets must survive until new client verifies its build");
-  await newWorker.dispatch("message",{
+  // Browsers regularly terminate a SW and then restart it WITHOUT an
+  // activate event. Retirement inventory must be restored from CacheStorage.
+  const resumedWorker = makeWorker("next");
+  await resumedWorker.dispatch("message",{
     source:client,
     data:{
       type:"CLIENT_BUILD_READY",buildId:"next",
       assets:["/efhc/_next/static/next.js"],
     },
   });
+  assert.equal(cacheNames.has("efhc-pwa-old-static"),true,
+    "the old tab still needs its old immutable scripts");
+  // The old tab is closed. A later status request from the verified new tab
+  // rechecks retirement even though no activate event fires on the worker.
+  openClients = [client];
+  await resumedWorker.dispatch("message",{source:client,data:{type:"GET_CACHE_STATUS"}});
   assert.equal(cacheNames.has("efhc-pwa-old-static"),false,
     "a verified successor must retire the previous static build");
   assert.equal(cacheNames.has("efhc-pwa-old-content"),false,
