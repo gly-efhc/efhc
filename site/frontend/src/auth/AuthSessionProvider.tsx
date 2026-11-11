@@ -30,7 +30,7 @@ import {
 } from "../lib/referral-start-param";
 import {beginDisplayOwnerResolution,needsTelegramOwnerResolution,resolvedDisplayOwner,subscribeDisplayOwner} from "../lib/displayOwner";
 import {forgetSignedOutUser} from "../lib/queryClient";
-import { clearDemoSession, isDemoBackendMode, isDemoGuestSession, loginDemoGuest as issueDemoGuest, loginDemo as issueDemoLogin, loginDemoVisual as issueDemoVisual, selectDemoGlobalId as issueDemoSelection, logoutDemo as revokeDemoLogin } from "../demo/session";
+import { clearDemoSession, currentDemoSessionScope, isDemoBackendMode, isDemoGuestSession, loginDemoGuest as issueDemoGuest, loginDemo as issueDemoLogin, loginDemoVisual as issueDemoVisual, selectDemoGlobalId as issueDemoSelection, logoutDemo as revokeDemoLogin } from "../demo/session";
 
 export type AuthBootstrapStatus =
   | "anonymous"
@@ -181,7 +181,22 @@ export function AuthSessionProvider(props: {
       // Real Telegram Mini App proof takes precedence over a public DEMO guest.
       void loginTelegram().catch(() => undefined);
     } else if (credential || isDemoBackendMode()) {
-      if (!isDemoBackendMode() && signedTelegramData && needsTelegramOwnerResolution()) {
+      if (isDemoBackendMode() && !signedTelegramData && credential &&
+          currentDemoSessionScope() === "guest") {
+        // A real page visit renews the 48-hour server lease, including
+        // recovery after Render restarts; background polling never renews it.
+        guestBootstrapStarted.current = true;
+        void (async () => {
+          await issueDemoGuest();
+          const context = await fetchAuthSessionContext();
+          setState({status: "authenticated", context, errorCode: null});
+        })().catch((error) => {
+          guestBootstrapStarted.current = false;
+          if (errorCode(error) === "AUTH_SESSION_REPLACED" ||
+              errorCode(error) === "DEMO_SESSION_REPLACED") return;
+          void restoreSession();
+        });
+      } else if (!isDemoBackendMode() && signedTelegramData && needsTelegramOwnerResolution()) {
         void loginTelegram().catch(() => undefined);
       } else {
         void restoreSession();
@@ -299,7 +314,7 @@ export function AuthSessionProvider(props: {
 
   const logout = useCallback(async () => {
     try {
-      if (isDemoBackendMode() && !readAuthSession()) await revokeDemoLogin();
+      if (isDemoBackendMode() && currentDemoSessionScope()) await revokeDemoLogin();
       else await revokeAuthSession();
     } finally {
       clearAuthSession();
