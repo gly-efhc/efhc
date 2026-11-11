@@ -562,14 +562,12 @@ function AppInner(props: {
     let active = true;
     if (authSession.status !== "authenticated" || globalId === null) {
       setAdminAccessState(
-        markAdminUnavailable(globalId) ? "readonly" : authSession.status === "restoring"
-          || authSession.status === "authenticating"
-          ? "checking"
-          : "denied",
+        authSession.status === "restoring" || authSession.status === "authenticating"
+          ? "checking" : "denied",
       );
       return () => { active = false; };
     }
-    setAdminAccessState(markAdminUnavailable(globalId)?"readonly":"checking");
+    setAdminAccessState("checking");
     void fetchAdminAccess()
       .then((access) => {
         if (!active) return;
@@ -579,13 +577,22 @@ function AppInner(props: {
       })
       .catch(() => {
         if (!active) return;
-        setAdminAccessState(markAdminUnavailable(globalId)?"readonly":"denied");
+        setAdminAccessState(
+          process.env.NEXT_PUBLIC_EFHC_DATA_SOURCE === "demo_backend"
+            ? "denied" : markAdminUnavailable(globalId) ? "readonly" : "denied"
+        );
       });
     return () => { active = false; };
   }, [authSession.status, globalId]);
-  useEffect(()=>subscribeAdminView(()=>{
-    const view=cachedAdminView(globalId);setAdminAccessState(view||"denied");
-  }),[globalId]);
+  useEffect(() => {
+    // TEST Admin rights come exclusively from live /api/admin/access.
+    // A cached readonly/Admin view is never authorization.
+    if (process.env.NEXT_PUBLIC_EFHC_DATA_SOURCE === "demo_backend") return;
+    return subscribeAdminView(() => {
+      const view = cachedAdminView(globalId);
+      setAdminAccessState(view || "denied");
+    });
+  }, [globalId]);
 
   // The signed account read is authoritative for balances. A newer React
   // Query timestamp on a restored sync snapshot cannot override this read.
@@ -611,7 +618,12 @@ function AppInner(props: {
   const isVip = Boolean(visibleSnap.profile.is_vip);
   // Admin access is server-authoritative via /admin/access.
   // Telegram provider subject is not an admin/business owner credential.
-  const isAdmin = adminAccessState === "allowed" || adminAccessState === "readonly";
+  const isAdmin =
+    authSession.status === "authenticated"
+    && globalId !== null
+    && (adminAccessState === "allowed"
+      || (process.env.NEXT_PUBLIC_EFHC_DATA_SOURCE !== "demo_backend"
+          && adminAccessState === "readonly"));
 
   const [shopSkinBgUrl, setShopSkinBgUrl] = useState<
     string | null
@@ -690,12 +702,10 @@ function AppInner(props: {
   // API authorization remains solely server-controlled in production.
   const adminGuardCanDecide = adminAccessState !== "checking";
   const adminRouteBlocked = isAdminRoute
-    && !isOpenTestPagesRuntime
     && adminGuardCanDecide
     && !isAdmin
     && !effectiveAdminVisualProofPath;
   const adminRouteChecking = isAdminRoute
-    && !isOpenTestPagesRuntime
     && !isAdmin
     && !effectiveAdminVisualProofPath
     && !adminRouteBlocked;
