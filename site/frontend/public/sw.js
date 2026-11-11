@@ -13,8 +13,8 @@ const CACHED_AT = "x-efhc-cached-at";
 const RETIREMENT_STATE_URL = scoped("__cache_retirement_state__");
 let configPromise = null;
 let runtimeCachePolicy = null;
-// Ready notifications must come from a rendered client on this exact build.
-// Older open tabs retain their prior hashed bundles until they are replaced.
+// Readiness is persisted with the predecessor inventory: browsers may restart
+// this worker without another activate event while the new React page stays open.
 const readyBuildClients = new Set();
 // A worker may clean up only cache generations observed when IT activated.
 // Deleting all non-current keys would erase a NEW build being staged by its
@@ -131,6 +131,7 @@ async function saveRetirementState(names, obsoleteNames) {
   await cache.put(RETIREMENT_STATE_URL, new Response(JSON.stringify({
     build_id: names.config.build_id,
     obsolete_names: obsoleteNames,
+    ready_client_ids: [...readyBuildClients],
   }), {headers: {"content-type": "application/json"}}));
 }
 async function restoreRetirementState(names) {
@@ -144,6 +145,11 @@ async function restoreRetirementState(names) {
       if (typeof name === "string" && name.startsWith(CACHE_PREFIX) &&
           name !== names.staticName && name !== names.contentName) {
         previousBuildCachesAtActivation.add(name);
+      }
+    }
+    if (Array.isArray(state.ready_client_ids)) {
+      for (const id of state.ready_client_ids) {
+        if (typeof id === "string" && id.length <= 256) readyBuildClients.add(id);
       }
     }
   } catch { /* Corrupt metadata must never authorize deletion. */ }
@@ -184,6 +190,30 @@ function isSafeCacheUrl(value, config) {
   } catch {
     return false;
   }
+}
+
+function isClientInScope(client) {
+  try {
+    const url = new URL(client.url);
+    return url.origin === self.location.origin && relativePath(url.pathname) !== null;
+  } catch { return false; }
+}
+function isPassiveOfflineWindow(client) {
+  const pathname = new URL(client.url).pathname;
+  return pathname === OFFLINE_URL || pathname === READONLY_OFFLINE_URL;
+}
+
+// Old cache keys had no scope suffix. Preserve or retire only generations that
+// actually contain this app's own pre-cached HTML; CacheStorage is origin-wide.
+async function isOwnHistoricalCache(name, allKeys) {
+  if (!name.startsWith(CACHE_PREFIX)) return false;
+  const staticKey = name.endsWith("-content")
+    ? name.slice(0, -"-content".length) + "-static" : name;
+  if (!staticKey.endsWith("-static") || !allKeys.includes(staticKey)) return false;
+  const bucket = await caches.open(staticKey);
+  return Boolean(await bucket.match(scoped("index.html")) ||
+    await bucket.match(scoped("manifest.webmanifest")) ||
+    await bucket.match(scoped("offline.html")));
 }
 
 async function notifyClients(message) {
@@ -345,6 +375,9 @@ async function cacheFirst(request) {
   const cache = await caches.open(names.staticName);
   const cached = await cache.match(request);
   if (cached) return cached;
+  // A restarted worker has not received activate. Recover its predecessor
+  // inventory before the FIRST old page requests a retained immutable chunk.
+  await restoreRetirementState(names);
   // Fully staged upgrades may take over while an older page remains mounted.
   // Its content-hashed assets must still be served from the previous build.
   const previous = (await caches.keys()).filter((key) =>
@@ -432,7 +465,11 @@ async function retireObsoleteBuildsIfSafe() {
   const names = await cacheNames();
   const {config, staticName, contentName} = names;
   await restoreRetirementState(names);
-  const windows = await self.clients.matchAll({type: "window", includeUncontrolled: true});
+  const allWindows = await self.clients.matchAll({type: "window", includeUncontrolled: true});
+  const windows = allWindows.filter(client => isClientInScope(client) &&
+    !isPassiveOfflineWindow(client));
+  // Unrelated applications under the same origin cannot gate this scope.
+  // A rendered old document inside scope still protects its old bundles.
   if (windows.some(client => !readyBuildClients.has(client.id))) return false;
   const keep = new Set([staticName, contentName]);
   // Never delete a new successor's staged cache. It cannot be older than
@@ -468,8 +505,10 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const names = await cacheNames();
       const keys = await caches.keys();
-      const obsolete = keys.filter((key) =>
+      const candidates = keys.filter(key =>
         key.startsWith(CACHE_PREFIX) && key !== names.staticName && key !== names.contentName);
+      const ownership = await Promise.all(candidates.map(key => isOwnHistoricalCache(key, keys)));
+      const obsolete = candidates.filter((key, index) => ownership[index]);
       for (const key of obsolete) previousBuildCachesAtActivation.add(key);
       // Persist the predecessor inventory BEFORE claiming clients. Do not
       // remove assets still needed by any open tab from an older build.
@@ -503,8 +542,11 @@ self.addEventListener("message", (event) => {
       const validAssets = Array.isArray(assets) && assets.length > 0 &&
         assets.some(path => typeof path === "string" && path.startsWith(scoped("_next/static/"))) &&
         assets.every(path => typeof path === "string" && names.config.precache.includes(path));
-      if (!source?.id || !validAssets || data.buildId !== names.config.build_id) return;
+      if (!source?.id || !isClientInScope(source) || !validAssets ||
+          data.buildId !== names.config.build_id) return;
+      await restoreRetirementState(names);
       readyBuildClients.add(source.id);
+      await saveRetirementState(names, [...previousBuildCachesAtActivation]);
       await retireObsoleteBuildsIfSafe();
     })());
     return;
