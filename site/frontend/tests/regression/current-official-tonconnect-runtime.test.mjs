@@ -148,5 +148,7 @@ test("Browser Shop does not open a wallet modal when a new binding lacks a proof
   assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?\? GENESIS_JSON_RPC_ENDPOINT/);
   const networkPolicy = get("src/lib/ton/testnet-guard.ts");
   assert.match(networkPolicy, /export const TON_TESTNET_JSON_RPC_ENDPOINT/);
-  assert.match(networkPolicy, /endpoint !== expected/);\n  assert.match(networkPolicy, /export const GENESIS_JSON_RPC_ENDPOINT/);\n  assert.match(networkPolicy, /TON_MAINNET_JSON_RPC_ENDPOINT/);
+  assert.match(networkPolicy, /endpoint !== expected/);
+  assert.match(networkPolicy, /export const GENESIS_JSON_RPC_ENDPOINT/);
+  assert.match(networkPolicy, /TON_MAINNET_JSON_RPC_ENDPOINT/);
 });
