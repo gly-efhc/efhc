@@ -201,6 +201,7 @@ export function DepositModal(props: {
       if (preparationRevision.current === revision) setPreparing(false);
     }
   }, [
+    amount,
     amountValid,
     creditAmount,
     globalId,
