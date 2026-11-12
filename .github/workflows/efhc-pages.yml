@@ -225,8 +225,8 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_E2E_TONCONNECT_MOCK: '0'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: 'demo_backend'
-          # OWNER 12.11.2026: two owned mainnet wallets and 10 real EFHC.
-          # Token transfers are user-signed in the wallet; TEST ledger remains isolated.
+          # Explicit external wallet-network selection for integration testing.
+          # Wallet signatures remain external; the internal TEST ledger is isolated.
           NEXT_PUBLIC_EFHC_WALLET_NETWORK: 'mainnet'
           NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN: ${{ vars.EFHC_BACKEND_API_ORIGIN || vars.EFHC_DEMO_API_ORIGIN }}
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
