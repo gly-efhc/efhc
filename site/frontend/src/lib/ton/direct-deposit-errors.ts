@@ -25,7 +25,7 @@ export function describeDirectDepositFailure(
   if (/timed? ?out|aborterror|timeout/i.test(combined)) {
     return `${stage}:TON_REQUEST_TIMEOUT`;
   }
-  if (/insufficient|not enough|low balance|gas fee/i.test(combined)) {
+  if (/insufficient|not enough|not have enough|low balance|gas fee/i.test(combined)) {
     return `${stage}:WALLET_BALANCE_OR_FEE_INSUFFICIENT`;
   }
   if (/network|failed to fetch|fetch failed|cors|rpc|bridge|connection/i.test(combined)) {
