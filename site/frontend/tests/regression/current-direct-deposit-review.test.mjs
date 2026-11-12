@@ -103,6 +103,8 @@ test("review remains in app until explicit wallet click; it does not auto-send",
 test("official wallet confirmation portal stays interactive during EFHC modal background inert", () => {
   const modal = file("../../src/components/ui/Modal.tsx");
   assert.match(modal, /child\.id !== "tc-widget-root"/);
+  assert.match(modal, /walletRoot\.contains\(document\.activeElement\)/);
+  assert.match(modal, /data-tc-actions-modal-container/);
   assert.match(modal, /element\.setAttribute\("inert", ""\)/);
   assert.match(modal, /modalBackgroundInertSnapshots\.delete\(element\)/);
   const provider = file("../../src/lib/wallet-provider/WalletProvider.tsx");
