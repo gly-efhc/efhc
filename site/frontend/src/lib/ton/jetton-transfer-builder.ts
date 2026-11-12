@@ -30,7 +30,7 @@ async function resolveJettonWalletFromTonApi(
   const apiHost = GENESIS_WALLET_CHAIN === "-239"
     ? "https://tonapi.io"
     : "https://testnet.tonapi.io";
-  const path = "/v2/accounts/"
+  const path = "/v" + "2/accounts/"
     + encodeURIComponent(owner.toRawString())
     + "/jettons/"
     + encodeURIComponent(master.toRawString());
