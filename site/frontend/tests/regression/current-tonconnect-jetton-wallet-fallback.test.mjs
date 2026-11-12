@@ -119,3 +119,30 @@ test("deposit UI exposes only allowlisted failure codes without leaking RPC erro
   assert.match(ui, /EFHC_JETTON_MASTER_MISMATCH/);
   assert.doesNotMatch(ui, /setError\(String\(caught\)\)/);
 });
+
+test("direct EFHC deposit prepares remotely before an explicit wallet-send click", () => {
+  const ui = readFileSync(
+    new URL("../../src/components/DepositModal.tsx", import.meta.url), "utf8",
+  );
+  const start = ui.indexOf("const prepareDirectEfhcDeposit = useCallback(");
+  const end = ui.indexOf("const sendPreparedDirectDeposit = useCallback(", start);
+  assert.ok(start >= 0 && end > start, "preparation belongs to the existing deposit modal");
+  const preparation = ui.slice(start, end);
+  assert.match(preparation, /await openDeposit\\.mutateAsync\\(\\)/);
+  assert.match(preparation, /await buildEfhcDirectDepositTx\\(/);
+  assert.doesNotMatch(preparation, /sendTransaction\\(/);
+
+  const sendingStart = end;
+  const sendingEnd = ui.indexOf("async function sendDirectEfhcDeposit()", sendingStart);
+  const sending = ui.slice(sendingStart, sendingEnd);
+  assert.match(sending, /void sendTransaction\\(ready\\.tx\\)\\.then\\(/);
+  assert.doesNotMatch(sending, /await\\s+.*sendTransaction\\(/);
+  assert.match(sending, /sendInProgress\\.current/);
+  assert.match(sending, /validUntil <= Math\\.floor\\(Date\\.now\\(\\) \\/ 1000\\) \\+ 30/);
+  assert.match(sending, /sameTonAddress\\(ready\\.senderAddress, walletAddress\\)/);
+  assert.match(sending, /ready\\.ownerGlobalId !== String\\(globalId\\)/);
+  assert.match(sending, /ready\\.amount !== \\(creditAmount \\|\\| amount\\)/);
+  assert.match(ui, /if \\(preparedDeposit\\) \\{\\s*sendPreparedDirectDeposit\\(preparedDeposit\\);\\s*return;/);
+  assert.match(ui, /preparedDeposit\\s*\\? t\\("deposit\\.direct_open_wallet"\\)/);
+  assert.match(ui, /setPreparedDeposit\\(null\\)/);
+});
