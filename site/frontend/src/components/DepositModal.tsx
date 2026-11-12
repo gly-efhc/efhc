@@ -1,5 +1,6 @@
 import { publicRuntimeValue } from "../lib/public-runtime";
 import type { TonConnectTx } from "../lib/ton/tx";
+import { createDirectDepositReview, type DirectDepositReview } from "../lib/ton/direct-deposit-review";
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -52,6 +53,8 @@ const DIRECT_DEPOSIT_FAILURE_CODES = new Set([
   "TON_MAINNET_TRANSACTION_REQUIRED",
   "TON_MAINNET_WALLET_REQUIRED",
   "TONCONNECT_TRANSACTION_RESPONSE_INVALID",
+  "DIRECT_DEPOSIT_REVIEW_INVALID",
+  "INVALID_TON_ATTACHMENT",
 ]);
 
 function directDepositFailureCode(error: unknown): string | null {
@@ -68,6 +71,7 @@ type PreparedDirectDeposit = {
   senderAddress: string;
   ownerGlobalId: string;
   amount: string;
+  review: DirectDepositReview;
 };
 
 export function DepositModal(props: {
@@ -177,9 +181,16 @@ export function DepositModal(props: {
         feeMessageTonAmount: out.fee_message_ton_amount,
         forwardTonAmount: out.forward_ton_amount,
       });
+      const review = createDirectDepositReview({
+        tx,
+        metadata: out,
+        walletAddress,
+        amountEfhc: creditAmount || amount,
+      });
       if (preparationRevision.current === revision) {
         setPreparedDeposit({
           tx,
+          review,
           senderAddress: walletAddress,
           ownerGlobalId: String(globalId),
           amount: creditAmount || amount,
@@ -355,6 +366,7 @@ export function DepositModal(props: {
                   inputMode="decimal"
                   autoComplete="off"
                   value={amount}
+                  disabled={Boolean(preparedDeposit) || transactionPhase === "signing"}
                   data-direct-deposit-amount="efhc-jetton"
                   placeholder={t("deposit.amount_placeholder")}
                   aria-invalid={!amountValid}
@@ -378,6 +390,74 @@ export function DepositModal(props: {
               </div>
             </div>
           </>
+        ) : null}
+
+        {preparedDeposit && !walletOpened ? (
+          <section
+            className="efhc-direct-deposit_review"
+            aria-label={t("deposit.review_title")}
+            data-direct-deposit-review="ready"
+          >
+            <h3>{t("deposit.review_title")}</h3>
+            <div className="efhc-direct-deposit_review-rows">
+              <div>
+                <span>{t("deposit.review_send")}</span>
+                <strong data-direct-deposit-review-send="efhc">
+                  {preparedDeposit.review.amountEfhc} EFHC
+                </strong>
+              </div>
+              <div>
+                <span>{t("deposit.review_receive")}</span>
+                <strong data-direct-deposit-review-credit="efhcm">
+                  {preparedDeposit.review.amountEfhc} EFHCm
+                </strong>
+              </div>
+              <div>
+                <span>{t("deposit.review_recipient")}</span>
+                <code data-direct-deposit-review-recipient="owner">
+                  {preparedDeposit.review.receiverAddress}
+                </code>
+              </div>
+              <div>
+                <span>{t("deposit.review_ton_attached")}</span>
+                <strong data-direct-deposit-review-attached="ton">
+                  {preparedDeposit.review.attachedTon} TON
+                </strong>
+              </div>
+              <div>
+                <span>{t("deposit.review_network_fee")}</span>
+                <strong data-direct-deposit-review-fee="pending">
+                  {t("deposit.review_fee_pending")}
+                </strong>
+              </div>
+            </div>
+            <p className="efhc-direct-deposit_review-note">
+              {t("deposit.review_fee_explanation")}
+            </p>
+            <details className="efhc-direct-deposit_review-details">
+              <summary>{t("deposit.review_details")}</summary>
+              <dl>
+                <dt>{t("deposit.review_network")}</dt>
+                <dd>{preparedDeposit.review.network}</dd>
+                <dt>{t("deposit.review_sender")}</dt>
+                <dd><code>{preparedDeposit.review.walletAddress}</code></dd>
+                <dt>{t("deposit.review_execution")}</dt>
+                <dd><code>{preparedDeposit.review.executionContractAddress}</code></dd>
+                <dt>{t("deposit.review_master")}</dt>
+                <dd><code>{preparedDeposit.review.jettonMasterAddress}</code></dd>
+                <dt>{t("deposit.review_forward_ton")}</dt>
+                <dd>{preparedDeposit.review.forwardedTon} TON</dd>
+                <dt>{t("deposit.review_memo")}</dt>
+                <dd><code>{preparedDeposit.review.memo}</code></dd>
+              </dl>
+            </details>
+            <p className="efhc-direct-deposit_review-expiry" data-direct-deposit-review-expiry="unix">
+              {t("deposit.review_valid_until")}{" "}
+              <time dateTime={new Date(preparedDeposit.review.expiresAt * 1000).toISOString()}>
+                {new Date(preparedDeposit.review.expiresAt * 1000).toLocaleTimeString()}
+              </time>
+            </p>
+          </section>
         ) : null}
 
         {transactionPhase === "signing" ? (
@@ -469,7 +549,7 @@ export function DepositModal(props: {
                 : preparing || openDeposit.isPending
                   ? t("deposit.opening")
                 : preparedDeposit
-                  ? t("deposit.direct_open_wallet")
+                  ? t("deposit.review_confirm")
                   : t("deposit.direct_send_efhc")}
             </Button>
           ) : !confirmed ? (
@@ -482,6 +562,20 @@ export function DepositModal(props: {
               {statusQ.isFetching
                 ? t("common.loading")
                 : t("deposit.status_retry")}
+            </Button>
+          ) : null}
+          {preparedDeposit && !walletOpened ? (
+            <Button
+              variant="secondary"
+              data-direct-deposit-action="edit-amount"
+              onClick={() => {
+                preparationRevision.current += 1;
+                setPreparedDeposit(null);
+                setTransactionPhase("idle");
+                setError(null);
+              }}
+            >
+              {t("deposit.review_edit")}
             </Button>
           ) : null}
           <Button variant="secondary" data-direct-deposit-action="cancel" onClick={props.onClose} disabled={preparing || openDeposit.isPending || transactionPhase === "signing"}>

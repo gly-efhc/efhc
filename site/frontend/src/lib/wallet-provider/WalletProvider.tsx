@@ -168,6 +168,9 @@ export function WalletProvider(props: WalletProviderProps) {
           restoreConnection={props.restoreConnection}
           actionsConfiguration={{
             twaReturnUrl: props.returnUrl as `${string}://${string}`,
+            // Keep official pre-sign, success and error action dialogs visible
+            // rather than dropping the only payment feedback after handoff.
+            modals: "all",
           }}
           uiPreferences={{
             theme: tonConnectTheme(props.themeMode, props.telegramScheme) as any,

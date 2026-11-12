@@ -58,7 +58,10 @@ function syncModalBackgroundInert(): void {
   const desired = new Set<HTMLElement>();
   if (top) {
     for (const child of Array.from(document.body.children)) {
-      if (child instanceof HTMLElement && child !== top) desired.add(child);
+      // TonConnect renders wallet approval in its own official body portal.
+      // Never make that separate consent UI inert behind the EFHC dialog.
+      if (child instanceof HTMLElement && child !== top
+          && child.id !== "tc-widget-root") desired.add(child);
     }
   }
 
@@ -242,6 +245,13 @@ export function Modal(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Tab" && event.key !== "Escape") return;
 
+      // Official TON Connect approval has its own focus and Escape handling.
+      // Do not trap a wallet approval back inside the EFHC amount editor.
+      const walletRoot = document.getElementById("tc-widget-root");
+      if (walletRoot && (walletRoot.contains(document.activeElement)
+        || walletRoot.querySelector('[data-tc-modal="true"],[data-tc-actions-modal-container="true"],[data-tc-wallets-modal-container="true"]'))) {
+        return;
+      }
       const overlay = overlayRef.current;
       const sheet = sheetRef.current;
       if (!overlay || !sheet) return;
