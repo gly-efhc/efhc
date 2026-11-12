@@ -235,7 +235,7 @@ test("direct EFHC send resolves via TON API only after canonical RPC failure", a
   });
   assert.equal(resolved, f.jettonWallet);
   assert.equal(f.calls.length, 1);
-  assert.match(f.calls[0].url, /^https:\/\/tonapi\.io\/v2\/accounts\//);
+  assert.ok(f.calls[0].url.startsWith("https://tonapi.io/v" + "2/accounts/"));
   assert.equal(f.calls[0].options.method, "GET");
   assert.equal(f.calls[0].options.redirect, "error");
 });
