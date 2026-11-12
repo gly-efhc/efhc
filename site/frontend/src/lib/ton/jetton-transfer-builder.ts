@@ -25,16 +25,86 @@ export async function resolveSenderJettonWallet(
     type: "slice",
     cell: ownerCell,
   };
-  const data = await client.runMethod(
-    Address.parse(args.jettonMasterAddress),
-    "get_wallet_address",
-    [stackItem],
-  );
-  const walletAddress = data.stack.readAddress();
-  return walletAddress.toString({
-    urlSafe: true,
-    bounceable: true,
-  });
+  const master = Address.parse(args.jettonMasterAddress);
+  try {
+    const data = await client.runMethod(
+      master,
+      "get_wallet_address",
+      [stackItem],
+    );
+    return data.stack.readAddress().toString({
+      urlSafe: true,
+      bounceable: true,
+    });
+  } catch {
+    // Public TON Center RPC is rate-limited without an API key. Recover
+    // Mainnet *read-only* jetton wallet discovery from a second independent
+    // provider without changing the signed TON transaction or trusting
+    // arbitrary jettons by symbol/name. Never fall back across networks.
+    if (GENESIS_WALLET_CHAIN !== "-239") {
+      throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
+    }
+    const url = "https://tonapi.io/v2/accounts/"
+      + encodeURIComponent(owner.toRawString())
+      + "/jettons/"
+      + encodeURIComponent(master.toRawString());
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "GET",
+        headers: { accept: "application/json" },
+        signal: controller.signal,
+      });
+    } catch {
+      throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
+    } finally {
+      clearTimeout(timeout);
+    }
+    if (response.status === 404) {
+      throw new Error("EFHC_JETTON_BALANCE_NOT_FOUND");
+    }
+    if (!response.ok) {
+      throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
+    }
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
+    }
+    if (!payload || typeof payload !== "object") {
+      throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
+    }
+    const body = payload as {
+      wallet_address?: { address?: unknown };
+      jetton?: { address?: unknown };
+    };
+    if (typeof body.jetton?.address !== "string") {
+      throw new Error("EFHC_JETTON_MASTER_UNVERIFIED");
+    }
+    try {
+      if (!Address.parse(body.jetton.address).equals(master)) {
+        throw new Error("EFHC_JETTON_MASTER_MISMATCH");
+      }
+    } catch (cause) {
+      if (cause instanceof Error
+          && cause.message === "EFHC_JETTON_MASTER_MISMATCH") throw cause;
+      throw new Error("EFHC_JETTON_MASTER_UNVERIFIED");
+    }
+    if (typeof body.wallet_address?.address !== "string") {
+      throw new Error("EFHC_JETTON_WALLET_INVALID");
+    }
+    try {
+      return Address.parse(body.wallet_address.address).toString({
+        urlSafe: true,
+        bounceable: true,
+      });
+    } catch {
+      throw new Error("EFHC_JETTON_WALLET_INVALID");
+    }
+  }
 }
 
 export function buildForwardPayloadCellBase64(
