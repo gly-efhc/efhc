@@ -9,7 +9,7 @@
 import {localPagesBase} from './pages-base.mjs';
 import {verifyPortfolioThemeHeights} from './portfolio-theme-height.mjs';
 import {verifyHeaderMaterials} from './header-material.mjs';
-import {verifyStaticPages} from './static-pages.mjs';
+import {verifyStaticPages,staticRoutes} from './static-pages.mjs';
 import {verifyTasksData} from './tasks-data.mjs';
 import {verifyFrameThickness,verifyVisibleHeroFrames} from './frame-thickness.mjs';
 import {verifyColorThemePages} from './color-theme-pages.mjs';
@@ -63,7 +63,8 @@ try{
   });
   await check('every static route retains controls through auth and API failures',async()=>{
     const matrix=await verifyStaticPages({base,artifacts:dir,widths:[390,1440],modes:['offline','slow','401','403','500','malformed']});
-    assert.equal(matrix.length,154);
+    assert.ok(!staticRoutes.includes('dev/neon'),'retired TEST route must not be exported');
+    assert.equal(matrix.length,2*(staticRoutes.length+5*7),'full static route and failure-mode matrix');
   });
   for(const route of userRoutes)await check('offline keeps USER page '+(route||'home'),async()=>{
     await visit(route);
@@ -95,11 +96,13 @@ try{
     assert.equal(page.url(),new URL(ranks,base).href,'Forward must remain on Ranks after all handlers');
     await assertUserShell();
   });
-  await check('operator console remains accessible without remote API',async()=>{
+  await check('retired public TEST console exposes no operator credentials or top-up controls',async()=>{
     await visit('dev/neon/');
-    await page.getByPlaceholder('Пароль TEST оператора').waitFor({state:'visible'});
-    assert.ok((await page.locator('body').innerText()).includes('Neon TEST'));
-    assert.ok(!(await page.locator('body').innerText()).includes('Application error'));
+    const body=await page.locator('body').innerText();
+    assert.equal(await page.getByPlaceholder('Пароль TEST оператора').count(),0);
+    assert.ok(!body.includes('DEMO backend / Neon TEST'));
+    assert.ok(!body.includes('Тестовое пополнение через банк'));
+    assert.ok(!body.includes('Временный ключ просмотра Admin'));
   });
   await check('offline Admin remains private before server-attested key login',async()=>{
     await visit('admin/');
