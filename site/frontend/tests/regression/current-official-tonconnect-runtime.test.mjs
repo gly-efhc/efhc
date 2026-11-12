@@ -48,7 +48,7 @@ test("connect uses the official UI modal without the former custom chooser", () 
   assert.doesNotMatch(primary, /args\.connectWallet\(target\)/);
   assert.match(adapter, /await ui\.openModal\(\)/);
   assert.doesNotMatch(adapter, /ui\.connectWallet\(wallet\.walletKey\)/);
-  assert.match(adapter, /ui\.setConnectionNetwork\(TON_TESTNET_CHAIN\)/);
+  assert.match(adapter, /ui\.setConnectionNetwork\(GENESIS_WALLET_CHAIN\)/);
 });
 
 test("real wallet Proof, chain and financial-send gates remain separate", () => {
@@ -145,8 +145,10 @@ test("Browser Shop does not open a wallet modal when a new binding lacks a proof
   assert.match(gate, /setTonConnectBindingRequested\(false\)/);
   assert.match(gate, /setPendingPrimaryPayment\(null\)/);
   assert.match(gate, /return;/);
-  assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?\? TON_TESTNET_JSON_RPC_ENDPOINT/);
+  assert.match(src, /isGenesisTestRuntime\(\)[\s\S]*?\? GENESIS_JSON_RPC_ENDPOINT/);
   const networkPolicy = get("src/lib/ton/testnet-guard.ts");
   assert.match(networkPolicy, /export const TON_TESTNET_JSON_RPC_ENDPOINT/);
-  assert.match(networkPolicy, /endpoint !== TON_TESTNET_JSON_RPC_ENDPOINT/);
+  assert.match(networkPolicy, /endpoint !== expected/);
+  assert.match(networkPolicy, /export const GENESIS_JSON_RPC_ENDPOINT/);
+  assert.match(networkPolicy, /TON_MAINNET_JSON_RPC_ENDPOINT/);
 });

@@ -20,7 +20,7 @@ import { normalizeTonConnectTx } from "./browserShopTonTx";
 import { BrowserShopPreSignChecklist } from "./BrowserShopPreSignChecklist";
 import { buildUsdtTransferPlanFromBrowserShopIntent } from "../../lib/ton/browser-shop-intent";
 import { buildJettonTransferTonConnectTx, resolveSenderJettonWallet } from "../../lib/ton/jetton-transfer-builder";
-import { isGenesisTestRuntime, TON_TESTNET_JSON_RPC_ENDPOINT } from "../../lib/ton/testnet-guard";
+import { GENESIS_JSON_RPC_ENDPOINT, isGenesisTestRuntime, requireGenesisJsonRpcEndpoint } from "../../lib/ton/testnet-guard";
 import type {
   BrowserShopCatalogItem,
   BrowserShopProfileOrder,
@@ -804,10 +804,11 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
           senderOwnerAddress: expectedAddress,
           recipientPolicy: { strategy: "owner_derived_wallet", ownerAddress: parsed.to_wallet },
         });
-        const endpoint = publicRuntimeValue("NEXT_PUBLIC_TON_RPC_ENDPOINT")
-          || (isGenesisTestRuntime()
-            ? TON_TESTNET_JSON_RPC_ENDPOINT
-            : "https://toncenter.com/api/v2/jsonRPC");
+        const endpoint = isGenesisTestRuntime()
+          ? GENESIS_JSON_RPC_ENDPOINT
+          : (publicRuntimeValue("NEXT_PUBLIC_TON_RPC_ENDPOINT")
+            || "https://toncenter.com/api/v2/jsonRPC");
+        requireGenesisJsonRpcEndpoint(endpoint);
         const senderJettonWallet = await resolveSenderJettonWallet({ endpoint, ownerAddress: expectedAddress, jettonMasterAddress: plan.jettonMasterAddress });
         tx = buildJettonTransferTonConnectTx(plan, senderJettonWallet);
       }

@@ -279,7 +279,8 @@ export function Layout(
     [walletSession?.address, walletsMe.data?.wallets],
   );
   const hasBoundWallet = Boolean(boundSessionWallet);
-  const walletConnected = Boolean(walletsMe.data?.is_connected);
+  // A stored server binding alone is not a live TonConnect session.
+  const walletConnected = Boolean(walletSession && boundSessionWallet);
   const isAdminRoute = router.pathname.startsWith("/admin");
   const appMode: InterfaceAppMode = isAdminRoute ? "admin" : "user";
   const [bottomNavViewportHeight, setBottomNavViewportHeight] = useState<
@@ -617,7 +618,18 @@ export function Layout(
   }
 
   async function disconnectWalletSession() {
-    await disconnectWallet().catch(() => undefined);
+    try {
+      await disconnectWallet();
+    } catch {
+      setConnectionPhase("error");
+      setWalletHint(t("wallet.connection_failed"));
+      toast(t("wallet.connection_failed"), "error");
+      return;
+    }
+    // Do not carry a previous one-time TON Proof into the next connect.
+    bindingAttemptRef.current = "";
+    setProofState(null);
+    setWalletModalOpened(false);
     if (globalId) {
       qc.invalidateQueries({
         queryKey: queryKeys.profile.wallets(globalId),
