@@ -1,0 +1,73 @@
+name: EFHC Official TON Connect UI React - branch package migration
+on:
+  push:
+    branches:
+      - cycle0045/iteration22-official-tonconnect-ui-react
+    paths:
+      - .github/workflows/tonconnect-ui-react-migration-branch.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: tonconnect-official-branch-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  official-ui-package:
+    if: github.ref == 'refs/heads/cycle0045/iteration22-official-tonconnect-ui-react'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated frontend migration branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Node and npm tooling
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install official UI and align transitive SDK to the exact UI pin
+        working-directory: site/frontend
+        run: |
+          npm install --save-exact @tonconnect/ui-react@5.0.1 --ignore-scripts --no-audit --no-fund
+          node - <<'NODE'
+          const fs = require("node:fs");
+          const root = require("./package.json");
+          const react = require("./node_modules/@tonconnect/ui-react/package.json");
+          const ui = require("./node_modules/@tonconnect/ui/package.json");
+          const sdk = require("./node_modules/@tonconnect/sdk/package.json");
+          if (root.dependencies["@tonconnect/ui-react"] !== "5.0.1") throw Error("OFFICIAL_UI_PIN_REQUIRED");
+          if (react.dependencies["@tonconnect/ui"] !== ui.version) throw Error("UI_PIN_MISMATCH");
+          if (ui.dependencies["@tonconnect/sdk"] !== sdk.version) throw Error("SDK_PIN_MISMATCH");
+          if (root.dependencies["@tonconnect/sdk"] !== sdk.version) {
+            root.dependencies["@tonconnect/sdk"] = sdk.version;
+            fs.writeFileSync("package.json", JSON.stringify(root,null,2)+"\n");
+          }
+          console.log("OFFICIAL_TONCONNECT_PACKAGE_CHAIN", react.version,ui.version,sdk.version);
+          NODE
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Validate official dependency graph and lockfile
+        working-directory: site/frontend
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm ls @tonconnect/ui-react @tonconnect/ui @tonconnect/sdk
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const p=require("./package.json");
+          const lock=require("./package-lock.json");
+          if (p.dependencies["@tonconnect/ui-react"] !== "5.0.1") throw Error("OFFICIAL_UI_MISSING");
+          if (lock.packages[""].dependencies["@tonconnect/ui-react"] !== "5.0.1") throw Error("LOCK_ROOT_MISMATCH");
+          console.log("OFFICIAL_UI_PACKAGE_LOCK_PASS");
+          NODE
+      - name: Commit ONLY manifest and lock to isolated branch
+        working-directory: site/frontend
+        run: |
+          git config user.name 'efhc-ci'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo 'OFFICIAL_TONCONNECT_MANIFEST_ALREADY_CURRENT'
+            exit 0
+          fi
+          git diff --cached --name-only
+          git commit -m 'build(c0045): pin official TonConnect UI React and aligned SDK'
+          git push origin HEAD:refs/heads/cycle0045/iteration22-official-tonconnect-ui-react

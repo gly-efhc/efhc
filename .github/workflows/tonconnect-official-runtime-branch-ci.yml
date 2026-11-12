@@ -1,0 +1,84 @@
+name: EFHC Official TonConnect UI React runtime - isolated acceptance
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - site/frontend/src/lib/wallet-provider/**
+      - site/frontend/src/features/browser-shop/BrowserShopPage.tsx
+      - site/frontend/src/lib/tonconnect.ts
+      - site/frontend/src/components/Layout.tsx
+      - site/frontend/src/features/browser-shop/BrowserShopPage.tsx
+      - site/frontend/src/lib/vendor/tonconnect-ui-react-compat.tsx
+      - site/frontend/src/components/wallet/TonConnectWalletChooser.tsx
+      - site/frontend/tests/regression/current-official-tonconnect-runtime.test.mjs
+      - site/frontend/tsconfig.json
+      - site/frontend/package.json
+      - site/frontend/package-lock.json
+      - .github/workflows/tonconnect-official-runtime-branch-ci.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: efhc-official-tonconnect-migration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  react:
+    if: contains(github.ref, 'official-tonconnect-ui-react')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: site/frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/frontend/package-lock.json
+      - name: Deterministic dependency installation
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify actual official UI dependency and absence of compatibility aliases
+        run: |
+          npm ls @tonconnect/ui-react @tonconnect/ui @tonconnect/sdk
+          node - <<'NODE'
+          const fs=require("node:fs");
+          const pkg=require("./package.json");
+          const config=JSON.parse(fs.readFileSync("tsconfig.json","utf8"));
+          const layout=fs.readFileSync("src/components/Layout.tsx","utf8");
+          const adapter=fs.readFileSync("src/lib/wallet-provider/adapters/TonConnectAdapter.ts","utf8");
+          const provider=fs.readFileSync("src/lib/wallet-provider/WalletProvider.tsx","utf8");
+          const shop=fs.readFileSync("src/features/browser-shop/BrowserShopPage.tsx","utf8");
+          if (!pkg.dependencies["@tonconnect/ui-react"]) throw Error("OFFICIAL_UI_PACKAGE_MISSING");
+          if (config.compilerOptions?.paths?.["@tonconnect/ui-react"]) throw Error("CUSTOM_ALIAS_ACTIVE");
+          if (layout.includes("TonConnectWalletChooser")) throw Error("CUSTOM_PICKER_ACTIVE");
+          if (shop.includes("TonConnectWalletChooser")) throw Error("SHOP_CUSTOM_PICKER_ACTIVE");
+          const primary=fs.readFileSync("src/lib/wallet-provider/primaryWalletRouting.ts","utf8");
+          if (primary.includes("args.connectWallet(target)")) throw Error("PRIMARY_WALLET_CUSTOM_CONNECTOR_ACTIVE");
+          if (fs.existsSync("src/components/wallet/TonConnectWalletChooser.tsx")) throw Error("CUSTOM_PICKER_SOURCE_REMAINS");
+          if (fs.existsSync("src/lib/vendor/tonconnect-ui-react-compat.tsx")) throw Error("COMPATIBILITY_LAYER_REMAINS");
+          if (adapter.includes("connectWallet(wallet.walletKey)")) throw Error("CUSTOM_CONNECTOR_ACTIVE");
+          if (!adapter.includes("ui.openModal()")) throw Error("OFFICIAL_MODAL_NOT_USED");
+          if (!provider.includes("OfficialTonConnectProvider")) throw Error("OFFICIAL_SINGLETON_MISSING");
+          const resolved=require.resolve("@tonconnect/ui-react");
+          if (!resolved.includes("node_modules")) throw Error("VENDOR_FALLBACK_ACTIVE");
+          console.log("OFFICIAL_TONCONNECT_RUNTIME_STATIC_ACCEPTANCE_PASS");
+          NODE
+      - name: Type-check actual official React hooks and provider
+        run: npm run typecheck
+      - name: Official UI targeted regression contract
+        run: npm run test:tonconnect-update-acceptance
+      - name: Regressions for protected EFHC pages
+        run: npm run test:frontend-regression
+      - name: Build browser React/Next.js with official module
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_EFHC_DATA_SOURCE: demo_backend
+          NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
+          NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
+          NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: ./node_modules/.bin/next build --webpack

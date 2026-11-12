@@ -17,12 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "types": [],
-    "paths": {
-      "@tonconnect/ui-react": [
-        "./src/lib/vendor/tonconnect-ui-react-compat.tsx"
-      ]
-    }
+    "types": []
   },
   "include": [
     "next-env.d.ts",

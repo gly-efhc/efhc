@@ -1,4 +1,5 @@
 import type { Lang } from "./i18n";
+import { assertFreshTonProofChallenge } from "./ton/ton-proof-challenge";
 import {
   requireGenesisTransactionNetwork,
   requireGenesisWalletNetwork,
@@ -76,6 +77,7 @@ export async function prepareTonProof(
   tonConnectUI.setConnectRequestParameters({ state: "loading" });
   try {
     const out = await getTonProofPayload();
+    assertFreshTonProofChallenge(out, window.location.hostname);
     tonConnectUI.setConnectRequestParameters({
       state: "ready",
       value: { tonProof: out.ton_proof_payload },
@@ -94,6 +96,9 @@ function proofEnvelope(
   const proof = wallet?.connectItems?.tonProof?.proof;
   const address = String(wallet?.account?.address || "").trim();
   if (!proofState || !proof || !address) return null;
+  // Never bind a restored or stale signature to a newly issued challenge.
+  // The backend still verifies the signed payload and its cryptographic proof.
+  if (String(proof.payload ?? "") !== proofState.ton_proof_payload) return null;
   requireGenesisWalletNetwork(wallet?.account?.chain);
   return {
     address,

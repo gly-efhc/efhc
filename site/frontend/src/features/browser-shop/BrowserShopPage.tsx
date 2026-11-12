@@ -3,7 +3,6 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { LayoutContext } from "../../components/Layout";
 import { useRouter } from "next/router";
 import { Button } from "../../components/ui/Button";
-import { TonConnectWalletChooser } from "../../components/wallet/TonConnectWalletChooser";
 import { RouteSkeleton } from "../../components/ui/RouteSkeleton";
 import { useT } from "../../hooks/useT";
 import { useSnapshot } from "../../hooks/useSnapshot";
@@ -21,6 +20,7 @@ import { normalizeTonConnectTx } from "./browserShopTonTx";
 import { BrowserShopPreSignChecklist } from "./BrowserShopPreSignChecklist";
 import { buildUsdtTransferPlanFromBrowserShopIntent } from "../../lib/ton/browser-shop-intent";
 import { buildJettonTransferTonConnectTx, resolveSenderJettonWallet } from "../../lib/ton/jetton-transfer-builder";
+import { isGenesisTestRuntime, TON_TESTNET_JSON_RPC_ENDPOINT } from "../../lib/ton/testnet-guard";
 import type {
   BrowserShopCatalogItem,
   BrowserShopProfileOrder,
@@ -32,7 +32,6 @@ import {
   useWalletProvider,
   type PreparedWalletProof,
   type WalletTransactionPhase,
-  type WalletView,
 } from "../../lib/wallet-provider";
 import { useAuthState } from "../../hooks/auth/useAuthState";
 import { newIdempotencyKey } from "../../lib/idempotency";
@@ -331,8 +330,8 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     listWallets,
     prepareProof,
     connect: connectWallet,
-    bindWallet,
     disconnect: disconnectWallet,
+    bindWallet,
     sendTransaction,
     isUserRejected,
   } = useWalletProvider();
@@ -358,9 +357,6 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const walletChooserWasOpenRef = useRef(false);
   const walletChooserInertSnapshotsRef = useRef(new Map<HTMLElement, ShopCheckoutInertSnapshot>());
   const [pendingPrimaryPayment, setPendingPrimaryPayment] = useState<CheckoutSelection | null>(null);
-  const [tonConnectChooserOpen, setTonConnectChooserOpen] = useState(false);
-  const [tonConnectWallets, setTonConnectWallets] = useState<WalletView[]>([]);
-  const [tonConnectChooserBusy, setTonConnectChooserBusy] = useState(false);
   const [tonConnectProofState, setTonConnectProofState] = useState<PreparedWalletProof | null>(null);
   const [tonConnectBindingRequested, setTonConnectBindingRequested] = useState(false);
   const [pendingInitialSessionAddress, setPendingInitialSessionAddress] = useState("");
@@ -743,55 +739,38 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   async function openTonConnectExecutionChooser(
     reason: PrimaryWalletExecutionReason,
   ) {
-    setTonConnectChooserBusy(true);
     if (reason === "primary_transport_unavailable") {
       setLocalError(t("wallet.primary_transport_fallback"));
     } else {
       setLocalError("");
     }
-    try {
-      const requireProof = reason === "no_primary";
-      if (requireProof) setTonConnectBindingRequested(true);
-      const [wallets, proof] = await Promise.all([
-        listWallets().catch(() => [] as WalletView[]),
-        requireProof ? prepareProof().catch(() => null) : Promise.resolve(null),
-      ]);
-      setTonConnectWallets(wallets);
-      setTonConnectProofState(proof);
-      if (requireProof && !proof) {
-        setTonConnectBindingRequested(false);
-        setPendingPrimaryPayment(null);
-        setLocalError(t("wallet.connection_failed"));
-        setTonConnectChooserOpen(false);
-        return;
-      }
-      setTonConnectChooserOpen(true);
-    } finally {
-      setTonConnectChooserBusy(false);
+    const requireProof = reason === "no_primary";
+    if (requireProof) setTonConnectBindingRequested(true);
+    const proof = requireProof
+      ? await prepareProof().catch(() => null)
+      : null;
+    setTonConnectProofState(proof);
+    // A new account binding must have a fresh, server-authorized challenge.
+    // Keep checkout visible so a failed challenge does not strand payment.
+    if (requireProof && !proof) {
+      setTonConnectBindingRequested(false);
+      setPendingPrimaryPayment(null);
+      setWalletTxPhase("error");
+      setLocalError(t("wallet.restore_requires_proof"));
+      return;
     }
-  }
-
-  async function chooseTonConnectExecutionWallet(wallet: WalletView) {
-    setTonConnectChooserBusy(true);
-    setLocalError("");
     try {
-      if (walletAddress) {
-        await disconnectWallet().catch(() => undefined);
-      }
-      await connectWallet(wallet);
-      setTonConnectChooserOpen(false);
+      // Close the local checkout overlay so it cannot mark the official
+      // wallet modal portal inert. Preserve pending intent for verification.
+      setCheckout(null);
+      await connectWallet();
     } catch (caught) {
       setTonConnectBindingRequested(false);
       setPendingPrimaryPayment(null);
-      if (isUserRejected(caught)) {
-        setWalletTxPhase("rejected");
-        setLocalError(t("wallet.connection_rejected"));
-      } else {
-        setWalletTxPhase("error");
-        setLocalError(t("wallet.connection_failed"));
-      }
-    } finally {
-      setTonConnectChooserBusy(false);
+      setWalletTxPhase(isUserRejected(caught) ? "rejected" : "error");
+      setLocalError(t(isUserRejected(caught)
+        ? "wallet.connection_rejected"
+        : "wallet.connection_failed"));
     }
   }
 
@@ -825,7 +804,10 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
           senderOwnerAddress: expectedAddress,
           recipientPolicy: { strategy: "owner_derived_wallet", ownerAddress: parsed.to_wallet },
         });
-        const endpoint = publicRuntimeValue("NEXT_PUBLIC_TON_RPC_ENDPOINT") || "https://toncenter.com/api/v2/jsonRPC";
+        const endpoint = publicRuntimeValue("NEXT_PUBLIC_TON_RPC_ENDPOINT")
+          || (isGenesisTestRuntime()
+            ? TON_TESTNET_JSON_RPC_ENDPOINT
+            : "https://toncenter.com/api/v2/jsonRPC");
         const senderJettonWallet = await resolveSenderJettonWallet({ endpoint, ownerAddress: expectedAddress, jettonMasterAddress: plan.jettonMasterAddress });
         tx = buildJettonTransferTonConnectTx(plan, senderJettonWallet);
       }
@@ -966,7 +948,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => { observer.disconnect(); restoreAll(); };
-  }, [checkoutOpen, tonConnectChooserOpen, walletChooserOpen]);
+  }, [checkoutOpen, walletChooserOpen]);
 
   useEffect(() => {
     if (!checkoutOpen || typeof document === "undefined") return;
@@ -1057,7 +1039,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => { observer.disconnect(); restoreAll(); };
-  }, [checkoutOpen, orderDetailOpen, tonConnectChooserOpen, walletChooserOpen]);
+  }, [checkoutOpen, orderDetailOpen, walletChooserOpen]);
 
   useEffect(() => {
     if (!walletChooserOpen || typeof document === "undefined") return;
@@ -1289,30 +1271,6 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       {checkout ? <div ref={checkoutBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCheckout(null); }}><section ref={checkoutDialogRef} className="efhc-shop-checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle" aria-describedby={localError ? "checkoutSummary checkoutError" : "checkoutSummary"} tabIndex={-1}><button ref={checkoutCloseButtonRef} className="efhc-shop-modal-close" type="button" disabled={busy} onClick={() => setCheckout(null)} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC · {t("portal.browser_shop.checkout_label")}</span>{isCustomEfhcPackage(checkout.item) ? <label className="efhc-shop-exchange-title" id="checkoutTitle"><span>{t("portal.browser_shop.custom_exchange_title")}</span><input data-shop-checkout-initial-focus inputMode="numeric" pattern="[0-9]*" value={customEfhcAmount} onChange={(event) => updateCustomExchangeAmount(event.target.value)} placeholder={t("portal.browser_shop.custom_amount_placeholder")} aria-label={t("portal.browser_shop.custom_amount_aria")} /></label> : <h2 id="checkoutTitle">{checkout.vipMode === "selected" ? `EFHC VIP NFT #${checkout.vipNumber}` : localized(checkout.item, "title", checkout.item.title)}</h2>}<div className="efhc-shop-checkout-summary" id="checkoutSummary">{isCustomEfhcPackage(checkout.item) ? <><div><small>{t("portal.browser_shop.custom_rate_label")}</small><strong>{customRateLabel(checkout.item, checkout.method)}</strong></div><div data-exchange-total="true"><small>{t("portal.browser_shop.custom_total_label")}</small><strong>{checkoutPriceLabel(checkout)}</strong></div></> : <div><small>{t("portal.browser_shop.price_label")}</small><strong>{checkoutPriceLabel(checkout)}</strong></div>}<div><small>{t("portal.browser_shop.profile_label")}</small><strong>{linkedGlobalId ? `Global ID ${linkedGlobalId}` : t("portal.browser_shop.login_required")}</strong></div>{checkout.vipMode ? <div><small>{t("portal.browser_shop.delivery_label")}</small><strong>{checkout.vipMode === "selected" ? `${t("portal.browser_shop.number_prefix")} ${checkout.vipNumber}` : t("portal.browser_shop.vip_any_title")}</strong></div> : null}{checkout.method !== "EFHC" ? <div><small>{t("portal.browser_shop.payment_wallet_label")}</small><strong className="is-wallet">{paymentWalletAddress ? t("portal.browser_shop.payment_wallet_selected") : t("portal.browser_shop.choose_ton_wallet")}</strong></div> : <div><small>{t("portal.browser_shop.debit_label")}</small><strong>{t("portal.browser_shop.main_balance_d8")}</strong></div>}</div>{localError ? <section id="checkoutError" className="efhc-shop-landing_notice is-error efhc-shop-checkout-error" role="alert"><div><strong>{t("common.error")}</strong><p>{localError}</p></div></section> : null}{checkout.method !== "EFHC" ? <BrowserShopPreSignChecklist asset={checkout.method} amount={checkoutPriceLabel(checkout)} ready={Boolean(paymentWalletAddress)} /> : null}{checkout.method !== "EFHC" && paymentWalletAddress ? <Button variant="secondary" onClick={() => openWalletChooser(checkout)}>{t("portal.browser_shop.change_wallet")}</Button> : null}<Button onClick={() => void payCheckout()} disabled={busy || !methodAllowed(checkout.item, checkout.method) || (isCustomEfhcPackage(checkout.item) && !checkout.customEfhcAmountD8)}>{t("portal.browser_shop.pay_button")}</Button></section></div> : null}
 
       {walletChooserOpen ? <div ref={walletChooserBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeWalletChooser(); }}><section ref={walletChooserDialogRef} className="efhc-shop-wallet-modal" role="dialog" aria-modal="true" aria-labelledby="walletChooserTitle" tabIndex={-1}><button ref={walletChooserCloseButtonRef} className="efhc-shop-modal-close" type="button" onClick={closeWalletChooser} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC</span><h2 id="walletChooserTitle">{t("portal.browser_shop.wallet_address_chooser_title")}</h2><p>{t("portal.browser_shop.wallet_address_chooser_detail")}</p><div className="efhc-shop-wallet-list">{linkedWalletChoices.map((wallet, index) => <button key={String(wallet.id)} type="button" data-linked-wallet-id={String(wallet.id)} data-active={String(wallet.wallet_address === paymentWalletAddress)} onClick={() => void chooseLinkedWallet(wallet)}><span>{wallet.is_primary ? "★" : String(index + 1)}</span><strong>{wallet.is_primary ? t("portal.browser_shop.primary_wallet") : `${t("portal.browser_shop.additional_wallet")} ${index + 1}`}</strong><small>{walletPrivateSuffix(wallet.wallet_address) ? `•••• ${walletPrivateSuffix(wallet.wallet_address)}` : t("portal.browser_shop.wallet_address_private")}</small></button>)}</div></section></div> : null}
-      <TonConnectWalletChooser
-        open={tonConnectChooserOpen}
-        title={t("wallet.connect_button")}
-        description={t("wallet.recommended_wallets")}
-        wallets={tonConnectWallets}
-        busy={tonConnectChooserBusy}
-        emptyLabel={t("wallet.error_body")}
-        closeLabel={t("common.close")}
-        tr={t}
-        onClose={() => {
-          setTonConnectChooserOpen(false);
-          setTonConnectProofState(null);
-          if (!pendingPrimaryPayment) setTonConnectBindingRequested(false);
-          if (pendingPrimaryPayment) {
-            setPendingPrimaryPayment(null);
-            setWalletTxPhase("rejected");
-            setLocalError(t("wallet.connection_rejected"));
-          }
-        }}
-        onSelect={(wallet) => {
-          void chooseTonConnectExecutionWallet(wallet);
-        }}
-      />
-
       {selectedOrder ? <div ref={orderDetailBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOrderDetail(); }}><section ref={orderDetailDialogRef} className="efhc-shop-order-modal" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle" tabIndex={-1}><button ref={orderDetailCloseButtonRef} className="efhc-shop-modal-close" type="button" onClick={closeOrderDetail} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC · {t("portal.browser_shop.order_details_title")}</span><h2 id="orderDetailTitle">ShopOrder #{String(selectedOrder.id)}</h2><div className="efhc-shop-order-detail-grid"><div><small>{t("portal.browser_shop.order_id_label")}</small><strong>{String(selectedOrder.id)}</strong></div><div><small>SKU</small><strong>{selectedOrder.sku}</strong></div><div><small>{t("portal.browser_shop.status_label")}</small><strong>{orderStatusLabel(selectedOrder.status, t)}</strong></div><div><small>Global ID</small><strong>{selectedOrder.global_id}</strong></div><div><small>{t("portal.browser_shop.payment_method_title")}</small><strong>{selectedOrder.payment_method || "—"}</strong></div><div><small>{t("portal.browser_shop.price_label")}</small><strong>{selectedOrder.expected_amount || "—"}</strong></div><div><small>{t("portal.browser_shop.paid_at_label")}</small><strong>{selectedOrder.paid_at ? new Date(selectedOrder.paid_at).toLocaleString() : new Date(selectedOrder.created_at).toLocaleString()}</strong></div>{selectedOrder.tx_hash ? <div><small>{t("portal.browser_shop.tx_hash_label")}</small><code>{selectedOrder.tx_hash}</code></div> : null}<div><small>{t("portal.browser_shop.created_label")}</small><strong>{new Date(selectedOrder.created_at).toLocaleString()}</strong></div><div><small>{t("portal.browser_shop.updated_label")}</small><strong>{new Date(selectedOrder.updated_at).toLocaleString()}</strong></div></div></section></div> : null}
 
     </main>

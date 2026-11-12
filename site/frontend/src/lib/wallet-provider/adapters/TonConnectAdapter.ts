@@ -8,6 +8,7 @@ import {
   TonConnectUserRejectedError,
   type PreparedTonProof,
 } from "../../tonconnect";
+import { isGenesisTestRuntime, TON_TESTNET_CHAIN } from "../../ton/testnet-guard";
 import {
   WalletAdapterUnavailableError,
   WalletUserRejectedError,
@@ -88,10 +89,25 @@ export function createTonConnectAdapter(args: {
     },
     async connect(wallet) {
       const ui = requireUi();
-      if (!wallet?.walletKey || typeof ui.connectWallet !== "function") {
-        throw new Error("TONCONNECT_WALLET_SELECTION_REQUIRED");
+      // The official modal owns wallet selection; a previously selected
+      // legacy wallet key must never invoke a hidden custom connector.
+      if (wallet) throw new Error("TONCONNECT_USE_OFFICIAL_WALLET_MODAL");
+      if (isGenesisTestRuntime()) {
+        if (typeof ui.setConnectionNetwork !== "function") {
+          throw new Error("TON_TESTNET_NETWORK_GUARD_UNAVAILABLE");
+        }
+        // The official SDK rejects a different chain during connect.
+        // This must happen before opening the modal, not after signing.
+        if (!args.wallet) ui.setConnectionNetwork(TON_TESTNET_CHAIN);
+        if (args.wallet?.account?.chain !== undefined
+            && args.wallet.account.chain !== TON_TESTNET_CHAIN) {
+          throw new Error("TON_TESTNET_WALLET_REQUIRED");
+        }
       }
-      await ui.connectWallet(wallet.walletKey);
+      if (typeof ui.openModal !== "function") {
+        throw new Error("TONCONNECT_OFFICIAL_MODAL_UNAVAILABLE");
+      }
+      await ui.openModal();
     },
     async bindWallet(proofState: PreparedWalletProof | null) {
       // A binding is authoritative only after a verified server TonProof.
