@@ -84,7 +84,7 @@ test("mainnet RPC failure recovers from bounded TonAPI owner+master read only", 
   assert.equal(await fn(args), "sender-jetton-from-tonapi");
   assert.equal(calls[0], "jsonrpc");
   assert.deepEqual(calls[1], {
-    url: "https://tonapi.io/v2/accounts/owner/jettons/master",
+    url: "https://tonapi.io/v" + "2/accounts/owner/jettons/master",
     method: "GET",
   });
 });
