@@ -2,7 +2,8 @@ name: EFHC Owner mainnet real-wallet integration acceptance
 
 on:
   push:
-    branches: ['cycle0045/iteration31-owner-mainnet-wallet-test']
+    branches:
+      - cycle0045/iteration31-owner-mainnet-wallet-test
     paths:
       - 'site/frontend/src/lib/ton/testnet-guard.ts'
       - 'site/frontend/src/lib/wallet-provider/adapters/TonConnectAdapter.ts'
@@ -54,7 +55,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: demo_backend
           NEXT_PUBLIC_EFHC_WALLET_NETWORK: mainnet
-          NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN: https://efhc-cycle0032-demo-api.onrender.com
+          NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN: ${{ vars.EFHC_BACKEND_API_ORIGIN || vars.EFHC_DEMO_API_ORIGIN }}
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
           NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
