@@ -88,3 +88,57 @@ test("disconnect requires SDK success and clears the previous one-time proof", (
   assert.match(fn, /setConnectionPhase\("disconnected"\)/);
   assert.doesNotMatch(fn, /disconnectWallet\(\)\.catch/);
 });
+
+
+test("Jetton send uses the exact wallet network, independent of Genesis TEST data source", () => {
+  const builderSource = readFileSync(
+    new URL("../../src/lib/ton/jetton-transfer-builder.ts", import.meta.url),
+    "utf8",
+  );
+  // Mainnet Pages intentionally retains demo_backend for its internal economy:
+  // that data source must never force a real wallet transaction onto testnet.
+  assert.match(builderSource, /network:\s*GENESIS_WALLET_CHAIN/);
+  assert.doesNotMatch(builderSource, /network:\s*isGenesisTestRuntime\(\)/);
+
+  const compiled = ts.transpileModule(builderSource, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const cell = () => ({
+    storeUint() { return this; },
+    storeStringTail() { return this; },
+    storeCoins() { return this; },
+    storeAddress() { return this; },
+    storeBit() { return this; },
+    storeRef() { return this; },
+    endCell() { return { toBoc: () => Buffer.from("jetton-transfer-test") }; },
+  });
+  const transactionPlan = {
+    amountUnits: 100000000n,
+    queryId: 0n,
+    payloadText: "EFHC:GID:0000003101",
+    recipient: { strategy: "owner_derived_wallet", address: "recipient" },
+    responseDestination: "sender",
+    forwardTonAmount: "0",
+    feeMessageTonAmount: "50000000",
+  };
+  for (const [walletNetwork, expectedNetwork] of [
+    [undefined, "-3"],
+    ["mainnet", "-239"],
+  ]) {
+    const networkPolicy = loadGuard(walletNetwork, "demo_backend");
+    const fakeRequire = (name) => {
+      if (name === "./testnet-guard") return networkPolicy;
+      if (name === "@ton/core") return { beginCell: cell, Address: { parse: (x) => x } };
+      if (name === "@ton/ton") return {};
+      throw new Error(`Unexpected dependency: ${name}`);
+    };
+    const mod = { exports: {} };
+    new Function("module", "exports", "require", compiled)(mod, mod.exports, fakeRequire);
+    const tx = mod.exports.buildJettonTransferTonConnectTx(transactionPlan, "sender-jetton-wallet");
+    assert.equal(tx.network, expectedNetwork);
+    assert.equal(tx.messages.length, 1);
+    assert.equal(tx.messages[0].amount, "50000000");
+    assert.ok(tx.messages[0].payload);
+    networkPolicy.requireGenesisTransactionNetwork(tx.network, expectedNetwork);
+  }
+});
