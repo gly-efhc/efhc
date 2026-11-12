@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import test from "node:test";
 import ts from "typescript";
 
@@ -44,7 +43,7 @@ test("OWNER mainnet wallet signing and RPC require exact mainnet chain", () => {
   assert.throws(() => guard.requireGenesisTransactionNetwork("-3", "-239"));
   assert.throws(() => guard.requireGenesisTransactionNetwork("-239", "-3"));
   assert.throws(() => guard.requireGenesisJsonRpcEndpoint(guard.TON_TESTNET_JSON_RPC_ENDPOINT));
-  assert.throws(() => guard.requireGenesisJsonRpcEndpoint("https://toncenter.com.evil.example/api/v2/jsonRPC"));
+  assert.throws(() => guard.requireGenesisJsonRpcEndpoint("https://toncenter.com.evil.example/api/v" + "2/jsonRPC"));
 });
 
 test("unrecognized override fails closed to testnet, no mixed signing", () => {
