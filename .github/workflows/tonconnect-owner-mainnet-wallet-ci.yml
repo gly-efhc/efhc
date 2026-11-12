@@ -1,0 +1,62 @@
+name: EFHC Owner mainnet real-wallet integration acceptance
+
+on:
+  push:
+    branches: ['cycle0045/iteration31-owner-mainnet-wallet-test']
+    paths:
+      - 'site/frontend/src/lib/ton/testnet-guard.ts'
+      - 'site/frontend/src/lib/wallet-provider/adapters/TonConnectAdapter.ts'
+      - 'site/frontend/src/features/browser-shop/BrowserShopPage.tsx'
+      - 'site/frontend/src/components/Layout.tsx'
+      - 'site/frontend/tests/regression/current-official-tonconnect-runtime.test.mjs'
+      - 'site/frontend/tests/regression/current-owner-mainnet-wallet-boundary.test.mjs'
+      - '.github/workflows/efhc-pages.yml'
+      - '.github/workflows/tonconnect-owner-mainnet-wallet-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/frontend/**'
+      - '.github/workflows/efhc-pages.yml'
+      - '.github/workflows/tonconnect-owner-mainnet-wallet-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-wallet-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: site/frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: site/frontend/package-lock.json
+      - name: Install pinned official wallet SDK and Next
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Confirm one official TonConnect runtime
+        run: npm ls @tonconnect/ui-react @tonconnect/sdk
+      - name: Check actual wallet chain/network and current official runtime contracts
+        run: node --test tests/regression/current-owner-mainnet-wallet-boundary.test.mjs tests/regression/current-official-tonconnect-runtime.test.mjs
+      - name: Check all existing frontend regressions
+        run: npm run test:frontend-regression
+      - name: Check React/TypeScript correctness
+        run: npm run typecheck
+      - name: Build real Pages React bundle for TON mainnet wallet tests
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_EFHC_DATA_SOURCE: demo_backend
+          NEXT_PUBLIC_EFHC_WALLET_NETWORK: mainnet
+          NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN: https://efhc-cycle0032-demo-api.onrender.com
+          NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
+          NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
+          NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: ./node_modules/.bin/next build --webpack
