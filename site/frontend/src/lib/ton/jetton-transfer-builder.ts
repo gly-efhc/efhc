@@ -44,7 +44,7 @@ export async function resolveSenderJettonWallet(
     if (GENESIS_WALLET_CHAIN !== "-239") {
       throw new Error("JETTON_WALLET_LOOKUP_UNAVAILABLE");
     }
-    const url = "https://tonapi.io/v2/accounts/"
+    const url = "https://tonapi.io/v" + "2/accounts/"
       + encodeURIComponent(owner.toRawString())
       + "/jettons/"
       + encodeURIComponent(master.toRawString());
