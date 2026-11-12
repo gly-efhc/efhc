@@ -107,6 +107,7 @@ test("official wallet confirmation portal stays interactive during EFHC modal ba
   assert.match(modal, /modalBackgroundInertSnapshots\.delete\(element\)/);
   const provider = file("../../src/lib/wallet-provider/WalletProvider.tsx");
   assert.match(provider, /OfficialTonConnectProvider/);
+  assert.match(provider, /modals:\s*"all"/);
 });
 
 test("all supported languages show a non-empty review and explicit fee caveat", () => {
