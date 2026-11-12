@@ -8,7 +8,7 @@ import {
   TonConnectUserRejectedError,
   type PreparedTonProof,
 } from "../../tonconnect";
-import { isGenesisTestRuntime, TON_TESTNET_CHAIN } from "../../ton/testnet-guard";
+import { GENESIS_WALLET_CHAIN, isGenesisTestRuntime, requireGenesisWalletNetwork } from "../../ton/testnet-guard";
 import {
   WalletAdapterUnavailableError,
   WalletUserRejectedError,
@@ -98,10 +98,9 @@ export function createTonConnectAdapter(args: {
         }
         // The official SDK rejects a different chain during connect.
         // This must happen before opening the modal, not after signing.
-        if (!args.wallet) ui.setConnectionNetwork(TON_TESTNET_CHAIN);
-        if (args.wallet?.account?.chain !== undefined
-            && args.wallet.account.chain !== TON_TESTNET_CHAIN) {
-          throw new Error("TON_TESTNET_WALLET_REQUIRED");
+        if (!args.wallet) ui.setConnectionNetwork(GENESIS_WALLET_CHAIN);
+        if (args.wallet?.account?.chain !== undefined) {
+          requireGenesisWalletNetwork(args.wallet.account.chain);
         }
       }
       if (typeof ui.openModal !== "function") {
