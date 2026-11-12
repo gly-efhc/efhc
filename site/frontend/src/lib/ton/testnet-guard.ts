@@ -14,6 +14,9 @@ export const GENESIS_WALLET_CHAIN =
   process.env.NEXT_PUBLIC_EFHC_WALLET_NETWORK === "mainnet"
     ? TON_MAINNET_CHAIN
     : TON_TESTNET_CHAIN;
+export const GENESIS_JSON_RPC_ENDPOINT = GENESIS_WALLET_CHAIN === TON_MAINNET_CHAIN
+  ? TON_MAINNET_JSON_RPC_ENDPOINT
+  : TON_TESTNET_JSON_RPC_ENDPOINT;
 
 export function isGenesisTestRuntime(): boolean {
   return process.env.NEXT_PUBLIC_EFHC_DATA_SOURCE === "demo_backend";
@@ -49,9 +52,7 @@ export function requireGenesisJsonRpcEndpoint(endpoint: string): void {
   if (!isGenesisTestRuntime()) return;
   // Derive the sender Jetton wallet using the same actual chain.
   // Reject arbitrary endpoints and credential-bearing redirect URLs.
-  const expected = GENESIS_WALLET_CHAIN === TON_MAINNET_CHAIN
-    ? TON_MAINNET_JSON_RPC_ENDPOINT
-    : TON_TESTNET_JSON_RPC_ENDPOINT;
+  const expected = GENESIS_JSON_RPC_ENDPOINT;
   if (endpoint !== expected) {
     throw new Error(
       GENESIS_WALLET_CHAIN === TON_MAINNET_CHAIN
