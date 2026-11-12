@@ -1,5 +1,4 @@
-import { publicRuntimeValue } from "../lib/public-runtime";
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
@@ -16,6 +15,8 @@ import {
   type PrimaryWalletExecutionReason,
 } from "../lib/wallet-provider/primaryWalletRouting";
 import { queryKeys } from "../queries/queryKeys";
+import { GENESIS_JSON_RPC_ENDPOINT } from "../lib/ton/testnet-guard";
+import { describeDirectDepositFailure, type DirectDepositFailureStage } from "../lib/ton/direct-deposit-errors";
 import {
   useDirectDepositOpen,
   useDirectDepositStatus,
@@ -67,6 +68,8 @@ export function DepositModal(props: {
     WalletTransactionPhase
   >("idle");
   const [error, setError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const depositInFlightRef = useRef(false);
   const openDeposit = useDirectDepositOpen();
   const statusQ = useDirectDepositStatus(openedAt);
 
@@ -102,26 +105,31 @@ export function DepositModal(props: {
     setPendingInitialSessionAddress("");
     setPendingSawDisconnect(false);
     setTransactionPhase("idle");
+    setPreparing(false);
     setError(null);
     openDeposit.reset();
   }, [props.open]);
 
   const performDirectEfhcDeposit = useCallback(async () => {
-    if (!globalId || !amountValid || !walletAddress || !primarySessionReady) {
+    if (!globalId || !amountValid || !walletAddress || !primarySessionReady || depositInFlightRef.current) {
       return;
     }
+    depositInFlightRef.current = true;
     setError(null);
-    setTransactionPhase("signing");
+    setPreparing(true);
+    setTransactionPhase("idle");
     const startedAt = new Date().toISOString();
+    let stage: DirectDepositFailureStage = "metadata";
     try {
       const { buildEfhcDirectDepositTx } = await import(
         "../lib/ton/efhc-deposit-transfer"
       );
       const out = await openDeposit.mutateAsync();
-      const endpoint = publicRuntimeValue("NEXT_PUBLIC_TON_RPC_ENDPOINT")
-        || "https://toncenter.com/api/v2/jsonRPC";
+      // The mainnet/testnet RPC endpoint must always follow the chosen
+      // TON chain. A runtime override cannot silently break the guard.
+      stage = "jetton_wallet";
       const tx = await buildEfhcDirectDepositTx({
-        endpoint,
+        endpoint: GENESIS_JSON_RPC_ENDPOINT,
         senderOwnerAddress: walletAddress,
         receiverOwnerAddress: out.receiver_owner_address,
         jettonMasterAddress: out.jetton_master_address,
@@ -130,6 +138,9 @@ export function DepositModal(props: {
         feeMessageTonAmount: out.fee_message_ton_amount,
         forwardTonAmount: out.forward_ton_amount,
       });
+      stage = "wallet_send";
+      setPreparing(false);
+      setTransactionPhase("signing");
       await sendTransaction(tx);
       setTransactionPhase("signed");
       setOpenedAt(startedAt);
@@ -141,7 +152,10 @@ export function DepositModal(props: {
         return;
       }
       setTransactionPhase("error");
-      setError(t("wallet.transaction_failed"));
+      setError(`${t("wallet.transaction_failed")} [${describeDirectDepositFailure(caught, stage)}]`);
+    } finally {
+      depositInFlightRef.current = false;
+      setPreparing(false);
     }
   }, [
     amountValid,
@@ -192,7 +206,7 @@ export function DepositModal(props: {
         return;
       }
       setTransactionPhase("error");
-      setError(t("wallet.connection_failed"));
+      setError(`${t("wallet.connection_failed")} [${describeDirectDepositFailure(caught, "wallet_connection")}]`);
     }
   }
 
@@ -233,7 +247,7 @@ export function DepositModal(props: {
     <Modal
       open={props.open}
       onClose={props.onClose}
-      closeDisabled={openDeposit.isPending || transactionPhase === "signing"}
+      closeDisabled={preparing || openDeposit.isPending || transactionPhase === "signing"}
       title={t("deposit.direct_title")}
       portalColorThemeId={colorThemeId}
     >
@@ -351,7 +365,8 @@ export function DepositModal(props: {
             <Button
               variant="primary"
               disabled={
-                openDeposit.isPending
+                preparing
+                || openDeposit.isPending
                 || transactionPhase === "signing"
                 || !globalId
                 || !amountValid
@@ -361,7 +376,7 @@ export function DepositModal(props: {
             >
               {transactionPhase === "signing"
                 ? t("wallet.transaction_signing")
-                : openDeposit.isPending
+                : preparing || openDeposit.isPending
                   ? t("deposit.opening")
                 : t("deposit.direct_send_efhc")}
             </Button>
@@ -377,7 +392,7 @@ export function DepositModal(props: {
                 : t("deposit.status_retry")}
             </Button>
           ) : null}
-          <Button variant="secondary" data-direct-deposit-action="cancel" onClick={props.onClose} disabled={openDeposit.isPending || transactionPhase === "signing"}>
+          <Button variant="secondary" data-direct-deposit-action="cancel" onClick={props.onClose} disabled={preparing || openDeposit.isPending || transactionPhase === "signing"}>
             {confirmed ? t("common.close") : t("common.cancel")}
           </Button>
         </div>
