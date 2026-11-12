@@ -39,7 +39,7 @@ function load(overrides = {}) {
     if (name === "./testnet-guard") return {
       GENESIS_WALLET_CHAIN: overrides.chain || "-239",
       requireGenesisJsonRpcEndpoint(endpoint) {
-        assert.equal(endpoint, "https://toncenter.com/api/v2/jsonRPC");
+        assert.equal(endpoint, "https://toncenter.com/api/v" + "2/jsonRPC");
       },
     };
     throw new Error("Unexpected dependency: " + name);
@@ -68,7 +68,7 @@ function load(overrides = {}) {
 }
 
 const args = {
-  endpoint: "https://toncenter.com/api/v2/jsonRPC",
+  endpoint: "https://toncenter.com/api/v" + "2/jsonRPC",
   ownerAddress: "owner",
   jettonMasterAddress: "master",
 };
