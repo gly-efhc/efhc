@@ -39,6 +39,29 @@ function validEfhcAmount(value: string): boolean {
   return normalizedEfhcAmount(value) !== null;
 }
 
+// Only show finite, non-sensitive failure codes. Wallet/private RPC error
+// objects may contain URLs, tokens, addresses or signed payloads.
+const DIRECT_DEPOSIT_FAILURE_CODES = new Set([
+  "JETTON_WALLET_LOOKUP_UNAVAILABLE",
+  "EFHC_JETTON_BALANCE_NOT_FOUND",
+  "EFHC_JETTON_MASTER_UNVERIFIED",
+  "EFHC_JETTON_MASTER_MISMATCH",
+  "EFHC_JETTON_WALLET_INVALID",
+  "TON_MAINNET_RPC_REQUIRED",
+  "TON_MAINNET_TRANSACTION_REQUIRED",
+  "TON_MAINNET_WALLET_REQUIRED",
+  "TONCONNECT_TRANSACTION_RESPONSE_INVALID",
+]);
+
+function directDepositFailureCode(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : "";
+  if (DIRECT_DEPOSIT_FAILURE_CODES.has(message)) return message;
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return "NETWORK_UNAVAILABLE";
+  }
+  return null;
+}
+
 export function DepositModal(props: {
   open: boolean;
   onClose: () => void;
@@ -141,7 +164,10 @@ export function DepositModal(props: {
         return;
       }
       setTransactionPhase("error");
-      setError(t("wallet.transaction_failed"));
+      const diagnostic = directDepositFailureCode(caught);
+      setError(diagnostic
+        ? `${t("wallet.transaction_failed")} (${diagnostic})`
+        : t("wallet.transaction_failed"));
     }
   }, [
     amountValid,
