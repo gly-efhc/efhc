@@ -618,7 +618,18 @@ export function Layout(
   }
 
   async function disconnectWalletSession() {
-    await disconnectWallet().catch(() => undefined);
+    try {
+      await disconnectWallet();
+    } catch {
+      setConnectionPhase("error");
+      setWalletHint(t("wallet.connection_failed"));
+      toast(t("wallet.connection_failed"), "error");
+      return;
+    }
+    // Do not carry a previous one-time TON Proof into the next connect.
+    bindingAttemptRef.current = "";
+    setProofState(null);
+    setWalletModalOpened(false);
     if (globalId) {
       qc.invalidateQueries({
         queryKey: queryKeys.profile.wallets(globalId),
