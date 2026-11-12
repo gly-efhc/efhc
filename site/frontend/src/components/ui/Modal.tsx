@@ -245,6 +245,13 @@ export function Modal(
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Tab" && event.key !== "Escape") return;
 
+      // Official TON Connect approval has its own focus and Escape handling.
+      // Do not trap a wallet approval back inside the EFHC amount editor.
+      const walletRoot = document.getElementById("tc-widget-root");
+      if (walletRoot && (walletRoot.contains(document.activeElement)
+        || walletRoot.querySelector('[data-tc-modal="true"],[data-tc-actions-modal-container="true"],[data-tc-wallets-modal-container="true"]'))) {
+        return;
+      }
       const overlay = overlayRef.current;
       const sheet = sheetRef.current;
       if (!overlay || !sheet) return;
