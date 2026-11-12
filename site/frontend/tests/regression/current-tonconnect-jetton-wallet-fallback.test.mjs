@@ -147,6 +147,6 @@ test("direct EFHC deposit prepares remotely before an explicit wallet-send click
     assert.ok(sending.includes(safetyGuard), safetyGuard);
   }
   assert.ok(ui.includes("sendPreparedDirectDeposit(preparedDeposit);"));
-  assert.ok(ui.includes('t("deposit.direct_open_wallet")'));
+  assert.ok(ui.includes('t("deposit.review_confirm")'));
   assert.ok(ui.includes("setPreparedDeposit(null)"));
 });
