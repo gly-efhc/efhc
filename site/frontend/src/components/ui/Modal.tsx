@@ -58,7 +58,10 @@ function syncModalBackgroundInert(): void {
   const desired = new Set<HTMLElement>();
   if (top) {
     for (const child of Array.from(document.body.children)) {
-      if (child instanceof HTMLElement && child !== top) desired.add(child);
+      // TonConnect renders wallet approval in its own official body portal.
+      // Never make that separate consent UI inert behind the EFHC dialog.
+      if (child instanceof HTMLElement && child !== top
+          && child.id !== "tc-widget-root") desired.add(child);
     }
   }
 
