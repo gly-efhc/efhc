@@ -294,7 +294,7 @@ test("testnet fallback remains isolated to testnet TON API", async () => {
     ownerAddress: f.owner,
     jettonMasterAddress: f.master,
   });
-  assert.match(f.calls[0].url, /^https:\/\/testnet\.tonapi\.io\/v2\/accounts\//);
+  assert.ok(f.calls[0].url.startsWith("https://testnet.tonapi.io/v" + "2/accounts/"));
 });
 
 test("direct EFHC modal uses canonical wallet-chain RPC and safe stage diagnostics", () => {
