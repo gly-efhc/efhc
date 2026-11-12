@@ -10,11 +10,24 @@ import {fileURLToPath} from 'node:url';
 const require=createRequire(import.meta.url);
 const ts=require('typescript');
 const root=fileURLToPath(new URL('../../src/',import.meta.url));
-function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERATOR',onRequest,moduleMocks={}}={}){
+function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERATOR',onRequest,moduleMocks={},browser=false}={}){
  const calls=[];
  let cleared=0;
  let issued=null;
  const cache=new Map();
+ // Only browser-specific contract tests need window-backed session scope;
+ // existing server/test harness behavior stays unchanged by default.
+ const makeStorage=()=>{
+   const values=new Map();
+   return {
+     getItem:key=>values.has(key)?values.get(key):null,
+     setItem:(key,value)=>{values.set(String(key),String(value));},
+     removeItem:key=>{values.delete(String(key));}
+   };
+ };
+ const testWindow=browser
+   ? {sessionStorage:makeStorage(),localStorage:makeStorage()}
+   : undefined;
  const fakeApi={
   ApiError:class ApiError extends Error{constructor(args){super('EFHC_API_REQUEST_FAILED');Object.assign(this,args);}},
   normalizeApiPath:p=>p.startsWith('/api/')?p:'/api'+p,
@@ -29,7 +42,7 @@ function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERAT
   },
  };
  Object.assign(mocks,moduleMocks);
- const context=vm.createContext({process:{env},URL,URLSearchParams,AbortController,AbortSignal,Response,Headers,Blob,console,Promise,Date,Error,JSON,setTimeout,clearTimeout,fetch:async(url,opts={})=>{
+ const context=vm.createContext({...testWindow?{window:testWindow}:{},process:{env},URL,URLSearchParams,AbortController,AbortSignal,Response,Headers,Blob,console,Promise,Date,Error,JSON,setTimeout,clearTimeout,fetch:async(url,opts={})=>{
   calls.push({url:String(url),options:opts});
   if(onRequest)return onRequest(String(url),opts);
   if(String(url).endsWith('/api/staging/session'))return Response.json({ok:true,global_id:issued?.access_token?.startsWith('S')?'0000003001':'0000000002',csrf:issued?.access_token?.startsWith('S')?'next-csrf':'csrf-token',mode:'operator'});
@@ -214,6 +227,31 @@ test('late public guest issuance cannot replace a newer operator session', async
  assert.equal(h.calls.at(-1).options.headers.Authorization,'Bearer '+'L'.repeat(64));
  assert.equal(await s.sessionCsrf(),'operator-csrf');
  assert.equal(h.cleared,0);
+});
+
+test('Genesis TEST guest sends CSRF only for canonical TON Proof verification and binding',async()=>{
+  const h=harness({auth:null,browser:true});
+  const sessions=h.load('demo/session.ts');
+  const guest=await sessions.loginDemoGuest();
+  assert.equal(guest.global_id,'0000003001');
+  const transport=h.load('demo/transport.ts');
+  await transport.demoRawRequest('/wallets/tonconnect/check-proof','POST',{
+    body:{address:'test-only'}
+  });
+  await transport.demoRawRequest('/wallets/connect','POST',{
+    body:{address:'test-only'},idempotencyKey:'test-proof-idempotent'
+  });
+  await transport.demoRawRequest('/admin/withdrawals','POST',{body:{unsafe:true}});
+  const calls=h.calls;
+  assert.equal(calls[1].url,'https://demo-api.example.org/api/wallets/tonconnect/check-proof');
+  assert.equal(calls[1].options.headers['X-EFHC-Test-CSRF'],'test-guest-csrf');
+  assert.equal(calls[2].url,'https://demo-api.example.org/api/wallets/connect');
+  assert.equal(calls[2].options.headers['X-EFHC-Test-CSRF'],'test-guest-csrf');
+  assert.equal(calls[2].options.headers['Idempotency-Key'],'test-proof-idempotent');
+  assert.equal(calls[3].url,'https://demo-api.example.org/api/admin/withdrawals');
+  assert.equal(calls[3].options.headers['X-EFHC-Test-CSRF'],undefined,
+    'CSRF exception must not open an Admin or financial route');
+  assert.equal(calls[2].options.headers.Authorization,'Bearer '+'P'.repeat(64));
 });
 
 test('late session metadata cannot apply CSRF proof from a superseded credential', async()=>{

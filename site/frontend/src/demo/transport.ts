@@ -20,8 +20,19 @@ export async function demoRawRequest(
   if (bearer && !headers.Authorization) headers.Authorization = bearer;
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   if (options.requestId) headers["X-Request-ID"] = options.requestId;
-  if (method !== "GET" && !guest &&
-      normalized !== "/api/staging/login" && normalized !== "/api/staging/guest") {
+  // The isolated Genesis TEST guest can submit wallet ownership evidence only
+  // to the two canonical proof-verified routes. All other guest writes retain
+  // the existing server-side read-only/financial guards.
+  const guestTonProofWrite = currentDemoSessionScope() === "guest"
+    && method === "POST"
+    && [
+      "/api/wallets/tonconnect/check-proof",
+      "/api/wallets/connect",
+    ].includes(normalized.split("?")[0]);
+  if (guestTonProofWrite || (
+      method !== "GET" && !guest &&
+      normalized !== "/api/staging/login" && normalized !== "/api/staging/guest"
+  )) {
     headers["X-EFHC-Test-CSRF"] = await sessionCsrf();
   }
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
