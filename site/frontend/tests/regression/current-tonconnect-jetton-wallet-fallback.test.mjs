@@ -119,3 +119,34 @@ test("deposit UI exposes only allowlisted failure codes without leaking RPC erro
   assert.match(ui, /EFHC_JETTON_MASTER_MISMATCH/);
   assert.doesNotMatch(ui, /setError\(String\(caught\)\)/);
 });
+
+test("direct EFHC deposit prepares remotely before an explicit wallet-send click", () => {
+  const ui = readFileSync(
+    new URL("../../src/components/DepositModal.tsx", import.meta.url), "utf8",
+  );
+  const start = ui.indexOf("const prepareDirectEfhcDeposit = useCallback(");
+  const end = ui.indexOf("const sendPreparedDirectDeposit = useCallback(", start);
+  assert.ok(start >= 0 && end > start, "preparation belongs to the existing deposit modal");
+  const preparation = ui.slice(start, end);
+  assert.ok(preparation.includes("await openDeposit.mutateAsync()"));
+  assert.ok(preparation.includes("await buildEfhcDirectDepositTx("));
+  assert.equal(preparation.includes("sendTransaction("), false);
+
+  const sendingEnd = ui.indexOf("async function sendDirectEfhcDeposit()", end);
+  assert.ok(sendingEnd > end);
+  const sending = ui.slice(end, sendingEnd);
+  assert.ok(sending.includes("void sendTransaction(ready.tx).then("));
+  assert.equal(sending.includes("await sendTransaction("), false);
+  for (const safetyGuard of [
+    "sendInProgress.current",
+    "validUntil <= Math.floor(Date.now() / 1000) + 30",
+    "sameTonAddress(ready.senderAddress, walletAddress)",
+    "ready.ownerGlobalId !== String(globalId)",
+    "ready.amount !== (creditAmount || amount)",
+  ]) {
+    assert.ok(sending.includes(safetyGuard), safetyGuard);
+  }
+  assert.ok(ui.includes("sendPreparedDirectDeposit(preparedDeposit);"));
+  assert.ok(ui.includes('t("deposit.direct_open_wallet")'));
+  assert.ok(ui.includes("setPreparedDeposit(null)"));
+});
