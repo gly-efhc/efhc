@@ -10,11 +10,24 @@ import {fileURLToPath} from 'node:url';
 const require=createRequire(import.meta.url);
 const ts=require('typescript');
 const root=fileURLToPath(new URL('../../src/',import.meta.url));
-function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERATOR',onRequest,moduleMocks={}}={}){
+function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERATOR',onRequest,moduleMocks={},browser=false}={}){
  const calls=[];
  let cleared=0;
  let issued=null;
  const cache=new Map();
+ // Only browser-specific contract tests need window-backed session scope;
+ // existing server/test harness behavior stays unchanged by default.
+ const makeStorage=()=>{
+   const values=new Map();
+   return {
+     getItem:key=>values.has(key)?values.get(key):null,
+     setItem:(key,value)=>{values.set(String(key),String(value));},
+     removeItem:key=>{values.delete(String(key));}
+   };
+ };
+ const testWindow=browser
+   ? {sessionStorage:makeStorage(),localStorage:makeStorage()}
+   : undefined;
  const fakeApi={
   ApiError:class ApiError extends Error{constructor(args){super('EFHC_API_REQUEST_FAILED');Object.assign(this,args);}},
   normalizeApiPath:p=>p.startsWith('/api/')?p:'/api'+p,
@@ -29,7 +42,7 @@ function harness({origin='https://demo-api.example.org',auth='Bearer TEST_OPERAT
   },
  };
  Object.assign(mocks,moduleMocks);
- const context=vm.createContext({process:{env},URL,URLSearchParams,AbortController,AbortSignal,Response,Headers,Blob,console,Promise,Date,Error,JSON,setTimeout,clearTimeout,fetch:async(url,opts={})=>{
+ const context=vm.createContext({...testWindow?{window:testWindow}:{},process:{env},URL,URLSearchParams,AbortController,AbortSignal,Response,Headers,Blob,console,Promise,Date,Error,JSON,setTimeout,clearTimeout,fetch:async(url,opts={})=>{
   calls.push({url:String(url),options:opts});
   if(onRequest)return onRequest(String(url),opts);
   if(String(url).endsWith('/api/staging/session'))return Response.json({ok:true,global_id:issued?.access_token?.startsWith('S')?'0000003001':'0000000002',csrf:issued?.access_token?.startsWith('S')?'next-csrf':'csrf-token',mode:'operator'});
@@ -217,7 +230,7 @@ test('late public guest issuance cannot replace a newer operator session', async
 });
 
 test('Genesis TEST guest sends CSRF only for canonical TON Proof verification and binding',async()=>{
-  const h=harness({auth:null});
+  const h=harness({auth:null,browser:true});
   const sessions=h.load('demo/session.ts');
   const guest=await sessions.loginDemoGuest();
   assert.equal(guest.global_id,'0000003001');
