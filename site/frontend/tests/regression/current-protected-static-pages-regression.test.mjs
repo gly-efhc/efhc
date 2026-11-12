@@ -40,7 +40,7 @@ const protectedPages = [
   "browser-shop.tsx",
   "browser-shop/orders.tsx",
   "browser-shop/profile.tsx",
-  "dev/neon.tsx",
+  // Legacy public TEST console retired; all active Admin routes remain protected.
   "exchange.tsx",
   "faq.tsx",
   "hub.tsx",
