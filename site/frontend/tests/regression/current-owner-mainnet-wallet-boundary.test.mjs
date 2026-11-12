@@ -142,3 +142,13 @@ test("Jetton send uses the exact wallet network, independent of Genesis TEST dat
     networkPolicy.requireGenesisTransactionNetwork(tx.network, expectedNetwork);
   }
 });
+
+
+test("direct EFHC deposit reads transfer metadata without monetary POST", () => {
+  const source = readFileSync(
+    new URL("../../src/services/directDeposit.service.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /apiRequest<unknown>\("\/deposit\/direct-open", "GET"\)/);
+  assert.doesNotMatch(source, /apiRequest<unknown>\("\/deposit\/direct-open", "POST"\)/);
+});
