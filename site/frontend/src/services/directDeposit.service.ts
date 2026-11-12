@@ -24,7 +24,7 @@ export type DirectDepositStatus = {
 };
 
 export async function openDirectDeposit(): Promise<DirectDepositOpen> {
-  const raw = await apiRequest<unknown>("/deposit/direct-open", "POST");
+  const raw = await apiRequest<unknown>("/deposit/direct-open", "GET");
   return directDepositOpenSchema.parse(raw);
 }
 
