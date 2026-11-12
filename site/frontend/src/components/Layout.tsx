@@ -766,8 +766,7 @@ export function Layout(
           {isAdminRoute && !canRenderAdminPage ? (
             <section aria-label="Admin access required" data-admin-access="denied" style={{maxWidth:640,margin:"24px auto",padding:20}}>
               <h1>EFHC Admin</h1>
-              <p>Доступ к административным страницам закрыт. Для временного просмотра войдите по ключу.</p>
-              <Link href="/dev/neon/">Ввести ключ просмотра Admin</Link>
+              <p>Доступ к административным страницам закрыт. Для входа необходима действующая серверная сессия с соответствующими правами.</p>
             </section>
           ) : props.children}
         </FrontendShellMain>
