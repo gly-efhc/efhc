@@ -216,6 +216,31 @@ test('late public guest issuance cannot replace a newer operator session', async
  assert.equal(h.cleared,0);
 });
 
+test('Genesis TEST guest sends CSRF only for canonical TON Proof verification and binding',async()=>{
+  const h=harness({auth:null});
+  const sessions=h.load('demo/session.ts');
+  const guest=await sessions.loginDemoGuest();
+  assert.equal(guest.global_id,'0000003001');
+  const transport=h.load('demo/transport.ts');
+  await transport.demoRawRequest('/wallets/tonconnect/check-proof','POST',{
+    body:{address:'test-only'}
+  });
+  await transport.demoRawRequest('/wallets/connect','POST',{
+    body:{address:'test-only'},idempotencyKey:'test-proof-idempotent'
+  });
+  await transport.demoRawRequest('/admin/withdrawals','POST',{body:{unsafe:true}});
+  const calls=h.calls;
+  assert.equal(calls[1].url,'https://demo-api.example.org/api/wallets/tonconnect/check-proof');
+  assert.equal(calls[1].options.headers['X-EFHC-Test-CSRF'],'test-guest-csrf');
+  assert.equal(calls[2].url,'https://demo-api.example.org/api/wallets/connect');
+  assert.equal(calls[2].options.headers['X-EFHC-Test-CSRF'],'test-guest-csrf');
+  assert.equal(calls[2].options.headers['Idempotency-Key'],'test-proof-idempotent');
+  assert.equal(calls[3].url,'https://demo-api.example.org/api/admin/withdrawals');
+  assert.equal(calls[3].options.headers['X-EFHC-Test-CSRF'],undefined,
+    'CSRF exception must not open an Admin or financial route');
+  assert.equal(calls[2].options.headers.Authorization,'Bearer '+'P'.repeat(64));
+});
+
 test('late session metadata cannot apply CSRF proof from a superseded credential', async()=>{
  let finishSession;
  const h=harness({onRequest:async(url)=>{
