@@ -186,7 +186,7 @@ export default function WithdrawPage(props: {
     await withdrawalsQ.refetch();
   }
 
-  async function exportHistory(format: "csv" | "xlsx") {
+  async function exportWithdrawRequests(format: "csv" | "xlsx") {
     if (historyExporting) return;
     try {
       await historyExport.mutateAsync({ format, category: "withdraw" });
@@ -568,7 +568,7 @@ export default function WithdrawPage(props: {
             variant="secondary"
             disabled={historyExporting}
             data-history-export="csv-server-side"
-            onClick={() => void exportHistory("csv")}
+            onClick={() => void exportWithdrawRequests("csv")}
           >
             {historyExporting ? t("history.exporting") : t("history.export_csv")}
           </Button>
@@ -576,7 +576,7 @@ export default function WithdrawPage(props: {
             variant="secondary"
             disabled={historyExporting}
             data-history-export="xlsx-server-side"
-            onClick={() => void exportHistory("xlsx")}
+            onClick={() => void exportWithdrawRequests("xlsx")}
           >
             {t("history.export_xlsx")}
           </Button>
