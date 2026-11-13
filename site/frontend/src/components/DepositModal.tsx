@@ -2,6 +2,7 @@ import { publicRuntimeValue } from "../lib/public-runtime";
 import type { TonConnectTx } from "../lib/ton/tx";
 import { createDirectDepositReview, type DirectDepositReview } from "../lib/ton/direct-deposit-review";
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
@@ -18,7 +19,6 @@ import {
   useDirectDepositOpen,
   useDirectDepositStatus,
 } from "../queries/useDirectDeposit";
-import { LayoutContext } from "./Layout";
 import { InterfaceCustomizationContext } from "./interface-settings/InterfaceCustomizationProvider";
 import { Button } from "./ui/Button";
 import { Modal } from "./ui/Modal";
@@ -31,6 +31,12 @@ function normalizedEfhcAmount(value: string): string | null {
   const whole = wholeRaw.replace(/^0+(?=\d)/, "") || "0";
   const fraction = fractionRaw.replace(/0+$/, "");
   return fraction ? `${whole}.${fraction}` : whole;
+}
+
+function depositCreditD8(value: string | null): string | null {
+  if (!value) return null;
+  const [whole, fraction = ""] = value.split(".");
+  return `${whole}.${fraction.padEnd(8, "0")}`;
 }
 
 function validEfhcAmount(value: string): boolean {
@@ -75,9 +81,9 @@ export function DepositModal(props: {
   onClose: () => void;
 }) {
   const t = useT();
+  const router = useRouter();
   const globalId = useAuthOwnerGlobalId();
   const queryClient = useQueryClient();
-  const { openWalletConnect } = useContext(LayoutContext);
   const { colorThemeId } = useContext(InterfaceCustomizationContext);
   const {
     address: walletAddress,
@@ -105,6 +111,7 @@ export function DepositModal(props: {
 
   const amountValid = useMemo(() => validEfhcAmount(amount), [amount]);
   const creditAmount = useMemo(() => normalizedEfhcAmount(amount), [amount]);
+  const creditDisplay = depositCreditD8(creditAmount);
   const connectedVerifiedWallet = useMemo(
     () => (walletsMe.data?.wallets || []).find((wallet) => (
       wallet.is_active
@@ -335,10 +342,11 @@ export function DepositModal(props: {
     }
     if (preparing || sendInProgress.current) return;
     setError(null);
-    // The official chooser selects a fresh proven wallet for this Global ID.
-    // Switching wallet transport never changes the server primary binding.
+    // Only the Wallet screen may select/connect a TON wallet. Never show
+    // a second wallet picker inside the reference direct-deposit dialog.
     if (!verifiedSessionReady) {
-      openWalletConnect("binding");
+      props.onClose();
+      void router.push({ pathname: "/web-profile", query: { section: "wallet" } });
       return;
     }
     await prepareDirectEfhcDeposit();
@@ -350,14 +358,15 @@ export function DepositModal(props: {
       onClose={props.onClose}
       closeDisabled={preparing || openDeposit.isPending || transactionPhase === "signing"}
       title={t("deposit.direct_title")}
+      referenceLayout="deposit"
       portalColorThemeId={colorThemeId}
     >
       <div
-        className="efhc-direct-deposit"
+        className="efhc-direct-deposit efhc-reference-deposit-form"
         data-direct-deposit-runtime="efhc-jetton-wallet-reconciliation"
         data-direct-deposit-kind="efhc-jetton-to-efhcm"
         data-direct-deposit-label="direct"
-        data-direct-deposit-entry="header-plus-primary-wallet-execution-router-v242"
+        data-direct-deposit-entry="wallet-page-selection"
       >
         {!walletOpened ? (
           <>
@@ -382,25 +391,16 @@ export function DepositModal(props: {
                     setError(null);
                   }}
                 />
-                <strong>EFHC</strong>
               </div>
             </label>
-            <div className="efhc-direct-deposit_summary" data-direct-deposit-summary="exchange-like">
+            <div className="efhc-direct-deposit_summary efhc-reference-deposit-summary" data-direct-deposit-summary="exchange-like">
               <div>
                 <small>{t("exchange.receive_label")}:</small>
                 <strong data-direct-deposit-credit-preview="true">
-                  {creditAmount ? `${creditAmount} EFHCm` : "—"}
+                  {creditDisplay ? `${creditDisplay} EFHCm` : "—"}
                 </strong>
               </div>
             </div>
-            <Button
-              variant="secondary"
-              data-direct-deposit-action="choose-wallet"
-              disabled={preparing || transactionPhase === "signing"}
-              onClick={() => openWalletConnect("binding")}
-            >
-              {t("wallet.connect_button")}
-            </Button>
           </>
         ) : null}
 
@@ -474,7 +474,7 @@ export function DepositModal(props: {
           </div>
         ) : null}
 
-        <div className="efhc-direct-deposit_actions">
+        <div className="efhc-direct-deposit_actions source-row">
           {!walletOpened ? (
             <Button
               variant="primary"
@@ -486,6 +486,7 @@ export function DepositModal(props: {
                 || !amountValid
                 || (verifiedSessionReady && !preparedDeposit && transactionPhase !== "error" && transactionPhase !== "rejected")
               }
+              className="source-button"
               data-direct-deposit-action="send-efhc-jetton"
               onClick={() => void sendDirectEfhcDeposit()}
             >
@@ -496,10 +497,11 @@ export function DepositModal(props: {
                 : t("deposit.direct_send_efhc")}
             </Button>
           ) : null}
-          {!confirmed && globalId ? (
+          {(walletOpened || manualStatusRequested) && !confirmed && globalId ? (
             <Button
               variant={walletOpened ? "primary" : "secondary"}
               disabled={checkingOnChain || statusQ.isFetching || transactionPhase === "signing"}
+              className="source-button secondary"
               data-direct-deposit-action="check-status"
               onClick={() => void checkDepositOnChain()}
             >
@@ -508,7 +510,7 @@ export function DepositModal(props: {
                 : t("deposit.status_retry")}
             </Button>
           ) : null}
-          <Button variant="secondary" data-direct-deposit-action="cancel" onClick={props.onClose} disabled={preparing || openDeposit.isPending || transactionPhase === "signing"}>
+          <Button variant="secondary" className="source-button secondary" data-direct-deposit-action="cancel" onClick={props.onClose} disabled={preparing || openDeposit.isPending || transactionPhase === "signing"}>
             {confirmed ? t("common.close") : t("common.cancel")}
           </Button>
         </div>
