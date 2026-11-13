@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync,writeFileSync,mkdirSync,copyFileSync,mkdtempSync,rmSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,copyFileSync,mkdtempSync,rmSync,existsSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import path from "node:path";
@@ -111,6 +111,8 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
     writeFileSync(p,value,"utf8");
   };
   put("index.html",'<html><head><link rel="stylesheet" href="/efhc/visual.css"></head><body><script id="__NEXT_DATA__"></script><script src="/efhc/_next/static/main.js"></script></body></html>');
+  put("404.html","<html><head></head><body>retired 404 page</body></html>");
+  put("500.html","<html><head></head><body>retired 500 page</body></html>");
   put("_next/static/main.js",'const css="/user-shell.css";');
   put("_next/static/main.css","body{color:white}");
   put("visual.css","body{color:red}");
@@ -122,6 +124,10 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
     "--directory",rootDir,"--base-path","/efhc"],{encoding:"utf8"});
   const first=run("fix_pages_assets.py");
   assert.equal(first.status,0,first.stderr);
+  assert.equal(existsSync(path.join(rootDir,"404.html")),false,
+    "Next generated 404 document must be physically deleted before publication");
+  assert.equal(existsSync(path.join(rootDir,"500.html")),false,
+    "Next generated 500 document must be physically deleted before publication");
   assert.equal(run("verify_export.py").status,0,"export must verify CSS fingerprint references");
   const hashed = name=>{
     const raw=readFileSync(path.join(rootDir,name));
