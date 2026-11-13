@@ -181,7 +181,7 @@ export function ExchangePanel(props: Props) {
           className="efhc-exchange-action-surface"
           data-xa={actionSurface.variant}
         >
-        <div className="mt-2 efhc-exchange-canonical-row">
+        <div className="efhc-exchange-canonical-row">
           <div>
             <div className="text-xs efhc-text-muted2">
               {t("exchange.available_for_exchange")}
@@ -204,7 +204,7 @@ export function ExchangePanel(props: Props) {
           </span>
           <input
             ref={amountInputRef}
-            className="efhc-input mt-2 w-full"
+            className="efhc-input w-full"
             value={amount}
             onChange={(e) => onAmountChange(e.target.value)}
             inputMode="decimal"
@@ -221,7 +221,7 @@ export function ExchangePanel(props: Props) {
         >
           <span>{t("exchange.receive_efhcm")}</span>
           <strong className="tabular-nums">
-            {normalizedAmount} EFHCm
+            {normalizedAmount}
           </strong>
         </div>
         {helperText ? (
@@ -234,7 +234,7 @@ export function ExchangePanel(props: Props) {
           </div>
         ) : null}
         <Button
-          className="mt-3 w-full efhc-theme03-cta"
+          className="w-full efhc-theme03-cta"
           data-exchange-submit-action="true"
           onClick={() => props.onExchange(normalizedAmount)}
           disabled={disabled}
