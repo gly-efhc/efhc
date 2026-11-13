@@ -57,6 +57,11 @@ test("gear opens only source four toggles and avatar retains advanced services",
   assert.match(page, /setExtendedProfileOpen\(true\)/);
   assert.match(dialog, /data-profile-settings-compact="four"/);
   assert.match(dialog, /referenceLayout="settings"/);
+  const settings = file("../../src/lib/settings.ts");
+  assert.match(settings, /music_enabled: false,/);
+  assert.match(settings, /sfx_enabled: true,/);
+  assert.match(settings, /haptics_enabled: true,/);
+  assert.match(settings, /reduce_motion: false,/);
   for (const setting of ["reduce_motion", "sfx_enabled", "haptics_enabled", "music_enabled"]) {
     assert.ok(dialog.includes('key: "' + setting + '"'));
   }
