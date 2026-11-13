@@ -372,10 +372,14 @@ export async function getUnifiedProfileHistoryPage(args?: {
   return profileHistoryPageSchema.parse(raw);
 }
 
+export type ProfileHistoryExportCategory = "all" | "purchases" | "exchange" | "withdraw" | "bonuses" | "panels";
+
 export async function downloadProfileHistoryExport(
   format: "csv" | "xlsx",
+  category: ProfileHistoryExportCategory,
 ): Promise<void> {
-  const response = await transportRawRequest(`/profile/history/export.${format}`, "GET");
+  const query = new URLSearchParams({ category });
+  const response = await transportRawRequest(`/profile/history/export.${format}?${query.toString()}`, "GET");
   if (!response.ok) throw new Error("profile_history_export_failed");
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
@@ -383,7 +387,7 @@ export async function downloadProfileHistoryExport(
     const anchor = document.createElement("a");
     const day = new Date().toISOString().slice(0, 10);
     anchor.href = url;
-    anchor.download = `EFHC_operations_${day}.${format}`;
+    anchor.download = `EFHC_${category}_${day}.${format}`;
     anchor.rel = "noopener";
     document.body.appendChild(anchor);
     anchor.click();
