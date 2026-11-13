@@ -96,7 +96,9 @@ test("validated transfer is prepared in the background; reference dialog delegat
   assert.doesNotMatch(component, /data-direct-deposit-review-(?:attached|fee|recipient)=/);
   assert.match(component, /wallet\.proof_verified === true/);
   assert.match(component, /sameTonAddress\(walletAddress, wallet\.wallet_address\)/);
-  assert.match(component, /if \(verifiedSessionReady\) \{\s*await prepareDirectEfhcDeposit\(\)/);
+  assert.match(component, /if \(!verifiedSessionReady\) \{\s*openWalletConnect\("binding"\)/);
+  assert.match(component, /data-direct-deposit-action="choose-wallet"/);
+  assert.doesNotMatch(component, /routePrimaryWalletExecution/);
   assert.match(component, /useState\("100\.00000000"\)/);
   assert.doesNotMatch(component, /data-direct-deposit-action="edit-amount"/);
   assert.match(component, /void sendTransaction\(ready\.tx\)\.then\(/);
