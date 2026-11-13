@@ -154,7 +154,7 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
 
 test("Deleted development route is absent from Service Worker routing",()=>{
   assert.doesNotMatch(source,/isRetiredRoute|\/dev\/neon/);
-  assert.ok(!source.includes('event.respondWith(new Response("", {status: 404')),
+  assert.ok(!source.includes('event.respondWith(new Response("", {status: 404'),
     "Deleted pages cannot leave behind a synthetic 404 route stub");
 });
 
