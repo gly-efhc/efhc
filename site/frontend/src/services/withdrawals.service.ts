@@ -1,4 +1,5 @@
 import { apiRequest } from "../lib/api";
+import { balanceHistoryItemSchema } from "./profile.service";
 import {
   WITHDRAW_CANCEL_PATH,
   WITHDRAW_DETAIL_PATH,
@@ -73,7 +74,7 @@ export async function getWalletBalanceHistory(
     "GET",
     { signal },
   );
-  return out.items || [];
+  return balanceHistoryItemSchema.array().parse(out.items);
 }
 
 export async function createWithdrawRequest(args: {
