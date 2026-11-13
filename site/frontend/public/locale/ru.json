@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Фильтровать мелкие уведомления и оставлять только ключевые предупреждения.",
   "profile.independent_shell_badge": "Независимая оболочка",
   "profile.interface_account_note": "Язык и настройки аккаунта.",
+  "profile.linked_accounts_action": "Привязанные аккаунты",
+  "profile.sign_in_action": "Авторизоваться",
   "profile.interface_note": "EFHC использует собственную игровую оболочку. Данные Telegram могут усиливать персонализацию, но не являются условием работы интерфейса.",
   "profile.interface_title": "Интерфейс",
   "profile.lang.da": "Dansk",
