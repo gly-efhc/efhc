@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "La pubblicità non è disponibile al momento. La richiesta di prelievo non è stata creata. Riprova più tardi.",
   "withdraw.all_statuses": "tutti gli stati",
   "withdraw.amount_invalid_range": "Inserisci almeno 10.00000000 EFHCm e non oltre il saldo principale disponibile.",
+  "withdraw.amount_exceeds_balance": "L'importo supera il saldo EFHCm disponibile.",
   "withdraw.amount_label": "Importo",
   "withdraw.available_balance": "Saldo disponibile",
   "withdraw.available_to_withdraw": "Disponibile per il prelievo",

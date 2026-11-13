@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "विज्ञापन अभी उपलब्ध नहीं है। निकासी अनुरोध नहीं बनाया गया। कृपया बाद में फिर कोशिश करें।",
   "withdraw.all_statuses": "सभी स्थितियाँ",
   "withdraw.amount_invalid_range": "कम से कम 10.00000000 EFHCm और उपलब्ध मुख्य बैलेंस से अधिक नहीं राशि दर्ज करें।",
+  "withdraw.amount_exceeds_balance": "राशि उपलब्ध EFHCm शेष राशि से अधिक है।",
   "withdraw.amount_label": "राशि",
   "withdraw.available_balance": "उपलब्ध बैलेंस",
   "withdraw.available_to_withdraw": "निकासी के लिए उपलब्ध",

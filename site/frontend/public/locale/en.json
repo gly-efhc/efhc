@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "The ad is currently unavailable. The withdrawal request was not created. Please try again later.",
   "withdraw.all_statuses": "all statuses",
   "withdraw.amount_invalid_range": "Enter at least 10.00000000 EFHCm and no more than the available main balance.",
+  "withdraw.amount_exceeds_balance": "Amount exceeds your available EFHCm balance.",
   "withdraw.amount_label": "Amount",
   "withdraw.available_balance": "Available balance",
   "withdraw.available_to_withdraw": "Available to withdraw",

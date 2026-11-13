@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "El anuncio no está disponible en este momento. La solicitud de retiro no se creó. Inténtelo de nuevo más tarde.",
   "withdraw.all_statuses": "todos los estados",
   "withdraw.amount_invalid_range": "Introduce al menos 10.00000000 EFHCm y no más que el saldo principal disponible.",
+  "withdraw.amount_exceeds_balance": "El importe supera el saldo EFHCm disponible.",
   "withdraw.amount_label": "Importe",
   "withdraw.available_balance": "Saldo disponible",
   "withdraw.available_to_withdraw": "Disponible para retirar",

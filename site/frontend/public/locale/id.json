@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "Iklan saat ini tidak tersedia. Permintaan penarikan tidak dibuat. Silakan coba lagi nanti.",
   "withdraw.all_statuses": "semua status",
   "withdraw.amount_invalid_range": "Masukkan setidaknya 10.00000000 EFHCm dan tidak melebihi saldo utama yang tersedia.",
+  "withdraw.amount_exceeds_balance": "Jumlah melebihi saldo EFHCm yang tersedia.",
   "withdraw.amount_label": "Jumlah",
   "withdraw.available_balance": "Saldo tersedia",
   "withdraw.available_to_withdraw": "Tersedia untuk ditarik",

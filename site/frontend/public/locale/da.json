@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "Annoncen er ikke tilgængelig lige nu. Udbetalingsanmodningen blev ikke oprettet. Prøv igen senere.",
   "withdraw.all_statuses": "alle statusser",
   "withdraw.amount_invalid_range": "Indtast mindst 10.00000000 EFHCm og højst den tilgængelige primære saldo.",
+  "withdraw.amount_exceeds_balance": "Beløbet overstiger den tilgængelige EFHCm-saldo.",
   "withdraw.amount_label": "Beløb",
   "withdraw.available_balance": "Tilgængelig saldo",
   "withdraw.available_to_withdraw": "Tilgængelig til udbetaling",

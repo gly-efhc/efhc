@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "La publicité est actuellement indisponible. La demande de retrait n’a pas été créée. Réessayez plus tard.",
   "withdraw.all_statuses": "tous les statuts",
   "withdraw.amount_invalid_range": "Saisissez au moins 10.00000000 EFHCm et pas plus que le solde principal disponible.",
+  "withdraw.amount_exceeds_balance": "Le montant dépasse le solde EFHCm disponible.",
   "withdraw.amount_label": "Montant",
   "withdraw.available_balance": "Solde disponible",
   "withdraw.available_to_withdraw": "Disponible au retrait",
