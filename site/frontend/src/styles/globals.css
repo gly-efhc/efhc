@@ -23153,7 +23153,6 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 }
 
 /* USER achievement caption transparency and active CT history materials. */
-
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
 body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
