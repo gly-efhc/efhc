@@ -47,6 +47,9 @@ def main():
             missing.append(item)
     if missing:
         raise ValueError(f'PWA resources absent: {missing[:5]}')
+    for retired in ('404.html', '500.html'):
+        if (root / retired).exists() or expected + retired in config['precache']:
+            raise ValueError('Retired technical HTML is present in the published artifact: ' + retired)
     # Deleted operator route must never be reintroduced by source/public imports
     # or retained in any new precache generation.
     if (root / 'dev').exists() or any(
