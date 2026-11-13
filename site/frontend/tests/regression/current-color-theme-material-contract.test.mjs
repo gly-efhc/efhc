@@ -95,7 +95,7 @@ test("the Theme03 reference is exact and Admin remains outside the USER color br
 });
 
 
-test("achievement heading and withdrawal history keep CT styling without repainting Theme03 exchange buttons", () => {
+test("achievement heading and request-only withdrawal exports keep CT styling without repainting Theme03 exchange buttons", () => {
   assert.equal(catalog.length, 10);
   const section = css.split("/* USER achievement caption transparency and active CT history materials. */")[1];
   assert.ok(css.includes("@layer efhc-ct-route-accents {"));
@@ -119,7 +119,9 @@ test("achievement heading and withdrawal history keep CT styling without repaint
   assert.doesNotMatch(exchangeRoute, /history_profile_note|efhc-exchange-history-boundary|<GameNotice|TelegramEmptyState/);
   assert.doesNotMatch(exchange, /\{normalizedAmount\} EFHCm/);
   assert.match(exchangeRoute, /className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"/);
-  assert.match(withdraw, /data-withdraw-history-balance-type-label="semantic"/);
+  assert.doesNotMatch(withdraw, /data-withdraw-history-balance-type-label="semantic"|withdraw\.latest_operations/);
+  assert.match(withdraw, /data-withdraw-history-export="withdraw-requests-csv-xlsx"/);
+  assert.equal((withdraw.match(/data-history-export="(?:csv|xlsx)-server-side"/g) || []).length, 2);
 });
 
 
