@@ -13,7 +13,7 @@ import { WITHDRAW_REQUIRED_AD_PLACEMENT_CODE } from "../lib/ads/systemPlacements
 import type { AdRunPhase } from "../lib/ads/types";
 import { cmp8, format8, formatD8ToHuman } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
-import { hapticMedium, hapticSelection, onTelegramViewportChanged } from "../lib/telegram";
+import { hapticMedium, onTelegramViewportChanged } from "../lib/telegram";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import { useT } from "../hooks/useT";
 import { useInterfaceVariantSurface } from "../hooks/useInterfaceVariantSurface";
