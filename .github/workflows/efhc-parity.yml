@@ -40,6 +40,33 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: site/frontend/package-lock.json
+      # Resolve the identity from GitHub configuration, never from the GitHub account number.
+      # The value lives in the job environment only; it is not a NEXT_PUBLIC_ build setting.
+      - name: Bind and verify EFHC Global ID in test ENV
+        shell: bash
+        env:
+          EFHC_ID_SECRET: ${{ secrets.EFHC_GLOBAL_ID || secrets.EFHC_TEST_GLOBAL_ID }}
+          EFHC_ID_VARIABLE: ${{ vars.EFHC_GLOBAL_ID || vars.EFHC_TEST_GLOBAL_ID }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          secret = os.environ.get("EFHC_ID_SECRET", "")
+          variable = os.environ.get("EFHC_ID_VARIABLE", "")
+          if secret and variable and secret != variable:
+              raise SystemExit("EFHC_GLOBAL_ID_ENV_CONFLICT: GitHub Secret and Variable disagree")
+          value = secret or variable
+          if not re.fullmatch(r"[0-9]{10}", value) or value == "0000000000":
+              raise SystemExit(
+                  "EFHC_GLOBAL_ID_ENV_MISSING_OR_INVALID: configure Actions Secret/Variable "
+                  "EFHC_GLOBAL_ID or EFHC_TEST_GLOBAL_ID as the real ten-digit EFHC Global ID"
+              )
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write("EFHC_TEST_GLOBAL_ID=" + value + "\n")
+          print("EFHC_GLOBAL_ID_JOB_ENV=PASS validated=D10 source=GitHub no-identity-logged")
+          PY
+      - name: Check bound Global ID and server-attested role boundary
+        run: node site/frontend/tests/parity/global-id-env.mjs
       - name: Prepare actual React with Pages base path
         run: python3 site/ci/pages-tools/prepare_pages.py --source site/frontend --target "$RUNNER_TEMP/efhc-parity-build" --base-path "$EFHC_DEMO_BASEPATH"
       - name: Install locked dependencies
