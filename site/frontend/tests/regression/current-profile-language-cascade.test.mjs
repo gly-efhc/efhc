@@ -2,23 +2,28 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const css = readFileSync(new URL("../../public/" + "FRONTEND_" + "v" + "866.css", import.meta.url), "utf8");
 const picker = readFileSync(new URL("../../src/components/profile/CompactLanguagePicker.tsx", import.meta.url), "utf8");
+const webProfile = readFileSync(new URL("../../src/features/profile/WebProfilePage.tsx", import.meta.url), "utf8");
+const modal = readFileSync(new URL("../../src/components/ProfileModal.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../../public/" + "FRONTEND_" + "v" + "866.css", import.meta.url), "utf8");
 
-test("profile general button theme excludes both approved language picker implementations", () => {
-  const selector = css.match(/\.source-profile-settings-card button(?<excluded>(?::not\([^)]+\))+):where\(:not\((?<react>[^)]+)\)\),/);
-  assert.ok(selector, "The original profile theme rule remains present");
-  for (const className of [
-    "source-profile-language-button",
-    "source-profile-language-option",
+test("profile language picker receives the historical theme exclusions without changing frozen CSS", () => {
+  const genericRule = css.match(/\.source-profile-settings-card button(?<excluded>(?::not\([^)]+\))+),/);
+  assert.ok(genericRule, "The frozen profile button theme rule remains present");
+  for (const oldName of ["source-profile-language-button", "source-profile-language-option"]) {
+    assert.ok(genericRule.groups.excluded.includes(":not(." + oldName + ")"), oldName);
+    assert.ok(picker.includes(oldName), oldName + " must be used by the React profile");
+  }
+  for (const newName of [
     "efhc-compact-language-picker_button",
+    "efhc-compact-language-picker_menu",
     "efhc-compact-language-picker_option",
   ]) {
-    assert.ok((selector.groups.excluded + selector.groups.react).includes("." + className), className);
+    assert.ok(picker.includes(newName), "Existing React class must be preserved: " + newName);
   }
-  assert.match(picker, /className="efhc-compact-language-picker_button"/);
-  assert.match(picker, /className="efhc-compact-language-picker_option"/);
-  assert.match(css.slice(css.indexOf(selector[0]), css.indexOf(selector[0]) + 500),
-    /background-color:rgba\(var\(--efhc-ct-accent-rgb\),\.055\)!important/,
-    "Other profile buttons retain the color theme rule");
+  assert.match(picker, /profileSurface\?: boolean/);
+  assert.match(picker, /source-profile-language-menu/);
+  assert.match(webProfile, /<CompactLanguagePicker\s+profileSurface\s+value=/);
+  assert.match(modal, /<CompactLanguagePicker\s+profileSurface\s+value=/);
+  assert.match(picker, /props\.profileSurface \?/, "Shared component must leave Shop unmodified by default");
 });

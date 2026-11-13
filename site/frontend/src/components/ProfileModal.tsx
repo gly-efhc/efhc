@@ -834,6 +834,7 @@ export function ProfileModal(props: Props) {
         <SectionCard title={t("profile.interface_title")}>
           <div className="efhc-profile-compact-controls">
             <CompactLanguagePicker
+              profileSurface
               value={props.settings.lang}
               label={t("profile.language_title")}
               getLabel={(lang) => t(`profile.lang.${lang}`)}
