@@ -28,6 +28,17 @@ export async function openDirectDeposit(): Promise<DirectDepositOpen> {
   return directDepositOpenSchema.parse(raw);
 }
 
+const sharedDepositCheckSchema = z.object({
+  ok: z.literal(true),
+  state: z.enum(["checked", "busy", "cooldown"]),
+});
+
+/** The server verifies the global treasury inbox, never a client-supplied tx. */
+export async function runSharedDepositCheck() {
+  const result = await apiRequest<unknown>("/deposit/direct-check", "POST");
+  return sharedDepositCheckSchema.parse(result);
+}
+
 export async function readDirectDepositStatus(
   openedAt: string,
   signal?: AbortSignal,
