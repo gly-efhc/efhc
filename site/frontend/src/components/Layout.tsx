@@ -602,6 +602,24 @@ export function Layout(
     setWalletModalOpened(true);
     setConnectionPhase("connecting");
     setWalletHint(t("wallet.connection_waiting"));
+    // A live TonConnect session represents one selected address. Explicitly
+    // connecting another wallet replaces only that session, not the server's
+    // verified wallet_bindings for this Global ID.
+    if (walletSession && mode === "binding") {
+      try {
+        await disconnectWallet();
+      } catch {
+        setWalletModalOpened(false);
+        restoreTelegramMainButtonAfterWalletModal();
+        setConnectionPhase("error");
+        setWalletHint(t("wallet.connection_failed"));
+        toast(t("wallet.connection_failed"), "error");
+        return;
+      }
+      bindingAttemptRef.current = "";
+      setProofState(null);
+      setProofAccepted(false);
+    }
     const prepared = mode === "binding"
       ? await prepareProof().catch(() => null)
       : null;
