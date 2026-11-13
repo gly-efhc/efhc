@@ -54,7 +54,7 @@ export function WalletAddressVerification({ address }: Props) {
     <div className="efhc-wallet-address-zone">
       <button
         type="button"
-        className="efhc-wallet-address-control"
+        className="efhc-wallet-address-control standalone-wallet-address"
         data-wallet-address-copy-control="true"
         data-wallet-copy-keyboard="native-button"
         data-wallet-full-address="true"
@@ -65,7 +65,7 @@ export function WalletAddressVerification({ address }: Props) {
       >
         <code>{address}</code>
         <span
-          className="efhc-wallet-copy-feedback"
+          className="efhc-wallet-copy-feedback standalone-wallet-copy-feedback"
           data-visible={copyState === "copied" ? "true" : "false"}
           aria-hidden={copyState === "copied" ? undefined : true}
         >
