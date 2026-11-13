@@ -53,15 +53,23 @@ export default function WithdrawPage(props: {
 }) {
   const t = useT();
   const globalId = useAuthOwnerGlobalId();
-  const mainBalance = format8(props.snap?.profile?.main_balance || "0");
-  const mainBalanceHuman = formatD8ToHuman(mainBalance);
+  // An incomplete/stale financial read must never unmount this static page.
+  // Invalid precision remains unusable for a withdrawal, not coerced to funds.
+  const mainBalance = useMemo(() => {
+    try {
+      return format8(props.snap?.profile?.main_balance ?? "0");
+    } catch {
+      return null;
+    }
+  }, [props.snap?.profile?.main_balance]);
+  const mainBalanceHuman = mainBalance === null ? "—" : formatD8ToHuman(mainBalance);
   const walletsMe = useWalletsMe();
   const { confirm, openWalletConnect, settings, toast, lang } =
     useContext(LayoutContext);
   const withdrawSurface = useInterfaceVariantSurface<HTMLDivElement>("WD", {
     dotsPlacement: "below",
   });
-  const [amount, setAmount] = useOwnerDraft("withdraw.amount",mainBalance);
+  const [amount, setAmount] = useOwnerDraft("withdraw.amount", mainBalance ?? "");
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const createSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -130,11 +138,11 @@ export default function WithdrawPage(props: {
     };
 
     const offTelegramViewport = onTelegramViewportChanged(recoverFocusedAmount);
-    window.visualViewport?.addEventListener("resize", recoverFocusedAmount);
+    window.visualViewport?.addEventListener?.("resize", recoverFocusedAmount);
 
     return () => {
       offTelegramViewport();
-      window.visualViewport?.removeEventListener("resize", recoverFocusedAmount);
+      window.visualViewport?.removeEventListener?.("resize", recoverFocusedAmount);
       if (frameOne) window.cancelAnimationFrame(frameOne);
       if (frameTwo) window.cancelAnimationFrame(frameTwo);
     };
@@ -178,8 +186,10 @@ export default function WithdrawPage(props: {
   const cancelError = cancelWithdrawMutation.error
     ? publicApiErrorMessage(cancelWithdrawMutation.error, t)
     : null;
-  const lastPage = Array.isArray(withdrawalsQ.data?.pages)
-    ? withdrawalsQ.data.pages.at(-1)
+  const pages = withdrawalsQ.data?.pages;
+  // Older Android WebView engines do not implement Array.prototype.at.
+  const lastPage = Array.isArray(pages) && pages.length
+    ? pages[pages.length - 1]
     : undefined;
   const cursor = withdrawalsQ.hasNextPage
     ? lastPage?.next_cursor || null
@@ -191,7 +201,7 @@ export default function WithdrawPage(props: {
 
 
   const withdrawMinOk = useMemo(
-    () => cmp8(mainBalance, "10.00000000") >= 0,
+    () => mainBalance !== null && cmp8(mainBalance, "10.00000000") >= 0,
     [mainBalance],
   );
   const amountIssue = useMemo(() => {
@@ -199,7 +209,7 @@ export default function WithdrawPage(props: {
     if (!isValidD8(amount)) return "invalid";
     const value = format8(amount);
     if (cmp8(value, "10.00000000") < 0) return "minimum";
-    if (cmp8(value, mainBalance) > 0) return "balance";
+    if (mainBalance === null || cmp8(value, mainBalance) > 0) return "balance";
     return null;
   }, [amount, mainBalance]);
   const withdrawAmountOk = amountIssue === null;
@@ -384,7 +394,7 @@ export default function WithdrawPage(props: {
               className="efhc-withdraw-max-cta"
               onClick={() => {
                 hapticMedium(settings.haptics_enabled);
-                setAmount(mainBalance);
+                if (mainBalance !== null) setAmount(mainBalance);
                 setAmountTouched(false);
               }}
               disabled={!withdrawMinOk}

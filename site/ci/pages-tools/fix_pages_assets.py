@@ -159,6 +159,10 @@ def main():
     base = args.base_path.rstrip('/')
     if not base or not re.fullmatch(r'/[A-Za-z0-9_.-]+', base):
         raise ValueError('Invalid Pages repository basePath')
+    # Next may generate framework-owned error documents even when their
+    # project pages have been physically deleted. Do not ship these artifacts.
+    for name in ('404.html', '500.html'):
+        (root / name).unlink(missing_ok=True)
     changed = 0
     for p in root.rglob('*'):
         if not p.is_file() or p.name == 'sw.js' or p.suffix not in ('.html', '.css', '.js'):

@@ -354,6 +354,8 @@ export function PwaRuntimeStatus(props: {
     let cleanupReloadTimer: number | null = null;
     let verifyInFlight = false;
     let autoReloadBuildId = "";
+    let staleDetectedAt = 0;
+    let lastCacheSweepAt = 0;
     const markActivity = () => { lastInteractionAt = Date.now(); };
     const hasActiveEditor = () => Boolean(document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
@@ -361,7 +363,8 @@ export function PwaRuntimeStatus(props: {
     const attemptIdleReload = () => {
       if (disposed || !autoReloadBuildId || !navigator.onLine ||
           document.visibilityState === "hidden" ||
-          Date.now() - lastInteractionAt < 6000 ||
+          (Date.now() - lastInteractionAt < 6000 &&
+            (!staleDetectedAt || Date.now() - staleDetectedAt < 15000)) ||
           queryClient.isMutating() > 0 || hasActiveEditor()) return;
       const key = "efhc:pwa-reload:" + autoReloadBuildId;
       try {
@@ -428,6 +431,13 @@ export function PwaRuntimeStatus(props: {
           navigator.serviceWorker.controller?.postMessage({
             type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
           });
+          // On every verified application load, request an immediate sweep of
+          // predecessor PWA generations. Never erase owner-scoped local data.
+          if (Date.now() - lastCacheSweepAt >= 30_000) {
+            lastCacheSweepAt = Date.now();
+            navigator.serviceWorker.controller?.postMessage({type: "GET_CACHE_STATUS"});
+          }
+          staleDetectedAt = 0;
           const verifiedKey = "efhc:pwa-reload:" + manifest.build_id;
           try {
             window.sessionStorage.removeItem(verifiedKey);
@@ -438,6 +448,7 @@ export function PwaRuntimeStatus(props: {
           // A new worker cannot replace an already running React bundle.
           // Defer an automatic swap until user interactions and mutations finish.
           autoReloadBuildId = manifest.build_id;
+          if (!staleDetectedAt) staleDetectedAt = Date.now();
           attemptIdleReload();
         }
       } catch { /* Keep the last usable offline shell. */ }

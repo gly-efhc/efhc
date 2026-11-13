@@ -2,8 +2,121 @@ import React, { useContext } from "react";
 
 import { useT } from "../../hooks/useT";
 import type { UserSettings } from "../../lib/settings";
+import { appBasePath } from "../../lib/appBasePath";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
+
+type CacheSnapshot = {
+  buildId: string;
+  entries: number;
+  bytes: number;
+  missing: number;
+};
+
+function PwaMaintenanceSection(): React.JSX.Element {
+  const t = useT();
+  const [checking, setChecking] = React.useState(false);
+  const [snapshot, setSnapshot] = React.useState<CacheSnapshot | null>(null);
+  const [outcome, setOutcome] = React.useState<"checked" | "unavailable" | "failed" | null>(null);
+
+  async function checkApplication(): Promise<void> {
+    if (checking) return;
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+      setOutcome("unavailable");
+      return;
+    }
+    setChecking(true);
+    setOutcome(null);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration(`${appBasePath() || ""}/`);
+      if (!registration) {
+        setOutcome("unavailable");
+        return;
+      }
+      let updateFailed = false;
+      try {
+        await registration.update();
+      } catch {
+        updateFailed = true;
+      }
+      const worker = registration.active || navigator.serviceWorker.controller;
+      if (!worker) {
+        setOutcome("unavailable");
+        return;
+      }
+      const result = await new Promise<CacheSnapshot>((resolve, reject) => {
+        let timer = 0;
+        const receive = (event: MessageEvent) => {
+          const data = event.data;
+          if (data?.type !== "CACHE_STATUS") return;
+          finish();
+          resolve({
+            buildId: String(data.buildId || ""),
+            entries: Math.max(0, Number(data.staticEntries || 0) + Number(data.contentEntries || 0)),
+            bytes: Math.max(0, Number(data.staticBytes || 0) + Number(data.contentBytes || 0)),
+            missing: Math.max(0, Number(data.precacheMissing || 0)),
+          });
+        };
+        const finish = () => {
+          window.clearTimeout(timer);
+          navigator.serviceWorker.removeEventListener("message", receive);
+        };
+        navigator.serviceWorker.addEventListener("message", receive);
+        timer = window.setTimeout(() => {
+          finish();
+          reject(new Error("PWA status timed out"));
+        }, 9000);
+        try {
+          worker.postMessage({ type: "GET_CACHE_STATUS" });
+        } catch (error) {
+          finish();
+          reject(error);
+        }
+      });
+      setSnapshot(result);
+      setOutcome(updateFailed ? "failed" : "checked");
+    } catch {
+      setOutcome("failed");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <details className="efhc-profile-pwa-maintenance">
+      <summary>{t("pwa.maintenance_title")}</summary>
+      <div className="efhc-profile-source-settings">
+        <div className="standalone-settings-row">
+          <span>{t("pwa.check_now")}</span>
+          <button
+            type="button"
+            className="source-button secondary standalone-setting-toggle"
+            disabled={checking}
+            onClick={() => void checkApplication()}
+          >
+            {t(checking ? "common.loading" : "common.refresh")}
+          </button>
+        </div>
+        {snapshot ? (
+          <div aria-live="polite">
+            <small>{t("pwa.build")}: {snapshot.buildId}</small>
+            <small style={{ display: "block" }}>
+              {t("pwa.cached_files")}: {snapshot.entries} · {(snapshot.bytes / (1024 * 1024)).toFixed(1)} MB
+            </small>
+            <small style={{ display: "block" }}>
+              {t("pwa.missing_files")}: {snapshot.missing}
+            </small>
+          </div>
+        ) : null}
+        {outcome ? (
+          <small role="status">
+            {t(outcome === "checked" ? "pwa.checked" : outcome === "unavailable" ? "pwa.unavailable" : "pwa.check_failed")}
+          </small>
+        ) : null}
+      </div>
+    </details>
+  );
+}
 
 type SettingName = "reduce_motion" | "sfx_enabled" | "haptics_enabled" | "music_enabled";
 
@@ -54,6 +167,7 @@ export function ProfileSettingsDialog(props: {
           );
         })}
       </div>
+      <PwaMaintenanceSection />
     </Modal>
   );
 }

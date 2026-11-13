@@ -7,6 +7,7 @@ type Props = {
   value: Lang;
   label: string;
   showLabel?: boolean;
+  profileSurface?: boolean;
   getLabel: (lang: Lang) => string;
   onChange: (lang: Lang) => void;
 };
@@ -31,22 +32,32 @@ export function CompactLanguagePicker(props: Props) {
       <button
         ref={triggerRef}
         type="button"
-        className="efhc-compact-language-picker_button"
+        className={props.profileSurface ? "efhc-compact-language-picker_button source-profile-language-button" : "efhc-compact-language-picker_button"}
         aria-haspopup="listbox"
         aria-label={props.label}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {props.showLabel !== false ? <span className="efhc-compact-language-picker_label">{props.label}</span> : null}
-        <span className="efhc-compact-language-picker_current">
-          <span aria-hidden="true">{languageFlag(props.value)}</span>
-          <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
-          <span aria-hidden="true">▾</span>
-        </span>
+        {props.profileSurface ? (
+          <>
+            <span aria-hidden="true">{languageFlag(props.value)}</span>
+            <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
+            <span aria-hidden="true">▾</span>
+          </>
+        ) : (
+          <>
+            {props.showLabel !== false ? <span className="efhc-compact-language-picker_label">{props.label}</span> : null}
+            <span className="efhc-compact-language-picker_current">
+              <span aria-hidden="true">{languageFlag(props.value)}</span>
+              <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
+              <span aria-hidden="true">▾</span>
+            </span>
+          </>
+        )}
       </button>
       {open ? (
         <div
-          className="efhc-compact-language-picker_menu"
+          className={props.profileSurface ? "efhc-compact-language-picker_menu source-profile-language-menu" : "efhc-compact-language-picker_menu"}
           role="listbox"
           aria-label={props.label}
         >
@@ -64,7 +75,7 @@ export function CompactLanguagePicker(props: Props) {
                 role="option"
                 aria-selected={selected}
                 tabIndex={focusActive ? 0 : -1}
-                className="efhc-compact-language-picker_option"
+                className={props.profileSurface ? "efhc-compact-language-picker_option source-profile-language-option" : "efhc-compact-language-picker_option"}
                 data-active={selected ? "true" : "false"}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {

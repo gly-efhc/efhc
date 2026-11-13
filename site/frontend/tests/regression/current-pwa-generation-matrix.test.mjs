@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync,writeFileSync,mkdirSync,copyFileSync,mkdtempSync,rmSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,copyFileSync,mkdtempSync,rmSync,existsSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import path from "node:path";
@@ -111,6 +111,8 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
     writeFileSync(p,value,"utf8");
   };
   put("index.html",'<html><head><link rel="stylesheet" href="/efhc/visual.css"></head><body><script id="__NEXT_DATA__"></script><script src="/efhc/_next/static/main.js"></script></body></html>');
+  put("404.html","<html><head></head><body>retired 404 page</body></html>");
+  put("500.html","<html><head></head><body>retired 500 page</body></html>");
   put("_next/static/main.js",'const css="/user-shell.css";');
   put("_next/static/main.css","body{color:white}");
   put("visual.css","body{color:red}");
@@ -122,6 +124,10 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
     "--directory",rootDir,"--base-path","/efhc"],{encoding:"utf8"});
   const first=run("fix_pages_assets.py");
   assert.equal(first.status,0,first.stderr);
+  assert.equal(existsSync(path.join(rootDir,"404.html")),false,
+    "Next generated 404 document must be physically deleted before publication");
+  assert.equal(existsSync(path.join(rootDir,"500.html")),false,
+    "Next generated 500 document must be physically deleted before publication");
   assert.equal(run("verify_export.py").status,0,"export must verify CSS fingerprint references");
   const hashed = name=>{
     const raw=readFileSync(path.join(rootDir,name));
@@ -150,6 +156,69 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
   await worker.dispatch("activate");
   assert.equal(await(await worker.cacheFirst(new Request(origin+aCss))).text(),"red");
   assert.equal(await(await worker.cacheFirst(new Request(origin+bCss))).text(),"blue");
+});
+
+test("Deleted development route is absent from Service Worker routing",()=>{
+  assert.doesNotMatch(source,/isRetiredRoute|\/dev\/neon/);
+  assert.ok(!source.includes('event.respondWith(new Response("", {status: 404'),
+    "Deleted pages cannot leave behind a synthetic 404 route stub");
+});
+
+test("New verified worker purges old HTML immediately without discarding legacy hashed JS",async()=>{
+  const h=harness(),legacy=h.createClient("old-tab","/efhc/withdraw/");
+  h.clients.value=[legacy];
+  const old=await h.seed("A",{
+    "/efhc/withdraw/index.html":"obsolete withdraw",
+    "/efhc/dev/neon/index.html":"obsolete operator console",
+    "/efhc/_next/static/legacy.js":"still needed by old tab",
+  });
+  await h.seed("B",{"/efhc/withdraw/index.html":"verified withdraw"});
+  const worker=h.makeWorker("B");
+  await worker.dispatch("activate");
+  assert.equal(await old.match("/efhc/index.html"),undefined);
+  assert.equal(await old.match("/efhc/withdraw/index.html"),undefined);
+  assert.equal(await old.match("/efhc/dev/neon/index.html"),undefined);
+  assert.equal(await(await old.match("/efhc/_next/static/legacy.js")).text(),
+    "still needed by old tab", "Do not break an active legacy tab");
+  const navigation=await worker.navigationFallback(
+    new Request(origin+"/efhc/withdraw/"),{});
+  assert.equal(await navigation.text(),"verified withdraw",
+    "Offline navigation must never resurrect the previous HTML document");
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "Only the obsolete HTML should be purged before old tabs reload");
+});
+
+test("Historical cache generations without HTML still retire after the old tab closes",async()=>{
+  const h=harness();
+  h.clients.value=[h.createClient("legacy","/efhc/withdraw/")];
+  const original=await h.seed("A",{
+    "/efhc/_next/static/old-chunk.js":"retained for the live legacy tab",
+  });
+  await h.seed("B");
+  await h.makeWorker("B").dispatch("activate");
+  assert.equal(await original.match("/efhc/index.html"),undefined,
+    "Obsolete HTML is purged immediately during first activation");
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "Assets remain while an older document is live");
+
+  const orphan=await h.cacheStorage.open("efhc-pwa-interrupted-content");
+  await orphan.put("/efhc/locale/en.json",new Response("{}"));
+  const foreign=await h.cacheStorage.open("efhc-pwa-another-app-content");
+  await foreign.put("/another-app/locale/en.json",new Response("{}"));
+
+  h.clients.value=[];
+  await h.seed("C");
+  await h.makeWorker("C").dispatch("activate");
+  const remaining=await h.cacheStorage.keys();
+  assert.ok(remaining.includes("efhc-pwa-C-static"));
+  assert.ok(remaining.includes("efhc-pwa-C-content"));
+  assert.ok(!remaining.includes("efhc-pwa-A-static"));
+  assert.ok(!remaining.includes("efhc-pwa-A-content"));
+  assert.ok(!remaining.includes("efhc-pwa-B-static"));
+  assert.ok(!remaining.includes("efhc-pwa-B-content"));
+  assert.ok(!remaining.includes("efhc-pwa-interrupted-content"));
+  assert.ok(remaining.includes("efhc-pwa-another-app-content"),
+    "Never purge an unrelated application on the same origin");
 });
 
 test("T2: a restarted worker restores predecessor inventory before first old chunk request",async()=>{
@@ -232,6 +301,8 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
   const activation=new Promise(resolve=>{releaseActivation=resolve;});
   let requested=false;
   let finished=false;
+  let confirmActivation=()=>undefined;
+  const activationRequested=new Promise(resolve=>{confirmActivation=resolve;});
   h.setFetch(async req=>{
     const pathname=new URL(typeof req==="string"?req:req.url,origin).pathname;
     return new Response(pathname.endsWith(".html")
@@ -242,11 +313,23 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
     Request: class extends Request {
       constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
     },
-    skipWaiting:()=>{requested=true;return activation;},
+    skipWaiting:()=>{requested=true;confirmActivation();return activation;},
   });
   const installing=worker.dispatch("install").then(()=>{finished=true;});
   try{
-    await new Promise(resolve=>setTimeout(resolve,40));
+    // Wait for the actual activation-request event, not an arbitrary 40ms
+    // under a loaded CI runner. Fail if the complete precache never reaches it.
+    let timeout;
+    try {
+      await Promise.race([
+        activationRequested,
+        new Promise((_,reject)=>{
+          timeout=setTimeout(()=>reject(Error("full PWA precache never requested activation")),3000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timeout);
+    }
     assert.equal(requested,true,"full PWA precache must finish before activation");
     assert.equal(finished,false,"install event must retain activation promise");
   }finally{
@@ -284,7 +367,7 @@ test("T9: online no-store build metadata is never supplied from stale content ca
   assert.equal(calls,1);
 });
 
-test("T10: emergency offline HTML is sourced from newest retained generation",async()=>{
+test("T10: missing current offline HTML never resurrects an obsolete generation",async()=>{
   const h=harness(),current=h.createClient("current"),old=h.createClient("old");
   h.clients.value=[current,old];
   await h.seed("A");await h.seed("B");const c=await h.seed("C");
@@ -292,7 +375,9 @@ test("T10: emergency offline HTML is sourced from newest retained generation",as
   await worker.dispatch("activate");
   await c.delete("/efhc/index.html");
   const response=await worker.navigationFallback(new Request(origin+"/efhc/"),{waitUntil:()=>{}});
-  assert.equal(await response.text(),"HTML B");
+  assert.notEqual(await response.text(),"HTML B",
+    "Retired documents cannot replace a missing current build");
+  assert.equal(response.status,503,"A corrupted current shell must fail closed, not display old code");
 });
 
 test("T11: a cache owned by a second origin-sibling app is not deleted",async()=>{

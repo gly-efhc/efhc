@@ -266,6 +266,61 @@ try {
       await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     }
   });
+  await check("older Telegram WebView keeps cached Withdraw requests and static controls", async () => {
+    const owner = "0000000042";
+    const webviewTab = await context.newPage();
+    webviewTab.on("pageerror", error => errors.push(String(error.message)));
+    try {
+      await webviewTab.goto(base, {waitUntil:"domcontentloaded",timeout:30000});
+      await webviewTab.evaluate(({owner,cacheKey}) => {
+        const stored = {owner,lastHumanVisitAt:Date.now(),entries:[{
+          key:["withdrawals",owner,"list","all"],
+          data:{
+            pages:[{items:[{
+              id:"1",global_id:owner,amount:"10.00000000",status:"PENDING",
+              created_at:"2026-11-14T00:00:00Z",
+              updated_at:"2026-11-14T00:00:00Z",
+            }],next_cursor:null}],
+            pageParams:[null],
+          },
+          updatedAt:Date.now()-2000,
+        }]};
+        sessionStorage.setItem("efhc:resolved-display-owner",JSON.stringify({
+          global_id:owner,principal:"browser",
+        }));
+        sessionStorage.setItem(cacheKey,JSON.stringify(stored));
+        localStorage.setItem(cacheKey+":"+owner,JSON.stringify(stored));
+      },{owner,cacheKey:ownerCacheKey});
+      // Model an older Android WebView whose array .at() API is absent.
+      // This does not claim to reproduce the OWNER's native Telegram engine.
+      await webviewTab.addInitScript(() => {
+        Object.defineProperty(Array.prototype,"at",{
+          configurable:true,writable:true,value:undefined,
+        });
+      });
+      await context.setOffline(true);
+      await webviewTab.goto(base+"withdraw/",{waitUntil:"domcontentloaded",timeout:30000});
+      await webviewTab.locator('[data-public-surface="withdraw"]').waitFor({
+        state:"visible",timeout:16000,
+      });
+      await webviewTab.locator('[data-withdraw-request-id="1"]').waitFor({
+        state:"attached",timeout:16000,
+      });
+      const view=await webviewTab.evaluate(() => ({
+        alive:Boolean(document.querySelector('[data-public-surface="withdraw"]')),
+        form:Boolean(document.querySelector('[data-withdraw-amount-input]')),
+        requests:document.querySelectorAll('[data-withdraw-request-id]').length,
+        error:document.body.textContent?.includes("Application error: a client-side exception") || false,
+      }));
+      assert.equal(view.alive,true,"Withdraw static page must remain mounted");
+      assert.equal(view.form,true,"The existing withdraw input must remain");
+      assert.equal(view.requests,1,"Cached confirmed read-only requests must render");
+      assert.equal(view.error,false,"Next.js technical exception must not replace Withdraw");
+    } finally {
+      await context.setOffline(false);
+      await webviewTab.close();
+    }
+  });
   await check("offline deep links use cached React UI instead of offline fallback", async () => {
     await page.reload({waitUntil:"domcontentloaded",timeout:30000});
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});

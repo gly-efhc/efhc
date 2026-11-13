@@ -42,7 +42,6 @@ import { Layout } from "../components/Layout";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { ShopLayout } from "../components/ShopLayout";
 import { SplashScreen } from "../components/SplashScreen";
-import { ErrorBoundary } from "../components/ErrorBoundary";
 import { useSnapshot } from "../hooks/useSnapshot";
 import { useExchangePreview } from "../queries/useExchange";
 import { usePanelsSummary } from "../queries/usePanels";
@@ -793,7 +792,6 @@ function AppInner(props: {
         setSettings={setSettings}
       >
         <PwaRuntimeStatus t={t} enabled={browserSupportsServiceWorker()} headless />
-        <ErrorBoundary key={router.pathname} title="EFHC Storefront" t={t}>
           <Component
             {...pageProps}
             snap={visibleSnap}
@@ -807,7 +805,6 @@ function AppInner(props: {
               void refreshSnapshot();
             }}
           />
-        </ErrorBoundary>
       </ShopLayout>
     );
   }
@@ -844,7 +841,6 @@ function AppInner(props: {
         setSettings={setSettings}
         shopSkinBgUrl={shopSkinBgUrl}
       >
-        <ErrorBoundary key={router.pathname} title="EFHC Mini App" t={t}>
           {adminRouteBlocked || adminRouteChecking ? (
             <AdminRouteGuardState checking={adminRouteChecking} t={t} />
           ) : effectiveAdminVisualProofPath ? (
@@ -888,7 +884,6 @@ function AppInner(props: {
               }}
             />
           )}
-        </ErrorBoundary>
         {process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW !== "1" ? <OnboardingTour t={t} /> : null}
       </Layout>
     </>

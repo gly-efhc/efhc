@@ -87,11 +87,6 @@
   border-color:rgba(115,174,252,.40);
 }
 
-[data-interface-app-mode="user"][data-global-theme-id="02"] .efhc-error-page .source-primary-button:disabled,
-:root:has(.efhc-independent-shell[data-interface-app-mode="user"][data-global-theme-id="02"]) .efhc-error-page .source-primary-button:disabled {
-  background:rgba(30,41,59,.42);
-}
-
 /* Browser Shop Theme02: bind the existing dark-Shop composition to Deep Navy
    instead of inheriting the generic Theme03 violet/gold material. */
 .efhc-shop-site[data-interface-app-mode="shop-landing"][data-shop-theme="dark"][data-global-theme-id="02"],

@@ -242,3 +242,17 @@ iteration02 также задаёт нулевой padding/radius и цвет #f
 6. Сброс кеша и настроек не удаляет серверные записи аккаунтов, финансовую историю или общую базу DEMO. Проверка полномочий и подтверждение операций сохраняют прежние контракты. Ни сброс, ни загрузка данных не скрывают страницы.
 
 **Заменяет:** трактовки APP-CORE-029 о сохранении кеша при смене пользовательского Global ID; сохранение собственного кеша при неизменном ID остаётся в силе. Уточнение не даёт права менять принятый внешний вид шаблонов.
+
+
+## APP-SURFACE-031 — RELEASE-CLEAN ROUTES AND NON-FATAL UI (OWNER 13.11.2026)
+
+**Status:** ACTIVE / OWNER_DIRECT. This section supersedes every earlier claim that a custom fatal `404`, `500`, `_error` screen or a substitute screen is a protected USER application page.
+
+1. **Physical removal:** custom React routes `pages/404.tsx`, `pages/500.tsx`, `pages/_error.tsx`, the full-screen error component `SafeErrorState`, and the attempted substitute screen `QuietPageSurface` are withdrawn from release source. Do not restore them through redirects, CSS hiding, empty route stubs, fallback screens, generated static `404.html`/`500.html`, or obsolete PWA HTML.
+2. **Actual route inventory:** /dev and /dev/neon are not application features. There must be no `src/pages/dev`, `public/dev`, exported `dev/` asset or PWA precache entry. A missing URL can still receive a standard HTTP error from the hosting platform; this does not authorize an EFHC-authored error page. Keep Admin, USER, Shop, privacy/legal, auth and API route protections intact.
+3. **Never replace a live page:** actual route structure is persistent through slow/malformed/unavailable data and owner-cache warm starts. Components validate incoming data before render; tests verify the canonical page rather than a fake replacement. Preserve localization, CT themes, navigation and controls. Incomplete or unverified financial data never authorizes a mutation.
+4. **Version retirement:** a fully validated new PWA generation replaces old HTML immediately; the previous generated HTML cannot be served through fallback. Retain hashed previous assets only when still required by an open legacy tab, until its confirmed transition. Personal D8 snapshots, identity, language, draft inputs and backend ledger are separate from software assets and must not be erased by program cache retirement.
+5. **User information:** remove generic technical full-screen dialogs; do not remove meaningful local validation, transaction outcomes or protected Admin access checks. Failure evidence stays available in CI and internal technical logs. Never present a failed or unverified financial action as successful.
+
+**Verification:** audit source tree; verify physical exclusion from the static export and PWA precache; verify unchanged genuine USER/Admin/Shop interfaces in online/offline Chromium tests. The historical decision and test evidence remain traceable in private archival records even when obsolete operational instructions are superseded.
+
