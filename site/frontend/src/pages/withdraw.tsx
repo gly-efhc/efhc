@@ -144,11 +144,11 @@ export default function WithdrawPage(props: {
     };
 
     const offTelegramViewport = onTelegramViewportChanged(recoverFocusedAmount);
-    window.visualViewport?.addEventListener("resize", recoverFocusedAmount);
+    window.visualViewport?.addEventListener?.("resize", recoverFocusedAmount);
 
     return () => {
       offTelegramViewport();
-      window.visualViewport?.removeEventListener("resize", recoverFocusedAmount);
+      window.visualViewport?.removeEventListener?.("resize", recoverFocusedAmount);
       if (frameOne) window.cancelAnimationFrame(frameOne);
       if (frameTwo) window.cancelAnimationFrame(frameTwo);
     };
