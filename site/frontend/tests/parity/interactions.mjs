@@ -90,7 +90,10 @@ try{
    assert.equal(await track.getAttribute('data-pb'),canon.SOURCE_STYLE.PB[order[theme]]||order[theme]);
    const starter=await track.evaluate(el=>{
     const read=()=>{const t=getComputedStyle(el),f=getComputedStyle(el.firstElementChild);return {height:el.getBoundingClientRect().height,fillHeight:el.firstElementChild.getBoundingClientRect().height,background:t.backgroundImage,color:t.backgroundColor,border:t.borderColor,radius:t.borderRadius,shadow:t.boxShadow,fill:f.backgroundImage,fillColor:f.backgroundColor,fillShadow:f.boxShadow}};
-    const sheet=[...document.styleSheets].find(s=>s.href?.endsWith('/progress-models.css'));
+    const sheet=[...document.styleSheets].find(s=>
+      s.ownerNode?.getAttribute?.('data-efhc-visual-adapter')==='progress-models'
+    );
+    assert(sheet,'progress stylesheet missing from compiled export');
     const actual=read();const disabled=sheet.disabled;
     try{sheet.disabled=true;return {actual,withoutNonStarterSheet:read()}}finally{sheet.disabled=disabled}
    });
