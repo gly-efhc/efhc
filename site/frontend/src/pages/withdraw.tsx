@@ -143,6 +143,8 @@ export default function WithdrawPage(props: {
       if (event.type !== "visibilitychange") {
         const target = event.target;
         if (!(target instanceof Element) || !target.closest('[data-public-surface="withdraw"]')) return;
+        // The confirmed create/cancel mutation is the status source for that action.
+        if (target.closest('[data-withdraw-action="create"],[data-withdraw-action="cancel"]')) return;
       }
       const request = withdrawalsRef.current;
       const now = Date.now();
@@ -473,7 +475,7 @@ export default function WithdrawPage(props: {
           {loading && items.length === 0 ? (
             <EmptyState title={t("withdraw.loading_requests")} />
           ) : null}
-          {!loading && items.length === 0 ? (
+          {!loading && items.length === 0 && !withdrawalsQ.hasNextPage ? (
             <EmptyState title={t("withdraw.no_requests_yet")} />
           ) : null}
 
