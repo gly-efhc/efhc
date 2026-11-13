@@ -234,6 +234,7 @@ export default function RanksPage(props: {
 
       {rankQ.isError ? (
         <EmptyState
+          intent="error"
           title={t("common.error")}
           detail={publicApiErrorMessage(rankQ.error, t)}
           actionLabel={t("common.refresh")}
