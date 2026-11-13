@@ -23143,6 +23143,16 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
    legacy !important styles without editing the frozen source. */
 @layer efhc-ct-route-accents {
 /* USER achievement caption transparency and active CT history materials. */
+
+/* USER wallet cards: geometry follows the frozen HTML account reference.
+   Existing Color Theme tokens continue to own border and fill materials. */
+.efhc-profile-page[data-wg="WG-01"] [data-profile-content="wallet"] .efhc-wallet-entry {
+  display: grid;
+  gap: .58rem;
+  padding: .72rem;
+  border-radius: .82rem;
+}
+
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
 body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
@@ -23160,13 +23170,4 @@ body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id
   background-color: rgba(var(--efhc-ct-accent-rgb),.09) !important;
   background-image: none !important;
 }
-}
-
-/* USER wallet cards: geometry follows the frozen HTML account reference.
-   Existing Color Theme tokens continue to own border and fill materials. */
-.efhc-profile-page[data-wg="WG-01"] [data-profile-content="wallet"] .efhc-wallet-entry {
-  display: grid;
-  gap: .58rem;
-  padding: .72rem;
-  border-radius: .82rem;
 }
