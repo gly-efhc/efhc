@@ -34,14 +34,14 @@ try{
  await load({...state,interface_variants:contract.DEFAULTS});
  for(const width of [320,360,390,430,768])await check(`viewport ${width}`,async()=>{
   await page.setViewportSize({width,height:844});await page.waitForTimeout(150);
-  const actual=await page.evaluate(()=>{const shell=document.querySelector('.efhc-independent-shell'),nav=document.querySelector('.efhc-game-nav');return{shell:shell.getBoundingClientRect().toJSON(),nav:nav.getBoundingClientRect().toJSON(),scroll:document.documentElement.scrollWidth,viewport:innerWidth,order:[...document.styleSheets].map(s=>s.href).filter(Boolean)}});
+  const actual=await page.evaluate(()=>{const shell=document.querySelector('.efhc-independent-shell'),nav=document.querySelector('.efhc-game-nav');return{shell:shell.getBoundingClientRect().toJSON(),nav:nav.getBoundingClientRect().toJSON(),scroll:document.documentElement.scrollWidth,viewport:innerWidth,order:[...document.styleSheets].map(s=>s.href).filter(Boolean),frozenHref:document.querySelector('link[data-efhc-visual-authority]')?.href||null}});
   assert.ok(Math.abs(actual.shell.width-width)<1,JSON.stringify(actual));
   assert.ok(Math.abs(actual.nav.width-width)<3,JSON.stringify(actual));
   assert.ok(actual.scroll<=width+1,'horizontal page overflow');
   const compiledIndex=actual.order.findIndex(x=>x.includes('/_next/static/css/'));
-    const frozenIndex=actual.order.findIndex(x=>/\/FRONTEND_v866(?:\.[0-9a-f]{16})?\.css(?:\?|$)/.test(x));
-    assert.ok(compiledIndex>=0&&frozenIndex>compiledIndex,
-      `fingerprinted frozen v866 CSS must follow compiled React CSS: ${JSON.stringify(actual.order)}`);
+  const frozenIndex=actual.order.indexOf(actual.frozenHref);
+  assert.ok(compiledIndex>=0&&frozenIndex>compiledIndex,
+    `immutable frozen stylesheet must load after compiled React CSS: ${JSON.stringify({frozenHref:actual.frozenHref,order:actual.order})}`);
  });
 
  for(const width of [1024,1440])await check(`centered desktop ${width}`,async()=>{
