@@ -289,7 +289,7 @@ export default function WebProfilePage(props: Props) {
     }
   };
 
-  const exportHistory = async (format: "csv" | "xlsx") => {
+  const exportSelectedBalanceHistory = async (format: "csv" | "xlsx") => {
     if (historyExporting) return;
     try {
       await historyExport.mutateAsync({ format, category: historyFilter });
@@ -520,8 +520,8 @@ export default function WebProfilePage(props: Props) {
               onFilterChange={setHistoryFilter}
               onRefresh={refreshHistory}
               onLoadMore={loadMoreHistory}
-              onExportCsv={() => void exportHistory("csv")}
-              onExportXlsx={() => void exportHistory("xlsx")}
+              onExportCsv={() => void exportSelectedBalanceHistory("csv")}
+              onExportXlsx={() => void exportSelectedBalanceHistory("xlsx")}
               withdrawHref="/withdraw"
               exporting={historyExporting}
               reasonLabel={(reason) => reasonLabel(reason, t)}
