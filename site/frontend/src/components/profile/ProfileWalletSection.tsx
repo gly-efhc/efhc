@@ -118,7 +118,7 @@ export function ProfileWalletSection(props: Props) {
             hapticsEnabled={props.hapticsEnabled}
             hasLinkedWallet={serverBoundWallets.length > 0}
           />
-        ) : null}
+        )}
         {props.walletsLoading ? (
           <TelegramInfoBlock title={t("wallet.loading_wallets_title")}>
             {t("wallet.loading_wallets_body")}
