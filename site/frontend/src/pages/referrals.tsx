@@ -165,6 +165,7 @@ export default function ReferralsPage(props: {
 
       {statsQ.isError ? (
         <EmptyState
+          intent="error"
           title={t("referrals.load_error")}
           detail={publicApiErrorMessage(statsQ.error, t)}
           actionLabel={t("common.refresh")}
