@@ -29,7 +29,10 @@ export async function demoRawRequest(
       "/api/wallets/tonconnect/check-proof",
       "/api/wallets/connect",
     ].includes(normalized.split("?")[0]);
-  if (guestTonProofWrite || (
+  const guestActivityWrite = currentDemoSessionScope() === "guest"
+    && method === "POST"
+    && normalized.split("?")[0] === "/api/deposit/direct-check";
+  if (guestTonProofWrite || guestActivityWrite || (
       method !== "GET" && !guest &&
       normalized !== "/api/staging/login" && normalized !== "/api/staging/guest"
   )) {
