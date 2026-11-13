@@ -130,3 +130,25 @@ test("deposit stays compact and external wallet owns transaction approval", () =
   assert.match(deposit, /void sendTransaction\(ready\.tx\)\.then\(/);
   assert.doesNotMatch(deposit, /routePrimaryWalletExecution/);
 });
+
+test("profile and withdraw CSV/XLSX exports use the same server stream with distinct category scope", () => {
+  const service = file("../../src/services/profile.service.ts");
+  const query = file("../../src/queries/useProfile.ts");
+  const profile = file("../../src/features/profile/WebProfilePage.tsx");
+  const withdraw = file("../../src/pages/withdraw.tsx");
+  const history = file("../../src/components/profile/ProfileHistorySection.tsx");
+
+  assert.match(service, /new URLSearchParams\(\{ category \}\)/);
+  assert.match(service, /transportRawRequest\(`\/profile\/history\/export\.\$\{format\}\?\$\{query\.toString\(\)\}`/);
+  assert.match(query, /downloadProfileHistoryExport\(format, category\)/);
+  assert.match(profile, /mutateAsync\(\{ format, category: historyFilter \}\)/);
+  assert.match(profile, /useState<HistoryFilter>\("all"\)/);
+  assert.match(withdraw, /mutateAsync\(\{ format, category: "withdraw" \}\)/);
+  assert.equal((withdraw.match(/data-history-export="(?:csv|xlsx)-server-side"/g) || []).length, 2);
+  assert.doesNotMatch(withdraw, /withdraw\.latest_operations/);
+  assert.doesNotMatch(withdraw, /useWalletBalanceHistory/);
+  for (const category of ["all", "purchases", "exchange", "withdraw", "bonuses", "panels"]) {
+    assert.ok(history.includes('"' + category + '"'), category);
+    assert.ok(service.includes('"' + category + '"'), category);
+  }
+});
