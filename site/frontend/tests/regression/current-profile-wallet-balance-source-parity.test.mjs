@@ -9,11 +9,29 @@ test("profile navigation retains reference account surfaces without duplicate FA
   assert.match(profile, /data-profile-content="profile"/);
   assert.match(profile, /data-profile-content="wallet"/);
   assert.match(profile, /data-profile-content="history"/);
-  assert.match(profile, /label=\{t\("profile\.total_generated"\)\}/);
+  assert.match(profile, /className="source-stats two"/);
+  assert.match(profile, /className="source-stat-label">\{t\("profile\.total_generated"\)\}/);
+  assert.match(profile, /className="source-card source-profile-settings-card efhc-profile-action-card"/);
+  assert.match(profile, /className="efhc-profile-topbar source-profile-topbar"/);
+  assert.match(profile, /className="efhc-profile-hero source-profile-hero"/);
   assert.match(profile, /t\("profile\.interface_account_note"\)/);
   assert.doesNotMatch(profile, /data-profile-faq-entry="button-1304"/);
   assert.doesNotMatch(profile, /efhc-profile-action-card--wallet-layout/);
   assert.doesNotMatch(profile, /efhc-history-card p-3/);
+});
+
+test("profile topbar and hero follow the reference mobile geometry for every color theme", () => {
+  const profile = file("../../src/features/profile/WebProfilePage.tsx");
+  const css = file("../../src/styles/globals.css");
+  assert.match(profile, /className="source-button secondary" data-app-navigation="back"/);
+  assert.match(profile, /className="efhc-profile-topbar_actions source-row"/);
+  assert.match(profile, /className="efhc-profile-identity source-profile-identity"/);
+  assert.match(profile, /className="source-stats two"/);
+  assert.match(profile, /source-profile-compact-controls/);
+  assert.match(css, /grid-template-columns: max-content minmax\(0, 1fr\) max-content !important/);
+  assert.match(css, /#profilePage \.efhc-profile-hero\.source-profile-hero/);
+  assert.match(css, /#profilePage \.source-stats \.source-stat/);
+  assert.match(css, /rgba\(var\(--efhc-ct-accent-rgb\), \.30\)/);
 });
 
 test("account identity action is at the bottom, guests never look verified, and four tabs remain", () => {
@@ -39,6 +57,11 @@ test("gear opens only source four toggles and avatar retains advanced services",
   assert.match(page, /setExtendedProfileOpen\(true\)/);
   assert.match(dialog, /data-profile-settings-compact="four"/);
   assert.match(dialog, /referenceLayout="settings"/);
+  const settings = file("../../src/lib/settings.ts");
+  assert.match(settings, /music_enabled: false,/);
+  assert.match(settings, /sfx_enabled: true,/);
+  assert.match(settings, /haptics_enabled: true,/);
+  assert.match(settings, /reduce_motion: false,/);
   for (const setting of ["reduce_motion", "sfx_enabled", "haptics_enabled", "music_enabled"]) {
     assert.ok(dialog.includes('key: "' + setting + '"'));
   }
