@@ -475,13 +475,17 @@ export default function WebProfilePage(props: Props) {
                 void walletActions.mutateAsync({
                   kind: "make-primary",
                   walletId: id,
-                }).catch(() => undefined);
+                }).catch(() => {
+                  ctx.toast(t("common.action_not_available_now"), "error");
+                });
               }}
               onRemove={(id) => {
                 void walletActions.mutateAsync({
                   kind: "remove",
                   walletId: id,
-                }).catch(() => undefined);
+                }).catch(() => {
+                  ctx.toast(t("common.action_not_available_now"), "error");
+                });
               }}
               hapticsEnabled={props.settings.haptics_enabled}
             />
