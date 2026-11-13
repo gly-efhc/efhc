@@ -1179,14 +1179,13 @@ html[data-theme="light"]{
 
 
 @keyframes efhc-splash-breathe{
-  0%{transform:scale(1);}
-  50%{transform:scale(1.05);}
-  100%{transform:scale(1);}
+  0%{opacity:1;}
+  50%{opacity:0.94;}
+  100%{opacity:1;}
 }
 
 .efhc-splash-breathe{
   animation: efhc-splash-breathe 2s ease-in-out infinite;
-  will-change: transform;
 }
 
 .efhc-faq-shell{

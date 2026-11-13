@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="-2048 -2048 12288 12288" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="-2048 -2048 12288 12288" role="img" aria-labelledby="title desc">
   <title id="title">EFHC — full mirror symmetry 04; micro arc-aligned upper V-lobe valleys</title>
   <desc id="desc">Parent FULL_LEFT_RIGHT_SYMMETRY_03. Only the two small concave A317.333333 valley arcs of the upper-left and upper-right V-lobes are shifted minimally along their common compass circle about the central yellow-circle center so each valley midpoint lies exactly on its pre-existing fixed construction ray. Left/right correction is exact mirror. Arc radius, protected 550-unit aperture, lobe area, outer frame, triangles, hub, lower lobe, tips, joins, colors and document geometry are preserved. No whole-lobe rotation, no transforms, masks, raster patches or new rays.</desc>
   <rect id="mask-background" x="-2048" y="-2048" width="12288" height="12288" fill="#000000" />
