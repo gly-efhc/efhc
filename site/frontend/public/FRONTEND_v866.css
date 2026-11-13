@@ -11100,7 +11100,7 @@ html[data-interface-app-mode="user"] #profileSettingsOverlay .efhc-settings-disc
 
 /* OWNER Cycle0553: standalone Profile buttons and language carousel follow CT, not legacy blue. */
 html[data-interface-app-mode="user"][data-color-theme-id] #profilePage
-:is(.source-profile-tabs button,.source-profile-topbar button,.source-profile-settings-card button:not(.source-profile-language-button):not(.source-profile-language-option):not(.efhc-compact-language-picker_button):not(.efhc-compact-language-picker_option),
+:is(.source-profile-tabs button,.source-profile-topbar button,.source-profile-settings-card button:not(.source-profile-language-button):not(.source-profile-language-option):where(:not(.efhc-compact-language-picker_button,.efhc-compact-language-picker_option)),
 .source-profile-content button.source-button) {
   border-color:rgba(var(--efhc-ct-accent-rgb),.30)!important;
   background-color:rgba(var(--efhc-ct-accent-rgb),.055)!important;
