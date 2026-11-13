@@ -23152,6 +23152,191 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
   border-radius: .82rem;
 }
 
+
+/* Account/profile source layout. All material colors inherit the current
+   ten-color-theme system; no route-specific accent or copied reference blue. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page .source-profile-tabs button {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .30) !important;
+  color: var(--tg-text);
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page .source-profile-tabs button[data-active="true"] {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .68) !important;
+  color: var(--efhc-ct-accent) !important;
+  background: rgba(var(--efhc-ct-accent-rgb), .09) !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page :is(.efhc-profile-provider-entry, .efhc-provider-action) {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .36) !important;
+  color: var(--efhc-ct-accent) !important;
+  background: rgba(var(--efhc-ct-accent-rgb), .055) !important;
+  box-shadow: none !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-provider-page :is(.source-profile-topbar, .efhc-account-provider-card) {
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30) !important;
+  border-radius: 12px;
+  background: transparent !important;
+  color: var(--tg-text);
+  box-shadow: none !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-provider-page .source-profile-topbar button {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .36) !important;
+  color: var(--efhc-ct-accent) !important;
+  background: transparent !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page [data-profile-content="wallet"] .efhc-wallet-entry {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .30);
+  background: transparent;
+  color: var(--tg-text);
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page [data-profile-content="wallet"] .efhc-wallet-entry[data-wallet-role="primary"] {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .50);
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-profile-page [data-profile-content="wallet"] .efhc-wallet-entry :is(.source-button.secondary, .efhc-wallet-address-control) {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .30);
+  background: transparent;
+  color: var(--tg-text);
+}
+
+/* Both reference dialogs share one genuine TON-compatible Modal runtime.
+   The existing portal is already assigned all ten CT accent token pairs. */
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout]
+.efhc-reference-dialog {
+  width: min(100%, 390px);
+  max-width: 390px;
+  max-height: min(82vh, 700px);
+  overflow: hidden;
+  padding: .9rem;
+  border-radius: 1rem !important;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30) !important;
+  background: var(--tg-secondary-bg, #0b111d) !important;
+  color: var(--tg-text, #f8fafc);
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout]
+.efhc-reference-dialog .efhc-modal-header {
+  position: static;
+  margin: 0 0 .68rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout]
+.efhc-reference-dialog .efhc-modal-title {
+  font-size: .85rem;
+  font-weight: 800;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout]
+.efhc-reference-dialog .efhc-modal-close {
+  width: auto;
+  height: auto;
+  min-height: 2.3rem;
+  padding: .5rem .7rem;
+  border-radius: .72rem;
+  border-color: rgba(var(--efhc-ct-accent-rgb), .30) !important;
+  background: transparent !important;
+  color: var(--tg-text);
+  font-size: .75rem;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout]
+.efhc-reference-dialog .efhc-modal-body {
+  max-height: calc(min(82vh, 700px) - 5rem);
+  overflow-y: auto;
+  padding: 0;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+.standalone-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .65rem 0;
+  border-bottom: 1px solid rgba(var(--efhc-ct-accent-rgb), .20);
+  font-size: 12px;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+.standalone-settings-row:last-child { border-bottom: 0; }
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+.standalone-setting-toggle {
+  min-width: 3.5rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .32);
+  background: transparent;
+  color: var(--tg-text);
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+.standalone-setting-toggle[data-active="true"] {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .66);
+  background: rgba(var(--efhc-ct-accent-rgb), .16);
+  color: var(--efhc-ct-accent);
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-reference-deposit-form {
+  display: grid;
+  gap: .68rem;
+  width: 100%;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-reference-deposit-form label {
+  display: grid;
+  gap: .3rem;
+  color: var(--tg-hint);
+  font-size: .62rem;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-direct-deposit_amount-control {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-direct-deposit_amount-control input {
+  display: block;
+  width: 100%;
+  min-height: 2.7rem;
+  padding: .55rem .62rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .42);
+  border-radius: .65rem;
+  background: rgba(var(--efhc-ct-accent-rgb), .04);
+  color: var(--tg-text);
+  font-size: 1rem;
+  font-weight: 800;
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-direct-deposit_amount-control input:focus-visible {
+  outline: 0 !important;
+  box-shadow: none !important;
+  border-color: rgba(var(--efhc-ct-accent-rgb), .60);
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-reference-deposit-summary {
+  display: grid;
+  gap: .4rem;
+  padding: .55rem 0;
+  border-top: 1px solid rgba(var(--efhc-ct-accent-rgb), .25);
+  border-bottom: 1px solid rgba(var(--efhc-ct-accent-rgb), .25);
+}
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-reference-deposit-summary :is(small, strong) { font-size: .72rem; }
+.efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="deposit"]
+.efhc-direct-deposit_actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .5rem;
+}
+
 /* USER achievement caption transparency and active CT history materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
