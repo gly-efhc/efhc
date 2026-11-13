@@ -14724,7 +14724,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 
 .efhc-panels-activation-card[data-pa="PA-04"] > .grid > .grid {
   padding: .45rem;
-  border: 1px solid rgba(110, 168, 255, .15);
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .15);
   border-radius: .72rem;
   background: rgba(59, 130, 246, .045);
 }
@@ -22393,7 +22393,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   background:rgba(var(--efhc-route-accent-rgb),.045)!important;
 }
 [data-interface-app-mode="user"][data-global-theme-id="04"] .efhc-panels-activation-card[data-pa="PA-04"]>.grid>.grid{
-  border-color:var(--efhc-route-border)!important;
+  border-color:rgba(var(--efhc-ct-accent-rgb),.15)!important;
   background:rgba(var(--efhc-route-accent-rgb),.05)!important;
 }
 [data-interface-app-mode="user"][data-global-theme-id="09"] .efhc-tasks-shell[data-tg="TG-09"] .efhc-game-hero{
