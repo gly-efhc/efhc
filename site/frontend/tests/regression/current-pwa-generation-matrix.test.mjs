@@ -329,7 +329,7 @@ test("T9: online no-store build metadata is never supplied from stale content ca
   assert.equal(calls,1);
 });
 
-test("T10: emergency offline HTML is sourced from newest retained generation",async()=>{
+test("T10: missing current offline HTML never resurrects an obsolete generation",async()=>{
   const h=harness(),current=h.createClient("current"),old=h.createClient("old");
   h.clients.value=[current,old];
   await h.seed("A");await h.seed("B");const c=await h.seed("C");
@@ -337,7 +337,9 @@ test("T10: emergency offline HTML is sourced from newest retained generation",as
   await worker.dispatch("activate");
   await c.delete("/efhc/index.html");
   const response=await worker.navigationFallback(new Request(origin+"/efhc/"),{waitUntil:()=>{}});
-  assert.equal(await response.text(),"HTML B");
+  assert.notEqual(await response.text(),"HTML B",
+    "Retired documents cannot replace a missing current build");
+  assert.equal(response.status,503,"A corrupted current shell must fail closed, not display old code");
 });
 
 test("T11: a cache owned by a second origin-sibling app is not deleted",async()=>{
