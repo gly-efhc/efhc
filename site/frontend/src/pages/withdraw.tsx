@@ -200,7 +200,7 @@ export default function WithdrawPage(props: {
   const withdrawAmountOk = amountIssue === null;
 
   const activeWallets = useMemo(
-    () => (walletsMe.data?.wallets || []).filter((wallet) => wallet.is_active),
+    () => (walletsMe.data?.wallets || []).filter((wallet) => wallet.is_active && wallet.proof_verified === true),
     [walletsMe.data?.wallets],
   );
   const primaryWallet = useMemo(
