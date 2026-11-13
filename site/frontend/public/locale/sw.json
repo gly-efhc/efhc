@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Wallet ya utoaji",
   "withdraw.done": "imekamilika",
   "withdraw.efhc_amount": "Kiasi cha EFHCm",
+  "withdraw.export_error": "Imeshindikana kusafirisha historia ya utoaji.",
+  "withdraw.export_success": "Historia ya maombi ya kutoa fedha imehifadhiwa.",
   "withdraw.empty_body": "Unapounda ombi la utoaji, litaonekana hapa.",
   "withdraw.empty_title": "Bado hakuna maombi ya uondoaji",
   "withdraw.filter_all": "Zote",

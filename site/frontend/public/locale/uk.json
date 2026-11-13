@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Гаманець для виведення",
   "withdraw.done": "виконано",
   "withdraw.efhc_amount": "Сума EFHCm",
+  "withdraw.export_error": "Не вдалося завантажити історію заявок на виведення.",
+  "withdraw.export_success": "Історію заявок на виведення збережено.",
   "withdraw.empty_body": "Коли ви створите заявку на виведення, вона з’явиться тут.",
   "withdraw.empty_title": "Ще немає запитів на виведення",
   "withdraw.filter_all": "Усі",

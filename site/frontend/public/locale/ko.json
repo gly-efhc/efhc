@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "출금 지갑",
   "withdraw.done": "완료",
   "withdraw.efhc_amount": "EFHCm 금액",
+  "withdraw.export_error": "출금 신청 내역을 내보낼 수 없습니다.",
+  "withdraw.export_success": "출금 신청 내역을 저장했습니다.",
   "withdraw.empty_body": "출금 요청을 생성하면 여기에 표시됩니다.",
   "withdraw.empty_title": "아직 출금 요청이 없습니다",
   "withdraw.filter_all": "전체",

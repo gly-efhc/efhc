@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Кошелёк для вывода",
   "withdraw.done": "выполнено",
   "withdraw.efhc_amount": "Сумма EFHCm",
+  "withdraw.export_error": "Не удалось скачать историю заявок на вывод.",
+  "withdraw.export_success": "История заявок на вывод сохранена.",
   "withdraw.empty_body": "Когда вы создадите заявку на вывод, она появится здесь.",
   "withdraw.empty_title": "Заявок на вывод пока нет",
   "withdraw.filter_all": "Все",

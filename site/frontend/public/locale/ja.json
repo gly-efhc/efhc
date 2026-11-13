@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "出金先ウォレット",
   "withdraw.done": "完了",
   "withdraw.efhc_amount": "EFHCm数量",
+  "withdraw.export_error": "出金申請履歴をエクスポートできませんでした。",
+  "withdraw.export_success": "出金申請履歴を保存しました。",
   "withdraw.empty_body": "出金申請を作成するとここに表示されます。",
   "withdraw.empty_title": "出金申請はまだありません",
   "withdraw.filter_all": "すべて",

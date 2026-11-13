@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Carteira de levantamento",
   "withdraw.done": "concluído",
   "withdraw.efhc_amount": "Montante EFHCm",
+  "withdraw.export_error": "Não foi possível exportar o histórico de saques.",
+  "withdraw.export_success": "Histórico de pedidos de saque salvo.",
   "withdraw.empty_body": "Quando criar um pedido de levantamento, ele aparecerá aqui.",
   "withdraw.empty_title": "Ainda não existem pedidos de levantamento",
   "withdraw.filter_all": "Todos",

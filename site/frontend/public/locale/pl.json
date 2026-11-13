@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Portfel do wypłaty",
   "withdraw.done": "zakończono",
   "withdraw.efhc_amount": "Kwota EFHCm",
+  "withdraw.export_error": "Nie udało się wyeksportować historii wypłat.",
+  "withdraw.export_success": "Historia wniosków o wypłatę została zapisana.",
   "withdraw.empty_body": "Gdy utworzysz wniosek o wypłatę, pojawi się tutaj.",
   "withdraw.empty_title": "Brak wniosków o wypłatę",
   "withdraw.filter_all": "Wszystko",

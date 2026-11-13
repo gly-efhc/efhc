@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Çekim cüzdanı",
   "withdraw.done": "tamamlandı",
   "withdraw.efhc_amount": "EFHCm tutarı",
+  "withdraw.export_error": "Çekim talebi geçmişi dışa aktarılamadı.",
+  "withdraw.export_success": "Çekim talebi geçmişi kaydedildi.",
   "withdraw.empty_body": "Çekim talebi oluşturduğunuzda burada görünür.",
   "withdraw.empty_title": "Henüz çekim talebi yok",
   "withdraw.filter_all": "Tümü",
