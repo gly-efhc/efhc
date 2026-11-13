@@ -23142,7 +23142,6 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 /* Important declarations in a dedicated cascade layer outrank unlayered
    legacy !important styles without editing the frozen source. */
 @layer efhc-ct-route-accents {
-/* USER achievement caption transparency and active CT history materials. */
 
 /* USER wallet cards: geometry follows the frozen HTML account reference.
    Existing Color Theme tokens continue to own border and fill materials. */
@@ -23152,6 +23151,8 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
   padding: .72rem;
   border-radius: .82rem;
 }
+
+/* USER achievement caption transparency and active CT history materials. */
 
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
