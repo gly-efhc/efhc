@@ -76,14 +76,14 @@ export function ProfileWalletSection(props: Props) {
 
       <div className="space-y-2">
         <div
-          className="efhc-wallet-section-heading text-xs font-semibold uppercase tracking-wide text-[color:var(--tg-hint)]"
+          className="source-card-title efhc-wallet-section-heading"
           data-wallet-section-heading="linked"
         >
           {t("wallet.linked_wallets")}
         </div>
         <Button
           variant="secondary"
-          className="w-full efhc-wallet-connect-cta"
+          className="w-full efhc-wallet-connect-cta source-button wide secondary"
           data-wallet-provider-action="connect"
           data-linked-wallets={serverBoundWallets.length > 0 ? "present" : "empty"}
           disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
@@ -97,14 +97,12 @@ export function ProfileWalletSection(props: Props) {
           {props.walletHint || ""}
         </span>
         {props.walletsLoading ? (
-          <TelegramInfoBlock title={t("wallet.loading_wallets_title")}>
+          <div className="source-muted" role="status">
             {t("wallet.loading_wallets_body")}
-          </TelegramInfoBlock>
+          </div>
         ) : null}
         {!props.walletsLoading && !props.walletsError && serverBoundWallets.length === 0 ? (
-          <TelegramInfoBlock title={t("wallet.empty_title")}>
-            {t("wallet.no_active_linked")}
-          </TelegramInfoBlock>
+          <div className="source-muted">{t("wallet.no_active_linked")}</div>
         ) : null}
         <WalletPrimaryCard
           wallet={serverPrimaryWallet}
