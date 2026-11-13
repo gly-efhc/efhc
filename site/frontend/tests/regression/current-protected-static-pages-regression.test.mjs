@@ -7,11 +7,8 @@ import { fileURLToPath } from "node:url";
 // OWNER invariant: pages remain present when API/auth/Global ID fails.
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const protectedPages = [
-  "404.tsx",
-  "500.tsx",
   "_app.tsx",
   "_document.tsx",
-  "_error.tsx",
   "admin/ads.tsx",
   "admin/api-workbench.tsx",
   "admin/bank.tsx",
