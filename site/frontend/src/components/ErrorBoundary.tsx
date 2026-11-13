@@ -1,5 +1,5 @@
 import React from "react";
-import { SafeErrorState } from "./ui/SafeErrorState";
+import { QuietPageSurface } from "./QuietPageSurface";
 
 type Translator = (key: string) => string;
 
@@ -32,39 +32,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
 
     const translate = this.props.t || ((key: string) => key);
-    const fallbackTitle = translate("common.something_went_wrong");
-    const title =
-      this.props.title ||
-      translate("common.screen_refresh_needed") ||
-      fallbackTitle;
-    const detail = translate(
-      "common.safe_recoverable_screen_detail",
-    );
-    const reloadLabel = translate("common.reload");
-    return (
-      <div
-        data-app-render-error="true"
-        className="min-h-[60vh] flex items-center"
-        style={{ justifyContent: "center" }}
-      >
-        <div className="max-w-md w-full">
-          <p className="sr-only">{title}. {detail}. {reloadLabel}</p>
-          <SafeErrorState
-            status={500}
-            onRetry={() => {
-              this.setState({
-                hasError: false,
-                error: undefined,
-              });
-              try {
-                window.location.reload();
-              } catch {
-                // Browser reload can be unavailable in tests.
-              }
-            }}
-          />
-        </div>
-      </div>
-    );
+    const pathname = typeof window === "undefined" ? "/" : window.location.pathname;
+    return <QuietPageSurface pathname={pathname} t={translate} />;
+
   }
 }
