@@ -5,7 +5,6 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
-import { TelegramStatusBadge } from "../components/ui/telegram/TelegramStatusBadge";
 import type { SyncSnapshot } from "../hooks/useSnapshot";
 import { useWalletsMe } from "../hooks/useWalletsMe";
 import { publicApiErrorMessage } from "../lib/publicError";
@@ -19,15 +18,10 @@ import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import { useT } from "../hooks/useT";
 import { useInterfaceVariantSurface } from "../hooks/useInterfaceVariantSurface";
 import { GameHero, GamePageShell } from "../components/ui/GameShell";
-import {
-  balanceHistoryReasonLabel,
-  balanceTypeLabel,
-  withdrawStatusLabel,
-} from "../lib/humanLabels";
+import { withdrawStatusLabel } from "../lib/humanLabels";
 import {
   useCancelWithdrawRequest,
   useCreateWithdrawRequest,
-  useWalletBalanceHistory,
   useWithdrawalsPage,
 } from "../queries/useWithdrawals";
 import type { DbId } from "../types/db-id";
@@ -52,10 +46,6 @@ function isValidD8(raw: string): boolean {
   if (value.includes("e") || value.includes("E")) return false;
   if (value.includes("-")) return false;
   return /^\d+(\.\d{0,8})?$/.test(value);
-}
-
-function balanceAsset(balanceType: "main" | "bonus"): "EFHCm" | "EFHCb" {
-  return balanceType === "bonus" ? "EFHCb" : "EFHCm";
 }
 
 export default function WithdrawPage(props: {
@@ -85,7 +75,6 @@ export default function WithdrawPage(props: {
     () => withdrawalsQ.data?.pages.flatMap((page) => page.items) || [],
     [withdrawalsQ.data],
   );
-  const historyQ = useWalletBalanceHistory();
 
   useEffect(() => {
     let frameOne = 0;
@@ -145,9 +134,7 @@ export default function WithdrawPage(props: {
   }, []);
   const createWithdrawMutation = useCreateWithdrawRequest();
   const cancelWithdrawMutation = useCancelWithdrawRequest();
-  const historyItems = historyQ.data || [];
   const loading = withdrawalsQ.isLoading || withdrawalsQ.isFetching;
-  const historyLoading = historyQ.isLoading || historyQ.isFetching;
   const loadMoreError = withdrawalsQ.isFetchNextPageError && withdrawalsQ.error
     ? publicApiErrorMessage(withdrawalsQ.error, t)
     : null;
@@ -158,9 +145,6 @@ export default function WithdrawPage(props: {
       : null;
   const cancelError = cancelWithdrawMutation.error
     ? publicApiErrorMessage(cancelWithdrawMutation.error, t)
-    : null;
-  const historyError = historyQ.error
-    ? publicApiErrorMessage(historyQ.error, t)
     : null;
   const cursor = withdrawalsQ.hasNextPage
     ? withdrawalsQ.data?.pages.at(-1)?.next_cursor || null
@@ -198,17 +182,14 @@ export default function WithdrawPage(props: {
   const requestTitle = (id: DbId): string =>
     t("withdraw.request_number").replace("{id}", String(id));
 
-  const historyReasonLabel = (reason: string): string =>
-    balanceHistoryReasonLabel(reason, t);
-
   async function refreshWithdrawSurface() {
-    await Promise.all([withdrawalsQ.refetch(), historyQ.refetch()]);
+    await withdrawalsQ.refetch();
   }
 
   async function exportHistory(format: "csv" | "xlsx") {
     if (historyExporting) return;
     try {
-      await historyExport.mutateAsync(format);
+      await historyExport.mutateAsync({ format, category: "withdraw" });
       toast(t("history.export_success"), "success");
     } catch {
       toast(t("history.export_error"), "error");
@@ -286,7 +267,6 @@ export default function WithdrawPage(props: {
       });
       toast(t("withdraw.request_accepted"), "success");
       await withdrawalsQ.refetch();
-      await historyQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -306,7 +286,6 @@ export default function WithdrawPage(props: {
       });
       toast(t("withdraw.toast_canceled"), "success");
       await withdrawalsQ.refetch();
-      await historyQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -583,97 +562,26 @@ export default function WithdrawPage(props: {
         </div>
       </Modal>
 
-      <Card title={t("withdraw.latest_operations")}>
-
-        <div className="space-y-3 text-sm">
-          {historyError ? (
-            <div className="text-sm text-red-600">{historyError}</div>
-          ) : null}
-          {historyLoading && historyItems.length === 0 ? (
-            <EmptyState
-              title={t("withdraw.loading_history")}
-              detail={t("withdraw.reading_balance_movements")}
-            />
-          ) : null}
-          {!historyLoading && historyItems.length === 0 ? (
-            <EmptyState
-              title={t("withdraw.history_empty")}
-              detail={t("withdraw.history_empty_detail")}
-            />
-          ) : null}
-          {historyItems.map((item) => {
-            const balanceLabel = balanceTypeLabel(item.balance_type, t);
-            const directionLabel = item.direction === "credit"
-              ? t("withdraw.credit")
-              : t("withdraw.debit");
-            const rowLabel = [
-              historyReasonLabel(item.reason),
-              directionLabel,
-              balanceLabel,
-            ].join(" · ");
-            return (
-              <div
-                key={item.id}
-                className="rounded-2xl border p-3 space-y-1 efhc-withdraw-history-row"
-                data-withdraw-history-balance-type-label="semantic"
-                aria-label={rowLabel}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="font-semibold">
-                    {historyReasonLabel(item.reason)}
-                  </div>
-                  <TelegramStatusBadge
-                    label={directionLabel}
-                    tone={
-                      item.direction === "credit" ? "connected" : "warning"
-                    }
-                  />
-                </div>
-                <div
-                  className="text-xs text-[color:var(--tg-hint)]"
-                  data-withdraw-history-balance-type-raw-hidden="true"
-                >
-                  <span data-withdraw-history-balance-type="localized">
-                    {balanceLabel}
-                  </span>
-                  <span aria-hidden="true"> · </span>
-                  <span>{formatDate(item.created_at, lang)}</span>
-                </div>
-                <div className="efhc-withdraw-amount-row">
-                  <span>{balanceAsset(item.balance_type)}</span>
-                  <strong className="efhc-financial-number">
-                    {item.amount_efhc}
-                  </strong>
-                </div>
-              </div>
-            );
-          })}
-          <Button variant="secondary" onClick={() => void historyQ.refetch()}>
-            {t("withdraw.refresh_history")}
+      <div className="efhc-withdraw-history-export" data-withdraw-history-export="withdraw-requests-csv-xlsx">
+        <div className="efhc-withdraw-history-export-actions">
+          <Button
+            variant="secondary"
+            disabled={historyExporting}
+            data-history-export="csv-server-side"
+            onClick={() => void exportHistory("csv")}
+          >
+            {historyExporting ? t("history.exporting") : t("history.export_csv")}
           </Button>
-          <div className="efhc-withdraw-history-export" data-withdraw-history-export="profile-history-csv-xlsx">
-            <div className="efhc-withdraw-history-export-title">{t("history.operations_title")}</div>
-            <div className="efhc-withdraw-history-export-actions">
-              <Button
-                variant="secondary"
-                disabled={historyExporting}
-                data-history-export="csv-server-side"
-                onClick={() => void exportHistory("csv")}
-              >
-                {historyExporting ? t("history.exporting") : t("history.export_csv")}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={historyExporting}
-                data-history-export="xlsx-server-side"
-                onClick={() => void exportHistory("xlsx")}
-              >
-                {t("history.export_xlsx")}
-              </Button>
-            </div>
-          </div>
+          <Button
+            variant="secondary"
+            disabled={historyExporting}
+            data-history-export="xlsx-server-side"
+            onClick={() => void exportHistory("xlsx")}
+          >
+            {t("history.export_xlsx")}
+          </Button>
         </div>
-      </Card>
+      </div>
     </GamePageShell>
   );
 }
