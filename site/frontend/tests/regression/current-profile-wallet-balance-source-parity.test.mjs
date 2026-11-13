@@ -163,6 +163,8 @@ test("withdraw owner-approved form and user activity contracts remain independen
   assert.match(withdraw, /\.filter\(\(item\) => statusFilter === "all" \|\| item\.status === statusFilter\)/);
   assert.match(withdraw, /document\.addEventListener\("pointerdown", refreshOnActivity/);
   assert.match(withdraw, /document\.addEventListener\("visibilitychange", refreshOnActivity/);
+  assert.match(withdraw, /data-withdraw-action="load-more"/);
+  assert.match(withdraw, /\[data-withdraw-action="load-more"\]/);
   assert.match(withdraw, /lastRefreshAtRef\.current, request\.dataUpdatedAt\) < 10_000/);
   assert.doesNotMatch(withdraw, /refreshWithdrawSurface|withdraw\.refresh_history/);
   assert.doesNotMatch(withdraw, /efhc-withdraw-primary-summary/);
