@@ -424,7 +424,7 @@ export default function WithdrawPage(props: {
                    : t("withdraw.amount_invalid_range")}
              </div>
            ) : null}
-          {error ? <div className="text-sm text-red-600">{error}</div> : null}
+          {error ? <div className="text-sm text-red-600" role="alert">{error}</div> : null}
 
           <Button
             className="mt-3 w-full"
@@ -472,7 +472,7 @@ export default function WithdrawPage(props: {
             ))}
           </div>
 
-          {cancelError ? <div className="text-sm text-red-600">{cancelError}</div> : null}
+          {cancelError ? <div className="text-sm text-red-600" role="alert">{cancelError}</div> : null}
           {loading && items.length === 0 ? (
             <EmptyState title={t("withdraw.loading_requests")} />
           ) : null}
