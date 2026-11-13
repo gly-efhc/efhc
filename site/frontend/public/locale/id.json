@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Saring pemberitahuan kecil dan simpan hanya peringatan utama.",
   "profile.independent_shell_badge": "Shell independen",
   "profile.interface_account_note": "Bahasa dan pengaturan akun.",
+  "profile.linked_accounts_action": "Akun tertaut",
+  "profile.sign_in_action": "Masuk",
   "profile.interface_note": "Pertahankan shell yang terasa native Telegram. Aksen EFHC harus tetap berada di dalam lapisan konten saja.",
   "profile.interface_title": "Antarmuka",
   "profile.lang.da": "Dansk",
