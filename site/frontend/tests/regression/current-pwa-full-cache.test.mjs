@@ -445,7 +445,7 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
     )
     .replace(
       '  <circle id="yellow-field"',
-      '  <rect id="mask-background" x="-2048" y="-2048" width="12288" height="12288" fill="#06140f" />\n  <circle id="yellow-field"',
+      '  <rect id="mask-background" x="-2048" y="-2048" width="12288" height="12288" fill="#000000" />\n  <circle id="yellow-field"',
     );
   assert.equal(adaptive, expected, "Android SVG must not alter the original logo geometry");
   assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
@@ -457,4 +457,16 @@ test("Profile PWA maintenance checks the registered worker without clearing acco
   assert.match(settings, /GET_CACHE_STATUS/);
   assert.match(settings, /pwa\.maintenance_title/);
   assert.doesNotMatch(settings, /localStorage\.clear\(|caches\.delete\(|indexedDB\.deleteDatabase\(/);
+});
+
+test("Android native splash follows the approved EFHC loading surface", () => {
+  const manifest = JSON.parse(read("public/manifest.webmanifest"));
+  const splash = read("src/components/SplashScreen.tsx");
+  const maskable = read("public/assets/efhc/efhc_maskable.svg");
+  assert.equal(manifest.background_color, "#000000");
+  assert.equal(manifest.theme_color, "#000000");
+  assert.match(splash, /bg-black transition-opacity/);
+  assert.match(splash, /efhc_logo_canon\.svg/);
+  assert.match(splash, /efhc-splash-progress/);
+  assert.match(maskable, /id="mask-background"[^>]+fill="#000000"/);
 });
