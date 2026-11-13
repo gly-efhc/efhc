@@ -47,7 +47,7 @@ try{
   await page.locator('.efhc-game-header_profile-name-button').click();await page.waitForSelector('.efhc-profile-page');
   assert.equal(await page.getByRole('button',{name:/^(Admin|Админ)$/}).count(),0,'guest must not see an Admin entry');
   await page.goto(base+'admin/');
-  await page.locator('[data-admin-access="denied"]').waitFor({state:'visible'});
+  await page.locator('[data-admin-route-guard-state="blocked"]').waitFor({state:'visible'});
   assert.equal(await page.locator('[data-admin-primitive="page"],[data-app-navigation="exit-admin"]').count(),0,'guest reached protected Admin DOM');
   await page.goBack();await page.waitForSelector('.efhc-profile-page');
   await page.locator('[data-nav-key="nav.energy"]').click();await page.waitForSelector('.efhc-energy-stage');
