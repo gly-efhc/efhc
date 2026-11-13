@@ -81,25 +81,40 @@ test("review cannot show mismatched wallet request or invalid on-chain metadata"
   }), /DIRECT_DEPOSIT_REVIEW_INVALID/);
 });
 
-test("review is prepared in the background and one Transfer click opens the wallet", () => {
+test("validated transfer is prepared in the background; reference dialog delegates approval to the wallet", () => {
   const component = file("../../src/components/DepositModal.tsx");
   const originalSend = component.indexOf("const sendPreparedDirectDeposit = useCallback(");
   const reviewMarkup = component.indexOf('data-direct-deposit-review="ready"');
   const action = component.indexOf('data-direct-deposit-action="send-efhc-jetton"');
-  assert.ok(originalSend >= 0 && reviewMarkup > originalSend && action > reviewMarkup);
+  assert.ok(originalSend >= 0 && reviewMarkup === -1 && action > originalSend);
   assert.match(component, /const review = createDirectDepositReview\(/);
   assert.match(component, /setPreparedDeposit\(\{\s*tx,\s*review,/);
   assert.match(component, /window\.setTimeout\(\(\) => \{\s*void prepareDirectEfhcDeposit\(\);/);
   assert.match(component, /t\("deposit\.direct_send_efhc"\)/);
   assert.doesNotMatch(component, /t\("deposit\.review_confirm"\)/);
   assert.match(component, /disabled=\{transactionPhase === "signing"\}/);
-  assert.match(component, /data-direct-deposit-review-attached="ton"/);
-  assert.match(component, /data-direct-deposit-review-fee="pending"/);
-  assert.match(component, /data-direct-deposit-review-recipient="owner"/);
+  assert.doesNotMatch(component, /data-direct-deposit-review-(?:attached|fee|recipient)=/);
+  assert.match(component, /wallet\.proof_verified === true/);
+  assert.match(component, /sameTonAddress\(walletAddress, wallet\.wallet_address\)/);
+  assert.match(component, /if \(!verifiedSessionReady\) \{\s*props\.onClose\(\);/);
+  assert.match(component, /router\.push\(\{ pathname: "\/web-profile", query: \{ section: "wallet" \} \}\)/);
+  assert.doesNotMatch(component, /data-direct-deposit-action="choose-wallet"/);
+  assert.match(component, /referenceLayout="deposit"/);
+  assert.match(component, /depositCreditD8\(creditAmount\)/);
+  assert.doesNotMatch(component, /routePrimaryWalletExecution/);
+  assert.match(component, /useState\("100\.00000000"\)/);
   assert.doesNotMatch(component, /data-direct-deposit-action="edit-amount"/);
   assert.match(component, /void sendTransaction\(ready\.tx\)\.then\(/);
   assert.doesNotMatch(component.slice(originalSend, component.indexOf("async function sendDirectEfhcDeposit",originalSend)),
     /await (?:openDeposit|buildEfhcDirectDepositTx|sendTransaction)/);
+});
+
+test("checking an existing deposit cannot be presented as an unsuccessful new transfer", () => {
+  const component = file("../../src/components/DepositModal.tsx");
+  assert.match(component, /setErrorSource\("check"\)/);
+  assert.match(component, /setError\(t\("common\.load_error"\) \+ " \(DIRECT_DEPOSIT_CHECK_UNAVAILABLE\)"\)/);
+  assert.match(component, /errorSource === "check" \? t\("common\.data_unavailable"\)/);
+  assert.doesNotMatch(component, /setError\(t\("deposit\.direct_open_failed"\) \+ " \(DIRECT_DEPOSIT_CHECK_UNAVAILABLE\)"\)/);
 });
 
 test("official wallet confirmation portal stays interactive during EFHC modal background inert", () => {

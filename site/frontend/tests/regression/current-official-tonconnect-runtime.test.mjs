@@ -51,6 +51,23 @@ test("connect uses the official UI modal without the former custom chooser", () 
   assert.match(adapter, /ui\.setConnectionNetwork\(GENESIS_WALLET_CHAIN\)/);
 });
 
+test("additional verified wallet connection replaces only the active transport session", () => {
+  const profile = get("src/components/profile/ProfileWalletSection.tsx");
+  const layout = get("src/components/Layout.tsx");
+  const webProfile = get("src/features/profile/WebProfilePage.tsx");
+  assert.match(profile, /data-wallet-provider-action="connect"/);
+  assert.doesNotMatch(profile, /WalletConnectBanner/);
+  assert.match(profile, /wallet\.is_active && wallet\.proof_verified === true/);
+  assert.equal((profile.match(/<Button/g) || []).length, 1, "reference wallet screen has one connect action");
+  assert.match(profile, /t\("wallet\.connect_button"\)/);
+  assert.match(layout, /if \(walletSession && mode === "binding"\) \{/);
+  assert.match(layout, /await disconnectWallet\(\)/);
+  assert.match(layout, /setProofState\(null\)/);
+  assert.match(layout, /const prepared = mode === "binding"\s*\? await prepareProof\(\)/);
+  assert.match(webProfile, /label=\{t\("wallet\.title"\)\}/);
+  assert.doesNotMatch(profile, /<input[^>]*wallet.address/i);
+});
+
 test("real wallet Proof, chain and financial-send gates remain separate", () => {
   const adapter = get("src/lib/wallet-provider/adapters/TonConnectAdapter.ts");
   const proof = get("src/lib/tonconnect.ts");

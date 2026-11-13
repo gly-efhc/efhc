@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filtra gli avvisi minori e mantieni solo gli avvertimenti chiave.",
   "profile.independent_shell_badge": "Shell indipendente",
   "profile.interface_account_note": "Lingua e impostazioni dell’account.",
+  "profile.linked_accounts_action": "Account collegati",
+  "profile.sign_in_action": "Accedi",
   "profile.interface_note": "Mantieni la shell nativa Telegram. Gli accenti EFHC devono restare solo nel livello contenuto.",
   "profile.interface_title": "Interfaccia",
   "profile.lang.da": "Dansk",

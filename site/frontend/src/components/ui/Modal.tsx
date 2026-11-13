@@ -118,6 +118,7 @@ export function Modal(
     title: string;
     closeDisabled?: boolean;
     portalColorThemeId?: ColorThemeId;
+    referenceLayout?: "deposit" | "settings";
   }>,
 ) {
   const t = useT();
@@ -308,16 +309,22 @@ export function Modal(
       role="dialog"
       aria-label={props.title}
       data-modal-portal="body"
+      data-modal-reference-layout={props.referenceLayout}
       tabIndex={-1}
       onClick={() => { if (!props.closeDisabled) props.onClose(); }}
     >
       <div
         ref={sheetRef}
-        className="efhc-modal efhc-modal-sheet w-full"
+        className={
+          "efhc-modal efhc-modal-sheet w-full" +
+          (props.referenceLayout ? " standalone-settings-dialog efhc-reference-dialog" : "") +
+          (props.referenceLayout === "deposit" ? " efhc-reference-deposit-dialog" : "") +
+          (props.referenceLayout === "settings" ? " efhc-reference-settings-dialog" : "")
+        }
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className="efhc-modal-header"
+          className={props.referenceLayout ? "efhc-modal-header source-row" : "efhc-modal-header"}
           data-modal-drag-handle="true"
           onPointerDown={onDragStart}
           onPointerMove={onDragMove}
@@ -328,12 +335,12 @@ export function Modal(
           <button
             ref={closeButtonRef}
             type="button"
-            className="efhc-modal-close"
+            className={props.referenceLayout ? "efhc-modal-close source-button secondary" : "efhc-modal-close"}
             aria-label={t("common.close")}
             disabled={props.closeDisabled}
             onClick={props.onClose}
           >
-            ×
+            {props.referenceLayout === "settings" ? t("common.close") : "×"}
           </button>
         </div>
         <div className="efhc-modal-body">{props.children}</div>

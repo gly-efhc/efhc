@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Küçük bildirimleri süzün ve yalnızca ana uyarıları tutun.",
   "profile.independent_shell_badge": "Bağımsız kabuk",
   "profile.interface_account_note": "Dil ve hesap ayarları.",
+  "profile.linked_accounts_action": "Bağlı hesaplar",
+  "profile.sign_in_action": "Giriş yap",
   "profile.interface_note": "Kabuğu Telegram’a özgü tutun. EFHC vurguları yalnızca içerik katmanında kalmalıdır.",
   "profile.interface_title": "Arayüz",
   "profile.lang.da": "Dansk",

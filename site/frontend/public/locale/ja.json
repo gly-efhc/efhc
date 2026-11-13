@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "細かな通知を除外し、重要な警告だけを残します。",
   "profile.independent_shell_badge": "独立シェル",
   "profile.interface_account_note": "言語とアカウント設定。",
+  "profile.linked_accounts_action": "連携アカウント",
+  "profile.sign_in_action": "ログイン",
   "profile.interface_note": "EFHCは独自のゲームシェルを使用します。Telegramデータはパーソナライズに利用できますが、インターフェース動作の必須条件ではありません。",
   "profile.interface_title": "インターフェース",
   "profile.lang.da": "Dansk",

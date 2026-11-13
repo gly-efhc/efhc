@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "छोटी सूचनाएँ फ़िल्टर करें और केवल कुंजी चेतावनियाँ रखें।",
   "profile.independent_shell_badge": "स्वतंत्र शेल",
   "profile.interface_account_note": "भाषा और खाते सेटिंग्स।",
+  "profile.linked_accounts_action": "लिंक किए गए खाते",
+  "profile.sign_in_action": "साइन इन करें",
   "profile.interface_note": "शेल को Telegram-अनुकूल रखें। EFHC उच्चारण रंग केवल सामग्री परत के अंदर रहें।",
   "profile.interface_title": "इंटरफ़ेस",
   "profile.lang.da": "Dansk",

@@ -4,7 +4,7 @@ import type {
 } from "../../lib/wallet-provider";
 import { useT } from "../../hooks/useT";
 import { TelegramInfoBlock } from "../ui/telegram/TelegramInfoBlock";
-import { WalletConnectBanner } from "./wallet/WalletConnectBanner";
+import { Button } from "../ui/Button";
 import {
   WalletListItem,
   type WalletListItemModel,
@@ -35,7 +35,7 @@ export function ProfileWalletSection(props: Props) {
   const t = useT();
   const serverBoundWallets = useMemo(
     () => props.wallets
-      .filter((wallet) => wallet.is_active)
+      .filter((wallet) => wallet.is_active && wallet.proof_verified === true)
       .slice()
       .sort((left, right) => Number(right.is_primary) - Number(left.is_primary)),
     [props.wallets],
@@ -65,20 +65,6 @@ export function ProfileWalletSection(props: Props) {
       data-public-surface="wallet"
       data-wallet-list-only="1305"
     >
-      {props.sessionConnected ? (
-        <WalletConnectBanner
-          connected={props.sessionConnected}
-          restoring={props.sessionRestoring}
-          proofAccepted={props.tonProofAccepted}
-          connectionPhase={props.connectionPhase}
-          walletHint={props.walletHint}
-          onConnect={props.onConnect}
-          onDisconnectSession={props.onDisconnectSession}
-          hapticsEnabled={props.hapticsEnabled}
-          hasLinkedWallet={serverBoundWallets.length > 0}
-        />
-      ) : null}
-
       {props.walletsError ? (
         <TelegramInfoBlock
           title={t("wallet.error_title")}
@@ -88,35 +74,36 @@ export function ProfileWalletSection(props: Props) {
         </TelegramInfoBlock>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="standalone-wallet-layout">
         <div
-          className="efhc-wallet-section-heading text-xs font-semibold uppercase tracking-wide text-[color:var(--tg-hint)]"
+          className="source-card-title efhc-wallet-section-heading"
           data-wallet-section-heading="linked"
         >
           {t("wallet.linked_wallets")}
         </div>
-        {!props.sessionConnected ? (
-          <WalletConnectBanner
-            connected={props.sessionConnected}
-            restoring={props.sessionRestoring}
-            proofAccepted={props.tonProofAccepted}
-            connectionPhase={props.connectionPhase}
-            walletHint={props.walletHint}
-            onConnect={props.onConnect}
-            onDisconnectSession={props.onDisconnectSession}
-            hapticsEnabled={props.hapticsEnabled}
-            hasLinkedWallet={serverBoundWallets.length > 0}
-          />
-        ) : null}
+        <Button
+          variant="secondary"
+          className="w-full efhc-wallet-connect-cta source-button wide secondary"
+          data-wallet-provider-action="connect"
+          data-linked-wallets={serverBoundWallets.length > 0 ? "present" : "empty"}
+          disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
+          onClick={props.onConnect}
+        >
+          {props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"
+            ? t("wallet.connection_waiting")
+            : t("wallet.connect_button")}
+        </Button>
+        <span className="sr-only" role="status" aria-live="polite">
+          {props.walletHint || ""}
+        </span>
+        <div className="standalone-wallet-list">
         {props.walletsLoading ? (
-          <TelegramInfoBlock title={t("wallet.loading_wallets_title")}>
+          <div className="source-muted" role="status">
             {t("wallet.loading_wallets_body")}
-          </TelegramInfoBlock>
+          </div>
         ) : null}
         {!props.walletsLoading && !props.walletsError && serverBoundWallets.length === 0 ? (
-          <TelegramInfoBlock title={t("wallet.empty_title")}>
-            {t("wallet.no_active_linked")}
-          </TelegramInfoBlock>
+          <div className="source-muted">{t("wallet.no_active_linked")}</div>
         ) : null}
         <WalletPrimaryCard
           wallet={serverPrimaryWallet}
@@ -134,6 +121,7 @@ export function ProfileWalletSection(props: Props) {
             hapticsEnabled={props.hapticsEnabled}
             />
         ))}
+        </div>
       </div>
     </div>
   );

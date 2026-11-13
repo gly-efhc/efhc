@@ -30,9 +30,10 @@ export function WalletPrimaryCard(props: Props) {
       <WalletAddressVerification address={wallet.wallet_address} />
 
       {props.onRemove ? (
-        <div className="efhc-wallet-primary-actions">
+        <div className="efhc-wallet-primary-actions standalone-wallet-actions">
           <Button
             variant="secondary"
+            className="source-button secondary"
             onClick={() => {
               hapticSoft(Boolean(props.hapticsEnabled));
               props.onRemove?.(wallet.id);

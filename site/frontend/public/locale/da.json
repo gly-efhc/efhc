@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filtrér mindre beskeder og behold kun centrale advarsler.",
   "profile.independent_shell_badge": "Uafhængig shell",
   "profile.interface_account_note": "Sprog og kontoindstillinger.",
+  "profile.linked_accounts_action": "Tilknyttede konti",
+  "profile.sign_in_action": "Log ind",
   "profile.interface_note": "Hold skallen Telegram-native. EFHC-accenter bør kun være i indholdslaget.",
   "profile.interface_title": "Grænseflade",
   "profile.lang.da": "Dansk",

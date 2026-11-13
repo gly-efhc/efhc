@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filter minor notices and keep only key warnings.",
   "profile.independent_shell_badge": "Independent shell",
   "profile.interface_account_note": "Language and account settings.",
+  "profile.linked_accounts_action": "Linked accounts",
+  "profile.sign_in_action": "Sign in",
   "profile.interface_note": "EFHC uses its own game shell. Telegram data can personalize the app, but it is not required for the interface to work.",
   "profile.interface_title": "Interface",
   "profile.lang.da": "Dansk",

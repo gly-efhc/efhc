@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "사소한 알림은 걸러내고 주요 경고만 유지합니다.",
   "profile.independent_shell_badge": "독립 셸",
   "profile.interface_account_note": "언어 및 계정 설정입니다.",
+  "profile.linked_accounts_action": "연결된 계정",
+  "profile.sign_in_action": "로그인",
   "profile.interface_note": "EFHC는 자체 게임 셸을 사용합니다. Telegram 데이터는 앱 개인화에 사용할 수 있지만 인터페이스 작동에 필수는 아닙니다.",
   "profile.interface_title": "인터페이스",
   "profile.lang.da": "Dansk",
