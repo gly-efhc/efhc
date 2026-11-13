@@ -23369,6 +23369,184 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
   gap: .5rem;
 }
 
+
+/* Profile source geometry: limited to Web Profile, preserving CT chroma
+   and the approved status and avatar materials. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage.source-profile-page {
+  gap: .7rem;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-topbar.source-profile-topbar {
+  display: grid !important;
+  grid-template-columns: max-content minmax(0, 1fr) max-content !important;
+  align-items: center;
+  gap: .45rem;
+  padding: .58rem .65rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30);
+  border-radius: .82rem;
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-topbar.source-profile-topbar > strong {
+  min-width: 0;
+  text-align: center;
+  font-size: .77rem;
+  line-height: 1.15;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-topbar.source-profile-topbar .efhc-profile-topbar_actions {
+  display: flex;
+  width: auto;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: .35rem;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-topbar.source-profile-topbar .source-button {
+  width: auto !important;
+  min-width: 0;
+  min-height: 2.3rem;
+  padding: .5rem .7rem;
+  flex: 0 0 auto;
+  border-color: rgba(var(--efhc-ct-accent-rgb), .30);
+  color: var(--tg-text);
+  background: transparent !important;
+  font-size: .68rem;
+  white-space: nowrap;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-hero.source-profile-hero {
+  display: grid;
+  grid-template-columns: 2.9rem minmax(0, 1fr);
+  align-items: center;
+  gap: .72rem;
+  min-height: 4.72rem;
+  padding: .62rem .72rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30);
+  border-radius: 1rem;
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-hero.source-profile-hero .source-profile-avatar {
+  width: 2.9rem;
+  height: 2.9rem;
+  align-self: center;
+  margin: 0;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-hero.source-profile-hero .source-profile-identity {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: .28rem;
+  text-align: left;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-hero.source-profile-hero .source-profile-name {
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-hero.source-profile-hero .standalone-profile-global-id {
+  justify-content: flex-start;
+  margin: 0;
+  gap: .35rem;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .efhc-profile-third-row.source-profile-third-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .3rem;
+  width: 100%;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-stats.two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .45rem;
+  min-width: 0;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-stats .source-stat {
+  min-width: 0;
+  padding: .55rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .28);
+  border-radius: .75rem;
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-stats .source-stat-label {
+  color: var(--tg-hint);
+  font-size: .59rem;
+  line-height: 1.2;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-stats .source-stat-value {
+  margin-top: .25rem;
+  overflow: hidden;
+  color: var(--tg-text);
+  font-size: .73rem;
+  font-weight: 850;
+  line-height: 1.18;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card {
+  min-height: 138px;
+  padding: 14px !important;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30);
+  border-radius: 12px;
+  background: transparent !important;
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card .source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card .source-card-title {
+  font-size: .88rem;
+  font-weight: 900;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card .source-muted {
+  color: var(--tg-hint);
+  font-size: .69rem;
+  line-height: 1.4;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card .efhc-profile-settings-button {
+  width: auto;
+  min-width: 2.3rem;
+  min-height: 2.3rem;
+  padding: .5rem .7rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30);
+  border-radius: .72rem;
+  background: transparent !important;
+  color: var(--efhc-ct-accent);
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-settings-card .source-profile-compact-controls {
+  display: grid;
+  gap: .58rem;
+  margin-top: .55rem;
+}
+
 /* USER achievement caption transparency and active CT history materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
