@@ -28,15 +28,15 @@ try{
  }
  try{
   await page.goto(base+'web-profile/?section=providers');
-  await page.waitForSelector('[data-efhc-provider-demo]');
-  assert.doesNotMatch(await page.locator('[data-efhc-provider-demo]').innerText(),/DEMO|Тест:|backend|демонстрац/i);
-  await page.locator('[data-demo-provider-action="google"]').click();
-  assert.equal(await page.locator('[data-demo-provider="google"] [data-provider-state]').getAttribute('data-provider-state'),'simulated-linked');
-  results.push({route:'provider-settings',status:'PASS'});console.log('PASS provider settings without engineering copy');
+  await page.locator('[data-profile-content="providers"][data-provider-route="account-providers"]').waitFor({state:'visible'});
+  const providers=page.locator('.efhc-account-providers[data-provider-state-source="server-session"]');
+  assert.equal(await providers.getAttribute('data-provider-auth-state'),'guest','anonymous preview must not invent a linked account');
+  assert.equal(await page.locator('[data-efhc-provider-demo],[data-demo-provider-action]').count(),0,'retired provider simulation must stay removed');
+  await page.locator('[data-provider-open-wallet="official-ton-connect"]').click();
+  await page.locator('[data-profile-content="wallet"]').waitFor({state:'visible'});
+  results.push({route:'provider-settings',status:'PASS'});console.log('PASS verified-session provider UI and official wallet link');
  }catch(e){results.push({route:'provider-settings',status:'FAIL',error:e.message});console.error('FAIL provider settings',e.message)}
- // Navigation is exercised in the same running React application, including
- // entry to and exit from Admin; a sequence of full reloads cannot catch stale
- // renderer state, so it is deliberately a separate check.
+ // Real same-session USER navigation and protected Admin denial; no fake login.
  try{
   await page.goto(base);await page.waitForSelector('.efhc-game-nav');await page.waitForTimeout(500);
   for(const key of ['panels','exchange','tasks','referrals','ranks','energy']){
@@ -45,10 +45,14 @@ try{
    await page.waitForFunction(expected=>document.querySelector('.efhc-independent-shell')?.dataset.themePageRoute===expected,expected);
   }
   await page.locator('.efhc-game-header_profile-name-button').click();await page.waitForSelector('.efhc-profile-page');
-  await page.getByRole('button',{name:/^(Admin|Админ)$/}).first().click();await page.waitForSelector('[data-admin-visual-proof-route="/admin"]');
-  await page.locator('[data-app-navigation="exit-admin"]').click();await page.waitForSelector('.efhc-energy-stage');
-  assert.equal(await page.locator('[data-admin-visual-proof-route]').count(),0);
-  results.push({route:'same-session-navigation',status:'PASS'});console.log('PASS same-session navigation including Admin exit');
+  assert.equal(await page.getByRole('button',{name:/^(Admin|Админ)$/}).count(),0,'guest must not see an Admin entry');
+  await page.goto(base+'admin/');
+  await page.locator('[data-admin-access="denied"]').waitFor({state:'visible'});
+  assert.equal(await page.locator('[data-admin-primitive="page"],[data-app-navigation="exit-admin"]').count(),0,'guest reached protected Admin DOM');
+  await page.goBack();await page.waitForSelector('.efhc-profile-page');
+  await page.locator('[data-nav-key="nav.energy"]').click();await page.waitForSelector('.efhc-energy-stage');
+  assert.equal(await page.locator('[data-admin-primitive="page"]').count(),0);
+  results.push({route:'same-session-navigation',status:'PASS'});console.log('PASS same-session USER routes, denied Admin and back navigation');
  }catch(e){results.push({route:'same-session-navigation',status:'FAIL',error:e.message});console.error('FAIL same-session navigation',e.message)}
 }finally{await browser.close()}
 if(process.env.EFHC_PARITY_ARTIFACTS){await fs.mkdir(process.env.EFHC_PARITY_ARTIFACTS,{recursive:true});await fs.writeFile(process.env.EFHC_PARITY_ARTIFACTS+'/route-results.json',JSON.stringify({results},null,2)+'\n')}
