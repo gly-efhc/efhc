@@ -24,6 +24,7 @@ test("profile language picker receives the historical theme exclusions without c
   assert.match(picker, /profileSurface\?: boolean/);
   assert.match(picker, /source-profile-language-menu/);
   assert.match(webProfile, /<CompactLanguagePicker\s+profileSurface\s+value=/);
-  assert.match(modal, /<CompactLanguagePicker\s+profileSurface\s+value=/);
-  assert.match(picker, /props\.profileSurface \?/, "Shared component must leave Shop unmodified by default");
+  assert.doesNotMatch(modal, /<CompactLanguagePicker\s+profileSurface\s+value=/, "Existing profile modal remains unchanged");
+  assert.match(picker, /props\.profileSurface \? \(/, "Main profile must render the canonical three-column trigger");
+  assert.match(picker, /className="efhc-compact-language-picker_current"/, "Shop and other surfaces retain their existing trigger");
 });

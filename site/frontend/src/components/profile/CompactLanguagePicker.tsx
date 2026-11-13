@@ -38,12 +38,22 @@ export function CompactLanguagePicker(props: Props) {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {props.showLabel !== false ? <span className="efhc-compact-language-picker_label">{props.label}</span> : null}
-        <span className="efhc-compact-language-picker_current">
-          <span aria-hidden="true">{languageFlag(props.value)}</span>
-          <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
-          <span aria-hidden="true">▾</span>
-        </span>
+        {props.profileSurface ? (
+          <>
+            <span aria-hidden="true">{languageFlag(props.value)}</span>
+            <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
+            <span aria-hidden="true">▾</span>
+          </>
+        ) : (
+          <>
+            {props.showLabel !== false ? <span className="efhc-compact-language-picker_label">{props.label}</span> : null}
+            <span className="efhc-compact-language-picker_current">
+              <span aria-hidden="true">{languageFlag(props.value)}</span>
+              <strong>{languageDisplayName(props.value, props.getLabel(props.value))}</strong>
+              <span aria-hidden="true">▾</span>
+            </span>
+          </>
+        )}
       </button>
       {open ? (
         <div
