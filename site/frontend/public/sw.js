@@ -333,38 +333,43 @@ async function cacheUrls(urls, reason = "runtime") {
     percent: total ? 0 : 100,
   });
   const cache = await caches.open(names.staticName);
-  for (const url of unique) {
-    try {
-      const request = new Request(url, { credentials: "same-origin" });
-      const cached = await cache.match(request);
-      if (!cached) {
-        // A newly published HTML may have the same URL as the old release.
-        // Never allow an HTTP disk cache to pin previous markup to a new build.
-        const htmlDocument = names.config.static_export && new URL(request.url).pathname.endsWith(".html");
-        const response = await fetch(request, {cache: htmlDocument ? "no-store" : "reload"});
-        if (!response.ok) throw Error("Precache HTTP " + response.status);
-        if (htmlDocument && !(await response.clone().text()).includes(
-          'name="efhc-build-id" content="' + names.config.build_id + '"')) {
-          throw Error("EFHC_STALE_HTML_BUILD");
+  // Keep installs responsive on constrained WebViews without opening hundreds
+  // of simultaneous requests. Activation remains all-or-nothing below.
+  let next = 0;
+  const store = async () => {
+    while (next < unique.length) {
+      const url = unique[next++];
+      try {
+        const request = new Request(url, { credentials: "same-origin" });
+        const cached = await cache.match(request);
+        if (!cached) {
+          const htmlDocument = names.config.static_export && new URL(request.url).pathname.endsWith(".html");
+          const response = await fetch(request, {cache: htmlDocument ? "no-store" : "reload"});
+          if (!response.ok) throw Error("Precache HTTP " + response.status);
+          if (htmlDocument && !(await response.clone().text()).includes(
+            'name="efhc-build-id" content="' + names.config.build_id + '"')) {
+            throw Error("EFHC_STALE_HTML_BUILD");
+          }
+          await putSafe(cache, request, response);
+          completedBytes += await responseBytes(response);
+        } else {
+          completedBytes += await responseBytes(cached);
         }
-        await putSafe(cache, request, response);
-        completedBytes += await responseBytes(response);
-      } else {
-        completedBytes += await responseBytes(cached);
+      } catch {
+        failures.push(url);
       }
-    } catch {
-      failures.push(url);
+      completed += 1;
+      await notifyClients({
+        type: "CACHE_PROGRESS",
+        reason,
+        completed,
+        completedBytes,
+        total,
+        percent: total ? Math.round((completed / total) * 100) : 100,
+      });
     }
-    completed += 1;
-    await notifyClients({
-      type: "CACHE_PROGRESS",
-      reason,
-      completed,
-      completedBytes,
-      total,
-      percent: total ? Math.round((completed / total) * 100) : 100,
-    });
-  }
+  };
+  await Promise.all(Array.from({length: Math.min(4, total)}, () => store()));
   await pruneCache(names.staticName, cachePolicy(names.config).static);
   // OWNER: the first install of a full exported frontend is atomic. A missing
   // language, font, image or progress design is just as much an incomplete app
