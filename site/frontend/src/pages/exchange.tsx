@@ -29,7 +29,7 @@ export default function ExchangePage(props: {
   tg_id: number | null;
   snap: SyncSnapshot | null;
 }) {
-  const { confirm, toast, settings, openProfile } = useContext(LayoutContext);
+  const { confirm, toast, settings } = useContext(LayoutContext);
   const router = useRouter();
   const customization = useInterfaceCustomization();
   const heroSurface = useInterfaceVariantSurface<HTMLElement>("XH");
@@ -143,15 +143,6 @@ export default function ExchangePage(props: {
         pending={exchangeMutation.isPending}
       />
 
-      <button
-        type="button"
-        className="efhc-exchange-history-link"
-        data-exchange-history-link="account-history"
-        data-exchange-history-link-light="true"
-        onClick={() => openProfile("history")}
-      >
-        {t("exchange.open_history")}
-      </button>
       <Button
         type="button"
         className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"
