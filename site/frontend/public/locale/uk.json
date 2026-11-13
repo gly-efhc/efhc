@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Фільтрувати дрібні сповіщення та залишати лише ключові попередження.",
   "profile.independent_shell_badge": "Незалежна оболонка",
   "profile.interface_account_note": "Мова та налаштування облікового запису.",
+  "profile.linked_accounts_action": "Прив’язані облікові записи",
+  "profile.sign_in_action": "Авторизуватися",
   "profile.interface_note": "Зберігайте Telegram-native оболонку. Акценти EFHC мають жити лише всередині контенту.",
   "profile.interface_title": "Інтерфейс",
   "profile.lang.da": "Dansk",
