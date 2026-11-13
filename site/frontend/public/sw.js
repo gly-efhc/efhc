@@ -3,12 +3,6 @@ const scoped = (path) => `${PWA_SCOPE}/${path.replace(/^\//, "")}`;
 const BUILD_CONFIG_URL = scoped("pwa-build.json");
 const OFFLINE_URL = scoped("offline.html");
 const READONLY_OFFLINE_URL = scoped("offline-readonly.html");
-// Retired operator paths cannot be restored from any previous offline build.
-function isRetiredRoute(pathname) {
-  const path = relativePath(pathname);
-  // No development route belongs to the distributed USER application.
-  return path !== null && (path === "/dev" || path.startsWith("/dev/"));
-}
 function relativePath(path) {
   if (PWA_SCOPE && path !== PWA_SCOPE && !path.startsWith(PWA_SCOPE + "/")) return null;
   return path.slice(PWA_SCOPE.length) || "/";
@@ -189,7 +183,7 @@ function isContentAsset(url) {
 function isSafeCacheUrl(value, config) {
   try {
     const url = new URL(value, self.location.origin);
-    if (url.origin !== self.location.origin || url.search || url.hash || isApiRequest(url.pathname) || isRetiredRoute(url.pathname)) return false;
+    if (url.origin !== self.location.origin || url.search || url.hash || isApiRequest(url.pathname)) return false;
     if (config.static_export && Array.isArray(config.precache) && config.precache.includes(url.pathname)) return true;
     if (isProtectedPath(url.pathname)) return false;
     return isImmutableAsset(url) || isContentAsset(url);
@@ -485,9 +479,7 @@ async function purgeSupersededHtml() {
           const url = new URL(request.url);
           return url.origin === self.location.origin &&
             relativePath(url.pathname) !== null &&
-            (url.pathname.endsWith(".html") ||
-              url.pathname.endsWith("/dev/neon") ||
-              url.pathname.endsWith("/dev/neon/"));
+            url.pathname.endsWith(".html");
         } catch { return false; }
       }).map(request => cache.delete(request)));
     } catch { /* A failed cleanup must never block a verified installation. */ }
@@ -662,12 +654,6 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (isApiRequest(url.pathname)) return;
-  if (isRetiredRoute(url.pathname)) {
-    // Do not replay removed operator pages from a previous offline generation.
-    event.respondWith(new Response("", {status: 404,
-      headers: {"cache-control": "no-store"}}));
-    return;
-  }
   if (request.mode === "navigate") {
     event.respondWith(navigationFallback(request, event));
     return;
