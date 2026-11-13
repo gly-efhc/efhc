@@ -98,6 +98,7 @@ export function DepositModal(props: {
     WalletTransactionPhase
   >("idle");
   const [error, setError] = useState<string | null>(null);
+  const [errorSource, setErrorSource] = useState<"transfer" | "check">("transfer");
   const openDeposit = useDirectDepositOpen();
   const openDepositMetadata = openDeposit.mutateAsync;
   const statusQ = useDirectDepositStatus(openedAt);
@@ -138,6 +139,7 @@ export function DepositModal(props: {
     setManualStatusRequested(false);
     setTransactionPhase("idle");
     setError(null);
+    setErrorSource("transfer");
     openDeposit.reset();
   }, [props.open]);
 
@@ -154,6 +156,7 @@ export function DepositModal(props: {
     }
     const revision = ++preparationRevision.current;
     setError(null);
+    setErrorSource("transfer");
     setPreparedDeposit(null);
     setTransactionPhase("idle");
     setPreparing(true);
@@ -294,6 +297,7 @@ export function DepositModal(props: {
     if (!globalId || checkingOnChain) return;
     setCheckingOnChain(true);
     setError(null);
+    setErrorSource("check");
     // No wallet signing or payment is involved in the verification request.
     // Initial check also covers already-transferred deposits when the modal
     // is reopened; a new transfer remains scoped to its own signed-at time.
@@ -313,13 +317,14 @@ export function DepositModal(props: {
       ]);
       if (openedAt) await statusQ.refetch();
     } catch {
-      setError(t("deposit.direct_open_failed") + " (DIRECT_DEPOSIT_CHECK_UNAVAILABLE)");
+      setError(t("common.load_error") + " (DIRECT_DEPOSIT_CHECK_UNAVAILABLE)");
     } finally {
       setCheckingOnChain(false);
     }
   }
 
   async function sendDirectEfhcDeposit() {
+    setErrorSource("transfer");
     if (!globalId || !amountValid) {
       setError(t("deposit.amount_invalid"));
       return;
@@ -431,7 +436,7 @@ export function DepositModal(props: {
 
         {error ? (
           <TelegramEmptyState
-            title={t("deposit.direct_error_title")}
+            title={errorSource === "check" ? t("common.data_unavailable") : t("deposit.direct_error_title")}
             detail={error}
           />
         ) : null}
