@@ -1301,6 +1301,127 @@ html[data-theme="light"]{
   padding-bottom: 0.25rem;
 }
 
+/* The EFHC status sheet is separate from the advertising provider's own UI. */
+.efhc-modal-overlay[data-modal-surface="withdraw-ad"] {
+  align-items: center;
+  padding: max(1rem, var(--efhc-safe-top)) .85rem max(1rem, var(--efhc-safe-bottom));
+}
+.efhc-modal-overlay[data-modal-surface="withdraw-ad"] .efhc-modal-sheet {
+  width: min(100%, 26rem);
+  max-height: calc(100dvh - var(--efhc-safe-top) - var(--efhc-safe-bottom) - 2rem);
+  border: 1px solid color-mix(in srgb, var(--tg-button) 45%, var(--tg-hint));
+  border-radius: 1.3rem;
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--tg-button) 11%, var(--tg-secondary-bg)),
+    var(--tg-secondary-bg) 75%);
+  box-shadow: 0 18px 56px rgba(0,0,0,.36);
+}
+.efhc-modal-overlay[data-modal-surface="withdraw-ad"] .efhc-modal-body {
+  max-height: calc(100dvh - var(--efhc-safe-top) - var(--efhc-safe-bottom) - 6rem);
+}
+.efhc-withdraw-ad-status {
+  display: grid;
+  justify-items: center;
+  gap: .85rem;
+  padding: .6rem .2rem .25rem;
+  text-align: center;
+}
+.efhc-withdraw-ad-status-icon {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--tg-button) 55%, transparent);
+  background: color-mix(in srgb, var(--tg-button) 13%, var(--tg-secondary-bg));
+  color: var(--tg-button);
+  font-size: 1.65rem;
+  font-weight: 800;
+}
+.efhc-withdraw-ad-status-message {
+  max-width: 34ch;
+  color: var(--tg-text);
+  line-height: 1.45;
+  font-size: clamp(.81rem, 3.2vw, .97rem);
+  overflow-wrap: anywhere;
+}
+.efhc-withdraw-ad-status[data-ad-phase="failed"] .efhc-withdraw-ad-status-icon,
+.efhc-withdraw-ad-status[data-ad-phase="no_fill"] .efhc-withdraw-ad-status-icon,
+.efhc-withdraw-ad-status[data-ad-phase="daily_limit"] .efhc-withdraw-ad-status-icon {
+  color: #ff9099;
+  border-color: color-mix(in srgb, #ff9099 52%, transparent);
+}
+
+/* USER notifications retain selected CT colors; Admin keeps its existing markup. */
+.efhc-user-toast-stack {
+  position: fixed;
+  z-index: 48;
+  inset-inline: 0;
+  bottom: calc(var(--efhc-safe-bottom) + 5.9rem);
+  pointer-events: none;
+}
+.efhc-user-toast-list {
+  display: grid;
+  gap: .55rem;
+  width: min(100%, 35rem);
+  margin-inline: auto;
+  padding-inline: .9rem;
+}
+.efhc-user-toast {
+  --efhc-toast-color: var(--tg-button);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .75rem;
+  padding: .78rem .9rem;
+  border: 1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint));
+  border-left: 3px solid var(--efhc-toast-color);
+  border-radius: .95rem;
+  color: var(--tg-text);
+  background: color-mix(in srgb, var(--tg-secondary-bg) 94%, var(--efhc-toast-color));
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .25);
+  backdrop-filter: blur(14px);
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+}
+.efhc-user-toast[data-toast-kind="error"] { --efhc-toast-color: #ff7b87; }
+.efhc-user-toast-icon {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: .6rem;
+  color: var(--efhc-toast-color);
+  background: color-mix(in srgb, var(--efhc-toast-color) 15%, transparent);
+  font-size: .95rem;
+  font-weight: 850;
+}
+.efhc-user-toast-message { min-width: 0; font-size: .84rem; line-height: 1.4; }
+.efhc-user-toast-close {
+  display: grid;
+  place-items: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--tg-hint) 28%, transparent);
+  border-radius: .6rem;
+  background: transparent;
+  color: var(--tg-text);
+  font-size: 1.1rem;
+}
+.efhc-user-toast-close:focus-visible { outline: 2px solid var(--tg-button); outline-offset: 2px; }
+@media(max-width:380px) {
+  .efhc-user-toast { gap: .5rem; padding: .68rem .7rem; }
+  .efhc-user-toast-list { padding-inline: .5rem; }
+}
+/* Common USER inline error surfaces must remain visible and readable in all CTs. */
+[data-interface-app-mode="user"] [role="alert"].efhc-exchange-helper--warning,
+[data-interface-app-mode="user"] .efhc-withdraw-create-card .text-red-600,
+[data-interface-app-mode="user"] .efhc-withdraw-requests-history .text-red-600 {
+  color: #ff9099;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
 .efhc-game-shell{
   min-height: var(--tg-viewport-height);
   background:
@@ -3835,6 +3956,28 @@ html[data-reduce-motion="1"] *::after{
 
 .efhc-exchange-shell .efhc-exchange-panel {
   display: contents;
+}
+
+/* Withdraw uses source-field spacing, independently of Exchange's field margins. */
+.efhc-withdraw-create-card .efhc-exchange-action-surface {
+  display: grid;
+  gap: .65rem;
+}
+.efhc-withdraw-create-card .efhc-exchange-canonical-row,
+.efhc-withdraw-create-card .efhc-exchange-input-group {
+  margin-top: 0;
+}
+.efhc-withdraw-create-card .efhc-exchange-input-group { gap: .35rem; }
+.efhc-withdraw-create-card .efhc-exchange-input-group .efhc-input { margin-top: 0; }
+.efhc-withdraw-create-card [data-withdraw-action="create"] { margin-top: .15rem; }
+.efhc-withdraw-create-card .efhc-input[data-amount-state="invalid"] {
+  border-color: #ee6d7a;
+  color: #ff9099;
+  background: color-mix(in srgb, #d84a5d 9%, var(--tg-secondary-bg));
+}
+.efhc-withdraw-create-card .efhc-exchange-helper--warning[role="alert"] {
+  margin-top: 0;
+  color: #ff9099;
 }
 
 .efhc-exchange-panel > .text-sm.efhc-text-muted {
