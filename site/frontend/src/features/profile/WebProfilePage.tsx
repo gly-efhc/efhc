@@ -423,7 +423,7 @@ export default function WebProfilePage(props: Props) {
         />
         <TabButton
           active={activeTab === "wallet"}
-          label="Wallet"
+          label={t("wallet.title")}
           trustSurface="wallet"
           onClick={() => setTab("wallet")}
         />
