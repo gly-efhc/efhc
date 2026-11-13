@@ -59,7 +59,7 @@ test("additional verified wallet connection replaces only the active transport s
   assert.doesNotMatch(profile, /WalletConnectBanner/);
   assert.match(profile, /wallet\.is_active && wallet\.proof_verified === true/);
   assert.equal((profile.match(/<Button/g) || []).length, 1, "reference wallet screen has one connect action");
-  assert.match(profile, /\{t\("wallet\.connect_button"\)\}/);
+  assert.match(profile, /t\("wallet\.connect_button"\)/);
   assert.match(layout, /if \(walletSession && mode === "binding"\) \{/);
   assert.match(layout, /await disconnectWallet\(\)/);
   assert.match(layout, /setProofState\(null\)/);
