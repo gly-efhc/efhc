@@ -152,26 +152,10 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
   assert.equal(await(await worker.cacheFirst(new Request(origin+bCss))).text(),"blue");
 });
 
-test("Removed dev/neon never falls back to legacy offline HTML",async()=>{
-  const h=harness();
-  const legacy=h.createClient("legacy","/efhc/panels/");
-  h.clients.value=[legacy];
-  await h.seed("A",{"/efhc/dev/neon/index.html":"obsolete console"});
-  await h.seed("B");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
-    "Legacy cache is retained for a still-open previous tab");
-  for(const pathname of ["/efhc/dev","/efhc/dev/","/efhc/dev/neon",
-    "/efhc/dev/neon/","/efhc/dev/neon/index.html",
-    "/efhc/dev/neon/?utm_source=chatgpt.com","/efhc/dev/old-console/"]){
-    const response=await worker.dispatch("fetch",{request:{
-      url:origin+pathname,method:"GET",mode:"navigate",
-    }});
-    assert.equal(response.status,404,pathname);
-    assert.equal(await response.text(),"",pathname);
-    assert.equal(response.headers.get("cache-control"),"no-store");
-  }
+test("Deleted development route is absent from Service Worker routing",()=>{
+  assert.doesNotMatch(source,/isRetiredRoute|\/dev\/neon/);
+  assert.ok(!source.includes('event.respondWith(new Response("", {status: 404')),
+    "Deleted pages cannot leave behind a synthetic 404 route stub");
 });
 
 test("New verified worker purges old HTML immediately without discarding legacy hashed JS",async()=>{
