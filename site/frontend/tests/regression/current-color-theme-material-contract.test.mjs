@@ -115,7 +115,7 @@ test("achievement heading and withdrawal history keep CT styling without repaint
   assert.match(exchange, /className="w-full efhc-theme03-cta"/);
   assert.match(css, /\.efhc-exchange-action-surface \[data-exchange-submit-action="true"\] \{\s*margin-top: 0\.65rem;/);
   assert.match(exchange, /data-exchange-submit-action="true"/);
-  assert.match(exchangeRoute, /data-exchange-history-link="account-history"/);
+  assert.doesNotMatch(exchangeRoute, /data-exchange-history-link|openProfile\("history"\)|exchange\.open_history/);
   assert.doesNotMatch(exchangeRoute, /history_profile_note|efhc-exchange-history-boundary|<GameNotice|TelegramEmptyState/);
   assert.doesNotMatch(exchange, /\{normalizedAmount\} EFHCm/);
   assert.match(exchangeRoute, /className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"/);
@@ -132,4 +132,29 @@ test("nine CT Exchange actions reuse the exact Theme03 material without touching
   assert.equal(mirrored[1], canonical[1], "Material differs from original Theme03");
   assert.doesNotMatch(mirrored[1], /!important|(?:width|height|padding|margin|border-radius|font-size|display|position)\s*:/,
     "Do not override independent Exchange geometry or force CSS precedence");
+});
+
+
+test("Panels activation display numbering resolves to the original ordered physical styles", () => {
+  const registry = read("src/lib/interfaceVariantRegistry.ts");
+  const panels = read("src/pages/panels.tsx");
+  assert.match(registry, /PA:\s*numbered\("PA",\s*6\)/);
+  assert.match(registry, /"PA":\{"PA-03":"PA-04","PA-04":"PA-10","PA-05":"PA-11","PA-06":"PA-12"\}/);
+  assert.match(registry, /return INTERFACE_VARIANT_STYLE_BINDINGS\[group\]\[canonical\] \|\| canonical/);
+  assert.match(panels, /useInterfaceVariantSurface<HTMLDivElement>\("PA"\)/);
+  assert.match(panels, /data-pa=\{activationSurface\.variant\}/);
+  const authoredFrame = /\.efhc-panels-activation-card\[data-pa="PA-04"\] > \.grid > \.grid \{([^}]+)\}/.exec(css);
+  assert.ok(authoredFrame, "The third displayed template must retain its existing physical frame");
+  assert.match(authoredFrame[1], /border:\s*1px solid rgba\(var\(--efhc-ct-accent-rgb\),\s*\.15\)/);
+  const legacyOverride = /\[data-global-theme-id="04"\] \.efhc-panels-activation-card\[data-pa="PA-04"\]>.grid>.grid\{([^}]+)\}/.exec(css);
+  assert.ok(legacyOverride, "Legacy Theme04 must not override the selected color");
+  assert.match(legacyOverride[1], /border-color:rgba\(var\(--efhc-ct-accent-rgb\),\.15\)!important/);
+});
+
+test("Exchange removes duplicate history entry while retaining withdrawal and conversion", () => {
+  const exchangeRoute = read("src/pages/exchange.tsx");
+  assert.doesNotMatch(exchangeRoute, /data-exchange-history-link|openProfile\("history"\)|exchange\.open_history/);
+  assert.match(exchangeRoute, /<ExchangePanel/);
+  assert.match(exchangeRoute, /exchangeMutation\.mutateAsync/);
+  assert.match(exchangeRoute, /data-exchange-withdraw-entrypoint="restored-canonical"/);
 });
