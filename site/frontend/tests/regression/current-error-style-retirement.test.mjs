@@ -24,10 +24,11 @@ test("No retired 404/500/error route CSS ships from app styles or public assets"
 
 test("Approved live USER and Shop selectors survive error-screen CSS retirement",()=>{
   const globalCss=readFileSync(path.join(frontend,"src/styles/globals.css"),"utf8");
-  const shopCss=readFileSync(path.join(frontend,"public/SHOP_v866.css"),"utf8");
+  const publicCss=enumerate(path.join(frontend,"public")).map(filename=>readFileSync(filename,"utf8"));
   const referralsCss=readFileSync(path.join(frontend,"public/referrals.css"),"utf8");
   assert.match(globalCss,/\.efhc-withdraw-create-card/);
-  assert.match(shopCss,/\.efhc-ads-trust-shell/);
+  assert.ok(publicCss.some(css=>/\.efhc-ads-trust-shell/.test(css)),
+    "Approved Shop trust shell must survive CSS cleanup");
   assert.match(referralsCss,/\.efhc-referrals-shell/);
   // Domain-specific inline errors are still required for truthful operation feedback.
   assert.match(globalCss,/\.efhc-safe-error-inline/);
