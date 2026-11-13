@@ -65,15 +65,20 @@ export default function WithdrawPage(props: {
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const createSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [withdrawAdOpen, setWithdrawAdOpen] = useState(false);
   const [withdrawAdBusy, setWithdrawAdBusy] = useState(false);
   const [withdrawAdPhase, setWithdrawAdPhase] = useState<AdRunPhase | null>(null);
   const historyExport = useProfileHistoryExport();
   const historyExporting = historyExport.isPending;
-  const withdrawalsQ = useWithdrawalsPage({ statusFilter });
+  const withdrawalsQ = useWithdrawalsPage({ statusFilter: "all" });
+  const lastRefreshAtRef = useRef(Date.now());
+  const withdrawalsRef = useRef(withdrawalsQ);
+  withdrawalsRef.current = withdrawalsQ;
   const items = useMemo(
-    () => withdrawalsQ.data?.pages.flatMap((page) => page.items) || [],
-    [withdrawalsQ.data],
+    () => (withdrawalsQ.data?.pages.flatMap((page) => page.items) || [])
+      .filter((item) => statusFilter === "all" || item.status === statusFilter),
+    [withdrawalsQ.data, statusFilter],
   );
 
   useEffect(() => {
@@ -132,6 +137,29 @@ export default function WithdrawPage(props: {
       if (frameTwo) window.cancelAnimationFrame(frameTwo);
     };
   }, []);
+  useEffect(() => {
+    const refreshOnActivity = (event: Event) => {
+      if (!globalId || document.visibilityState === "hidden") return;
+      if (event.type !== "visibilitychange") {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest('[data-public-surface="withdraw"]')) return;
+      }
+      const request = withdrawalsRef.current;
+      const now = Date.now();
+      if (request.isFetching || now - Math.max(lastRefreshAtRef.current, request.dataUpdatedAt) < 10_000) return;
+      lastRefreshAtRef.current = now;
+      void request.refetch({ cancelRefetch: false });
+    };
+    document.addEventListener("pointerdown", refreshOnActivity, { passive: true });
+    document.addEventListener("keydown", refreshOnActivity);
+    document.addEventListener("visibilitychange", refreshOnActivity);
+    return () => {
+      document.removeEventListener("pointerdown", refreshOnActivity);
+      document.removeEventListener("keydown", refreshOnActivity);
+      document.removeEventListener("visibilitychange", refreshOnActivity);
+    };
+  }, [globalId]);
+
   const createWithdrawMutation = useCreateWithdrawRequest();
   const cancelWithdrawMutation = useCancelWithdrawRequest();
   const loading = withdrawalsQ.isLoading || withdrawalsQ.isFetching;
@@ -159,13 +187,15 @@ export default function WithdrawPage(props: {
     () => cmp8(mainBalance, "10.00000000") >= 0,
     [mainBalance],
   );
-  const withdrawAmountOk = useMemo(() => {
-    if (!isValidD8(amount)) return false;
-    const normalized = format8(amount);
-    return (
-      cmp8(normalized, "10.00000000") >= 0 && cmp8(normalized, mainBalance) <= 0
-    );
+  const amountIssue = useMemo(() => {
+    if (!amount.trim()) return "missing";
+    if (!isValidD8(amount)) return "invalid";
+    const value = format8(amount);
+    if (cmp8(value, "10.00000000") < 0) return "minimum";
+    if (cmp8(value, mainBalance) > 0) return "balance";
+    return null;
   }, [amount, mainBalance]);
+  const withdrawAmountOk = amountIssue === null;
 
   const activeWallets = useMemo(
     () => (walletsMe.data?.wallets || []).filter((wallet) => wallet.is_active),
@@ -181,10 +211,6 @@ export default function WithdrawPage(props: {
 
   const requestTitle = (id: DbId): string =>
     t("withdraw.request_number").replace("{id}", String(id));
-
-  async function refreshWithdrawSurface() {
-    await withdrawalsQ.refetch();
-  }
 
   async function exportWithdrawRequests(format: "csv" | "xlsx") {
     if (historyExporting) return;
@@ -266,7 +292,6 @@ export default function WithdrawPage(props: {
         idempotencyKey: newIdempotencyKey(),
       });
       toast(t("withdraw.request_accepted"), "success");
-      await withdrawalsQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -285,7 +310,6 @@ export default function WithdrawPage(props: {
         idempotencyKey: newIdempotencyKey(),
       });
       toast(t("withdraw.toast_canceled"), "success");
-      await withdrawalsQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -347,6 +371,7 @@ export default function WithdrawPage(props: {
               onClick={() => {
                 hapticMedium(settings.haptics_enabled);
                 setAmount(mainBalance);
+                 setAmountTouched(false);
               }}
               disabled={!withdrawMinOk}
             >
@@ -361,34 +386,35 @@ export default function WithdrawPage(props: {
             <input
               ref={amountInputRef}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
               className="efhc-input mt-2 w-full tabular-nums"
+               data-amount-state={amountTouched && amountIssue ? "invalid" : "valid"}
               inputMode="decimal"
-              aria-invalid={!withdrawAmountOk}
-              aria-describedby={!withdrawAmountOk ? "efhc-withdraw-amount-helper" : undefined}
+              aria-invalid={amountTouched && !withdrawAmountOk}
+              aria-describedby={amountTouched && !withdrawAmountOk ? "efhc-withdraw-amount-helper" : undefined}
               data-withdraw-amount-input="efhcm-main-only"
             />
           </label>
 
-          {primaryWallet ? (
-            <div className="efhc-withdraw-primary-summary" data-withdraw-wallet-source="profile-primary" data-withdraw-wallet-id={String(primaryWallet.id)}>
-              <span>{t("wallet.primary_wallet")}</span>
-              <strong>{maskWallet(primaryWallet.wallet_address)}</strong>
-            </div>
-          ) : (
-            <Button variant="secondary" className="w-full" onClick={() => openWalletConnect()}>
-              {t("withdraw.connect_wallet")}
-            </Button>
-          )}
+          {!primaryWallet ? (
+             <Button variant="secondary" className="w-full" onClick={() => openWalletConnect()}>
+               {t("withdraw.connect_wallet")}
+             </Button>
+           ) : null}
 
-          {!withdrawAmountOk ? (
-            <div
-              id="efhc-withdraw-amount-helper"
-              className="efhc-exchange-helper efhc-exchange-helper--warning"
-            >
-              {t("withdraw.amount_invalid_range")}
-            </div>
-          ) : null}
+          {amountTouched && amountIssue ? (
+             <div
+               id="efhc-withdraw-amount-helper"
+               className="efhc-exchange-helper efhc-exchange-helper--warning"
+               role="alert"
+             >
+               {amountIssue === "balance"
+                 ? t("withdraw.amount_exceeds_balance")
+                 : amountIssue === "minimum"
+                   ? t("withdraw.min_hint")
+                   : t("withdraw.amount_invalid_range")}
+             </div>
+           ) : null}
           {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
           <Button
@@ -531,16 +557,7 @@ export default function WithdrawPage(props: {
                   : t("common.load_more")}
               </Button>
             ) : null}
-            <Button
-              variant="secondary"
-              onClick={() => {
-                hapticSelection(settings.haptics_enabled);
-                void refreshWithdrawSurface();
-              }}
-            >
-              {t("common.refresh")}
-            </Button>
-          </div>
+</div>
         </div>
       </Card>
 
