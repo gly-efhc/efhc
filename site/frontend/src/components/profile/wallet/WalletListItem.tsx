@@ -36,9 +36,10 @@ export function WalletListItem(props: Props) {
     >
       <WalletAddressVerification address={wallet.wallet_address} />
 
-      <div className="efhc-wallet-item_actions">
+      <div className="efhc-wallet-item_actions standalone-wallet-actions">
         <Button
           variant="secondary"
+          className="source-button secondary"
           disabled={!wallet.is_active || wallet.is_primary}
           onClick={() => {
             hapticSelection(props.hapticsEnabled);
@@ -49,6 +50,7 @@ export function WalletListItem(props: Props) {
         </Button>
         <Button
           variant="secondary"
+          className="source-button secondary"
           onClick={() => {
             hapticSoft(props.hapticsEnabled);
             props.onRemove(wallet.id);
