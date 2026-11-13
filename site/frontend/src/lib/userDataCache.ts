@@ -1,5 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { syncSnapshotSchema } from "../services/snapshot.service";
+import { balanceHistoryItemSchema } from "../services/profile.service";
 import { WithdrawPageResponseSchema } from "./api/generated/economicUserSeamValidators";
 import { windowStateStorage } from "./windowState";
 
@@ -22,7 +23,7 @@ const userKey = (key: QueryKey) => RESOURCES.has(String(key[0])) && validId(key[
 function restorableEntry(entry: Entry): boolean {
   if (!Array.isArray(entry?.key) || !userKey(entry.key)) return false;
   if (entry.key[0] !== "withdrawals") return true;
-  if (entry.key[2] === "balance-history") return Array.isArray(entry.data);
+  if (entry.key[2] === "balance-history") return balanceHistoryItemSchema.array().safeParse(entry.data).success;
   if (entry.key[2] !== "list" || !entry.data || typeof entry.data !== "object") return false;
   const pages = (entry.data as {pages?: unknown}).pages;
   const pageParams = (entry.data as {pageParams?: unknown}).pageParams;
