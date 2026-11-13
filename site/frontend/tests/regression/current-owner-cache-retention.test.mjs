@@ -115,7 +115,7 @@ test("Obsolete withdrawal query shapes cannot break an owner cache warm start", 
   const reopened = sourceRuntime({storage, session});
   const {client: restored} = configured(reopened);
   assert.equal(restored.getQueryData(listKey), undefined);
-  assert.deepEqual(restored.getQueryData(historyKey), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(historyKey))), []);
   assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(validListKey))), validList);
   assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(dataKey))), oldData);
   restored.clear();
