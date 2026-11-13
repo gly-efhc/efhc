@@ -33,8 +33,8 @@ type Props = {
   loading: boolean;
   error: string | null;
   nextCursor: string | null;
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
+  activeFilter: HistoryFilter;
+  onFilterChange: (filter: HistoryFilter) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
   onExportCsv?: () => void;
