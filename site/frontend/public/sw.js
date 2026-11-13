@@ -461,21 +461,37 @@ async function navigationFallback(request, event) {
     const {staticName} = await cacheNames();
     const cached = await (await caches.open(staticName)).match(html);
     if (cached) return cached;
-    // CacheStorage is ordered by insertion, not by a build hash. Search the
-    // retained owned predecessor buckets newest FIRST. Never fall through to
-    // arbitrary caches on another app within the same github.io origin.
-    await restoreRetirementState(await cacheNames());
-    const previous = (await caches.keys()).filter(name =>
-      previousBuildCachesAtActivation.has(name) && name.endsWith("-static"));
-    for (const name of previous.reverse()) {
-      const predecessor = await (await caches.open(name)).match(html);
-      if (predecessor) return predecessor;
-    }
+    // Never resurrect a deleted route or previous release's HTML.
+    // Older immutable JS/CSS may remain for an already-open previous tab,
+    // but only the verified CURRENT build can provide offline HTML.
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
     status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
+}
+
+// HTML from a superseded build is never needed by a live document. Purge
+// old HTML immediately, even while legacy tabs still need their hashed assets.
+// The current offline shell is already fully precached before activation.
+async function purgeSupersededHtml() {
+  for (const name of previousBuildCachesAtActivation) {
+    if (!name.endsWith("-static")) continue;
+    try {
+      const cache = await caches.open(name);
+      const requests = await cache.keys();
+      await Promise.all(requests.filter(request => {
+        try {
+          const url = new URL(request.url);
+          return url.origin === self.location.origin &&
+            relativePath(url.pathname) !== null &&
+            (url.pathname.endsWith(".html") ||
+              url.pathname.endsWith("/dev/neon") ||
+              url.pathname.endsWith("/dev/neon/"));
+        } catch { return false; }
+      }).map(request => cache.delete(request)));
+    } catch { /* A failed cleanup must never block a verified installation. */ }
+  }
 }
 
 async function retireObsoleteBuildsIfSafe() {
@@ -537,6 +553,7 @@ self.addEventListener("activate", (event) => {
       // Persist the predecessor inventory BEFORE claiming clients. Do not
       // remove assets still needed by any open tab from an older build.
       await saveRetirementState(names, obsolete);
+      await purgeSupersededHtml();
       await self.clients.claim();
       // If no old documents remain open, obsolete build caches can be removed
       // immediately. Otherwise, wait for every client to confirm its new shell.
