@@ -94,7 +94,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   avatar_energy_variant: "EI-07",
   avatar_system_id: null,
   sfx_enabled: true,
-  music_enabled: true,
+  music_enabled: false,
   sfx_volume: 0.6,
   sfx_pack: "default",
   haptics_enabled: true,
