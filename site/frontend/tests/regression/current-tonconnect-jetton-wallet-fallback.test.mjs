@@ -128,7 +128,7 @@ test("direct EFHC deposit prepares remotely before an explicit wallet-send click
   const end = ui.indexOf("const sendPreparedDirectDeposit = useCallback(", start);
   assert.ok(start >= 0 && end > start, "preparation belongs to the existing deposit modal");
   const preparation = ui.slice(start, end);
-  assert.ok(preparation.includes("await openDeposit.mutateAsync()"));
+  assert.ok(preparation.includes("await openDepositMetadata()"));
   assert.ok(preparation.includes("await buildEfhcDirectDepositTx("));
   assert.equal(preparation.includes("sendTransaction("), false);
 
@@ -147,6 +147,7 @@ test("direct EFHC deposit prepares remotely before an explicit wallet-send click
     assert.ok(sending.includes(safetyGuard), safetyGuard);
   }
   assert.ok(ui.includes("sendPreparedDirectDeposit(preparedDeposit);"));
-  assert.ok(ui.includes('t("deposit.review_confirm")'));
+  assert.ok(ui.includes('t("deposit.direct_send_efhc")'));
+  assert.equal(ui.includes('t("deposit.review_confirm")'), false);
   assert.ok(ui.includes("setPreparedDeposit(null)"));
 });
