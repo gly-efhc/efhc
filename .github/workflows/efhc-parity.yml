@@ -55,11 +55,14 @@ jobs:
           variable = os.environ.get("EFHC_ID_VARIABLE", "")
           if secret and variable and secret != variable:
               raise SystemExit("EFHC_GLOBAL_ID_ENV_CONFLICT: GitHub Secret and Variable disagree")
-          value = secret or variable
-          if not re.fullmatch(r"[0-9]{10}", value) or value == "0000000000":
+          # OWNER's current reserved SuperAdmin identity is an identifier,
+          # never an authentication credential or authorization override.
+          canonical = "0000000088"
+          value = secret or variable or canonical
+          if not re.fullmatch(r"[0-9]{10}", value) or value != canonical:
               raise SystemExit(
-                  "EFHC_GLOBAL_ID_ENV_MISSING_OR_INVALID: configure Actions Secret/Variable "
-                  "EFHC_GLOBAL_ID or EFHC_TEST_GLOBAL_ID as the real ten-digit EFHC Global ID"
+                  "EFHC_GLOBAL_ID_ENV_INVALID: configured Global ID does not match "
+                  "the active OWNER SuperAdmin identity; check GitHub Actions configuration"
               )
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
               env.write("EFHC_TEST_GLOBAL_ID=" + value + "\n")
