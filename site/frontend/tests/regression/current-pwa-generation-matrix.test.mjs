@@ -162,8 +162,9 @@ test("Removed dev/neon never falls back to legacy offline HTML",async()=>{
   await worker.dispatch("activate");
   assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
     "Legacy cache is retained for a still-open previous tab");
-  for(const pathname of ["/efhc/dev/neon","/efhc/dev/neon/",
-    "/efhc/dev/neon/index.html","/efhc/dev/neon/?utm_source=chatgpt.com"]){
+  for(const pathname of ["/efhc/dev","/efhc/dev/","/efhc/dev/neon",
+    "/efhc/dev/neon/","/efhc/dev/neon/index.html",
+    "/efhc/dev/neon/?utm_source=chatgpt.com","/efhc/dev/old-console/"]){
     const response=await worker.dispatch("fetch",{request:{
       url:origin+pathname,method:"GET",mode:"navigate",
     }});
