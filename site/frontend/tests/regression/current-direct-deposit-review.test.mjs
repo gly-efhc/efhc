@@ -106,6 +106,14 @@ test("validated transfer is prepared in the background; reference dialog delegat
     /await (?:openDeposit|buildEfhcDirectDepositTx|sendTransaction)/);
 });
 
+test("checking an existing deposit cannot be presented as an unsuccessful new transfer", () => {
+  const component = file("../../src/components/DepositModal.tsx");
+  assert.match(component, /setErrorSource\("check"\)/);
+  assert.match(component, /setError\(t\("common\.load_error"\) \+ " \(DIRECT_DEPOSIT_CHECK_UNAVAILABLE\)"\)/);
+  assert.match(component, /errorSource === "check" \? t\("common\.data_unavailable"\)/);
+  assert.doesNotMatch(component, /setError\(t\("deposit\.direct_open_failed"\) \+ " \(DIRECT_DEPOSIT_CHECK_UNAVAILABLE\)"\)/);
+});
+
 test("official wallet confirmation portal stays interactive during EFHC modal background inert", () => {
   const modal = file("../../src/components/ui/Modal.tsx");
   assert.match(modal, /child\.id !== "tc-widget-root"/);
