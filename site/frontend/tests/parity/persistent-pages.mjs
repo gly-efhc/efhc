@@ -96,13 +96,15 @@ try{
     assert.equal(page.url(),new URL(ranks,base).href,'Forward must remain on Ranks after all handlers');
     await assertUserShell();
   });
-  await check('retired public TEST console exposes no operator credentials or top-up controls',async()=>{
-    await visit('dev/neon/');
-    const body=await page.locator('body').innerText();
-    assert.equal(await page.getByPlaceholder('Пароль TEST оператора').count(),0);
-    assert.ok(!body.includes('DEMO backend / Neon TEST'));
-    assert.ok(!body.includes('Тестовое пополнение через банк'));
-    assert.ok(!body.includes('Временный ключ просмотра Admin'));
+  await check('retired development pages are physically absent, never rendered as substitute screens',async()=>{
+    const retired = await context.request.get(base+'dev/neon/',{failOnStatusCode:false});
+    assert.equal(retired.status(),404,'removed path must be absent from exported Pages');
+    assert.equal(staticRoutes.some(route=>route==='dev'||route.startsWith('dev/')),false,
+      'No development page may exist in the exported route inventory');
+    const html=await retired.text();
+    assert.ok(!html.includes('DEMO backend / Neon TEST'));
+    assert.ok(!html.includes('Тестовое пополнение через банк'));
+    assert.ok(!html.includes('Временный ключ просмотра Admin'));
   });
   await check('offline Admin remains private before server-attested key login',async()=>{
     await visit('admin/');
