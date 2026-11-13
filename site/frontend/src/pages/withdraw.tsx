@@ -360,7 +360,7 @@ export default function WithdrawPage(props: {
 
       <Card
         title={t("withdraw.new_request")}
-        className="efhc-withdraw-create-card efhc-withdraw-action-card efhc-exchange-card-variant"
+        className="efhc-withdraw-create-card efhc-withdraw-action-card"
         data-withdraw-create-dialog="exchange-family-v278"
       >
         <div ref={createSurfaceRef} className="efhc-exchange-panel efhc-withdraw-create-card_body">
