@@ -507,7 +507,7 @@ self.addEventListener("install", (event) => {
       // Installation is atomic: all offline resources are already verified.
       // Request activation as soon as validation ends; the old worker cannot
       // erase this new build's cache while its active clients are alive.
-      void self.skipWaiting();
+      await self.skipWaiting();
       if (self.registration.active) {
         await notifyClients({
           type: "UPDATE_AVAILABLE",
