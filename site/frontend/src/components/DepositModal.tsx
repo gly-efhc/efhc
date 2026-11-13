@@ -93,7 +93,7 @@ export function DepositModal(props: {
     isUserRejected,
   } = useWalletProvider();
   const walletsMe = useWalletsMe();
-  const [amount, setAmount] = useState("100");
+  const [amount, setAmount] = useState("100.00000000");
   const [openedAt, setOpenedAt] = useState<string | null>(null);
   const [walletOpened, setWalletOpened] = useState(false);
   const [checkingOnChain, setCheckingOnChain] = useState(false);
@@ -119,10 +119,15 @@ export function DepositModal(props: {
     () => primaryLinkedWallet(walletsMe.data?.wallets),
     [walletsMe.data?.wallets],
   );
-  const primarySessionReady = Boolean(
-    primaryWallet
-    && sameTonAddress(walletAddress, primaryWallet.wallet_address),
+  const connectedVerifiedWallet = useMemo(
+    () => (walletsMe.data?.wallets || []).find((wallet) => (
+      wallet.is_active
+      && wallet.proof_verified === true
+      && sameTonAddress(walletAddress, wallet.wallet_address)
+    )) || null,
+    [walletAddress, walletsMe.data?.wallets],
   );
+  const verifiedSessionReady = Boolean(connectedVerifiedWallet);
   const confirmed = statusQ.data?.state === "confirmed";
 
   useEffect(() => {
@@ -159,10 +164,10 @@ export function DepositModal(props: {
     preparationRevision.current += 1;
     setPreparedDeposit(null);
     setPreparing(false);
-  }, [globalId, primarySessionReady, walletAddress]);
+  }, [globalId, verifiedSessionReady, walletAddress]);
 
   const prepareDirectEfhcDeposit = useCallback(async () => {
-    if (!globalId || !amountValid || !walletAddress || !primarySessionReady) {
+    if (!globalId || !amountValid || !walletAddress || !verifiedSessionReady) {
       return;
     }
     const revision = ++preparationRevision.current;
@@ -224,7 +229,7 @@ export function DepositModal(props: {
     globalId,
     isUserRejected,
     openDepositMetadata,
-    primarySessionReady,
+    verifiedSessionReady,
     t,
     walletAddress,
   ]);
@@ -233,7 +238,7 @@ export function DepositModal(props: {
   // explicit Transfer click can open TonConnect and request a signature.
   useEffect(() => {
     if (!props.open || !globalId || !amountValid || !walletAddress
-      || !primarySessionReady || walletOpened || preparing || preparedDeposit
+      || !verifiedSessionReady || walletOpened || preparing || preparedDeposit
       || transactionPhase !== "idle") return;
     const timer = window.setTimeout(() => {
       void prepareDirectEfhcDeposit();
@@ -245,7 +250,7 @@ export function DepositModal(props: {
     prepareDirectEfhcDeposit,
     preparedDeposit,
     preparing,
-    primarySessionReady,
+    verifiedSessionReady,
     props.open,
     transactionPhase,
     walletAddress,
@@ -269,7 +274,7 @@ export function DepositModal(props: {
     // gesture. Metadata and Jetton-wallet RPC work have already completed.
     if (sendInProgress.current) return;
     const validUntil = ready.tx.validUntil;
-    if (!primarySessionReady || !sameTonAddress(ready.senderAddress, walletAddress)
+    if (!verifiedSessionReady || !sameTonAddress(ready.senderAddress, walletAddress)
       || ready.ownerGlobalId !== String(globalId)
       || ready.amount !== (creditAmount || amount)
       || !Number.isSafeInteger(validUntil)
@@ -301,7 +306,7 @@ export function DepositModal(props: {
     }).finally(() => {
       sendInProgress.current = false;
     });
-  }, [amount, creditAmount, globalId, isUserRejected, primarySessionReady, sendTransaction, t, walletAddress]);
+  }, [amount, creditAmount, globalId, isUserRejected, verifiedSessionReady, sendTransaction, t, walletAddress]);
 
   async function checkDepositOnChain() {
     if (!globalId || checkingOnChain) return;
@@ -343,6 +348,12 @@ export function DepositModal(props: {
     }
     if (preparing || sendInProgress.current) return;
     setError(null);
+    // A verified secondary wallet may send its own Jetton deposit without
+    // silently changing the stored primary wallet for other operations.
+    if (verifiedSessionReady) {
+      await prepareDirectEfhcDeposit();
+      return;
+    }
     try {
       await routePrimaryWalletExecution({
         wallets: walletsMe.data?.wallets,
@@ -384,7 +395,7 @@ export function DepositModal(props: {
       setPendingSawDisconnect(true);
       return;
     }
-    if (primarySessionReady) {
+    if (verifiedSessionReady) {
       setResumeAfterPrimaryConnect(false);
       setPendingInitialSessionAddress("");
       setPendingSawDisconnect(false);
@@ -403,7 +414,7 @@ export function DepositModal(props: {
     prepareDirectEfhcDeposit,
     pendingInitialSessionAddress,
     pendingSawDisconnect,
-    primarySessionReady,
+    verifiedSessionReady,
     primaryWallet,
     resumeAfterPrimaryConnect,
     t,
@@ -461,74 +472,6 @@ export function DepositModal(props: {
               </div>
             </div>
           </>
-        ) : null}
-
-        {preparedDeposit && !walletOpened ? (
-          <section
-            className="efhc-direct-deposit_review"
-            aria-label={t("deposit.review_title")}
-            data-direct-deposit-review="ready"
-          >
-            <h3>{t("deposit.review_title")}</h3>
-            <div className="efhc-direct-deposit_review-rows">
-              <div>
-                <span>{t("deposit.review_send")}</span>
-                <strong data-direct-deposit-review-send="efhc">
-                  {preparedDeposit.review.amountEfhc} EFHC
-                </strong>
-              </div>
-              <div>
-                <span>{t("deposit.review_receive")}</span>
-                <strong data-direct-deposit-review-credit="efhcm">
-                  {preparedDeposit.review.amountEfhc} EFHCm
-                </strong>
-              </div>
-              <div>
-                <span>{t("deposit.review_recipient")}</span>
-                <code data-direct-deposit-review-recipient="owner">
-                  {preparedDeposit.review.receiverAddress}
-                </code>
-              </div>
-              <div>
-                <span>{t("deposit.review_ton_attached")}</span>
-                <strong data-direct-deposit-review-attached="ton">
-                  {preparedDeposit.review.attachedTon} TON
-                </strong>
-              </div>
-              <div>
-                <span>{t("deposit.review_network_fee")}</span>
-                <strong data-direct-deposit-review-fee="pending">
-                  {t("deposit.review_fee_pending")}
-                </strong>
-              </div>
-            </div>
-            <p className="efhc-direct-deposit_review-note">
-              {t("deposit.review_fee_explanation")}
-            </p>
-            <details className="efhc-direct-deposit_review-details">
-              <summary>{t("deposit.review_details")}</summary>
-              <dl>
-                <dt>{t("deposit.review_network")}</dt>
-                <dd>{preparedDeposit.review.network}</dd>
-                <dt>{t("deposit.review_sender")}</dt>
-                <dd><code>{preparedDeposit.review.walletAddress}</code></dd>
-                <dt>{t("deposit.review_execution")}</dt>
-                <dd><code>{preparedDeposit.review.executionContractAddress}</code></dd>
-                <dt>{t("deposit.review_master")}</dt>
-                <dd><code>{preparedDeposit.review.jettonMasterAddress}</code></dd>
-                <dt>{t("deposit.review_forward_ton")}</dt>
-                <dd>{preparedDeposit.review.forwardedTon} TON</dd>
-                <dt>{t("deposit.review_memo")}</dt>
-                <dd><code>{preparedDeposit.review.memo}</code></dd>
-              </dl>
-            </details>
-            <p className="efhc-direct-deposit_review-expiry" data-direct-deposit-review-expiry="unix">
-              {t("deposit.review_valid_until")}{" "}
-              <time dateTime={new Date(preparedDeposit.review.expiresAt * 1000).toISOString()}>
-                {new Date(preparedDeposit.review.expiresAt * 1000).toLocaleTimeString()}
-              </time>
-            </p>
-          </section>
         ) : null}
 
         {transactionPhase === "signing" ? (
@@ -611,7 +554,7 @@ export function DepositModal(props: {
                 || transactionPhase === "signing"
                 || !globalId
                 || !amountValid
-                || (primarySessionReady && !preparedDeposit && transactionPhase !== "error" && transactionPhase !== "rejected")
+                || (verifiedSessionReady && !preparedDeposit && transactionPhase !== "error" && transactionPhase !== "rejected")
               }
               data-direct-deposit-action="send-efhc-jetton"
               onClick={() => void sendDirectEfhcDeposit()}
