@@ -19,8 +19,8 @@ try{
    await page.goto(base+route,{waitUntil:'domcontentloaded'});
       if(group==='AM'){
        // Anonymous Pages must never expose Admin's design selector or private content.
-       await page.locator('[data-admin-access="denied"]').waitFor({state:'visible'});
-       assert.equal(await page.locator('[data-interface-variant-group="AM"],[data-admin-primitive="page"]').count(),0,'Admin requires server-attested authorization');
+       await page.locator('[data-admin-route-guard-state="blocked"]').waitFor({state:'visible'});
+       assert.equal(await page.locator('[data-interface-variant-group="AM"],[data-admin-primitive="page"],[data-admin-visual-proof-route]').count(),0,'Admin requires server-attested authorization');
        results.push({group,status:'PASS',selections:0,security:'anonymous-admin-denied'});
        console.log('PASS Admin anonymous access denied; no private AM surface');
        continue;
