@@ -23161,3 +23161,12 @@ body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id
   background-image: none !important;
 }
 }
+
+/* USER wallet cards: geometry follows the frozen HTML account reference.
+   Existing Color Theme tokens continue to own border and fill materials. */
+.efhc-profile-page[data-wg="WG-01"] [data-profile-content="wallet"] .efhc-wallet-entry {
+  display: grid;
+  gap: .58rem;
+  padding: .72rem;
+  border-radius: .82rem;
+}
