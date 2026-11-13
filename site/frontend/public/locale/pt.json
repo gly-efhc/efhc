@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filtrar notificações pequenas e manter apenas avisos importantes.",
   "profile.independent_shell_badge": "Interface independente",
   "profile.interface_account_note": "Idioma e definições da conta.",
+  "profile.linked_accounts_action": "Contas vinculadas",
+  "profile.sign_in_action": "Entrar",
   "profile.interface_note": "O EFHC utiliza a sua própria interface de jogo. Os dados do Telegram podem melhorar a personalização, mas não são necessários para a interface funcionar.",
   "profile.interface_title": "Interface",
   "profile.lang.da": "Dansk",
