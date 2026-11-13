@@ -423,3 +423,30 @@ test("active old worker never deletes a successor's staged build; new worker ret
   assert.equal(cacheNames.has("efhc-pwa-next-static"),true,
     "the active successor's own assets must never be removed");
 });
+
+test("Android maskable icon preserves the canonical EFHC logo and safe zone", () => {
+  const manifest = JSON.parse(read("public/manifest.webmanifest"));
+  const regular = manifest.icons.filter((icon) => icon.purpose === "any");
+  const maskable = manifest.icons.filter((icon) => icon.purpose === "maskable");
+  assert.deepEqual(regular.map((icon) => icon.sizes), ["192x192", "512x512"]);
+  assert.equal(maskable.length, 1);
+  assert.deepEqual(maskable[0], {
+    src: "/assets/efhc/efhc_maskable.svg",
+    sizes: "any",
+    type: "image/svg+xml",
+    purpose: "maskable",
+  });
+  const original = read("public/assets/efhc/canon/efhc_logo_canon.svg");
+  const adaptive = read("public/assets/efhc/efhc_maskable.svg");
+  const expected = original
+    .replace(
+      'width="8192" height="8192" viewBox="-163 -163 8518 8518"',
+      'width="512" height="512" viewBox="-2048 -2048 12288 12288"',
+    )
+    .replace(
+      '  <circle id="yellow-field"',
+      '  <rect id="mask-background" x="-2048" y="-2048" width="12288" height="12288" fill="#06140f" />\n  <circle id="yellow-field"',
+    );
+  assert.equal(adaptive, expected, "Android SVG must not alter the original logo geometry");
+  assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
+});
