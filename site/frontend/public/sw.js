@@ -203,17 +203,38 @@ function isPassiveOfflineWindow(client) {
   return pathname === OFFLINE_URL || pathname === READONLY_OFFLINE_URL;
 }
 
-// Old cache keys had no scope suffix. Preserve or retire only generations that
-// actually contain this app's own pre-cached HTML; CacheStorage is origin-wide.
+// CacheStorage is origin-wide: retire only generations proven to belong to
+// this app. Old HTML may already be purged while its immutable JS remains.
 async function isOwnHistoricalCache(name, allKeys) {
   if (!name.startsWith(CACHE_PREFIX)) return false;
   const staticKey = name.endsWith("-content")
     ? name.slice(0, -"-content".length) + "-static" : name;
-  if (!staticKey.endsWith("-static") || !allKeys.includes(staticKey)) return false;
-  const bucket = await caches.open(staticKey);
-  return Boolean(await bucket.match(scoped("index.html")) ||
-    await bucket.match(scoped("manifest.webmanifest")) ||
-    await bucket.match(scoped("offline.html")));
+  if (!staticKey.endsWith("-static")) return false;
+  if (allKeys.includes(staticKey)) {
+    const bucket = await caches.open(staticKey);
+    if (await bucket.match(scoped("index.html")) ||
+        await bucket.match(scoped("manifest.webmanifest")) ||
+        await bucket.match(scoped("offline.html"))) return true;
+    // A former generation can have no HTML or manifest after retirement.
+    // Its in-scope Next.js chunks still establish ownership.
+    const entries = await bucket.keys();
+    if (entries.some(request => {
+      const url = new URL(request.url);
+      const path = relativePath(url.pathname);
+      return url.origin === self.location.origin && path !== null &&
+        path.startsWith("/_next/static/");
+    })) return true;
+  }
+  // An interrupted older installation can leave only a content bucket.
+  // Never delete a same-prefix cache belonging to another application.
+  if (!name.endsWith("-content")) return false;
+  const content = await caches.open(name);
+  const entries = await content.keys();
+  return entries.length > 0 && entries.every(request => {
+    const url = new URL(request.url);
+    return url.origin === self.location.origin &&
+      (url.pathname === RETIREMENT_STATE_URL || isContentAsset(url));
+  });
 }
 
 async function notifyClients(message) {

@@ -188,6 +188,39 @@ test("New verified worker purges old HTML immediately without discarding legacy 
     "Only the obsolete HTML should be purged before old tabs reload");
 });
 
+test("Historical cache generations without HTML still retire after the old tab closes",async()=>{
+  const h=harness();
+  h.clients.value=[h.createClient("legacy","/efhc/withdraw/")];
+  const original=await h.seed("A",{
+    "/efhc/_next/static/old-chunk.js":"retained for the live legacy tab",
+  });
+  await h.seed("B");
+  await h.makeWorker("B").dispatch("activate");
+  assert.equal(await original.match("/efhc/index.html"),undefined,
+    "Obsolete HTML is purged immediately during first activation");
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "Assets remain while an older document is live");
+
+  const orphan=await h.cacheStorage.open("efhc-pwa-interrupted-content");
+  await orphan.put("/efhc/locale/en.json",new Response("{}"));
+  const foreign=await h.cacheStorage.open("efhc-pwa-another-app-content");
+  await foreign.put("/another-app/locale/en.json",new Response("{}"));
+
+  h.clients.value=[];
+  await h.seed("C");
+  await h.makeWorker("C").dispatch("activate");
+  const remaining=await h.cacheStorage.keys();
+  assert.ok(remaining.includes("efhc-pwa-C-static"));
+  assert.ok(remaining.includes("efhc-pwa-C-content"));
+  assert.ok(!remaining.includes("efhc-pwa-A-static"));
+  assert.ok(!remaining.includes("efhc-pwa-A-content"));
+  assert.ok(!remaining.includes("efhc-pwa-B-static"));
+  assert.ok(!remaining.includes("efhc-pwa-B-content"));
+  assert.ok(!remaining.includes("efhc-pwa-interrupted-content"));
+  assert.ok(remaining.includes("efhc-pwa-another-app-content"),
+    "Never purge an unrelated application on the same origin");
+});
+
 test("T2: a restarted worker restores predecessor inventory before first old chunk request",async()=>{
   const h=harness(),old=h.createClient("old"),newTab=h.createClient("new");
   h.clients.value=[old,newTab];
