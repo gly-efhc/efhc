@@ -4,6 +4,7 @@ import type {
 } from "../../lib/wallet-provider";
 import { useT } from "../../hooks/useT";
 import { TelegramInfoBlock } from "../ui/telegram/TelegramInfoBlock";
+import { Button } from "../ui/Button";
 import { WalletConnectBanner } from "./wallet/WalletConnectBanner";
 import {
   WalletListItem,
@@ -95,7 +96,17 @@ export function ProfileWalletSection(props: Props) {
         >
           {t("wallet.linked_wallets")}
         </div>
-        {!props.sessionConnected ? (
+        {props.sessionConnected ? (
+          <Button
+            variant="secondary"
+            className="w-full efhc-wallet-connect-cta"
+            data-wallet-provider-action="connect-additional"
+            disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
+            onClick={props.onConnect}
+          >
+            {t("wallet.connect_button")}
+          </Button>
+        ) : (
           <WalletConnectBanner
             connected={props.sessionConnected}
             restoring={props.sessionRestoring}
