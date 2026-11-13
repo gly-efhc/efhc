@@ -111,7 +111,13 @@ test("achievement heading and withdrawal history keep CT styling without repaint
   const exchange = read("src/components/ExchangePanel.tsx");
   const exchangeRoute = read("src/pages/exchange.tsx");
   const withdraw = read("src/pages/withdraw.tsx");
-  assert.match(exchange, /className="mt-3 w-full efhc-theme03-cta"/);
+  // Exact spacing is now owned by the existing Exchange action-surface layout.
+  assert.match(exchange, /className="w-full efhc-theme03-cta"/);
+  assert.match(css, /\.efhc-exchange-action-surface \[data-exchange-submit-action="true"\] \{\s*margin-top: 0\.65rem;/);
+  assert.match(exchange, /data-exchange-submit-action="true"/);
+  assert.match(exchangeRoute, /data-exchange-history-link="account-history"/);
+  assert.doesNotMatch(exchangeRoute, /history_profile_note|efhc-exchange-history-boundary|<GameNotice|TelegramEmptyState/);
+  assert.doesNotMatch(exchange, /\{normalizedAmount\} EFHCm/);
   assert.match(exchangeRoute, /className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"/);
   assert.match(withdraw, /data-withdraw-history-balance-type-label="semantic"/);
 });
