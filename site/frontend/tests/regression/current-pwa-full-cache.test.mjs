@@ -450,3 +450,11 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
   assert.equal(adaptive, expected, "Android SVG must not alter the original logo geometry");
   assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
 });
+
+test("Profile PWA maintenance checks the registered worker without clearing account caches", () => {
+  const settings = read("src/components/profile/ProfileSettingsDialog.tsx");
+  assert.match(settings, /registration\.update\(\)/);
+  assert.match(settings, /GET_CACHE_STATUS/);
+  assert.match(settings, /pwa\.maintenance_title/);
+  assert.doesNotMatch(settings, /localStorage\.clear\(|caches\.delete\(|indexedDB\.deleteDatabase\(/);
+});
