@@ -171,7 +171,7 @@ test("withdraw owner-approved form and user activity contracts remain independen
   assert.match(withdraw, /t\("withdraw\.amount_exceeds_balance"\)/);
   assert.match(withdraw, /data-amount-state=\{amountTouched && amountIssue/);
   assert.match(withdraw, /surface="withdraw-ad"/);
-  assert.match(withdraw, /setWithdrawAdOpen\(phase !== "viewing"\)/);
+  assert.match(withdraw, /setWithdrawAdOpen\(phase !== "viewing" && phase !== "verifying"\)/);
   assert.match(queries, /refetchType: "none"/);
   assert.match(queries, /reflectConfirmedRequest/);
   assert.match(queries, /staleTime: 10_000/);
@@ -211,5 +211,7 @@ test("all supported languages include distinct withdrawal over-balance feedback"
     const dict = JSON.parse(file("../../public/locale/" + lang + ".json"));
     assert.ok(dict["withdraw.amount_exceeds_balance"]?.trim(), lang);
     assert.ok(dict["withdraw.min_hint"]?.trim(), lang);
+    assert.ok(dict["withdraw.export_success"]?.trim(), lang);
+    assert.ok(dict["withdraw.export_error"]?.trim(), lang);
   }
 });
