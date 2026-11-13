@@ -81,10 +81,12 @@ export default function WithdrawPage(props: {
   const historyExport = useProfileHistoryExport();
   const historyExporting = historyExport.isPending;
   const withdrawalsQ = useWithdrawalsPage({ statusFilter });
-  const items = useMemo(
-    () => withdrawalsQ.data?.pages.flatMap((page) => page.items) || [],
-    [withdrawalsQ.data],
-  );
+  const items = useMemo(() => {
+    const pages = withdrawalsQ.data?.pages;
+    return Array.isArray(pages)
+      ? pages.flatMap((page) => Array.isArray(page?.items) ? page.items : [])
+      : [];
+  }, [withdrawalsQ.data]);
   const historyQ = useWalletBalanceHistory();
 
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function WithdrawPage(props: {
   }, []);
   const createWithdrawMutation = useCreateWithdrawRequest();
   const cancelWithdrawMutation = useCancelWithdrawRequest();
-  const historyItems = historyQ.data || [];
+  const historyItems = Array.isArray(historyQ.data) ? historyQ.data : [];
   const loading = withdrawalsQ.isLoading || withdrawalsQ.isFetching;
   const historyLoading = historyQ.isLoading || historyQ.isFetching;
   const loadMoreError = withdrawalsQ.isFetchNextPageError && withdrawalsQ.error
@@ -162,8 +164,11 @@ export default function WithdrawPage(props: {
   const historyError = historyQ.error
     ? publicApiErrorMessage(historyQ.error, t)
     : null;
+  const lastPage = Array.isArray(withdrawalsQ.data?.pages)
+    ? withdrawalsQ.data.pages.at(-1)
+    : undefined;
   const cursor = withdrawalsQ.hasNextPage
-    ? withdrawalsQ.data?.pages.at(-1)?.next_cursor || null
+    ? lastPage?.next_cursor || null
     : null;
   const createBusy = createWithdrawMutation.isPending;
   const cancelBusyId = cancelWithdrawMutation.isPending
