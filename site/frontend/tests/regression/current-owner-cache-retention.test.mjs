@@ -85,3 +85,38 @@ test("A different Global ID cannot restore the previous owner's cached data", ()
   assert.equal(client.getQueryData(dataKey),undefined);
   client.clear();
 });
+
+test("Obsolete withdrawal query shapes cannot break an owner cache warm start", () => {
+  const storage = new Map(), session = new Map();
+  const runtime = sourceRuntime({storage, session});
+  const {client} = configured(runtime);
+  const historyKey = ["withdrawals", owner, "balance-history"];
+  const listKey = ["withdrawals", owner, "list", "all"];
+  const validListKey = ["withdrawals", owner, "list", "PENDING"];
+  const validList = {pages: [{items: [], next_cursor: null}], pageParams: [null]};
+
+  client.setQueryData(dataKey, oldData);
+  client.setQueryData(validListKey, validList);
+  client.setQueryData(historyKey, []);
+  client.setQueryData(listKey, {items: []});
+  assert.equal(client.getQueryData(listKey).items.length, 0);
+  const stored = JSON.parse(storage.get(key + ":" + owner));
+  assert.equal(stored.entries.some(entry => JSON.stringify(entry.key) === JSON.stringify(listKey)), false,
+    "invalid new query results must not be persisted");
+
+  stored.entries.unshift(
+    {key: listKey, data: {items: []}, updatedAt: Date.now()},
+    {key: historyKey, data: {items: []}, updatedAt: Date.now()},
+  );
+  session.set(key, JSON.stringify(stored));
+  storage.set(key + ":" + owner, JSON.stringify(stored));
+  client.clear();
+
+  const reopened = sourceRuntime({storage, session});
+  const {client: restored} = configured(reopened);
+  assert.equal(restored.getQueryData(listKey), undefined);
+  assert.deepEqual(restored.getQueryData(historyKey), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(validListKey))), validList);
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(dataKey))), oldData);
+  restored.clear();
+});
