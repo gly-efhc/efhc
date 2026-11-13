@@ -451,10 +451,17 @@ async function navigationFallback(request, event) {
   const html = path === null ? null : url.pathname.endsWith(".html")
     ? url.pathname : (url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname) + "/index.html";
 
-  // A cache-first HTML navigation makes the OLDEST controlling worker paint
-  // before the newly published HTML/JS/CSS can be activated. Online documents
-  // must instead come from the same published network release. The verified
-  // offline build remains the fallback when the network is unavailable.
+  // A controlling worker must NEVER supply HTML from another release.
+  // GitHub Pages replaces files independently, so an online response can be
+  // newer than the active worker's verified JS/CSS. Serve the atomic installed
+  // generation first; the client updates the worker and reloads at safe idle.
+  if (config.static_export && html) {
+    const {staticName} = await cacheNames();
+    const cached = await (await caches.open(staticName)).match(html);
+    if (cached) return cached;
+  }
+  // Recover an evicted route only from the SAME release as this worker.
+  // A newer online document is not safe until its entire precache is installed.
   if (self.navigator?.onLine !== false) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 2500);
@@ -463,22 +470,12 @@ async function navigationFallback(request, event) {
       if (response.ok) {
         if (!config.static_export) return response;
         const markup = await response.clone().text();
-        // Fail closed on incomplete/non-EFHC HTML. Never cache this remote
-        // document inside the previous worker's immutable static generation.
-        if (/name="efhc-build-id" content="[a-zA-Z0-9_-]+"/.test(markup)) {
+        if (markup.includes('name="efhc-build-id" content="' + config.build_id + '"')) {
           return response;
         }
       }
-    } catch { /* Use the complete installed offline shell. */ }
+    } catch { /* Keep the verified offline shell; never mix builds. */ }
     finally { clearTimeout(timeout); }
-  }
-  if (config.static_export && html) {
-    const {staticName} = await cacheNames();
-    const cached = await (await caches.open(staticName)).match(html);
-    if (cached) return cached;
-    // Never resurrect a deleted route or previous release's HTML.
-    // Older immutable JS/CSS may remain for an already-open previous tab,
-    // but only the verified CURRENT build can provide offline HTML.
   }
   const fallback = isReadOnlyOfflineRoute(url) ? READONLY_OFFLINE_URL : OFFLINE_URL;
   return (await caches.match(fallback)) || new Response("EFHC is offline.", {
