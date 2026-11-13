@@ -87,11 +87,6 @@
   border-color:rgba(110,168,255,.34);
 }
 
-[data-interface-app-mode="user"][data-global-theme-id="01"] .efhc-error-page .source-primary-button:disabled,
-:root:has(.efhc-independent-shell[data-interface-app-mode="user"][data-global-theme-id="01"]) .efhc-error-page .source-primary-button:disabled {
-  background:rgba(30,41,59,.42);
-}
-
 /* Browser Shop Theme01: supersede the generic dark-Shop Theme03 role leak
    without changing the frozen Theme03 source/lock. */
 .efhc-shop-site[data-interface-app-mode="shop-landing"][data-shop-theme="dark"][data-global-theme-id="01"],
