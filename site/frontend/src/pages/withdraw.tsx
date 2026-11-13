@@ -144,7 +144,7 @@ export default function WithdrawPage(props: {
         const target = event.target;
         if (!(target instanceof Element) || !target.closest('[data-public-surface="withdraw"]')) return;
         // The confirmed create/cancel mutation is the status source for that action.
-        if (target.closest('[data-withdraw-action="create"],[data-withdraw-action="cancel"]')) return;
+        if (target.closest('[data-withdraw-action="create"],[data-withdraw-action="cancel"],[data-withdraw-action="load-more"]')) return;
       }
       const request = withdrawalsRef.current;
       const now = Date.now();
@@ -558,6 +558,7 @@ export default function WithdrawPage(props: {
               <Button
                 variant="secondary"
                 disabled={withdrawalsQ.isFetchingNextPage}
+                data-withdraw-action="load-more"
                 aria-busy={withdrawalsQ.isFetchingNextPage}
                 onClick={() => void withdrawalsQ.fetchNextPage()}
               >
