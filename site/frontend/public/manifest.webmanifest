@@ -22,6 +22,12 @@
       "purpose": "any"
     },
     {
+      "src": "/assets/efhc/canon/efhc_logo_canon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
       "src": "/assets/efhc/efhc_maskable.svg",
       "sizes": "any",
       "type": "image/svg+xml",

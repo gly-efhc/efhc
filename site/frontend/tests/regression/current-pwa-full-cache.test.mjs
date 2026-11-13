@@ -428,7 +428,13 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
   const manifest = JSON.parse(read("public/manifest.webmanifest"));
   const regular = manifest.icons.filter((icon) => icon.purpose === "any");
   const maskable = manifest.icons.filter((icon) => icon.purpose === "maskable");
-  assert.deepEqual(regular.map((icon) => icon.sizes), ["192x192", "512x512"]);
+  assert.deepEqual(regular.map((icon) => icon.sizes), ["192x192", "512x512", "any"]);
+  assert.deepEqual(regular[2], {
+    src: "/assets/efhc/canon/efhc_logo_canon.svg",
+    sizes: "any",
+    type: "image/svg+xml",
+    purpose: "any",
+  });
   assert.equal(maskable.length, 1);
   assert.deepEqual(maskable[0], {
     src: "/assets/efhc/efhc_maskable.svg",
@@ -441,7 +447,7 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
   const expected = original
     .replace(
       'width="8192" height="8192" viewBox="-163 -163 8518 8518"',
-      'width="512" height="512" viewBox="-2048 -2048 12288 12288"',
+      'width="2048" height="2048" viewBox="-2048 -2048 12288 12288"',
     )
     .replace(
       '  <circle id="yellow-field"',
@@ -470,4 +476,16 @@ test("Android native splash follows the approved EFHC loading surface", () => {
   assert.match(splash, /efhc_logo_canon\.svg/);
   assert.match(splash, /efhc-splash-progress/);
   assert.match(maskable, /id="mask-background"[^>]+fill="#000000"/);
+});
+
+test("Splash logo stays vector-sharp without GPU scale rasterization", () => {
+  const splash = read("src/components/SplashScreen.tsx");
+  const css = read("src/styles/globals.css");
+  const start = css.indexOf("@keyframes efhc-splash-breathe{");
+  const end = css.indexOf(".efhc-faq-shell{", start);
+  assert.ok(start >= 0 && end > start, "The canonical splash animation is present");
+  const animation = css.slice(start, end);
+  assert.match(animation, /opacity:0\.94/);
+  assert.doesNotMatch(animation, /transform|will-change/);
+  assert.match(splash, /efhc_logo_canon\.svg/);
 });
