@@ -5,7 +5,6 @@ import type {
 import { useT } from "../../hooks/useT";
 import { TelegramInfoBlock } from "../ui/telegram/TelegramInfoBlock";
 import { Button } from "../ui/Button";
-import { WalletConnectBanner } from "./wallet/WalletConnectBanner";
 import {
   WalletListItem,
   type WalletListItemModel,
@@ -36,7 +35,7 @@ export function ProfileWalletSection(props: Props) {
   const t = useT();
   const serverBoundWallets = useMemo(
     () => props.wallets
-      .filter((wallet) => wallet.is_active)
+      .filter((wallet) => wallet.is_active && wallet.proof_verified === true)
       .slice()
       .sort((left, right) => Number(right.is_primary) - Number(left.is_primary)),
     [props.wallets],
@@ -66,20 +65,6 @@ export function ProfileWalletSection(props: Props) {
       data-public-surface="wallet"
       data-wallet-list-only="1305"
     >
-      {props.sessionConnected ? (
-        <WalletConnectBanner
-          connected={props.sessionConnected}
-          restoring={props.sessionRestoring}
-          proofAccepted={props.tonProofAccepted}
-          connectionPhase={props.connectionPhase}
-          walletHint={props.walletHint}
-          onConnect={props.onConnect}
-          onDisconnectSession={props.onDisconnectSession}
-          hapticsEnabled={props.hapticsEnabled}
-          hasLinkedWallet={serverBoundWallets.length > 0}
-        />
-      ) : null}
-
       {props.walletsError ? (
         <TelegramInfoBlock
           title={t("wallet.error_title")}
@@ -96,29 +81,21 @@ export function ProfileWalletSection(props: Props) {
         >
           {t("wallet.linked_wallets")}
         </div>
-        {props.sessionConnected ? (
-          <Button
-            variant="secondary"
-            className="w-full efhc-wallet-connect-cta"
-            data-wallet-provider-action="connect-additional"
-            disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
-            onClick={props.onConnect}
-          >
-            {t("wallet.connect_button")}
-          </Button>
-        ) : (
-          <WalletConnectBanner
-            connected={props.sessionConnected}
-            restoring={props.sessionRestoring}
-            proofAccepted={props.tonProofAccepted}
-            connectionPhase={props.connectionPhase}
-            walletHint={props.walletHint}
-            onConnect={props.onConnect}
-            onDisconnectSession={props.onDisconnectSession}
-            hapticsEnabled={props.hapticsEnabled}
-            hasLinkedWallet={serverBoundWallets.length > 0}
-          />
-        )}
+        <Button
+          variant="secondary"
+          className="w-full efhc-wallet-connect-cta"
+          data-wallet-provider-action="connect"
+          data-linked-wallets={serverBoundWallets.length > 0 ? "present" : "empty"}
+          disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
+          onClick={props.onConnect}
+        >
+          {props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"
+            ? t("wallet.connection_waiting")
+            : t("wallet.connect_button")}
+        </Button>
+        <span className="sr-only" role="status" aria-live="polite">
+          {props.walletHint || ""}
+        </span>
         {props.walletsLoading ? (
           <TelegramInfoBlock title={t("wallet.loading_wallets_title")}>
             {t("wallet.loading_wallets_body")}
