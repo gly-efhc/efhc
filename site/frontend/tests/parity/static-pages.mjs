@@ -45,6 +45,7 @@ async function assertSurface(page,route){
   if(route==='panels')assert.equal(await page.locator('[data-panel-activation-cta]').count(),1);
   if(route==='panels/portfolio')assert.equal(await page.locator('[data-panels-tab-button]').count(),2);
   if(route==='tasks')assert.equal(await page.locator('[data-public-surface="tasks"] .efhc-tasks-grid').count(),1,'actual Tasks content persists');
+  if(route==='withdraw')assert.equal(await page.locator('[data-public-surface="withdraw"]').count(),1,'withdraw form must be visible instead of the generic 500 screen');
   if(route==='referrals'){
    assert.equal(await page.locator('[data-referrals-progress-bar]').count(),1,'progress bar must never be replaced with a loading skeleton');
    assert.equal(await page.locator('[data-referral-level-step]').count(),5,'five static level positions remain present');

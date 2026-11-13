@@ -1,5 +1,7 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { syncSnapshotSchema } from "../services/snapshot.service";
+import { balanceHistoryItemSchema } from "../services/profile.service";
+import { WithdrawPageResponseSchema } from "./api/generated/economicUserSeamValidators";
 import { windowStateStorage } from "./windowState";
 
 const KEY = "EFHC_USER_DATA_CACHE_V1";
@@ -16,6 +18,19 @@ const controllers = new WeakMap<QueryClient, Cache>();
 let settingsOwner: string | null = null;
 const validId = (value: unknown): value is string => typeof value === "string" && /^\d{10}$/.test(value) && value !== "0000000000";
 const userKey = (key: QueryKey) => RESOURCES.has(String(key[0])) && validId(key[1]);
+
+/** Only restore confirmed withdrawal reads in the format consumed by their query hooks. */
+function restorableEntry(entry: Entry): boolean {
+  if (!Array.isArray(entry?.key) || !userKey(entry.key)) return false;
+  if (entry.key[0] !== "withdrawals") return true;
+  if (entry.key[2] === "balance-history") return balanceHistoryItemSchema.array().safeParse(entry.data).success;
+  if (entry.key[2] !== "list" || !entry.data || typeof entry.data !== "object") return false;
+  const pages = (entry.data as {pages?: unknown}).pages;
+  const pageParams = (entry.data as {pageParams?: unknown}).pageParams;
+  return Array.isArray(pages) && Array.isArray(pageParams) &&
+    pages.length > 0 && pages.length === pageParams.length &&
+    pages.every(page => WithdrawPageResponseSchema.safeParse(page).success);
+}
 const emptyCache = (): Cache => ({owner: null, entries: [], lastHumanVisitAt: null});
 
 function decode(raw: string | null): Cache {
@@ -35,7 +50,7 @@ function decode(raw: string | null): Cache {
       return {
       owner: value.owner,
       lastHumanVisitAt: present ? visit : null,
-      entries: value.entries.filter((e: Entry) => Array.isArray(e?.key) && userKey(e.key) && e.key[1] === value.owner && e.data !== undefined && Number.isFinite(e.updatedAt))
+      entries: value.entries.filter((e: Entry) => restorableEntry(e) && e.key[1] === value.owner && e.data !== undefined && Number.isFinite(e.updatedAt))
         .filter((e: Entry) => e.key[0] !== "syncSnapshot" || (syncSnapshotSchema.safeParse(e.data).success && (e.data as {profile: {global_id: string}}).profile.global_id === value.owner)),
       };
     }
@@ -92,6 +107,7 @@ export function startUserDataPersistence(client: QueryClient) {
     if (!query || !userKey(query.queryKey) || query.queryKey[1] !== cache.owner) return;
     // A rejected refetch still contains the last confirmed data.
     if (query.state.data === undefined) return;
+    if (!restorableEntry({key: query.queryKey, data: query.state.data, updatedAt: query.state.dataUpdatedAt})) return;
     const key = JSON.stringify(query.queryKey);
     cache.entries = [{key: query.queryKey, data: query.state.data, updatedAt: query.state.dataUpdatedAt}, ...cache.entries.filter(e => JSON.stringify(e.key) !== key)];
     persist(cache);

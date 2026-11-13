@@ -53,7 +53,7 @@ function harness() {
     await cacheStorage.open("efhc-pwa-"+build+"-content");
     return s;
   };
-  const makeWorker=(build, overrides={})=>{
+  const makeWorker=(build, overrides={}, lifecycle={})=>{
     const events=new Map();
     const config={
       build_id:build,static_export:true,
@@ -65,14 +65,14 @@ function harness() {
       ...overrides,
     };
     const sandbox={
-      URL,Request,Response,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
+      URL,Request:lifecycle.Request || Request,Response,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
       caches:cacheStorage,fetch:(...args)=>fetcher(...args),
       EFHC_PWA_BUILD_CONFIG:config,
       self:{
         registration:{scope,active:{}},
         location:{origin},navigator:{onLine:false},
         clients:{matchAll:async()=>clients.value,claim:async()=>undefined},
-        skipWaiting:async()=>undefined,
+        skipWaiting:lifecycle.skipWaiting || (async()=>undefined),
         addEventListener:(name,handler)=>events.set(name,handler),
       },
     };
@@ -224,6 +224,36 @@ test("T7: A/B/C succession retains both predecessors until last legacy page clos
   await h.makeWorker("C").dispatch("message",{source:current,data:{type:"GET_CACHE_STATUS"}});
   assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
   assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-B-static"));
+});
+
+test("PWA verified install retains worker lifetime until skipWaiting completes",async()=>{
+  const h=harness();
+  let releaseActivation=()=>undefined;
+  const activation=new Promise(resolve=>{releaseActivation=resolve;});
+  let requested=false;
+  let finished=false;
+  h.setFetch(async req=>{
+    const pathname=new URL(typeof req==="string"?req:req.url,origin).pathname;
+    return new Response(pathname.endsWith(".html")
+      ? '<meta name="efhc-build-id" content="B">'
+      : "asset",{status:200});
+  });
+  const worker=h.makeWorker("B",{},{
+    Request: class extends Request {
+      constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
+    },
+    skipWaiting:()=>{requested=true;return activation;},
+  });
+  const installing=worker.dispatch("install").then(()=>{finished=true;});
+  try{
+    await new Promise(resolve=>setTimeout(resolve,40));
+    assert.equal(requested,true,"full PWA precache must finish before activation");
+    assert.equal(finished,false,"install event must retain activation promise");
+  }finally{
+    releaseActivation();
+  }
+  await installing;
+  assert.equal(finished,true);
 });
 
 test("T8: failed install removes own incomplete generation without deleting predecessor",async()=>{

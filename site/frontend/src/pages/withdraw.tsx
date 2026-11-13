@@ -75,11 +75,13 @@ export default function WithdrawPage(props: {
   const lastRefreshAtRef = useRef(Date.now());
   const withdrawalsRef = useRef(withdrawalsQ);
   withdrawalsRef.current = withdrawalsQ;
-  const items = useMemo(
-    () => (withdrawalsQ.data?.pages.flatMap((page) => page.items) || [])
-      .filter((item) => statusFilter === "all" || item.status === statusFilter),
-    [withdrawalsQ.data, statusFilter],
-  );
+  const items = useMemo(() => {
+    const pages = withdrawalsQ.data?.pages;
+    return (Array.isArray(pages)
+      ? pages.flatMap((page) => Array.isArray(page?.items) ? page.items : [])
+      : []
+    ).filter((item) => statusFilter === "all" || item.status === statusFilter);
+  }, [withdrawalsQ.data, statusFilter]);
 
   useEffect(() => {
     let frameOne = 0;
@@ -176,8 +178,11 @@ export default function WithdrawPage(props: {
   const cancelError = cancelWithdrawMutation.error
     ? publicApiErrorMessage(cancelWithdrawMutation.error, t)
     : null;
+  const lastPage = Array.isArray(withdrawalsQ.data?.pages)
+    ? withdrawalsQ.data.pages.at(-1)
+    : undefined;
   const cursor = withdrawalsQ.hasNextPage
-    ? withdrawalsQ.data?.pages.at(-1)?.next_cursor || null
+    ? lastPage?.next_cursor || null
     : null;
   const createBusy = createWithdrawMutation.isPending;
   const cancelBusyId = cancelWithdrawMutation.isPending
