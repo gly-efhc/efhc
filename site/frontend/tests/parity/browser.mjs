@@ -38,7 +38,10 @@ try{
   assert.ok(Math.abs(actual.shell.width-width)<1,JSON.stringify(actual));
   assert.ok(Math.abs(actual.nav.width-width)<3,JSON.stringify(actual));
   assert.ok(actual.scroll<=width+1,'horizontal page overflow');
-  assert.ok(actual.order.findIndex(x=>x.endsWith('/FRONTEND_v866.css'))>actual.order.findIndex(x=>x.includes('/_next/static/css/')),'frozen CSS must follow compiled legacy CSS');
+  const compiledIndex=actual.order.findIndex(x=>x.includes('/_next/static/css/'));
+    const frozenIndex=actual.order.findIndex(x=>/\/FRONTEND_v866(?:\.[0-9a-f]{16})?\.css(?:\?|$)/.test(x));
+    assert.ok(compiledIndex>=0&&frozenIndex>compiledIndex,
+      `fingerprinted frozen v866 CSS must follow compiled React CSS: ${JSON.stringify(actual.order)}`);
  });
 
  for(const width of [1024,1440])await check(`centered desktop ${width}`,async()=>{
