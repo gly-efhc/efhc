@@ -456,8 +456,8 @@ export default function WebProfilePage(props: Props) {
           className="grid gap-3"
           data-wallet-list-boundary="wallet-list-only-1305"
           data-wallet-error-microcopy="safe-1306"
+          data-profile-content="wallet"
         >
-          <Card className="efhc-profile-action-card efhc-profile-action-card--wallet-layout p-0">
             <ProfileWalletSection
               wallets={wallets}
               walletsLoading={walletsQ.isLoading}
@@ -489,13 +489,11 @@ export default function WebProfilePage(props: Props) {
               }}
               hapticsEnabled={props.settings.haptics_enabled}
             />
-          </Card>
         </section>
       ) : null}
 
       {activeTab === "history" ? (
-        <section className="grid gap-3">
-          <Card className="efhc-profile-action-card efhc-history-card p-3">
+        <section className="grid gap-3" data-profile-content="history">
             <ProfileHistorySection
               totalBalance={totalBalance}
               mainBalance={main}
@@ -514,12 +512,11 @@ export default function WebProfilePage(props: Props) {
               exporting={historyExporting}
               reasonLabel={(reason) => reasonLabel(reason, t)}
             />
-          </Card>
         </section>
       ) : null}
 
       {activeTab === "profile" ? (
-        <section className="grid gap-3">
+        <section className="grid gap-3" data-profile-content="profile">
           <GameSection data-profile-main-data="1303">
             <GameStatsGrid>
               <GameStat
@@ -527,7 +524,7 @@ export default function WebProfilePage(props: Props) {
                 value={username}
               />
               <GameStat
-                label={t("energy.title")}
+                label={t("profile.total_generated")}
                 value={total}
                 note="kWh"
               />
@@ -540,7 +537,7 @@ export default function WebProfilePage(props: Props) {
                   {t("profile.interface_title")}
                 </div>
                 <p className="mt-1 text-sm efhc-text-muted2">
-                  {t("profile.settings_surface_note")}
+                  {t("profile.interface_account_note")}
                 </p>
               </div>
               <button
@@ -580,14 +577,6 @@ export default function WebProfilePage(props: Props) {
                 onClick={() => setTab("providers")}
               >
                 Привязанные аккаунты
-              </Button>
-              <Button
-                href="/faq"
-                variant="secondary"
-                aria-label={t("faq.open_full")}
-                data-profile-faq-entry="button-1304"
-              >
-                {t("faq.open_full")}
               </Button>
             </div>
           </Card>
