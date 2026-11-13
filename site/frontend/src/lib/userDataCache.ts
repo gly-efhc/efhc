@@ -1,5 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { syncSnapshotSchema } from "../services/snapshot.service";
+import { WithdrawPageResponseSchema } from "./api/generated/economicUserSeamValidators";
 import { windowStateStorage } from "./windowState";
 
 const KEY = "EFHC_USER_DATA_CACHE_V1";
@@ -27,8 +28,7 @@ function restorableEntry(entry: Entry): boolean {
   const pageParams = (entry.data as {pageParams?: unknown}).pageParams;
   return Array.isArray(pages) && Array.isArray(pageParams) &&
     pages.length > 0 && pages.length === pageParams.length &&
-    pages.every(page => page !== null && typeof page === "object" &&
-      Array.isArray((page as {items?: unknown}).items));
+    pages.every(page => WithdrawPageResponseSchema.safeParse(page).success);
 }
 const emptyCache = (): Cache => ({owner: null, entries: [], lastHumanVisitAt: null});
 
