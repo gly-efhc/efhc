@@ -29,7 +29,7 @@ import {
 } from "../../queries/useProfile";
 import { ProfileWalletSection } from
   "../../components/profile/ProfileWalletSection";
-import { ProfileHistorySection } from
+import { ProfileHistorySection, type HistoryFilter } from
   "../../components/profile/ProfileHistorySection";
 import { ProfileAvatarVisual } from
   "../../components/profile/ProfileAvatarVisual";
@@ -180,7 +180,7 @@ export default function WebProfilePage(props: Props) {
   const hasSignedAccount = auth.status === "authenticated" && Boolean(auth.context)
     && !isDemoGuestSession() && !/guest|visual/i.test(auth.context?.provider || "");
   const walletActions = useProfileWalletActions();
-  const [historyFilter, setHistoryFilter] = useState("all");
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [extendedProfileOpen, setExtendedProfileOpen] = useState(false);
   const historyExport = useProfileHistoryExport();
@@ -292,7 +292,7 @@ export default function WebProfilePage(props: Props) {
   const exportHistory = async (format: "csv" | "xlsx") => {
     if (historyExporting) return;
     try {
-      await historyExport.mutateAsync(format);
+      await historyExport.mutateAsync({ format, category: historyFilter });
       ctx.toast(t("history.export_success"), "success");
     } catch {
       ctx.toast(t("history.export_error"), "error");
