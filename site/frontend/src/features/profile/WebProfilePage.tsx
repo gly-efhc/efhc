@@ -470,10 +470,6 @@ export default function WebProfilePage(props: Props) {
         />
       </div>
 
-      {activeTab === "providers" ? (
-        <AccountProviders />
-      ) : null}
-
       {activeTab === "wallet" ? (
         <section
           className="grid gap-3"
