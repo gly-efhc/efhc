@@ -1413,6 +1413,23 @@ html[data-theme="light"]{
   .efhc-user-toast { gap: .5rem; padding: .68rem .7rem; }
   .efhc-user-toast-list { padding-inline: .5rem; }
 }
+/* Existing USER empty/error states share the same semantic material; neutral empties stay unchanged. */
+.efhc-independent-shell[data-interface-app-mode="user"] [data-user-feedback-kind="error"],
+.efhc-independent-shell[data-interface-app-mode="user"] [data-history-state="read-error"] {
+  border: 1px solid color-mix(in srgb, #ff9099 36%, var(--tg-hint));
+  border-left: 3px solid #ff9099;
+  border-radius: .9rem;
+  background: color-mix(in srgb, #ff9099 5%, var(--tg-secondary-bg));
+  box-shadow: 0 6px 20px rgba(0,0,0,.12);
+  padding: .8rem;
+}
+.efhc-independent-shell[data-interface-app-mode="user"] [data-user-feedback-kind="error"] > .font-semibold {
+  color: #ff9099;
+}
+.efhc-independent-shell[data-interface-app-mode="user"] .efhc-network-status {
+  border-color: rgba(var(--efhc-ct-accent-rgb),.32);
+  background-color: color-mix(in srgb,var(--efhc-ct-accent) 5%,var(--tg-secondary-bg));
+}
 /* Common USER inline error surfaces must remain visible and readable in all CTs. */
 [data-interface-app-mode="user"] [role="alert"].efhc-exchange-helper--warning,
 [data-interface-app-mode="user"] .efhc-withdraw-create-card .text-red-600,
