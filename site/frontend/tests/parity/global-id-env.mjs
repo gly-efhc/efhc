@@ -36,6 +36,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fileURLToPath(new URL(
   assert.match(adminAccess, /fetchAdminAccess\(\)/);
   assert.match(adminAccess, /access\?\.global_id === globalId/);
 
-  assert.equal(expected.length, 10);
+  assert.equal(expected, '0000000088', 'CI Global ID must match the OWNER-approved SuperAdmin identity, without number coercion');
   console.log('EFHC_GLOBAL_ID_ENV_CONTRACT=PASS format=D10 canonical-string no-public-bundle server-authorization-required');
 }
