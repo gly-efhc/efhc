@@ -81,21 +81,23 @@ test("review cannot show mismatched wallet request or invalid on-chain metadata"
   }), /DIRECT_DEPOSIT_REVIEW_INVALID/);
 });
 
-test("review is prepared in the background and one Transfer click opens the wallet", () => {
+test("validated transfer is prepared in the background; reference dialog delegates approval to the wallet", () => {
   const component = file("../../src/components/DepositModal.tsx");
   const originalSend = component.indexOf("const sendPreparedDirectDeposit = useCallback(");
   const reviewMarkup = component.indexOf('data-direct-deposit-review="ready"');
   const action = component.indexOf('data-direct-deposit-action="send-efhc-jetton"');
-  assert.ok(originalSend >= 0 && reviewMarkup > originalSend && action > reviewMarkup);
+  assert.ok(originalSend >= 0 && reviewMarkup === -1 && action > originalSend);
   assert.match(component, /const review = createDirectDepositReview\(/);
   assert.match(component, /setPreparedDeposit\(\{\s*tx,\s*review,/);
   assert.match(component, /window\.setTimeout\(\(\) => \{\s*void prepareDirectEfhcDeposit\(\);/);
   assert.match(component, /t\("deposit\.direct_send_efhc"\)/);
   assert.doesNotMatch(component, /t\("deposit\.review_confirm"\)/);
   assert.match(component, /disabled=\{transactionPhase === "signing"\}/);
-  assert.match(component, /data-direct-deposit-review-attached="ton"/);
-  assert.match(component, /data-direct-deposit-review-fee="pending"/);
-  assert.match(component, /data-direct-deposit-review-recipient="owner"/);
+  assert.doesNotMatch(component, /data-direct-deposit-review-(?:attached|fee|recipient)=/);
+  assert.match(component, /wallet\.proof_verified === true/);
+  assert.match(component, /sameTonAddress\(walletAddress, wallet\.wallet_address\)/);
+  assert.match(component, /if \(verifiedSessionReady\) \{\s*await prepareDirectEfhcDeposit\(\)/);
+  assert.match(component, /useState\("100\.00000000"\)/);
   assert.doesNotMatch(component, /data-direct-deposit-action="edit-amount"/);
   assert.match(component, /void sendTransaction\(ready\.tx\)\.then\(/);
   assert.doesNotMatch(component.slice(originalSend, component.indexOf("async function sendDirectEfhcDeposit",originalSend)),
