@@ -253,6 +253,7 @@ export default function WithdrawPage(props: {
       });
       if (!result.session.rewarded) {
         setWithdrawAdPhase("failed");
+        setWithdrawAdOpen(true);
         toast(t("withdraw.ad_required_failed"), "error");
         return false;
       }
