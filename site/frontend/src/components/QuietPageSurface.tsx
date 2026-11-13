@@ -63,8 +63,7 @@ export function QuietPageSurface({pathname, t}: {pathname: string; t: Translator
               <button type="button" disabled>{t("withdraw.create_request")}</button>
             </div>
           </GameSection>
-          <GameSection title={t("withdraw.requests_history")} />
-          <GameSection title={t("withdraw.latest_operations")} />
+          <GameSection className="efhc-withdraw-requests-history" title={t("withdraw.my_requests")} />
         </>
       ) : <GameSection />}
     </GamePageShell>
