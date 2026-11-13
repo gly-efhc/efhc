@@ -173,6 +173,30 @@ test("Removed dev/neon never falls back to legacy offline HTML",async()=>{
   }
 });
 
+test("New verified worker purges old HTML immediately without discarding legacy hashed JS",async()=>{
+  const h=harness(),legacy=h.createClient("old-tab","/efhc/withdraw/");
+  h.clients.value=[legacy];
+  const old=await h.seed("A",{
+    "/efhc/withdraw/index.html":"obsolete withdraw",
+    "/efhc/dev/neon/index.html":"obsolete operator console",
+    "/efhc/_next/static/legacy.js":"still needed by old tab",
+  });
+  await h.seed("B",{"/efhc/withdraw/index.html":"verified withdraw"});
+  const worker=h.makeWorker("B");
+  await worker.dispatch("activate");
+  assert.equal(await old.match("/efhc/index.html"),undefined);
+  assert.equal(await old.match("/efhc/withdraw/index.html"),undefined);
+  assert.equal(await old.match("/efhc/dev/neon/index.html"),undefined);
+  assert.equal(await(await old.match("/efhc/_next/static/legacy.js")).text(),
+    "still needed by old tab", "Do not break an active legacy tab");
+  const navigation=await worker.navigationFallback(
+    new Request(origin+"/efhc/withdraw/"),{});
+  assert.equal(await navigation.text(),"verified withdraw",
+    "Offline navigation must never resurrect the previous HTML document");
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "Only the obsolete HTML should be purged before old tabs reload");
+});
+
 test("T2: a restarted worker restores predecessor inventory before first old chunk request",async()=>{
   const h=harness(),old=h.createClient("old"),newTab=h.createClient("new");
   h.clients.value=[old,newTab];
