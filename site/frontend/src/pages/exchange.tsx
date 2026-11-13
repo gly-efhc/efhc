@@ -1,11 +1,9 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/router";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
-import { TelegramEmptyState } from "../components/ui/telegram/TelegramEmptyState";
 import { Button } from "../components/ui/Button";
 import {
   GameHero,
-  GameNotice,
   GamePageShell,
   GameStat,
   GameStatsGrid,
@@ -58,9 +56,17 @@ export default function ExchangePage(props: {
     [maxExchangeableKwh],
   );
 
-  const previewError = previewQuery.error
-    ? publicApiErrorMessage(previewQuery.error, t)
-    : "";
+  // Show a read failure once without adding a non-reference card to the page.
+  const previewFailureNotified = useRef(false);
+  useEffect(() => {
+    if (!previewQuery.error) {
+      previewFailureNotified.current = false;
+      return;
+    }
+    if (previewFailureNotified.current) return;
+    previewFailureNotified.current = true;
+    toast(publicApiErrorMessage(previewQuery.error, t), "error");
+  }, [previewQuery.error, t, toast]);
 
   const doPartialExchange = async (amountKwh: string) => {
     if (customization.mutationBlocked) return;
@@ -131,50 +137,21 @@ export default function ExchangePage(props: {
       </GameHero>
 
       <div className="efhc-exchange-body-variant">
-      {previewQuery.isLoading ? (
-        <GameNotice
-          title={t("common.loading")}
-          detail={t("exchange.interactive_loading")}
-        />
-      ) : null}
-
       <ExchangePanel
         maxKwh={maxExchangeableKwh}
         onExchange={doPartialExchange}
         pending={exchangeMutation.isPending}
       />
 
-      {previewError ? (
-        <GameNotice
-          title={t("exchange.preview_unavailable_title")}
-          detail={t("exchange.preview_unavailable_detail")}
-        />
-      ) : null}
-
-      {!previewQuery.isLoading && !previewError && !canExchange ? (
-        <TelegramEmptyState
-          title={t("exchange.exchange_unavailable_title")}
-          detail={t("exchange.exchange_unavailable_detail")}
-        />
-      ) : null}
-
-      <div
-        className="efhc-exchange-history-boundary"
-        data-exchange-history-boundary="light-link-only"
+      <button
+        type="button"
+        className="efhc-exchange-history-link"
+        data-exchange-history-link="account-history"
+        data-exchange-history-link-light="true"
+        onClick={() => openProfile("history")}
       >
-        <span className="efhc-exchange-history-hint">
-          {t("exchange.history_profile_note")}
-        </span>
-        <button
-          type="button"
-          className="efhc-exchange-history-link"
-          data-exchange-history-link="account-history"
-          data-exchange-history-link-light="true"
-          onClick={() => openProfile("history")}
-        >
-          {t("exchange.open_history")}
-        </button>
-      </div>
+        {t("exchange.open_history")}
+      </button>
       <Button
         type="button"
         className="w-full efhc-exchange-withdraw-button efhc-theme03-cta"
