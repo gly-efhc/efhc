@@ -21,6 +21,34 @@
   .efhc-panels-page[data-ph="PH-02"] .panels-kicker,
   .efhc-panels-page[data-ph="PH-10"] .panels-kicker
 ){color:var(--efhc-ct-accent)!important}
+/* All six physical XH and five WD designs retain their own layout and
+   background topology; only decorative hue follows the selected CT. */
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id]
+:is(.efhc-exchange-hero[data-xh],#exchangePage .exchange-hero-variant[data-xh],
+    .efhc-withdraw-shell[data-wd],#withdrawPage[data-wd]) {
+  --efhc-theme-accent:var(--efhc-ct-accent);
+  --efhc-theme-edge:rgba(var(--efhc-ct-accent-rgb),.28);
+  --wd-accent:var(--efhc-ct-accent);
+  --wd-edge:rgba(var(--efhc-ct-accent-rgb),.28);
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id]
+:is(.efhc-exchange-hero[data-xh],#exchangePage .exchange-hero-variant[data-xh])
+:is(.efhc-game-hero_icon,.efhc-game-kicker,.source-hero-icon,.source-kicker) {
+  color:var(--efhc-ct-accent);
+  border-color:rgba(var(--efhc-ct-accent-rgb),.33);
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id]
+:is(.efhc-exchange-hero[data-xh],#exchangePage .exchange-hero-variant[data-xh])
+:is(.efhc-game-stat,.source-stat) {
+  border-color:rgba(var(--efhc-ct-accent-rgb),.20);
+}
+:is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id]
+:is(.efhc-withdraw-shell[data-wd],#withdrawPage[data-wd])
+:is(.efhc-withdraw-hero,.efhc-withdraw-create-card,.efhc-withdraw-requests-history,
+    .standalone-withdraw-hero,.standalone-withdraw-action-card) {
+  border-color:rgba(var(--efhc-ct-accent-rgb),.28);
+}
+
 /* Exchange XH-02: inside stats frame takes CT chroma; no shape change. */
 :is(html,.efhc-independent-shell)[data-interface-app-mode="user"][data-color-theme-id] :is(
   .efhc-exchange-hero[data-xh="XH-02"] .efhc-game-stats,
