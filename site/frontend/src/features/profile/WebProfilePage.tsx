@@ -16,6 +16,7 @@ import {
 } from "../../components/ui/GameShell";
 import { LayoutContext } from "../../components/Layout";
 import { ProfileModal } from "../../components/ProfileModal";
+import { ProfileSettingsDialog } from "../../components/profile/ProfileSettingsDialog";
 import { AccountProviders } from "./AccountProviders";
 import type { Lang } from "../../lib/i18n";
 import { getUserLevel } from "../../lib/skins";
@@ -25,7 +26,8 @@ import { type ProfileHistoryItem } from "../../services/profile.service";
 import type { UserSettings } from "../../lib/settings";
 import type { PanelsSummary } from "../../types/panels";
 import { useWalletsMe } from "../../hooks/useWalletsMe";
-import { useAuthOwnerGlobalId } from "../../auth/AuthSessionProvider";
+import { useAuthOwnerGlobalId, useAuthSessionController } from "../../auth/AuthSessionProvider";
+import { isDemoGuestSession } from "../../demo/session";
 import {
   useProfileHistoryExport,
   useProfileWalletActions,
@@ -159,6 +161,9 @@ function TabButton(props: {
         "efhc-profile-tab " +
         (props.active ? "efhc-profile-tab--active" : "")
       }
+      data-profile-tab={props.trustSurface}
+      data-active={props.active ? "true" : "false"}
+      aria-selected={props.active}
       data-profile-trust-tab={props.trustSurface}
       onClick={props.onClick}
     >
@@ -169,6 +174,7 @@ function TabButton(props: {
 
 export default function WebProfilePage(props: Props) {
   const globalId = useAuthOwnerGlobalId();
+  const auth = useAuthSessionController();
   const router = useRouter();
   const ctx = useContext(LayoutContext);
   const profileSurface = useInterfaceVariantSurface<HTMLDivElement>(
@@ -177,9 +183,12 @@ export default function WebProfilePage(props: Props) {
   );
   const t = ctx.t;
   const walletsQ = useWalletsMe();
+  const hasSignedAccount = auth.status === "authenticated" && Boolean(auth.context)
+    && !isDemoGuestSession() && !/guest|visual/i.test(auth.context?.provider || "");
   const walletActions = useProfileWalletActions();
   const [historyFilter, setHistoryFilter] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [extendedProfileOpen, setExtendedProfileOpen] = useState(false);
   const historyExport = useProfileHistoryExport();
   const historyExporting = historyExport.isPending;
   const section = String(router.query.section || "profile");
@@ -223,6 +232,8 @@ export default function WebProfilePage(props: Props) {
 
   const profile = props.snap?.profile || {};
   const username = profile.username || t("profile.guest_user");
+  const accountsEntryTitle = t(hasSignedAccount
+    ? "profile.linked_accounts_action" : "profile.sign_in_action");
   const level = useMemo(
     () => getUserLevel(profile.total_generated_kwh || "0"),
     [profile.total_generated_kwh],
@@ -303,6 +314,24 @@ export default function WebProfilePage(props: Props) {
     );
   }
 
+  if (activeTab === "providers") {
+    return (
+      <div className="efhc-profile-page efhc-profile-modal-theme efhc-profile-provider-page"
+        data-profile-content="providers" data-provider-route="account-providers"
+        data-public-no-raw-payload="true"
+      >
+        <div className="source-profile-topbar efhc-profile-topbar">
+          <button className="source-button secondary" type="button"
+            onClick={() => setTab("profile")} data-app-navigation="back-to-profile">
+            {t("profile.back")}
+          </button>
+          <strong>{accountsEntryTitle}</strong>
+        </div>
+        <AccountProviders />
+      </div>
+    );
+  }
+
   return (
     <div
       className="efhc-profile-page efhc-profile-modal-theme"
@@ -345,7 +374,7 @@ export default function WebProfilePage(props: Props) {
         <button
           type="button"
           className="efhc-profile-avatar efhc-profile-avatar-button"
-          onClick={() => setSettingsOpen(true)}
+          onClick={() => setExtendedProfileOpen(true)}
           aria-label={t("profile.edit_profile_photo")}
           title={t("profile.edit_profile_photo")}
           data-profile-avatar-entry="settings"
@@ -412,8 +441,8 @@ export default function WebProfilePage(props: Props) {
       </section>
 
       <div
-        className="efhc-profile-tabs"
-        data-profile-primary-navigation="profile-wallet-history-faq-providers"
+        className="efhc-profile-tabs source-profile-tabs"
+        data-profile-primary-navigation="profile-wallet-history-faq"
       >
         <TabButton
           active={activeTab === "profile"}
@@ -432,12 +461,6 @@ export default function WebProfilePage(props: Props) {
           label={t("profile.section_history_tab")}
           trustSurface="history"
           onClick={() => setTab("history")}
-        />
-        <TabButton
-          active={activeTab === "providers"}
-          label="Аккаунты"
-          trustSurface="providers"
-          onClick={() => setTab("providers")}
         />
         <TabButton
           active={false}
@@ -570,22 +593,30 @@ export default function WebProfilePage(props: Props) {
                 getLabel={(lang) => t(`profile.lang.${lang}`)}
                 onChange={updateLang}
               />
-              <Button
-                type="button"
-                variant="secondary"
-                data-provider-entry="true"
-                onClick={() => setTab("providers")}
-              >
-                Привязанные аккаунты
-              </Button>
             </div>
           </Card>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full source-button wide secondary efhc-profile-provider-entry"
+            data-provider-entry="profile-footer"
+            data-account-authenticated={hasSignedAccount ? "true" : "false"}
+            onClick={() => setTab("providers")}
+          >
+            {accountsEntryTitle}
+          </Button>
         </section>
       ) : null}
 
-      <ProfileModal
+      <ProfileSettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        settings={props.settings}
+        setSettings={props.setSettings}
+      />
+      <ProfileModal
+        open={extendedProfileOpen}
+        onClose={() => setExtendedProfileOpen(false)}
         settings={props.settings}
         setSettings={props.setSettings}
         telegramName={username}
