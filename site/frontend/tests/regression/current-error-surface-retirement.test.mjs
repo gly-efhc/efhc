@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {readFileSync} from "node:fs";
+import {readFileSync,existsSync} from "node:fs";
 import React from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {sourceRuntime} from "../helpers/source-runtime.mjs";
@@ -42,4 +42,12 @@ test("The React ErrorBoundary and fallback route never mount a full-screen 500 c
   assert.match(server,/QuietPageSurface/);
   assert.doesNotMatch(boundary,/SafeErrorState|status=\{500\}/);
   assert.doesNotMatch(server,/SafeErrorState|status=\{status\}/);
+});
+
+test("Retired pages and fatal error cards are physically absent",()=>{
+  for(const relative of ["../../src/pages/dev","../../public/dev",
+    "../../src/components/ui/SafeErrorState.tsx"]) {
+    assert.equal(existsSync(new URL(relative,import.meta.url)),false,
+      "A deleted public screen must not reappear: "+relative);
+  }
 });
