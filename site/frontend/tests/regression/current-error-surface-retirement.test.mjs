@@ -16,7 +16,8 @@ test("A failed Withdraw render keeps canonical page sections without fatal error
   assert.match(html,/class="efhc-game-page/);
   assert.match(html,/efhc-withdraw-hero/);
   assert.match(html,/withdraw.new_request/);
-  assert.match(html,/withdraw.latest_operations/);
+  assert.match(html,/withdraw.my_requests/);
+  assert.doesNotMatch(html,/withdraw.latest_operations/);
   assert.match(html,/— EFHCm/);
   assert.match(html,/<input[^>]*disabled/);
   assert.match(html,/<button[^>]*disabled/);
