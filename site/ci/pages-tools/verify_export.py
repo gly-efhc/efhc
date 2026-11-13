@@ -49,10 +49,10 @@ def main():
         raise ValueError(f'PWA resources absent: {missing[:5]}')
     # Deleted operator route must never be reintroduced by source/public imports
     # or retained in any new precache generation.
-    if (root / 'dev' / 'neon').exists() or any(
-        re.search(r'/dev/neon(?:/|$)', path) for path in config['precache']
+    if (root / 'dev').exists() or any(
+        re.search(r'/dev(?:/|$)', path) for path in config['precache']
     ):
-        raise ValueError('Retired dev/neon page is present in the published artifact')
+        raise ValueError('Retired development route is present in the published artifact')
     fingerprinted = re.compile(r'\.[a-f0-9]{16}\.css$')
     compiled_assets = [
         entry for entry in root.rglob('*')
