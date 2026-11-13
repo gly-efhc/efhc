@@ -35,7 +35,11 @@ const sharedDepositCheckSchema = z.object({
 
 /** The server verifies the global treasury inbox, never a client-supplied tx. */
 export async function runSharedDepositCheck() {
-  const result = await apiRequest<unknown>("/deposit/direct-check", "POST");
+  // Global financial POST policy requires an Idempotency-Key even though this
+  // endpoint only schedules verification; credits remain keyed by on-chain tx.
+  const result = await apiRequest<unknown>("/deposit/direct-check", "POST", {
+    idempotencyKey: crypto.randomUUID(),
+  });
   return sharedDepositCheckSchema.parse(result);
 }
 
