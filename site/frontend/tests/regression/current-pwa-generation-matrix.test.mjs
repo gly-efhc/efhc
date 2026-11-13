@@ -65,7 +65,7 @@ function harness() {
       ...overrides,
     };
     const sandbox={
-      URL,Request,Response,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
+      URL,Request:lifecycle.Request || Request,Response,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
       caches:cacheStorage,fetch:(...args)=>fetcher(...args),
       EFHC_PWA_BUILD_CONFIG:config,
       self:{
@@ -239,6 +239,9 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
       : "asset",{status:200});
   });
   const worker=h.makeWorker("B",{},{
+    Request: class extends Request {
+      constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
+    },
     skipWaiting:()=>{requested=true;return activation;},
   });
   const installing=worker.dispatch("install").then(()=>{finished=true;});
