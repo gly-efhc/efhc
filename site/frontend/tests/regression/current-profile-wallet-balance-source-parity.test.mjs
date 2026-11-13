@@ -34,6 +34,18 @@ test("profile topbar and hero follow the reference mobile geometry for every col
   assert.match(css, /rgba\(var\(--efhc-ct-accent-rgb\), \.30\)/);
 });
 
+test("three reference header controls keep their explicit source order on mobile", () => {
+  const profile = file("../../src/features/profile/WebProfilePage.tsx");
+  const css = file("../../src/styles/globals.css");
+  assert.match(profile, /data-app-navigation="back"/);
+  assert.match(profile, /className="efhc-profile-topbar_actions source-row"/);
+  assert.match(css, /#profilePage \.source-profile-topbar > button\[data-app-navigation="back"\] \{\s*grid-column: 1 !important;/);
+  assert.match(css, /#profilePage \.source-profile-topbar > strong \{\s*grid-column: 2 !important;/);
+  assert.match(css, /#profilePage \.source-profile-topbar > \.efhc-profile-topbar_actions \{\s*grid-column: 3 !important;/);
+  assert.match(css, /#profilePage \.source-profile-hero \.source-profile-identity \{\s*justify-items: stretch !important;/);
+  assert.match(css, /#profilePage \.source-profile-hero \.source-profile-name \{\s*justify-self: start !important;/);
+});
+
 test("account identity action is at the bottom, guests never look verified, and four tabs remain", () => {
   const page = file("../../src/features/profile/WebProfilePage.tsx");
   const providers = file("../../src/features/profile/AccountProviders.tsx");
