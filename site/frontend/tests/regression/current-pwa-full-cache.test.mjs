@@ -225,8 +225,8 @@ test("A missing locale or theme asset aborts the full PWA install instead of rep
 });
 
 
-// A cached installed build must remain usable offline, but never mask a newer
-// HTML document when the user reopens the online Pages application.
+// A controlling Service Worker owns an entire installed HTML/JS/CSS release.
+// Online updates must NOT mix new HTML with the previously installed chunks.
 test("PWA offline navigation opens a complete installed page without waiting for a worker update", async () => {
   const source = read("public/sw.js");
   const origin = "https://efhc.example";
@@ -251,22 +251,21 @@ test("PWA offline navigation opens a complete installed page without waiting for
     },
     fetch:async()=>{network++;throw Error("offline transport");},
   };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;", sandbox);
+  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;", sandbox);
   const holds=[];
   const response=await sandbox.navigateForTest(new Request(scope+"panels/"), {waitUntil:p=>holds.push(p)});
   assert.equal(await response.text(),"verified installed page");
   await Promise.all(holds);
   assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
-  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\.update\(\)/);
+  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\\.update\\(\\)/);
   assert.equal(network,0,"an offline navigation must not request network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
   assert.match(source,/EFHC_STALE_HTML_BUILD/);
-  assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
+  assert.match(source,/fetch\\(request, \\{cache: htmlDocument \\? "no-store" : "reload"\\}\\)/);
   assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
 
-
-test("Online PWA navigation uses the published HTML instead of displaying an obsolete installed build", async () => {
+test("Online navigation never combines next-release HTML with old controlling worker", async () => {
   const source = read("public/sw.js");
   const origin = "https://efhc.example";
   const scope = origin + "/efhc/";
@@ -289,11 +288,34 @@ test("Online PWA navigation uses the published HTML instead of displaying an obs
     caches:{open:async()=>cache,match:async()=>oldPage.clone()},
     fetch:async()=>{networkReads++;return newest.clone();},
   };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
+  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;",sandbox);
   const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
-  assert.match(await result.text(),/LATEST/);
-  assert.equal(networkReads,1,"online navigation must request the current release HTML");
-  assert.doesNotMatch(read("public/sw.js"),/Instant cached-page start: never wait for HTML transport/);
+  assert.match(await result.text(),/OLD/,"old controller must serve its own verified HTML");
+  assert.equal(networkReads,0,"a cached atomic release must not fetch a newer HTML document");
+});
+
+test("Evicted navigation recovers only from the controlling worker build",async()=>{
+  const source=read("public/sw.js"),origin="https://efhc.example",scope=origin+"/efhc/";
+  let onlineBuild="successor";
+  const sandbox={
+    URL,Response,Request,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
+    self:{registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
+      addEventListener:()=>{},clients:{matchAll:async()=>[]}},
+    EFHC_PWA_BUILD_CONFIG:{
+      build_id:"installed",static_export:true,precache:["/efhc/withdraw/index.html"],
+      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
+        content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
+    },
+    caches:{open:async()=>({match:async()=>undefined}),match:async()=>undefined},
+    fetch:async()=>new Response('<meta name="efhc-build-id" content="'+onlineBuild+'">PAGE',{status:200}),
+  };
+  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;",sandbox);
+  const request=new Request(scope+"withdraw/");
+  const mismatched=await sandbox.navigateForTest(request,{waitUntil:()=>{}});
+  assert.equal(mismatched.status,503,"a successor document must never run under an obsolete worker");
+  onlineBuild="installed";
+  const matched=await sandbox.navigateForTest(request,{waitUntil:()=>{}});
+  assert.match(await matched.text(),/PAGE/,"network can restore only same-build HTML");
 });
 
 test("When online HTML is incomplete, keep the verified offline version", async () => {
