@@ -251,17 +251,17 @@ test("PWA offline navigation opens a complete installed page without waiting for
     },
     fetch:async()=>{network++;throw Error("offline transport");},
   };
-  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;", sandbox);
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;", sandbox);
   const holds=[];
   const response=await sandbox.navigateForTest(new Request(scope+"panels/"), {waitUntil:p=>holds.push(p)});
   assert.equal(await response.text(),"verified installed page");
   await Promise.all(holds);
   assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
-  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\\.update\\(\\)/);
+  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\.update\(\)/);
   assert.equal(network,0,"an offline navigation must not request network HTML");
   assert.match(source,/CLIENT_BUILD_READY/);
   assert.match(source,/EFHC_STALE_HTML_BUILD/);
-  assert.match(source,/fetch\\(request, \\{cache: htmlDocument \\? "no-store" : "reload"\\}\\)/);
+  assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
   assert.match(source,/retireObsoleteBuildsIfSafe/);
 });
 
@@ -288,7 +288,7 @@ test("Online navigation never combines next-release HTML with old controlling wo
     caches:{open:async()=>cache,match:async()=>oldPage.clone()},
     fetch:async()=>{networkReads++;return newest.clone();},
   };
-  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;",sandbox);
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
   const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
   assert.match(await result.text(),/OLD/,"old controller must serve its own verified HTML");
   assert.equal(networkReads,0,"a cached atomic release must not fetch a newer HTML document");
@@ -309,7 +309,7 @@ test("Evicted navigation recovers only from the controlling worker build",async(
     caches:{open:async()=>({match:async()=>undefined}),match:async()=>undefined},
     fetch:async()=>new Response('<meta name="efhc-build-id" content="'+onlineBuild+'">PAGE',{status:200}),
   };
-  vm.runInNewContext(source+"\\nthis.navigateForTest = navigationFallback;",sandbox);
+  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
   const request=new Request(scope+"withdraw/");
   const mismatched=await sandbox.navigateForTest(request,{waitUntil:()=>{}});
   assert.equal(mismatched.status,503,"a successor document must never run under an obsolete worker");
