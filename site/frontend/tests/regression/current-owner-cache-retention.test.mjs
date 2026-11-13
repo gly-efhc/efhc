@@ -106,6 +106,7 @@ test("Obsolete withdrawal query shapes cannot break an owner cache warm start", 
 
   stored.entries.unshift(
     {key: listKey, data: {items: []}, updatedAt: Date.now()},
+    {key: historyKey, data: [null], updatedAt: Date.now()},
     {key: historyKey, data: {items: []}, updatedAt: Date.now()},
   );
   session.set(key, JSON.stringify(stored));
