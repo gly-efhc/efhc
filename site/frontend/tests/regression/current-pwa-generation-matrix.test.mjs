@@ -152,6 +152,27 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
   assert.equal(await(await worker.cacheFirst(new Request(origin+bCss))).text(),"blue");
 });
 
+test("Removed dev/neon never falls back to legacy offline HTML",async()=>{
+  const h=harness();
+  const legacy=h.createClient("legacy","/efhc/panels/");
+  h.clients.value=[legacy];
+  await h.seed("A",{"/efhc/dev/neon/index.html":"obsolete console"});
+  await h.seed("B");
+  const worker=h.makeWorker("B");
+  await worker.dispatch("activate");
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "Legacy cache is retained for a still-open previous tab");
+  for(const pathname of ["/efhc/dev/neon","/efhc/dev/neon/",
+    "/efhc/dev/neon/index.html","/efhc/dev/neon/?utm_source=chatgpt.com"]){
+    const response=await worker.dispatch("fetch",{request:{
+      url:origin+pathname,method:"GET",mode:"navigate",
+    }});
+    assert.equal(response.status,404,pathname);
+    assert.equal(await response.text(),"",pathname);
+    assert.equal(response.headers.get("cache-control"),"no-store");
+  }
+});
+
 test("T2: a restarted worker restores predecessor inventory before first old chunk request",async()=>{
   const h=harness(),old=h.createClient("old"),newTab=h.createClient("new");
   h.clients.value=[old,newTab];
