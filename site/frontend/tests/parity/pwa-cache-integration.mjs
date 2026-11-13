@@ -196,6 +196,76 @@ try {
       await page.reload({waitUntil:"domcontentloaded",timeout:30000});
     }
   });
+  await check("offline Withdraw keeps its form when stored financial read shapes are obsolete", async () => {
+    const owner = "0000000042";
+    const saved = await page.evaluate(({owner,cacheKey}) => {
+      const markerKey = "efhc:resolved-display-owner";
+      const durableKey = cacheKey + ":" + owner;
+      const prior = {
+        marker: sessionStorage.getItem(markerKey),
+        tab: sessionStorage.getItem(cacheKey),
+        durable: localStorage.getItem(durableKey),
+        durableKey,
+      };
+      const snapshot = {
+        profile: {
+          global_id:owner,username:"Offline Owner",is_vip:false,has_activ:false,
+          main_balance:"801.00000000",bonus_balance:"0.00000000",
+          available_kwh:"0.00000000",total_generated_kwh:"0.00000000",
+          gen_per_sec_base:"0.00000692",gen_per_sec_vip:"0.00000741",
+        },
+        panels:{active_count:0,total_generated_by_panels:"0.00000000",nearest_expire_at:null},
+        exchange_preview:{ok:true,available_kwh:"0.00000000",
+          max_exchangeable_kwh:"0.00000000",rate_kwh_to_efhc:"1.00000000",detail:""},
+        meta:{server_now_iso:"2026-11-13T00:00:00Z",
+          gen_per_sec_effective:"0.00000692",next_scheduler_eta_sec:0,fallback_task_id:null},
+      };
+      const stored = {owner,lastHumanVisitAt:Date.now(),entries:[
+        {key:["syncSnapshot",owner],data:snapshot,updatedAt:Date.now()-2000},
+        {key:["withdrawals",owner,"list","all"],
+          data:{pages:{items:[]}},updatedAt:Date.now()-2000},
+        {key:["withdrawals",owner,"balance-history"],
+          data:[null],updatedAt:Date.now()-2000},
+      ]};
+      sessionStorage.setItem(markerKey,JSON.stringify({global_id:owner,principal:"browser"}));
+      sessionStorage.setItem(cacheKey,JSON.stringify(stored));
+      localStorage.setItem(durableKey,JSON.stringify(stored));
+      return prior;
+    },{owner,cacheKey:ownerCacheKey});
+    await context.setOffline(true);
+    try {
+      await page.goto(base+"withdraw/",{waitUntil:"domcontentloaded",timeout:30000});
+      await page.locator('[data-public-surface="withdraw"]').waitFor({
+        state:"attached",timeout:16000,
+      });
+      const state = await page.evaluate(cacheKey => {
+        const restored = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        return {
+          active:document.querySelector('[data-public-surface="withdraw"]') !== null,
+          error:document.querySelector('[data-safe-error-state]') !== null,
+          balance:document.querySelector('[data-header-balance-value]')?.getAttribute("data-header-balance-value"),
+          owner:restored?.owner,
+          invalid:restored?.entries?.some(entry=>entry?.key?.[0]==="withdrawals"),
+        };
+      },ownerCacheKey);
+      assert.equal(state.active,true,"Withdraw page must not be replaced by a generic error");
+      assert.equal(state.error,false,"The failed cache read must not render the 500 surface");
+      assert.equal(state.balance,"801.00000000","Valid same-owner balance must survive cache filtering");
+      assert.equal(state.owner,owner,"Hydration must validate the actual owner");
+      assert.equal(state.invalid,false,"Malformed Withdraw queries must not be rehydrated");
+    } finally {
+      await context.setOffline(false);
+      await page.evaluate(({saved,cacheKey}) => {
+        if (saved.marker===null)sessionStorage.removeItem("efhc:resolved-display-owner");
+        else sessionStorage.setItem("efhc:resolved-display-owner",saved.marker);
+        if (saved.tab===null)sessionStorage.removeItem(cacheKey);
+        else sessionStorage.setItem(cacheKey,saved.tab);
+        if (saved.durable===null)localStorage.removeItem(saved.durableKey);
+        else localStorage.setItem(saved.durableKey,saved.durable);
+      },{saved,cacheKey:ownerCacheKey}).catch(()=>undefined);
+      await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    }
+  });
   await check("offline deep links use cached React UI instead of offline fallback", async () => {
     await page.reload({waitUntil:"domcontentloaded",timeout:30000});
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
