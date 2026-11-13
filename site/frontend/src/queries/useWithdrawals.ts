@@ -15,11 +15,11 @@ import {
   getWithdrawOutcome,
   getWithdrawalsPage,
   type WithdrawItem,
-  type WithdrawPageResponse,
 } from "../services/withdrawals.service";
 import type { GlobalId } from "../types/identity";
 import { queryKeys } from "./queryKeys";
 import type { DbId } from "../types/db-id";
+import type { WithdrawPageResponse } from "../lib/api/generated/economicUserSeams";
 
 export function useWithdrawalsPage(args: {
   statusFilter: string;
