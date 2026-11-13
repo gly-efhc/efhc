@@ -3811,17 +3811,38 @@ html[data-reduce-motion="1"] *::after{
   padding-block: 10px;
 }
 
-/* work pass: Exchange kWh to EFHC only boundary. */
-.efhc-exchange-panel {
+/* Exchange v866 geometry: keep behavioral wrappers without painting a second card. */
+.efhc-exchange-body-variant {
   display: grid;
-  gap: 0.65rem;
+  min-width: 0;
+  gap: 0.58rem;
+}
+
+.efhc-exchange-card-variant[data-xc="XC-01"] {
+  padding: 0.8rem;
+}
+
+.efhc-exchange-card-variant > .text-lg.font-semibold.mb-2 {
+  margin-bottom: 0.25rem;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.efhc-exchange-panel {
+  display: contents;
+}
+
+.efhc-exchange-panel > .text-sm.efhc-text-muted {
+  font-size: 0.69rem;
+  line-height: 1.4;
 }
 
 .efhc-exchange-canonical-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.65rem;
+  margin-top: 0.72rem;
 }
 
 /* work pass: Exchange History light boundary. */
@@ -3841,6 +3862,7 @@ html[data-reduce-motion="1"] *::after{
 }
 
 .efhc-exchange-history-link {
+  justify-self: start;
   border: 0;
   background: transparent;
   padding: 0.25rem 0.35rem;
@@ -3855,24 +3877,26 @@ html[data-reduce-motion="1"] *::after{
 /* work pass: Exchange amount and preview polish. */
 .efhc-exchange-input-group {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.25rem;
+  margin-top: 0.65rem;
 }
 
 .efhc-exchange-preview-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.6rem;
+  margin-top: 0.55rem;
   border: 1px solid var(--tg-hint);
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   background: color-mix(
     in srgb,
     var(--tg-secondary-bg) 78%,
     transparent
   );
-  padding: 0.75rem;
+  padding: 0.62rem 0.7rem;
   color: var(--tg-text-color);
-  font-size: 0.875rem;
+  font-size: 0.71rem;
 }
 
 .efhc-exchange-preview-row strong {
@@ -3880,9 +3904,14 @@ html[data-reduce-motion="1"] *::after{
 }
 
 .efhc-exchange-helper {
+  margin-top: 0.42rem;
   color: var(--tg-hint-color, var(--tg-hint));
-  font-size: 0.75rem;
+  font-size: 0.63rem;
   line-height: 1.35;
+}
+
+.efhc-exchange-action-surface [data-exchange-submit-action="true"] {
+  margin-top: 0.65rem;
 }
 
 .efhc-exchange-helper--warning {
