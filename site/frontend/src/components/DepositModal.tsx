@@ -18,6 +18,7 @@ import {
   type PrimaryWalletExecutionReason,
 } from "../lib/wallet-provider/primaryWalletRouting";
 import { queryKeys } from "../queries/queryKeys";
+import { runSharedDepositCheck } from "../services/directDeposit.service";
 import {
   useDirectDepositOpen,
   useDirectDepositStatus,
@@ -95,6 +96,8 @@ export function DepositModal(props: {
   const [amount, setAmount] = useState("100");
   const [openedAt, setOpenedAt] = useState<string | null>(null);
   const [walletOpened, setWalletOpened] = useState(false);
+  const [checkingOnChain, setCheckingOnChain] = useState(false);
+  const [manualStatusRequested, setManualStatusRequested] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [preparedDeposit, setPreparedDeposit] = useState<PreparedDirectDeposit | null>(null);
   const preparationRevision = useRef(0);
@@ -141,6 +144,8 @@ export function DepositModal(props: {
     setPreparedDeposit(null);
     setOpenedAt(null);
     setWalletOpened(false);
+    setCheckingOnChain(false);
+    setManualStatusRequested(false);
     setResumeAfterPrimaryConnect(false);
     setPendingInitialSessionAddress("");
     setPendingSawDisconnect(false);
@@ -297,6 +302,35 @@ export function DepositModal(props: {
       sendInProgress.current = false;
     });
   }, [amount, creditAmount, globalId, isUserRejected, primarySessionReady, sendTransaction, t, walletAddress]);
+
+  async function checkDepositOnChain() {
+    if (!globalId || checkingOnChain) return;
+    setCheckingOnChain(true);
+    setError(null);
+    // No wallet signing or payment is involved in the verification request.
+    // Initial check also covers already-transferred deposits when the modal
+    // is reopened; a new transfer remains scoped to its own signed-at time.
+    if (!openedAt) {
+      setManualStatusRequested(true);
+      setOpenedAt(new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString());
+    }
+    try {
+      await runSharedDepositCheck();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.snapshot.current(globalId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.profile.balanceHistory(globalId),
+        }),
+      ]);
+      if (openedAt) await statusQ.refetch();
+    } catch {
+      setError(t("deposit.direct_open_failed") + " (DIRECT_DEPOSIT_CHECK_UNAVAILABLE)");
+    } finally {
+      setCheckingOnChain(false);
+    }
+  }
 
   async function sendDirectEfhcDeposit() {
     if (!globalId || !amountValid) {
@@ -534,7 +568,7 @@ export function DepositModal(props: {
           />
         ) : null}
 
-        {walletOpened && !confirmed ? (
+        {(walletOpened || manualStatusRequested) && !confirmed ? (
           <div
             className="efhc-direct-deposit_status is-checking"
             role="status"
@@ -588,14 +622,15 @@ export function DepositModal(props: {
                   ? t("deposit.opening")
                 : t("deposit.direct_send_efhc")}
             </Button>
-          ) : !confirmed ? (
+          ) : null}
+          {!confirmed && globalId ? (
             <Button
-              variant="primary"
-              disabled={statusQ.isFetching}
+              variant={walletOpened ? "primary" : "secondary"}
+              disabled={checkingOnChain || statusQ.isFetching || transactionPhase === "signing"}
               data-direct-deposit-action="check-status"
-              onClick={() => void statusQ.refetch()}
+              onClick={() => void checkDepositOnChain()}
             >
-              {statusQ.isFetching
+              {checkingOnChain
                 ? t("common.loading")
                 : t("deposit.status_retry")}
             </Button>
