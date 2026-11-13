@@ -8,12 +8,6 @@ import { useRouter } from "next/router";
 
 import { useInterfaceVariantSurface } from "../../hooks/useInterfaceVariantSurface";
 import { Button } from "../../components/ui/Button";
-import { Card } from "../../components/ui/Card";
-import {
-  GameSection,
-  GameStat,
-  GameStatsGrid,
-} from "../../components/ui/GameShell";
 import { LayoutContext } from "../../components/Layout";
 import { ProfileModal } from "../../components/ProfileModal";
 import { ProfileSettingsDialog } from "../../components/profile/ProfileSettingsDialog";
@@ -334,7 +328,7 @@ export default function WebProfilePage(props: Props) {
 
   return (
     <div
-      className="efhc-profile-page efhc-profile-modal-theme"
+      className="efhc-profile-page source-profile-page efhc-profile-modal-theme"
       id="profilePage"
       ref={profileSurface.ref}
       data-wg="WG-01"
@@ -346,34 +340,35 @@ export default function WebProfilePage(props: Props) {
       data-public-no-admin-diagnostics="true"
       data-public-no-raw-payload="true"
     >
-      <div className="efhc-profile-topbar">
-        <button type="button" data-app-navigation="back" onClick={() => goBack(router)}>
+      <div className="efhc-profile-topbar source-profile-topbar">
+        <button type="button" className="source-button secondary" data-app-navigation="back" onClick={() => goBack(router)}>
           ← {t("profile.back")}
         </button>
         <strong>{t("profile.page_title")}</strong>
-        <div className="efhc-profile-topbar_actions">
+        <div className="efhc-profile-topbar_actions source-row">
           {ctx.canRenderAdminPage || ctx.isAdmin ? (
             <button
               type="button"
+              className="source-button secondary"
               onClick={() => void router.push("/admin")}
             >
               {t("nav.admin")}
             </button>
           ) : null}
-          <button type="button" data-app-navigation="exit-profile" onClick={() => goHome(router)}>
+          <button type="button" className="source-button secondary" data-app-navigation="exit-profile" onClick={() => goHome(router)}>
             {t("profile.exit")}
           </button>
         </div>
       </div>
 
       <section
-        className="efhc-profile-hero"
+        className="efhc-profile-hero source-profile-hero"
         data-profile-hero-layout="three-line"
         data-profile-hero-size="vertical-fit"
       >
         <button
           type="button"
-          className="efhc-profile-avatar efhc-profile-avatar-button"
+          className="efhc-profile-avatar efhc-profile-avatar-button source-profile-avatar"
           onClick={() => setExtendedProfileOpen(true)}
           aria-label={t("profile.edit_profile_photo")}
           title={t("profile.edit_profile_photo")}
@@ -389,9 +384,9 @@ export default function WebProfilePage(props: Props) {
         <span className="sr-only" data-i18n-v125-runtime="profile-avatar-source-note">
           {t("profile.avatar_source_note")}
         </span>
-        <div className="efhc-profile-identity">
+        <div className="efhc-profile-identity source-profile-identity">
           <div className="efhc-profile-name-row">
-            <div className="efhc-profile-name">{username}</div>
+            <div className="efhc-profile-name source-profile-name">{username}</div>
             {ctx.isAdmin ? (
               <span className="efhc-profile-admin-marker">
                 {t("profile.admin_badge")}
@@ -399,14 +394,14 @@ export default function WebProfilePage(props: Props) {
             ) : null}
           </div>
           <div
-            className="efhc-profile-global-id"
+            className="efhc-profile-global-id standalone-profile-global-id"
             data-profile-global-id={globalId || "unavailable"}
           >
             <span>Global ID -</span>
             <strong>{globalId || "—"}</strong>
           </div>
           <div
-            className="efhc-profile-third-row"
+            className="efhc-profile-third-row source-profile-third-row"
             data-profile-status-model="equal-lvl-vip-activ"
           >
             <span className="efhc-profile-status efhc-profile-status--level">
@@ -536,32 +531,29 @@ export default function WebProfilePage(props: Props) {
 
       {activeTab === "profile" ? (
         <section className="grid gap-3" data-profile-content="profile">
-          <GameSection data-profile-main-data="1303">
-            <GameStatsGrid>
-              <GameStat
-                label={t("profile.username_label")}
-                value={username}
-              />
-              <GameStat
-                label={t("profile.total_generated")}
-                value={total}
-                note="kWh"
-              />
-            </GameStatsGrid>
-          </GameSection>
-          <Card className="efhc-profile-action-card p-4">
-            <div className="efhc-profile-card-heading">
+          <div className="source-stats two" data-profile-main-data="1303">
+            <div className="source-stat">
+              <div className="source-stat-label">{t("profile.username_label")}</div>
+              <div className="source-stat-value">{username}</div>
+            </div>
+            <div className="source-stat">
+              <div className="source-stat-label">{t("profile.total_generated")}</div>
+              <div className="source-stat-value">{total} kWh</div>
+            </div>
+          </div>
+          <div className="source-card source-profile-settings-card efhc-profile-action-card">
+            <div className="efhc-profile-card-heading source-row">
               <div className="min-w-0">
-                <div className="text-lg font-extrabold">
+                <div className="source-card-title">
                   {t("profile.interface_title")}
                 </div>
-                <p className="mt-1 text-sm efhc-text-muted2">
+                <p className="source-muted">
                   {t("profile.interface_account_note")}
                 </p>
               </div>
               <button
                 type="button"
-                className="efhc-profile-settings-button"
+                className="efhc-profile-settings-button source-button secondary"
                 aria-label={t("profile.settings_title")}
                 title={t("profile.settings_title")}
                 onClick={() => setSettingsOpen(true)}
@@ -581,7 +573,8 @@ export default function WebProfilePage(props: Props) {
                 </svg>
               </button>
             </div>
-            <div className="mt-4 grid gap-3">
+            <div className="source-profile-compact-controls">
+              <div className="source-profile-compact-control">
               <CompactLanguagePicker
                 value={props.settings.lang}
                 label={t("profile.language")}
@@ -589,8 +582,9 @@ export default function WebProfilePage(props: Props) {
                 getLabel={(lang) => t(`profile.lang.${lang}`)}
                 onChange={updateLang}
               />
+              </div>
             </div>
-          </Card>
+          </div>
           <Button
             type="button"
             variant="secondary"
