@@ -11,7 +11,7 @@ test("profile navigation retains reference account surfaces without duplicate FA
   assert.match(profile, /data-profile-content="history"/);
   assert.match(profile, /className="source-stats two"/);
   assert.match(profile, /className="source-stat-label">\{t\("profile\.total_generated"\)\}/);
-  assert.match(profile, /className="source-profile-settings-card efhc-profile-action-card"/);
+  assert.match(profile, /className="source-card source-profile-settings-card efhc-profile-action-card"/);
   assert.match(profile, /className="efhc-profile-topbar source-profile-topbar"/);
   assert.match(profile, /className="efhc-profile-hero source-profile-hero"/);
   assert.match(profile, /t\("profile\.interface_account_note"\)/);
