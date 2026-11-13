@@ -250,9 +250,15 @@ package `FRONTEND_RECONSTRUCTION_v928.zip`, with documents retained in efhc_arch
 
 ## Постоянство страниц и локальная работа — OWNER05.11.2026
 
-Действуют два фундаментальных закона из [APP-CORE-029](EFHC_APPLICATION_RULES.md): интерфейс всех страниц постоянен; данные отображаются из локального кеша до синхронизации, первый запуск — с нулевыми значениями. Фронтенд и локальные счётчики продолжают работу независимо от бэкенда. Ошибки/ожидание обновления не удаляют страницы и данные, не замораживают локальную работу. Защита принятого интерфейса распространяется на общие data/cache/bootstrap/error-boundary зависимости, даже при неизменном TSX/CSS страницы. Регистрация закона не означает завершённого исправления; требуются behavioral/browser доказательства. Авторизация и серверное подтверждение финансовых действий сохраняют прежние контракты.
+Действуют два фундаментальных закона из [APP-CORE-029](EFHC_APPLICATION_RULES.md): интерфейс всех страниц постоянен; данные отображаются из локального кеша до синхронизации, первый запуск — с нулевыми значениями. Фронтенд и локальные счётчики продолжают работу независимо от бэкенда. Ошибки/ожидание обновления не удаляют страницы и данные, не замораживают локальную работу. Защита принятого интерфейса распространяется на общие data/cache/bootstrap/render-validation зависимости, даже при неизменном TSX/CSS страницы. Регистрация закона не означает завершённого исправления; требуются behavioral/browser доказательства. Авторизация и серверное подтверждение финансовых действий сохраняют прежние контракты.
 
 
 ## Уточнение Global ID — OWNER05.11.2026
 
 APP-CORE-030: при смене пользовательского Global ID очистить кеш данных и сбросить язык/оформление/шаблоны до стартовых значений; язык `en`. До данных нового аккаунта и при сбое его первой загрузки — нули в постоянно видимом интерфейсе. При неизменном пользовательском ID ошибка синхронизации сохраняет его кеш и локальную работу. Смена/поиск Global ID внутри Admin исключены из пользовательского сброса. Действующее уточнение записано в правилах приложения; эта запись не означает реализации кода.
+
+
+## RELEASE-CLEAN technical surface removal — OWNER 13.11.2026
+
+**Current active canon:** `APP-SURFACE-031` in `site/EFHC_APPLICATION_RULES.md` and `site/APPLICATION_RULES.md`; physical route audit in private `06_SSOT/FRONTEND/RELEASE_CLEAN_ROUTE_AUDIT.md`. Custom `404.tsx`, `500.tsx`, `_error.tsx`, `ErrorBoundary.tsx`, `QuietPageSurface.tsx` and `SafeErrorState.tsx` are no longer required application pages/components. Generated static error HTML is removed before PWA versioning. Old proposals to use a blank `404` response or a replacement error shell are `SUPERSEDED` and must not reappear in release. The previously described global error-boundary dependency was intentionally removed; the release contract is to validate actual route data without drawing a different page. Existing USER/Admin/Shop functions, owner-scoped data, legitimate operation outcomes and RBAC remain protected. Historical failures and replaced designs are retained only in archival audit records.
+
