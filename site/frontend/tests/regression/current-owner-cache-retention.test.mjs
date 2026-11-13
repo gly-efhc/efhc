@@ -184,13 +184,13 @@ test("Withdrawal page retains its actual form with populated and malformed read 
   ));
   const complete = render();
   assert.match(complete, /data-public-surface="withdraw"/);
-  assert.match(complete, /801\\.00000000 EFHCm/);
+  assert.match(complete, /801\.00000000 EFHCm/);
   assert.match(complete, /9007199254740993/);
-  assert.match(complete, /10\\.00000000/);
+  assert.match(complete, /10\.00000000/);
   withdrawals = {pages: {items: validItems}};
   history = {items: validHistory};
   const recovered = render();
   assert.match(recovered, /data-public-surface="withdraw"/);
-  assert.match(recovered, /801\\.00000000 EFHCm/);
+  assert.match(recovered, /801\.00000000 EFHCm/);
   assert.doesNotMatch(recovered, /9007199254740993/);
 });
