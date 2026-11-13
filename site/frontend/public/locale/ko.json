@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "현재 광고를 사용할 수 없습니다. 출금 요청이 생성되지 않았습니다. 나중에 다시 시도하세요.",
   "withdraw.all_statuses": "모든 상태",
   "withdraw.amount_invalid_range": "최소 10.00000000 EFHCm 이상이며 사용 가능한 메인 잔액 이하의 금액을 입력하세요.",
+  "withdraw.amount_exceeds_balance": "금액이 사용 가능한 EFHCm 잔액을 초과합니다.",
   "withdraw.amount_label": "금액",
   "withdraw.available_balance": "사용 가능한 잔액",
   "withdraw.available_to_withdraw": "출금 가능량",

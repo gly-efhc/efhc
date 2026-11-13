@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "O anúncio está indisponível neste momento. O pedido de levantamento não foi criado. Tente mais tarde.",
   "withdraw.all_statuses": "todos os estados",
   "withdraw.amount_invalid_range": "Introduza um montante de pelo menos 10.00000000 EFHCm e não superior ao saldo principal disponível.",
+  "withdraw.amount_exceeds_balance": "O valor excede o saldo EFHCm disponível.",
   "withdraw.amount_label": "Montante",
   "withdraw.available_balance": "Saldo disponível",
   "withdraw.available_to_withdraw": "Disponível para levantamento",

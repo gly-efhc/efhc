@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "Реклама зараз недоступна. Заявку на виведення не створено. Спробуйте пізніше.",
   "withdraw.all_statuses": "усі статуси",
   "withdraw.amount_invalid_range": "Введіть суму не менше 10.00000000 EFHCm і не більше доступного основного балансу.",
+  "withdraw.amount_exceeds_balance": "Сума перевищує доступний баланс EFHCm.",
   "withdraw.amount_label": "Сума",
   "withdraw.available_balance": "Доступний баланс",
   "withdraw.available_to_withdraw": "Доступно для виведення",

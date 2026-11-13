@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "Tangazo halipatikani kwa sasa. Ombi la kutoa halikuundwa. Tafadhali jaribu tena baadaye.",
   "withdraw.all_statuses": "hali zote",
   "withdraw.amount_invalid_range": "Weka angalau 10.00000000 EFHCm na si zaidi ya salio kuu linalopatikana.",
+  "withdraw.amount_exceeds_balance": "Kiasi kinazidi salio la EFHCm linalopatikana.",
   "withdraw.amount_label": "Kiasi",
   "withdraw.available_balance": "Salio linalopatikana",
   "withdraw.available_to_withdraw": "Kinachopatikana kutoa",

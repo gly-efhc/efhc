@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "Reklam şu anda kullanılamıyor. Para çekme talebi oluşturulmadı. Lütfen daha sonra tekrar deneyin.",
   "withdraw.all_statuses": "tüm durumlar",
   "withdraw.amount_invalid_range": "En az 10.00000000 EFHCm ve kullanılabilir ana bakiyeden fazla olmayacak bir tutar girin.",
+  "withdraw.amount_exceeds_balance": "Tutar, kullanılabilir EFHCm bakiyesini aşıyor.",
   "withdraw.amount_label": "Tutar",
   "withdraw.available_balance": "Kullanılabilir bakiye",
   "withdraw.available_to_withdraw": "Çekime uygun",

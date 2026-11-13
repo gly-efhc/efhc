@@ -1706,6 +1706,7 @@
   "withdraw.ad_required_unavailable": "広告は現在利用できません。出金申請は作成されませんでした。後でもう一度お試しください。",
   "withdraw.all_statuses": "すべてのステータス",
   "withdraw.amount_invalid_range": "10.00000000 EFHCm以上で、利用可能なメイン残高以下の数量を入力してください。",
+  "withdraw.amount_exceeds_balance": "金額が利用可能なEFHCm残高を超えています。",
   "withdraw.amount_label": "数量",
   "withdraw.available_balance": "利用可能残高",
   "withdraw.available_to_withdraw": "出金可能",
