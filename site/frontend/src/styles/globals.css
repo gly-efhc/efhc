@@ -3811,7 +3811,7 @@ html[data-reduce-motion="1"] *::after{
   padding-block: 10px;
 }
 
-/* Exchange v866 geometry: keep behavioral wrappers without painting a second card. */
+/* Exchange geometry: keep behavioral wrappers without painting a second card. */
 .efhc-exchange-body-variant {
   display: grid;
   min-width: 0;
