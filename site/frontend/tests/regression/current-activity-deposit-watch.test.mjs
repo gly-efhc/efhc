@@ -11,7 +11,8 @@ test("existing Check button starts server-owned on-chain reconciliation, not ano
   assert.match(modal, /onClick=\{\(\) => void checkDepositOnChain\(\)\}/);
   assert.match(modal, /await runSharedDepositCheck\(\)/);
   assert.match(modal, /setOpenedAt\(new Date\(Date\.now\(\) - 7 \* 24 \* 3600 \* 1000\)\.toISOString\(\)\)/);
-  assert.match(service, /apiRequest<unknown>\("\/deposit\/direct-check", "POST"\)/);
+  assert.match(service, /apiRequest<unknown>\("\/deposit\/direct-check", "POST", \{/);
+  assert.match(service, /idempotencyKey: crypto\.randomUUID\(\)/);
   const checkHandler = modal.slice(modal.indexOf("async function checkDepositOnChain()"),
                                    modal.indexOf("async function sendDirectEfhcDeposit()"));
   assert.doesNotMatch(checkHandler, /sendTransaction|sendDirectEfhcDeposit|buildEfhcDirectDepositTx/);
