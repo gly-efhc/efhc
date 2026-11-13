@@ -16,6 +16,58 @@ test("profile navigation retains reference account surfaces without duplicate FA
   assert.doesNotMatch(profile, /efhc-history-card p-3/);
 });
 
+test("account identity action is at the bottom, guests never look verified, and four tabs remain", () => {
+  const page = file("../../src/features/profile/WebProfilePage.tsx");
+  const providers = file("../../src/features/profile/AccountProviders.tsx");
+  assert.match(page, /data-profile-primary-navigation="profile-wallet-history-faq"/);
+  assert.doesNotMatch(page, /label="Аккаунты"/);
+  assert.match(page, /data-provider-entry="profile-footer"/);
+  assert.match(page, /isDemoGuestSession\(\)/);
+  assert.match(page, /profile\.linked_accounts_action/);
+  assert.match(page, /profile\.sign_in_action/);
+  assert.match(page, /data-provider-route="account-providers"/);
+  assert.match(providers, /data-provider-auth-state=/);
+  assert.match(providers, /data-provider-open-wallet="official-ton-connect"/);
+});
+
+test("gear opens only source four toggles and avatar retains advanced services", () => {
+  const page = file("../../src/features/profile/WebProfilePage.tsx");
+  const dialog = file("../../src/components/profile/ProfileSettingsDialog.tsx");
+  const shared = file("../../src/components/ui/Modal.tsx");
+  assert.match(page, /<ProfileSettingsDialog/);
+  assert.match(page, /open=\{extendedProfileOpen\}/);
+  assert.match(page, /setExtendedProfileOpen\(true\)/);
+  assert.match(dialog, /data-profile-settings-compact="four"/);
+  assert.match(dialog, /referenceLayout="settings"/);
+  for (const setting of ["reduce_motion", "sfx_enabled", "haptics_enabled", "music_enabled"]) {
+    assert.ok(dialog.includes('key: "' + setting + '"'));
+  }
+  assert.match(shared, /data-modal-reference-layout=\{props\.referenceLayout\}/);
+});
+
+test("all locale dictionaries have guest and verified account action labels", () => {
+  const langs = ["da", "de", "en", "es", "fr", "hi", "id", "it", "ja", "ko", "pl", "pt", "ru", "sw", "tr", "uk"];
+  for (const lang of langs) {
+    const dict = JSON.parse(file("../../public/locale/" + lang + ".json"));
+    assert.ok(dict["profile.sign_in_action"] && dict["profile.linked_accounts_action"], lang);
+  }
+});
+
+test("provider and both compact dialogs use the same ten CT tokens", () => {
+  const css = file("../../src/styles/globals.css");
+  const registry = file("../../src/lib/colorThemeRegistry.ts");
+  for (let index = 1; index <= 10; index++) {
+    const theme = "CT-" + String(index).padStart(2, "0");
+    assert.ok(registry.includes('id: "' + theme + '"'), theme);
+    assert.ok(css.includes('.efhc-user-direct-deposit-portal[data-color-theme-id="' + theme + '"]'), theme);
+  }
+  assert.match(css, /efhc-profile-provider-page/);
+  assert.match(css, /efhc-profile-provider-entry/);
+  assert.match(css, /data-modal-reference-layout="settings"/);
+  assert.match(css, /data-modal-reference-layout="deposit"/);
+  assert.match(css, /var\(--efhc-ct-accent-rgb\)/);
+});
+
 test("wallet surface exposes one official connect action with verified bound addresses", () => {
   const wallet = file("../../src/components/profile/ProfileWalletSection.tsx");
   const walletItem = file("../../src/components/profile/wallet/WalletListItem.tsx");
