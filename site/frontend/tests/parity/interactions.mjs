@@ -93,7 +93,7 @@ try{
     const sheet=[...document.styleSheets].find(s=>
       s.ownerNode?.getAttribute?.('data-efhc-visual-adapter')==='progress-models'
     );
-    assert(sheet,'progress stylesheet missing from compiled export');
+    if(!sheet)throw new Error('progress stylesheet missing from compiled export');
     const actual=read();const disabled=sheet.disabled;
     try{sheet.disabled=true;return {actual,withoutNonStarterSheet:read()}}finally{sheet.disabled=disabled}
    });
