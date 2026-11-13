@@ -218,9 +218,9 @@ export default function WithdrawPage(props: {
     if (historyExporting) return;
     try {
       await historyExport.mutateAsync({ format, category: "withdraw" });
-      toast(t("history.export_success"), "success");
+      toast(t("withdraw.export_success"), "success");
     } catch {
-      toast(t("history.export_error"), "error");
+      toast(t("withdraw.export_error"), "error");
     }
   }
 
