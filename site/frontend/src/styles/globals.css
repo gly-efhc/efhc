@@ -12201,37 +12201,6 @@ html[data-tg-viewport-state="compact"] .efhc-tma-shell {
   background:rgb(127 29 29 / 0.25);
   color:rgb(254 202 202);
 }
-.efhc-safe-error-state{
-  display:grid;
-  grid-template-columns:auto minmax(0,1fr);
-  gap:0.8rem;
-  padding:1rem;
-  border:1px solid rgb(251 191 36 / 0.55);
-  border-radius:1.25rem;
-  background:color-mix(
-    in srgb,
-    var(--tg-secondary-bg) 94%,
-    rgb(120 53 15)
-  );
-}
-.efhc-safe-error-state>span{
-  display:grid;
-  place-items:center;
-  width:2rem;
-  height:2rem;
-  border-radius:50%;
-  background:rgb(245 158 11 / 0.2);
-  color:rgb(253 230 138);
-  font-weight:900;
-}
-.efhc-safe-error-state p{
-  margin-top:0.25rem;
-  color:var(--tg-hint);
-  font-size:0.84rem;
-}
-.efhc-safe-error-state .efhc-btn{
-  grid-column:1/-1;
-}
 .efhc-route-skeleton{
   display:grid;
   gap:0.7rem;
@@ -15682,16 +15651,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-shop-layout_header[data-hs] :is(.efhc-shop-layout_identity,.efhc-shop-layout_balance,.efhc-shop-layout_profile){border-color:var(--efhc-route-border)}
 .efhc-shop-layout_header[data-hs] .efhc-shop-layout_balance strong{color:var(--efhc-route-accent);font-size:clamp(.88rem,3.8vw,1.05rem);font-variant-numeric:tabular-nums;white-space:nowrap}
 
-/* Error routes are explicit theme surfaces, not unthemed fallbacks. */
-.efhc-error-page[data-er]{
-  background:
-    radial-gradient(520px 260px at 50% 0,var(--efhc-route-glow),transparent 72%),
-    transparent;
-}
-.efhc-error-page[data-er="ER-01"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(110,168,255,.28);background:rgba(15,23,42,.90)}
-.efhc-error-page[data-er="ER-02"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(115,174,252,.34);background:linear-gradient(180deg,rgba(17,35,64,.94),rgba(10,22,42,.94))}
-.efhc-error-page[data-er="ER-03"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(167,139,250,.34);background:radial-gradient(360px 160px at 100% 0,rgba(124,92,255,.18),transparent 72%),rgba(30,22,57,.94)}
-
 /* Readability: no primary or navigational text below the explicit floor. */
 [data-interface-app-mode="user"] .efhc-game-header_statuses .text-\[11px\],
 [data-interface-app-mode="user"] .efhc-game-header_status{
@@ -17754,8 +17713,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 
 .efhc-browser-shop-game-page[data-bs="BS-04"]{--efhc-theme-accent:#58c7b4;--efhc-theme-accent-soft:rgba(88,199,180,.09);--efhc-theme-edge:rgba(88,199,180,.30);border-radius:14px;background:radial-gradient(560px 230px at 100% 0,rgba(88,199,180,.14),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-04"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-04"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-04"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-04"] .efhc-browser-shop-payment-card{border-color:rgba(88,199,180,.30);background:radial-gradient(340px 140px at 100% 0,rgba(88,199,180,.14),transparent 72%),rgba(8,31,34,.86);box-shadow:0 12px 30px rgba(0,0,0,.22)}
 
-.efhc-error-page[data-er="ER-04"]{--efhc-theme-accent:#58c7b4;--efhc-theme-accent-soft:rgba(88,199,180,.09);--efhc-theme-edge:rgba(88,199,180,.30);border-radius:14px;background:radial-gradient(560px 230px at 100% 0,rgba(88,199,180,.14),transparent 72%)} .efhc-error-page[data-er="ER-04"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(88,199,180,.30);background:radial-gradient(340px 140px at 100% 0,rgba(88,199,180,.14),transparent 72%),rgba(8,31,34,.86);box-shadow:0 12px 30px rgba(0,0,0,.22)}
-
 .efhc-tasks-shell[data-tg="TG-05"] .efhc-game-hero{border-color:rgba(229,191,88,.30);border-radius:16px;background:radial-gradient(320px 150px at 100% 0,rgba(229,191,88,.14),transparent 72%),rgba(34,28,14,.90);box-shadow:0 14px 34px rgba(0,0,0,.26)} .efhc-tasks-shell[data-tg="TG-05"] .efhc-task-card{border-color:rgba(229,191,88,.30);border-radius:16px;background:rgba(39,30,12,.52);box-shadow:0 14px 34px rgba(0,0,0,.26);} .efhc-tasks-shell[data-tg="TG-05"] .efhc-task-card_reward .efhc-badge{border-color:rgba(229,191,88,.30);background:rgba(229,191,88,.09);color:#f3cf69}
 .efhc-referrals-shell[data-rg="RG-05"]{--efhc-theme-accent:#e5bf58;--efhc-theme-accent-soft:rgba(229,191,88,.09);--efhc-theme-edge:rgba(229,191,88,.30);border-radius:16px;background:radial-gradient(560px 230px at 100% 0,rgba(229,191,88,.14),transparent 72%)} .efhc-referrals-shell[data-rg="RG-05"] .efhc-game-hero,.efhc-referrals-shell[data-rg="RG-05"] .efhc-card,.efhc-referrals-shell[data-rg="RG-05"] .efhc-list-row,.efhc-referrals-shell[data-rg="RG-05"] .efhc-referrals-tabs,.efhc-referrals-shell[data-rg="RG-05"] .efhc-referrals-link-card{border-color:rgba(229,191,88,.30);background:radial-gradient(340px 140px at 100% 0,rgba(229,191,88,.14),transparent 72%),rgba(39,30,12,.52);box-shadow:0 14px 34px rgba(0,0,0,.26)}
 
@@ -17771,8 +17728,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-ads-trust-shell[data-ad="AD-05"]{--efhc-theme-accent:#e5bf58;--efhc-theme-accent-soft:rgba(229,191,88,.09);--efhc-theme-edge:rgba(229,191,88,.30);border-radius:16px;background:radial-gradient(560px 230px at 100% 0,rgba(229,191,88,.14),transparent 72%)} .efhc-ads-trust-shell[data-ad="AD-05"] .efhc-card,.efhc-ads-trust-shell[data-ad="AD-05"] .efhc-ads-trust-rail{border-color:rgba(229,191,88,.30);background:radial-gradient(340px 140px at 100% 0,rgba(229,191,88,.14),transparent 72%),rgba(39,30,12,.52);box-shadow:0 14px 34px rgba(0,0,0,.26)}
 
 .efhc-browser-shop-game-page[data-bs="BS-05"]{--efhc-theme-accent:#e5bf58;--efhc-theme-accent-soft:rgba(229,191,88,.09);--efhc-theme-edge:rgba(229,191,88,.30);border-radius:16px;background:radial-gradient(560px 230px at 100% 0,rgba(229,191,88,.14),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-05"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-05"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-05"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-05"] .efhc-browser-shop-payment-card{border-color:rgba(229,191,88,.30);background:radial-gradient(340px 140px at 100% 0,rgba(229,191,88,.14),transparent 72%),rgba(39,30,12,.52);box-shadow:0 14px 34px rgba(0,0,0,.26)}
-
-.efhc-error-page[data-er="ER-05"]{--efhc-theme-accent:#e5bf58;--efhc-theme-accent-soft:rgba(229,191,88,.09);--efhc-theme-edge:rgba(229,191,88,.30);border-radius:16px;background:radial-gradient(560px 230px at 100% 0,rgba(229,191,88,.14),transparent 72%)} .efhc-error-page[data-er="ER-05"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(229,191,88,.30);background:radial-gradient(340px 140px at 100% 0,rgba(229,191,88,.14),transparent 72%),rgba(39,30,12,.52);box-shadow:0 14px 34px rgba(0,0,0,.26)}
 
 .efhc-panels-activation-card[data-pa="PA-06"]{border-color:rgba(148,163,184,.17);border-radius:9px;background:rgba(7,10,15,.90);box-shadow:none;} .efhc-panels-activation-card[data-pa="PA-06"] .efhc-panels-activate{border-color:rgba(148,163,184,.17);border-radius:8px;background:rgba(148,163,184,.055);color:#cbd5e1}
 .efhc-exchange-hero[data-xh="XH-06"]{border-color:rgba(148,163,184,.17);border-radius:9px;background:radial-gradient(320px 150px at 100% 0,rgba(148,163,184,.045),transparent 72%),rgba(15,23,42,.58);box-shadow:none;} .efhc-exchange-hero[data-xh="XH-06"] .efhc-game-hero_icon{color:#cbd5e1;border-color:rgba(148,163,184,.17);background:rgba(148,163,184,.055)}
@@ -17803,9 +17758,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-browser-shop-game-page[data-bs="BS-06"]{--efhc-theme-accent:#94a3b8;--efhc-theme-accent-soft:rgba(148,163,184,.055);--efhc-theme-edge:rgba(148,163,184,.17);border-radius:9px;background:radial-gradient(560px 230px at 100% 0,rgba(148,163,184,.045),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-payment-card{border-color:rgba(148,163,184,.17);background:radial-gradient(340px 140px at 100% 0,rgba(148,163,184,.045),transparent 72%),rgba(7,10,15,.90);}
 .efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-06"] .efhc-browser-shop-payment-card{box-shadow:none;border-radius:9px}
 
-.efhc-error-page[data-er="ER-06"]{--efhc-theme-accent:#94a3b8;--efhc-theme-accent-soft:rgba(148,163,184,.055);--efhc-theme-edge:rgba(148,163,184,.17);border-radius:9px;background:radial-gradient(560px 230px at 100% 0,rgba(148,163,184,.045),transparent 72%)} .efhc-error-page[data-er="ER-06"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(148,163,184,.17);background:radial-gradient(340px 140px at 100% 0,rgba(148,163,184,.045),transparent 72%),rgba(7,10,15,.90);box-shadow:none}
-.efhc-error-page[data-er="ER-06"] :is(.efhc-card,[data-safe-error-state]){box-shadow:none;border-radius:9px}
-
 .efhc-panels-hero[data-ph="PH-07"]{border-color:rgba(110,168,255,.24);border-radius:20px;background:radial-gradient(320px 150px at 100% 0,rgba(110,168,255,.16),transparent 72%),rgba(18,30,50,.66);box-shadow:0 16px 38px rgba(0,0,0,.22);backdrop-filter:blur(14px);} .efhc-panels-hero[data-ph="PH-07"] .efhc-game-hero_icon{color:#b8d7ff;border-color:rgba(110,168,255,.24);background:rgba(110,168,255,.09)}
 .efhc-panels-activation-card[data-pa="PA-07"]{border-color:rgba(110,168,255,.24);border-radius:20px;background:rgba(12,21,36,.64);box-shadow:0 16px 38px rgba(0,0,0,.22);} .efhc-panels-activation-card[data-pa="PA-07"] .efhc-panels-activate{border-color:rgba(110,168,255,.24);border-radius:16px;background:rgba(110,168,255,.09);color:#b8d7ff}
 .efhc-tasks-shell[data-tg="TG-07"] .efhc-game-hero{border-color:rgba(110,168,255,.24);border-radius:20px;background:radial-gradient(320px 150px at 100% 0,rgba(110,168,255,.16),transparent 72%),rgba(18,30,50,.66);box-shadow:0 16px 38px rgba(0,0,0,.22)} .efhc-tasks-shell[data-tg="TG-07"] .efhc-task-card{border-color:rgba(110,168,255,.24);border-radius:20px;background:rgba(12,21,36,.64);box-shadow:0 16px 38px rgba(0,0,0,.22);} .efhc-tasks-shell[data-tg="TG-07"] .efhc-task-card_reward .efhc-badge{border-color:rgba(110,168,255,.24);background:rgba(110,168,255,.09);color:#b8d7ff}
@@ -17831,9 +17783,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 
 .efhc-browser-shop-game-page[data-bs="BS-07"]{--efhc-theme-accent:#7fb4ff;--efhc-theme-accent-soft:rgba(110,168,255,.09);--efhc-theme-edge:rgba(110,168,255,.24);border-radius:20px;background:radial-gradient(560px 230px at 100% 0,rgba(110,168,255,.16),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-payment-card{border-color:rgba(110,168,255,.24);background:radial-gradient(340px 140px at 100% 0,rgba(110,168,255,.16),transparent 72%),rgba(12,21,36,.64);box-shadow:0 16px 38px rgba(0,0,0,.22)}
 .efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-07"] .efhc-browser-shop-payment-card{backdrop-filter:blur(14px);border-radius:20px}
-
-.efhc-error-page[data-er="ER-07"]{--efhc-theme-accent:#7fb4ff;--efhc-theme-accent-soft:rgba(110,168,255,.09);--efhc-theme-edge:rgba(110,168,255,.24);border-radius:20px;background:radial-gradient(560px 230px at 100% 0,rgba(110,168,255,.16),transparent 72%)} .efhc-error-page[data-er="ER-07"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(110,168,255,.24);background:radial-gradient(340px 140px at 100% 0,rgba(110,168,255,.16),transparent 72%),rgba(12,21,36,.64);box-shadow:0 16px 38px rgba(0,0,0,.22)}
-.efhc-error-page[data-er="ER-07"] :is(.efhc-card,[data-safe-error-state]){backdrop-filter:blur(14px);border-radius:20px}
 
 .efhc-panels-hero[data-ph="PH-08"]{border-color:rgba(143,134,255,.22);border-radius:8px;background:radial-gradient(320px 150px at 100% 0,rgba(124,92,255,.11),transparent 72%),rgba(22,25,44,.94);box-shadow:0 8px 22px rgba(0,0,0,.20);padding:.68rem;} .efhc-panels-hero[data-ph="PH-08"] .efhc-game-hero_icon{color:#b9b4ff;border-color:rgba(143,134,255,.22);background:rgba(143,134,255,.08)}
 .efhc-panels-activation-card[data-pa="PA-08"]{border-color:rgba(143,134,255,.22);border-radius:8px;background:rgba(14,17,30,.92);box-shadow:0 8px 22px rgba(0,0,0,.20);padding:.62rem;} .efhc-panels-activation-card[data-pa="PA-08"] .efhc-panels-activate{border-color:rgba(143,134,255,.22);border-radius:7px;background:rgba(143,134,255,.08);color:#b9b4ff}
@@ -17872,10 +17821,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-browser-shop-game-page[data-bs="BS-08"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-08"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-08"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-08"] .efhc-browser-shop-payment-card{border-radius:8px;box-shadow:none}
 .efhc-browser-shop-game-page[data-bs="BS-08"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card){padding:.58rem}
 
-.efhc-error-page[data-er="ER-08"]{--efhc-theme-accent:#8f86ff;--efhc-theme-accent-soft:rgba(143,134,255,.08);--efhc-theme-edge:rgba(143,134,255,.22);border-radius:8px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.11),transparent 72%)} .efhc-error-page[data-er="ER-08"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(143,134,255,.22);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.11),transparent 72%),rgba(14,17,30,.92);box-shadow:0 8px 22px rgba(0,0,0,.20)}
-.efhc-error-page[data-er="ER-08"] :is(.efhc-card,[data-safe-error-state]){border-radius:8px;box-shadow:none}
-.efhc-error-page[data-er="ER-08"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card){padding:.58rem}
-
 .efhc-panels-hero[data-ph="PH-09"]{border-color:rgba(88,199,180,.24);border-radius:15px;background:radial-gradient(320px 150px at 100% 0,rgba(88,199,180,.12),transparent 72%),rgba(17,28,43,.94);box-shadow:0 12px 30px rgba(0,0,0,.22);} .efhc-panels-hero[data-ph="PH-09"] .efhc-game-hero_icon{color:#7ee3d0;border-color:rgba(88,199,180,.24);background:rgba(88,199,180,.075)}
 .efhc-panels-tabs[data-pt="PT-09"]{gap:.35rem;border-color:rgba(88,199,180,.24);border-radius:15px;background:rgba(9,15,24,.94);box-shadow:0 12px 30px rgba(0,0,0,.22)} .efhc-panels-tabs[data-pt="PT-09"] > *{border-radius:10px;border-color:transparent;background:transparent} .efhc-panels-tabs[data-pt="PT-09"] > .efhc-btn-primary{border-color:rgba(88,199,180,.24);background:rgba(88,199,180,.075);color:#7ee3d0}
 .efhc-panels-activation-card[data-pa="PA-09"]{border-color:rgba(88,199,180,.24);border-radius:15px;background:rgba(9,15,24,.94);box-shadow:0 12px 30px rgba(0,0,0,.22);} .efhc-panels-activation-card[data-pa="PA-09"] .efhc-panels-activate{border-color:rgba(88,199,180,.24);border-radius:10px;background:rgba(88,199,180,.075);color:#7ee3d0}
@@ -17902,9 +17847,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-browser-shop-game-page[data-bs="BS-09"]{--efhc-theme-accent:#58c7b4;--efhc-theme-accent-soft:rgba(88,199,180,.075);--efhc-theme-edge:rgba(88,199,180,.24);border-radius:15px;background:radial-gradient(560px 230px at 100% 0,rgba(88,199,180,.12),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-payment-card{border-color:rgba(88,199,180,.24);background:radial-gradient(340px 140px at 100% 0,rgba(88,199,180,.12),transparent 72%),rgba(9,15,24,.94);box-shadow:0 12px 30px rgba(0,0,0,.22)}
 .efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-09"] .efhc-browser-shop-payment-card{border-radius:15px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018),0 10px 24px rgba(0,0,0,.18)}
 
-.efhc-error-page[data-er="ER-09"]{--efhc-theme-accent:#58c7b4;--efhc-theme-accent-soft:rgba(88,199,180,.075);--efhc-theme-edge:rgba(88,199,180,.24);border-radius:15px;background:radial-gradient(560px 230px at 100% 0,rgba(88,199,180,.12),transparent 72%)} .efhc-error-page[data-er="ER-09"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(88,199,180,.24);background:radial-gradient(340px 140px at 100% 0,rgba(88,199,180,.12),transparent 72%),rgba(9,15,24,.94);box-shadow:0 12px 30px rgba(0,0,0,.22)}
-.efhc-error-page[data-er="ER-09"] :is(.efhc-card,[data-safe-error-state]){border-radius:15px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018),0 10px 24px rgba(0,0,0,.18)}
-
 .efhc-game-nav_grid[data-bn="BN-10"]{gap:0;border-color:rgba(148,163,184,.20);border-radius:10px;background:rgba(8,12,19,.96);box-shadow:none} .efhc-game-nav_grid[data-bn="BN-10"] .efhc-game-nav_item{border:0;border-right:1px solid rgba(148,163,184,.20);border-radius:0;background:transparent} .efhc-game-nav_grid[data-bn="BN-10"] .efhc-game-nav_item:last-child{border-right:0} .efhc-game-nav_grid[data-bn="BN-10"] .efhc-game-nav_item[data-active="true"]{background:rgba(148,163,184,.05);color:#d5deea}
 .efhc-referrals-shell[data-rg="RG-10"]{--efhc-theme-accent:#94a3b8;--efhc-theme-accent-soft:rgba(148,163,184,.05);--efhc-theme-edge:rgba(148,163,184,.20);border-radius:10px;background:radial-gradient(560px 230px at 100% 0,rgba(110,168,255,.055),transparent 72%)} .efhc-referrals-shell[data-rg="RG-10"] .efhc-game-hero,.efhc-referrals-shell[data-rg="RG-10"] .efhc-card,.efhc-referrals-shell[data-rg="RG-10"] .efhc-list-row,.efhc-referrals-shell[data-rg="RG-10"] .efhc-referrals-tabs,.efhc-referrals-shell[data-rg="RG-10"] .efhc-referrals-link-card{border-color:rgba(148,163,184,.20);background:radial-gradient(340px 140px at 100% 0,rgba(110,168,255,.055),transparent 72%),rgba(8,12,19,.96);}
 .efhc-referrals-shell[data-rg="RG-10"] .efhc-game-hero,.efhc-referrals-shell[data-rg="RG-10"] .efhc-card,.efhc-referrals-shell[data-rg="RG-10"] .efhc-list-row,.efhc-referrals-shell[data-rg="RG-10"] .efhc-referrals-tabs,.efhc-referrals-shell[data-rg="RG-10"] .efhc-referrals-link-card{border-radius:0;box-shadow:none;border-left-color:transparent;border-right-color:transparent}
@@ -17930,9 +17872,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 
 .efhc-browser-shop-game-page[data-bs="BS-10"]{--efhc-theme-accent:#94a3b8;--efhc-theme-accent-soft:rgba(148,163,184,.05);--efhc-theme-edge:rgba(148,163,184,.20);border-radius:10px;background:radial-gradient(560px 230px at 100% 0,rgba(110,168,255,.055),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-payment-card{border-color:rgba(148,163,184,.20);background:radial-gradient(340px 140px at 100% 0,rgba(110,168,255,.055),transparent 72%),rgba(8,12,19,.96);}
 .efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-10"] .efhc-browser-shop-payment-card{border-radius:0;box-shadow:none;border-left-color:transparent;border-right-color:transparent}
-
-.efhc-error-page[data-er="ER-10"]{--efhc-theme-accent:#94a3b8;--efhc-theme-accent-soft:rgba(148,163,184,.05);--efhc-theme-edge:rgba(148,163,184,.20);border-radius:10px;background:radial-gradient(560px 230px at 100% 0,rgba(110,168,255,.055),transparent 72%)} .efhc-error-page[data-er="ER-10"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(148,163,184,.20);background:radial-gradient(340px 140px at 100% 0,rgba(110,168,255,.055),transparent 72%),rgba(8,12,19,.96);box-shadow:none}
-.efhc-error-page[data-er="ER-10"] :is(.efhc-card,[data-safe-error-state]){border-radius:0;box-shadow:none;border-left-color:transparent;border-right-color:transparent}
 
 .efhc-panels-hero[data-ph="PH-11"]{border-color:rgba(167,139,250,.25);border-radius:22px;background:radial-gradient(320px 150px at 100% 0,rgba(124,92,255,.14),transparent 72%),rgba(30,24,54,.92);box-shadow:0 14px 34px rgba(0,0,0,.23);border-radius:22px;} .efhc-panels-hero[data-ph="PH-11"] .efhc-game-hero_icon{color:#c4b5fd;border-color:rgba(167,139,250,.25);background:rgba(167,139,250,.09)}
 .efhc-tasks-shell[data-tg="TG-11"] .efhc-game-hero{border-color:rgba(167,139,250,.25);border-radius:22px;background:radial-gradient(320px 150px at 100% 0,rgba(124,92,255,.14),transparent 72%),rgba(30,24,54,.92);box-shadow:0 14px 34px rgba(0,0,0,.23)} .efhc-tasks-shell[data-tg="TG-11"] .efhc-task-card{border-color:rgba(167,139,250,.25);border-radius:22px;background:rgba(18,16,33,.90);box-shadow:0 14px 34px rgba(0,0,0,.23);border-radius:22px;} .efhc-tasks-shell[data-tg="TG-11"] .efhc-task-card_reward .efhc-badge{border-color:rgba(167,139,250,.25);background:rgba(167,139,250,.09);color:#c4b5fd}
@@ -17965,10 +17904,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-browser-shop-game-page[data-bs="BS-11"]{--efhc-theme-accent:#a78bfa;--efhc-theme-accent-soft:rgba(167,139,250,.09);--efhc-theme-edge:rgba(167,139,250,.25);border-radius:22px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.14),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-payment-card{border-color:rgba(167,139,250,.25);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.14),transparent 72%),rgba(18,16,33,.90);box-shadow:0 14px 34px rgba(0,0,0,.23)}
 .efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-11"] .efhc-browser-shop-payment-card{border-radius:22px}
 .efhc-browser-shop-game-page[data-bs="BS-11"] :is(button,input,select,[role="button"]){border-radius:999px}
-
-.efhc-error-page[data-er="ER-11"]{--efhc-theme-accent:#a78bfa;--efhc-theme-accent-soft:rgba(167,139,250,.09);--efhc-theme-edge:rgba(167,139,250,.25);border-radius:22px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.14),transparent 72%)} .efhc-error-page[data-er="ER-11"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(167,139,250,.25);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.14),transparent 72%),rgba(18,16,33,.90);box-shadow:0 14px 34px rgba(0,0,0,.23)}
-.efhc-error-page[data-er="ER-11"] :is(.efhc-card,[data-safe-error-state]){border-radius:22px}
-.efhc-error-page[data-er="ER-11"] :is(button,input,select,[role="button"]){border-radius:999px}
 
 .efhc-exchange-card-variant[data-xc="XC-12"]{border-color:rgba(167,139,250,.26);border-radius:13px;background:rgba(18,14,35,.92);box-shadow:0 14px 34px rgba(0,0,0,.25);box-shadow:inset 3px 0 0 #a78bfa,0 14px 34px rgba(0,0,0,.25);} .efhc-exchange-card-variant[data-xc="XC-12"] :is(.efhc-input,.efhc-btn-primary){border-color:rgba(167,139,250,.26);border-radius:11px}
 .efhc-referrals-shell[data-rg="RG-12"]{--efhc-theme-accent:#a78bfa;--efhc-theme-accent-soft:rgba(167,139,250,.075);--efhc-theme-edge:rgba(167,139,250,.26);border-radius:13px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.15),transparent 72%)} .efhc-referrals-shell[data-rg="RG-12"] .efhc-game-hero,.efhc-referrals-shell[data-rg="RG-12"] .efhc-card,.efhc-referrals-shell[data-rg="RG-12"] .efhc-list-row,.efhc-referrals-shell[data-rg="RG-12"] .efhc-referrals-tabs,.efhc-referrals-shell[data-rg="RG-12"] .efhc-referrals-link-card{border-color:rgba(167,139,250,.26);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.15),transparent 72%),rgba(18,14,35,.92);box-shadow:0 14px 34px rgba(0,0,0,.25)}
@@ -18014,10 +17949,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-browser-shop-game-page[data-bs="BS-12"]{--efhc-theme-accent:#a78bfa;--efhc-theme-accent-soft:rgba(167,139,250,.075);--efhc-theme-edge:rgba(167,139,250,.26);border-radius:13px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.15),transparent 72%)} .efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-payment-card{border-color:rgba(167,139,250,.26);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.15),transparent 72%),rgba(18,14,35,.92);box-shadow:0 14px 34px rgba(0,0,0,.25)}
 .efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-game-hero,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-account-bar,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-payment-strip,.efhc-browser-shop-game-page[data-bs="BS-12"] .efhc-browser-shop-payment-card{border-radius:13px}
 .efhc-browser-shop-game-page[data-bs="BS-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type{box-shadow:inset 3px 0 0 var(--efhc-theme-accent)}
-
-.efhc-error-page[data-er="ER-12"]{--efhc-theme-accent:#a78bfa;--efhc-theme-accent-soft:rgba(167,139,250,.075);--efhc-theme-edge:rgba(167,139,250,.26);border-radius:13px;background:radial-gradient(560px 230px at 100% 0,rgba(124,92,255,.15),transparent 72%)} .efhc-error-page[data-er="ER-12"] :is(.efhc-card,[data-safe-error-state]){border-color:rgba(167,139,250,.26);background:radial-gradient(340px 140px at 100% 0,rgba(124,92,255,.15),transparent 72%),rgba(18,14,35,.92);box-shadow:0 14px 34px rgba(0,0,0,.25)}
-.efhc-error-page[data-er="ER-12"] :is(.efhc-card,[data-safe-error-state]){border-radius:13px}
-.efhc-error-page[data-er="ER-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type{box-shadow:inset 3px 0 0 var(--efhc-theme-accent)}
 
 
 
@@ -18606,7 +18537,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 }
 .efhc-dashboard-progress-milestone__list li{border-left:0!important;padding-left:0!important;}
 
-/* Historical Theme-12 rail declarations are neutralized without inventing replacement decoration. */
+
 .efhc-referrals-shell[data-rg="RG-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
 .efhc-ranks-shell[data-kg="KG-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
 .efhc-profile-page[data-wg="WG-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
@@ -18617,7 +18548,6 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
 .efhc-withdraw-trust-shell[data-wd="WD-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
 .efhc-ads-trust-shell[data-ad="AD-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
 .efhc-browser-shop-game-page[data-bs="BS-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
-.efhc-error-page[data-er="ER-12"] :is(.efhc-card,.efhc-list-row,.efhc-rank-card,.efhc-profile-action-card):first-of-type,
 .efhc-ranks-shell[data-kg="KG-12"] .efhc-game-stat:first-child{
   box-shadow:none!important;
 }
@@ -19482,17 +19412,14 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-faq-trust-rail,.efhc-history-trust-rail,.efhc-ads-trust-rail,
   .efhc-browser-shop-account-bar,.efhc-browser-shop-payment-strip,
   .efhc-browser-shop-payment-card,.efhc-withdraw-trust-rail,
-  .efhc-withdraw-create-card,.efhc-withdraw-metric-card,[data-safe-error-state]
-){
+  .efhc-withdraw-create-card,.efhc-withdraw-metric-card){
   border-color:var(--efhc-route-border,var(--line));
 }
 
-/* Theme 13 is a full user-route theme, not a route allow-list. The black/gold
-   chromatic layer applies to every public/user page while preserving page DOM. */
+
 [data-interface-app-mode="user"][data-global-theme-id="13"] :is(
   .efhc-faq-shell,.efhc-history-trust-section,.efhc-ads-trust-shell,
-  .efhc-browser-shop-game-page,.efhc-error-page
-){
+  .efhc-browser-shop-game-page){
   --efhc-theme-accent:#c5a15a;
   --efhc-theme-accent-soft:rgba(197,161,90,.10);
   --efhc-theme-edge:rgba(197,161,90,.24);
@@ -19506,9 +19433,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-history-trust-section > *,.efhc-history-trust-rail,
   .efhc-ads-trust-shell .efhc-card,.efhc-ads-trust-rail,
   .efhc-browser-shop-game-page .efhc-game-hero,.efhc-browser-shop-account-bar,
-  .efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card,
-  .efhc-error-page .efhc-card,.efhc-error-page [data-safe-error-state]
-){
+  .efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card){
   border-color:var(--efhc-theme13-border,rgba(197,161,90,.24));
   background:
     radial-gradient(24rem 9rem at 100% 0,rgba(197,161,90,.055),transparent 72%),
@@ -19570,9 +19495,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-profile-topbar,.efhc-profile-trust-grid > *,.efhc-faq-trust-rail,
   .efhc-history-trust-rail,.efhc-ads-trust-rail,.efhc-browser-shop-account-bar,
   .efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card,
-  .efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-withdraw-metric-card,
-  [data-safe-error-state]
-){
+  .efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-withdraw-metric-card){
   border-color:var(--efhc-theme13-border);
   color:var(--efhc-theme13-text);
 }
@@ -19820,7 +19743,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   color:var(--efhc-route-accent)!important;
 }
 
-/* Keep authored component surfaces. Only edges and textual accents synchronize. */
+
 [data-interface-app-mode="user"][data-global-theme-id] :is(
   .efhc-panels-hero,.efhc-panels-tabs,.efhc-panels-list-card,.efhc-panels-card-surface,
   .efhc-panel-tile,.efhc-panels-activation-card,.efhc-exchange-hero,
@@ -19834,8 +19757,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-profile-avatar-settings,.efhc-ads-trust-rail,.efhc-browser-shop-account-bar,
   .efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card,
   .efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-withdraw-metric-card,
-  .efhc-legal-card,[data-safe-error-state]
-){
+  .efhc-legal-card){
   border-color:var(--efhc-route-border)!important;
 }
 [data-interface-app-mode="user"][data-global-theme-id] :is(
@@ -19887,8 +19809,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-profile-trust-grid > *,.efhc-faq-trust-rail,.efhc-history-trust-rail,
   .efhc-ads-trust-rail,.efhc-browser-shop-account-bar,.efhc-browser-shop-payment-strip,
   .efhc-browser-shop-payment-card,.efhc-withdraw-trust-rail,.efhc-withdraw-create-card,
-  .efhc-withdraw-metric-card,[data-safe-error-state]
-){
+  .efhc-withdraw-metric-card){
   border-color:rgba(197,161,90,.22)!important;
   background-image:none!important;
   background-color:#101010!important;
@@ -21964,8 +21885,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-ranks-focused-card,.efhc-ranks-me-card,.efhc-profile-hero,.efhc-profile-action-card,.efhc-profile-tabs,.efhc-profile-field,
   .efhc-hub-choice,.efhc-faq-user-header,.efhc-faq-search-zone,.efhc-faq-section-node,.efhc-faq-subsection-node,.efhc-faq-question-node,
   .efhc-history-bank-day,.efhc-history-bank-operation,.efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-ads-trust-rail,
-  .efhc-browser-shop-account-bar,.efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card,[data-safe-error-state]
-){background-color:rgba(12,21,36,.94)!important}
+  .efhc-browser-shop-account-bar,.efhc-browser-shop-payment-strip,.efhc-browser-shop-payment-card){background-color:rgba(12,21,36,.94)!important}
 
 
 /* FRONTEND_v283 / cycle0125 — Energy/Header active-color regression repair + Theme 13 no-glass guard.
@@ -22327,15 +22247,13 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   background-image:radial-gradient(360px 150px at 100% 0,rgba(197,161,90,.095),transparent 72%)!important;
   background-color:var(--efhc-theme13-raised)!important;
 }
-/* Primary content cards use a quieter black-gold level. */
+
 [data-interface-app-mode="user"][data-global-theme-id="13"] :is(
   .efhc-card,.efhc-game-section,.efhc-panel-tile,.efhc-panels-activation-card,
   .efhc-exchange-card-variant,.efhc-task-card,.efhc-rank-card,.efhc-ranks-me-card,
   .efhc-hub-choice,.efhc-profile-action-card,.efhc-faq-trust-rail,.efhc-history-trust-rail,
   .efhc-ads-trust-rail,.efhc-browser-shop-account-bar,.efhc-browser-shop-payment-strip,
-  .efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-withdraw-metric-card,
-  [data-safe-error-state]
-){
+  .efhc-withdraw-trust-rail,.efhc-withdraw-create-card,.efhc-withdraw-metric-card){
   border-color:var(--efhc-route-border)!important;
   background-image:linear-gradient(180deg,rgba(197,161,90,.018),transparent 54%)!important;
   background-color:var(--efhc-theme13-surface)!important;
@@ -22451,9 +22369,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-profile-action-card,.efhc-profile-avatar-settings,.efhc-faq-trust-rail,
   .efhc-history-trust-rail,.efhc-ads-trust-rail,.efhc-browser-shop-account-bar,
   .efhc-browser-shop-payment-strip,.efhc-withdraw-trust-rail,
-  .efhc-withdraw-create-card,.efhc-withdraw-metric-card,.efhc-legal-card,
-  [data-safe-error-state]
-){
+  .efhc-withdraw-create-card,.efhc-withdraw-metric-card,.efhc-legal-card){
   border-color:var(--efhc-chroma-card-border,var(--efhc-route-border))!important;
   background-image:var(--efhc-chroma-card-background-image,linear-gradient(180deg,rgba(var(--efhc-route-accent-rgb),.025),transparent 58%))!important;
   background-color:var(--efhc-chroma-card-background-color,var(--efhc-route-surface))!important;
@@ -22502,12 +22418,11 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   --efhc-clean-title:#f8fafc;
 }
 
-/* Page wrapper: Theme 03 uses a restrained accent haze instead of a flat painted page. */
+
 .efhc-independent-shell[data-theme-chroma-canon="theme-03-tonal"][data-interface-app-mode="user"][data-global-theme-id]:not([data-global-theme-id="03"]) :is(
   .efhc-panels-shell,.efhc-exchange-shell,.efhc-tasks-shell,.efhc-referrals-shell,
   .efhc-ranks-shell,.efhc-profile-page,.efhc-hub-page,.efhc-faq-shell,
-  .efhc-withdraw-shell,.efhc-ads-trust-shell,.efhc-browser-shop-game-page,.efhc-error-page
-){
+  .efhc-withdraw-shell,.efhc-ads-trust-shell,.efhc-browser-shop-game-page){
   background-image:radial-gradient(520px 220px at 100% 0,var(--efhc-tone-page),transparent 72%)!important;
   background-color:transparent!important;
 }
@@ -22565,7 +22480,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   background:radial-gradient(300px 150px at 100% 0,var(--efhc-tone-hero),transparent 70%),var(--efhc-route-surface-raised)!important;
 }
 
-/* Card: quieter than hero, but visibly inside the same colour family. */
+
 .efhc-independent-shell[data-theme-chroma-canon="theme-03-tonal"][data-interface-app-mode="user"][data-global-theme-id]:not([data-global-theme-id="03"]) :is(
   .efhc-card,.efhc-game-section,.efhc-panels-list-card,.efhc-panels-card-surface,
   .efhc-panel-tile,.efhc-panels-activation-card,.efhc-exchange-panel,
@@ -22574,8 +22489,7 @@ html[data-efhc-onboarding] .efhc-pwa-runtime-status{
   .efhc-profile-action-card,.efhc-profile-avatar-settings,.efhc-faq-trust-rail,
   .efhc-history-trust-rail,.efhc-ads-trust-rail,.efhc-browser-shop-account-bar,
   .efhc-browser-shop-payment-strip,.efhc-withdraw-trust-rail,.efhc-withdraw-create-card,
-  .efhc-withdraw-metric-card,.efhc-legal-card,[data-safe-error-state]
-){
+  .efhc-withdraw-metric-card,.efhc-legal-card){
   border-color:var(--efhc-route-border)!important;
   background-image:radial-gradient(360px 130px at 100% 0,var(--efhc-tone-card),transparent 70%)!important;
   background-color:var(--efhc-route-surface)!important;
