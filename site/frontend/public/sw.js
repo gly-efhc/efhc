@@ -6,8 +6,8 @@ const READONLY_OFFLINE_URL = scoped("offline-readonly.html");
 // Retired operator paths cannot be restored from any previous offline build.
 function isRetiredRoute(pathname) {
   const path = relativePath(pathname);
-  return path === "/dev/neon" || path === "/dev/neon/" ||
-    path === "/dev/neon/index.html";
+  // No development route belongs to the distributed USER application.
+  return path !== null && (path === "/dev" || path.startsWith("/dev/"));
 }
 function relativePath(path) {
   if (PWA_SCOPE && path !== PWA_SCOPE && !path.startsWith(PWA_SCOPE + "/")) return null;
