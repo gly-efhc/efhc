@@ -576,6 +576,7 @@ export default function WebProfilePage(props: Props) {
             <div className="source-profile-compact-controls">
               <div className="source-profile-compact-control">
               <CompactLanguagePicker
+                profileSurface
                 value={props.settings.lang}
                 label={t("profile.language")}
                 showLabel={false}
