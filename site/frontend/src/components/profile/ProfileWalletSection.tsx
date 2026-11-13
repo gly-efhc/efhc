@@ -74,7 +74,7 @@ export function ProfileWalletSection(props: Props) {
         </TelegramInfoBlock>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="standalone-wallet-layout">
         <div
           className="source-card-title efhc-wallet-section-heading"
           data-wallet-section-heading="linked"
@@ -96,6 +96,7 @@ export function ProfileWalletSection(props: Props) {
         <span className="sr-only" role="status" aria-live="polite">
           {props.walletHint || ""}
         </span>
+        <div className="standalone-wallet-list">
         {props.walletsLoading ? (
           <div className="source-muted" role="status">
             {t("wallet.loading_wallets_body")}
@@ -120,6 +121,7 @@ export function ProfileWalletSection(props: Props) {
             hapticsEnabled={props.hapticsEnabled}
             />
         ))}
+        </div>
       </div>
     </div>
   );
