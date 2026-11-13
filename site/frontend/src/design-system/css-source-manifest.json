@@ -94,8 +94,8 @@
         "95857cdc3dc034fe77c9861a94c6ced55dcf5f869a16fd8754fe2e52befee635"
       ],
       "join_separator": "\\n",
-      "sha256": "4f08ead98e6b000817d5ea24965cd5d56d31db73d6bd53e56d9ca2c81350bfff",
-      "bytes": 1250402
+      "sha256": "953d36f1488681aa514e71ff30ccd6742c7fc17e35414d681f7216f6476bf29f",
+      "bytes": 1241748
     },
     "SHOP_v866.css": {
       "source_html": "SHOP_v866.html",
@@ -119,8 +119,8 @@
         "f3ace03d13ad1988bcbacd02ddaaf2ee53571d848ffb065e1339a8cf1ee22a6a"
       ],
       "join_separator": "\\n",
-      "sha256": "e95aaf7464ba6f7f014046fb1a311600d3b9a9a953879ff95443d80d4f450af6",
-      "bytes": 349627
+      "sha256": "9933e03e9f78ab5075992dc09ad3fcf0941b42a79f339258edea6ee27caad8bf",
+      "bytes": 347437
     }
   }
 }
