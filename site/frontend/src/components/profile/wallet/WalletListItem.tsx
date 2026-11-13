@@ -11,6 +11,7 @@ export type WalletListItemModel = {
   wallet_app: string | null;
   is_primary: boolean;
   is_active: boolean;
+  proof_verified?: boolean;
   created_at: string;
 };
 
