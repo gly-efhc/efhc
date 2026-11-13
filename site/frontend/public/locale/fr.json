@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Portefeuille de retrait",
   "withdraw.done": "terminé",
   "withdraw.efhc_amount": "Montant EFHCm",
+  "withdraw.export_error": "Impossible d’exporter l’historique des retraits.",
+  "withdraw.export_success": "Historique des demandes de retrait enregistré.",
   "withdraw.empty_body": "Lorsque vous créez une demande de retrait, elle apparaîtra ici.",
   "withdraw.empty_title": "Aucune demande de retrait pour le moment",
   "withdraw.filter_all": "Tous",

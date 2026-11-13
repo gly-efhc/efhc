@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Udbetalings-wallet",
   "withdraw.done": "færdig",
   "withdraw.efhc_amount": "EFHCm-beløb",
+  "withdraw.export_error": "Kunne ikke eksportere udbetalingshistorikken.",
+  "withdraw.export_success": "Historikken over udbetalingsanmodninger er gemt.",
   "withdraw.empty_body": "Når du opretter en udbetalingsanmodning, vises den her.",
   "withdraw.empty_title": "Ingen udbetalingsanmodninger endnu",
   "withdraw.filter_all": "Alle",

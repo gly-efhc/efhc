@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Auszahlungs-Wallet",
   "withdraw.done": "erledigt",
   "withdraw.efhc_amount": "EFHCm-Betrag",
+  "withdraw.export_error": "Auszahlungsverlauf konnte nicht exportiert werden.",
+  "withdraw.export_success": "Verlauf der Auszahlungsanträge gespeichert.",
   "withdraw.empty_body": "Wenn du einen Auszahlungsantrag erstellst, erscheint er hier.",
   "withdraw.empty_title": "Noch keine Auszahlungsanträge",
   "withdraw.filter_all": "Alle",

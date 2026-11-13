@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Withdrawal wallet",
   "withdraw.done": "done",
   "withdraw.efhc_amount": "EFHCm amount",
+  "withdraw.export_error": "Could not export withdrawal request history.",
+  "withdraw.export_success": "Withdrawal request history saved.",
   "withdraw.empty_body": "When you create a withdraw request, it will appear here.",
   "withdraw.empty_title": "No withdraw requests yet",
   "withdraw.filter_all": "All",

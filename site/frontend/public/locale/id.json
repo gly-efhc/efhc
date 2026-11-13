@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Dompet penarikan",
   "withdraw.done": "selesai",
   "withdraw.efhc_amount": "Jumlah EFHCm",
+  "withdraw.export_error": "Gagal mengekspor riwayat penarikan.",
+  "withdraw.export_success": "Riwayat permintaan penarikan tersimpan.",
   "withdraw.empty_body": "Saat Anda membuat permintaan penarikan, permintaan itu akan muncul di sini.",
   "withdraw.empty_title": "Belum ada permintaan penarikan",
   "withdraw.filter_all": "Semua",

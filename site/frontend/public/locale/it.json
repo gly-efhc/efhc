@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Wallet di prelievo",
   "withdraw.done": "completato",
   "withdraw.efhc_amount": "Importo EFHCm",
+  "withdraw.export_error": "Impossibile esportare la cronologia dei prelievi.",
+  "withdraw.export_success": "Cronologia delle richieste di prelievo salvata.",
   "withdraw.empty_body": "Quando crei una richiesta di prelievo, apparirà qui.",
   "withdraw.empty_title": "Nessuna richiesta di prelievo per ora",
   "withdraw.filter_all": "Tutti",

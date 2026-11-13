@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "निकासी वॉलेट",
   "withdraw.done": "पूर्ण",
   "withdraw.efhc_amount": "EFHCm राशि",
+  "withdraw.export_error": "निकासी अनुरोधों का इतिहास निर्यात नहीं हो सका।",
+  "withdraw.export_success": "निकासी अनुरोधों का इतिहास सहेजा गया।",
   "withdraw.empty_body": "जब आप निकासी अनुरोध बनाएँगे, वह यहाँ दिखाई देगी।",
   "withdraw.empty_title": "अभी कोई निकासी अनुरोध नहीं है",
   "withdraw.filter_all": "सभी",

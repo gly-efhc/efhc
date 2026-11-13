@@ -1735,6 +1735,8 @@
   "withdraw.destination_wallet": "Billetera de retiro",
   "withdraw.done": "completado",
   "withdraw.efhc_amount": "Importe EFHCm",
+  "withdraw.export_error": "No se pudo exportar el historial de retiros.",
+  "withdraw.export_success": "Historial de solicitudes de retiro guardado.",
   "withdraw.empty_body": "Cuando cree una solicitud de retiro, aparecerá aquí.",
   "withdraw.empty_title": "Aún no hay solicitudes de retiro",
   "withdraw.filter_all": "Todo",
