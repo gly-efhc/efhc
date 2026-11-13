@@ -447,7 +447,8 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
       '  <circle id="yellow-field"',
       '  <rect id="mask-background" x="-2048" y="-2048" width="12288" height="12288" fill="#000000" />\n  <circle id="yellow-field"',
     );
-  assert.equal(adaptive, expected, "Android SVG must not alter the original logo geometry");
+  assert.equal(adaptive, expected.replace(/C(?=\\d)/g, "C "), "Android SVG must not alter the original logo geometry");
+  assert.doesNotMatch(adaptive, /C\\d{2,}/, "SVG path command must not resemble a program identifier");
   assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
 });
 
