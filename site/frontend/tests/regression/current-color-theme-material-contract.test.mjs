@@ -158,3 +158,14 @@ test("Exchange removes duplicate history entry while retaining withdrawal and co
   assert.match(exchangeRoute, /exchangeMutation\.mutateAsync/);
   assert.match(exchangeRoute, /data-exchange-withdraw-entrypoint="restored-canonical"/);
 });
+
+test("Exchange geometry reset stays on Exchange; Withdraw retains source grid", () => {
+  const exchangeRoute = read("src/pages/exchange.tsx");
+  const withdrawRoute = read("src/pages/withdraw.tsx");
+  assert.match(css, /\.efhc-exchange-panel \{\s*display:\s*grid;\s*gap:\s*0\.65rem;/);
+  assert.match(css, /\.efhc-exchange-shell \.efhc-exchange-panel \{\s*display:\s*contents;/);
+  assert.match(exchangeRoute, /className="efhc-exchange-shell"/);
+  assert.match(withdrawRoute, /className="efhc-exchange-panel efhc-withdraw-create-card_body"/);
+  assert.match(withdrawRoute, /data-withdraw-action="create"/);
+  assert.match(exchangeRoute, /exchangeMutation\.mutateAsync/);
+});
