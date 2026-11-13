@@ -242,7 +242,11 @@ export default function WithdrawPage(props: {
       const result = await AdManager.runRewardedAd({
         taskCode: WITHDRAW_REQUIRED_AD_PLACEMENT_CODE,
         appLanguage: lang,
-        onPhase: setWithdrawAdPhase,
+        onPhase: (phase) => {
+          setWithdrawAdPhase(phase);
+          // The provider owns the actual ad window; do not cover its controls.
+          setWithdrawAdOpen(phase !== "viewing");
+        },
         requireZeroReward: true,
       });
       if (!result.session.rewarded) {
@@ -251,6 +255,7 @@ export default function WithdrawPage(props: {
         return false;
       }
       setWithdrawAdPhase("rewarded");
+      setWithdrawAdOpen(false);
       return true;
     } catch (caught: unknown) {
       const code = adManagerErrorCode(caught);
@@ -260,6 +265,7 @@ export default function WithdrawPage(props: {
           ? t("withdraw.ad_required_skipped")
           : t("withdraw.ad_required_failed");
       setWithdrawAdPhase(code === "NO_FILL" ? "no_fill" : code === "DAILY_LIMIT_REACHED" ? "daily_limit" : "failed");
+      setWithdrawAdOpen(true);
       toast(text, "error");
       return false;
     } finally {
@@ -563,12 +569,16 @@ export default function WithdrawPage(props: {
 
       <Modal
         open={withdrawAdOpen}
+        surface="withdraw-ad"
         onClose={() => { if (!withdrawAdBusy) setWithdrawAdOpen(false); }}
         closeDisabled={withdrawAdBusy}
         title={t("tasks.ad_modal_title")}
       >
-        <div className="space-y-3" data-withdraw-required-ad-modal="ads-module-zero-reward">
-          <div className="efhc-ad-countdown" data-ad-countdown="state">{withdrawAdPhaseLabel()}</div>
+        <div className="efhc-withdraw-ad-status" data-withdraw-required-ad-modal="ads-module-zero-reward" data-ad-phase={withdrawAdPhase || "loading"}>
+          <span className="efhc-withdraw-ad-status-icon" aria-hidden="true">
+            {withdrawAdBusy ? "…" : withdrawAdPhase === "rewarded" ? "✓" : "!"}
+          </span>
+          <p className="efhc-withdraw-ad-status-message" role="status">{withdrawAdPhaseLabel()}</p>
           <Button
             className="w-full"
             disabled={withdrawAdBusy}
