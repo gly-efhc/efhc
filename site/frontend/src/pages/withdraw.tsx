@@ -247,7 +247,7 @@ export default function WithdrawPage(props: {
         onPhase: (phase) => {
           setWithdrawAdPhase(phase);
           // The provider owns the actual ad window; do not cover its controls.
-          setWithdrawAdOpen(phase !== "viewing");
+          setWithdrawAdOpen(phase !== "viewing" && phase !== "verifying");
         },
         requireZeroReward: true,
       });
@@ -380,7 +380,7 @@ export default function WithdrawPage(props: {
               onClick={() => {
                 hapticMedium(settings.haptics_enabled);
                 setAmount(mainBalance);
-                 setAmountTouched(false);
+                setAmountTouched(false);
               }}
               disabled={!withdrawMinOk}
             >
@@ -397,7 +397,7 @@ export default function WithdrawPage(props: {
               value={amount}
               onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
               className="efhc-input mt-2 w-full tabular-nums"
-               data-amount-state={amountTouched && amountIssue ? "invalid" : "valid"}
+              data-amount-state={amountTouched && amountIssue ? "invalid" : "valid"}
               inputMode="decimal"
               aria-invalid={amountTouched && !withdrawAmountOk}
               aria-describedby={amountTouched && !withdrawAmountOk ? "efhc-withdraw-amount-helper" : undefined}
@@ -566,7 +566,7 @@ export default function WithdrawPage(props: {
                   : t("common.load_more")}
               </Button>
             ) : null}
-</div>
+            </div>
         </div>
       </Card>
 
