@@ -11,12 +11,7 @@ import {
   useWalletProvider,
   type WalletTransactionPhase,
 } from "../lib/wallet-provider";
-import {
-  primaryLinkedWallet,
-  routePrimaryWalletExecution,
-  sameTonAddress,
-  type PrimaryWalletExecutionReason,
-} from "../lib/wallet-provider/primaryWalletRouting";
+import { sameTonAddress } from "../lib/wallet-provider/primaryWalletRouting";
 import { queryKeys } from "../queries/queryKeys";
 import { runSharedDepositCheck } from "../services/directDeposit.service";
 import {
@@ -86,9 +81,6 @@ export function DepositModal(props: {
   const { colorThemeId } = useContext(InterfaceCustomizationContext);
   const {
     address: walletAddress,
-    listWallets,
-    connect: connectWallet,
-    disconnect: disconnectWallet,
     sendTransaction,
     isUserRejected,
   } = useWalletProvider();
@@ -102,9 +94,6 @@ export function DepositModal(props: {
   const [preparedDeposit, setPreparedDeposit] = useState<PreparedDirectDeposit | null>(null);
   const preparationRevision = useRef(0);
   const sendInProgress = useRef(false);
-  const [resumeAfterPrimaryConnect, setResumeAfterPrimaryConnect] = useState(false);
-  const [pendingInitialSessionAddress, setPendingInitialSessionAddress] = useState("");
-  const [pendingSawDisconnect, setPendingSawDisconnect] = useState(false);
   const [transactionPhase, setTransactionPhase] = useState<
     WalletTransactionPhase
   >("idle");
@@ -115,10 +104,6 @@ export function DepositModal(props: {
 
   const amountValid = useMemo(() => validEfhcAmount(amount), [amount]);
   const creditAmount = useMemo(() => normalizedEfhcAmount(amount), [amount]);
-  const primaryWallet = useMemo(
-    () => primaryLinkedWallet(walletsMe.data?.wallets),
-    [walletsMe.data?.wallets],
-  );
   const connectedVerifiedWallet = useMemo(
     () => (walletsMe.data?.wallets || []).find((wallet) => (
       wallet.is_active
@@ -151,9 +136,6 @@ export function DepositModal(props: {
     setWalletOpened(false);
     setCheckingOnChain(false);
     setManualStatusRequested(false);
-    setResumeAfterPrimaryConnect(false);
-    setPendingInitialSessionAddress("");
-    setPendingSawDisconnect(false);
     setTransactionPhase("idle");
     setError(null);
     openDeposit.reset();
@@ -348,79 +330,14 @@ export function DepositModal(props: {
     }
     if (preparing || sendInProgress.current) return;
     setError(null);
-    // A verified secondary wallet may send its own Jetton deposit without
-    // silently changing the stored primary wallet for other operations.
-    if (verifiedSessionReady) {
-      await prepareDirectEfhcDeposit();
+    // The official chooser selects a fresh proven wallet for this Global ID.
+    // Switching wallet transport never changes the server primary binding.
+    if (!verifiedSessionReady) {
+      openWalletConnect("binding");
       return;
     }
-    try {
-      await routePrimaryWalletExecution({
-        wallets: walletsMe.data?.wallets,
-        currentSessionAddress: walletAddress,
-        listWallets,
-        connectWallet,
-        disconnectWallet,
-        markPending: () => {
-          setResumeAfterPrimaryConnect(true);
-          setPendingInitialSessionAddress(walletAddress);
-          setPendingSawDisconnect(!String(walletAddress || "").trim());
-        },
-        openChooser: async (reason: PrimaryWalletExecutionReason) => {
-          if (reason === "primary_transport_unavailable") {
-            setError(t("wallet.primary_transport_fallback"));
-          }
-          openWalletConnect(reason === "no_primary" ? "binding" : "execution_fallback");
-        },
-        execute: async () => {
-          setResumeAfterPrimaryConnect(false);
-          await prepareDirectEfhcDeposit();
-        },
-      });
-    } catch (caught) {
-      setResumeAfterPrimaryConnect(false);
-      if (isUserRejected(caught)) {
-        setTransactionPhase("rejected");
-        setError(t("wallet.transaction_rejected"));
-        return;
-      }
-      setTransactionPhase("error");
-      setError(t("wallet.connection_failed"));
-    }
+    await prepareDirectEfhcDeposit();
   }
-
-  useEffect(() => {
-    if (!resumeAfterPrimaryConnect || walletOpened) return;
-    if (!walletAddress) {
-      setPendingSawDisconnect(true);
-      return;
-    }
-    if (verifiedSessionReady) {
-      setResumeAfterPrimaryConnect(false);
-      setPendingInitialSessionAddress("");
-      setPendingSawDisconnect(false);
-      void prepareDirectEfhcDeposit();
-      return;
-    }
-    if (
-      primaryWallet
-      && (pendingSawDisconnect || !pendingInitialSessionAddress)
-    ) {
-      setResumeAfterPrimaryConnect(false);
-      setTransactionPhase("error");
-      setError(t("wallet.primary_mismatch"));
-    }
-  }, [
-    prepareDirectEfhcDeposit,
-    pendingInitialSessionAddress,
-    pendingSawDisconnect,
-    verifiedSessionReady,
-    primaryWallet,
-    resumeAfterPrimaryConnect,
-    t,
-    walletAddress,
-    walletOpened,
-  ]);
 
   return (
     <Modal
@@ -471,6 +388,14 @@ export function DepositModal(props: {
                 </strong>
               </div>
             </div>
+            <Button
+              variant="secondary"
+              data-direct-deposit-action="choose-wallet"
+              disabled={preparing || transactionPhase === "signing"}
+              onClick={() => openWalletConnect("binding")}
+            >
+              {t("wallet.connect_button")}
+            </Button>
           </>
         ) : null}
 
