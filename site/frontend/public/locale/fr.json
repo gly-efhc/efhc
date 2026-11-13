@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filtrez les notifications mineures et gardez uniquement les avertissements clés.",
   "profile.independent_shell_badge": "Shell indépendante",
   "profile.interface_account_note": "Langue et paramètres du compte.",
+  "profile.linked_accounts_action": "Comptes associés",
+  "profile.sign_in_action": "Se connecter",
   "profile.interface_note": "Gardez l’enveloppe native Telegram. Les accents EFHC doivent rester uniquement dans la couche de contenu.",
   "profile.interface_title": "Interface utilisateur",
   "profile.lang.da": "Dansk",
