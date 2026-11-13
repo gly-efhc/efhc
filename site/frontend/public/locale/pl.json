@@ -1091,6 +1091,8 @@
   "profile.important_alerts_only_desc": "Filtruj drobne powiadomienia i zostaw tylko kluczowe ostrzeżenia.",
   "profile.independent_shell_badge": "Niezależna powłoka",
   "profile.interface_account_note": "Język i ustawienia konta.",
+  "profile.linked_accounts_action": "Powiązane konta",
+  "profile.sign_in_action": "Zaloguj się",
   "profile.interface_note": "Zachowaj powłokę natywną dla Telegram. Akcenty EFHC powinny pozostać tylko w warstwie treści.",
   "profile.interface_title": "Interfejs",
   "profile.lang.da": "Dansk",
