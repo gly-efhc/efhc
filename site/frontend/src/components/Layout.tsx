@@ -28,6 +28,7 @@ import { BrowserTelegramLogin } from "./BrowserTelegramLogin";
 import { getUserLevel } from "../lib/skins";
 import { useWalletsMe } from "../hooks/useWalletsMe";
 import { queryKeys } from "../queries/queryKeys";
+import { runSharedDepositCheck } from "../services/directDeposit.service";
 import {
   FrontendShellFrame,
   FrontendShellMain,
@@ -283,6 +284,25 @@ export function Layout(
   const walletConnected = Boolean(walletSession && boundSessionWallet);
   const isAdminRoute = router.pathname.startsWith("/admin");
   const appMode: InterfaceAppMode = isAdminRoute ? "admin" : "user";
+
+  // One active authenticated visitor can advance the shared TON inbox for all
+  // owners. No timers, wallet signatures or client-side balance writes.
+  useEffect(() => {
+    if (!globalId || authSession.status !== "authenticated" || isAdminRoute) return;
+    const onActivity = () => {
+      if (document.visibilityState === "hidden") return;
+      void runSharedDepositCheck().then((response) => {
+        if (response.state !== "checked") return;
+        void Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.snapshot.current(globalId) }),
+          qc.invalidateQueries({ queryKey: queryKeys.profile.balanceHistory(globalId) }),
+        ]);
+      }).catch(() => undefined);
+    };
+    onActivity();
+    document.addEventListener("visibilitychange", onActivity);
+    return () => document.removeEventListener("visibilitychange", onActivity);
+  }, [authSession.status, globalId, isAdminRoute, qc]);
   const [bottomNavViewportHeight, setBottomNavViewportHeight] = useState<
     number | null
   >(null);
