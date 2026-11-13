@@ -277,6 +277,8 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
   const activation=new Promise(resolve=>{releaseActivation=resolve;});
   let requested=false;
   let finished=false;
+  let confirmActivation=()=>undefined;
+  const activationRequested=new Promise(resolve=>{confirmActivation=resolve;});
   h.setFetch(async req=>{
     const pathname=new URL(typeof req==="string"?req:req.url,origin).pathname;
     return new Response(pathname.endsWith(".html")
@@ -287,11 +289,23 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
     Request: class extends Request {
       constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
     },
-    skipWaiting:()=>{requested=true;return activation;},
+    skipWaiting:()=>{requested=true;confirmActivation();return activation;},
   });
   const installing=worker.dispatch("install").then(()=>{finished=true;});
   try{
-    await new Promise(resolve=>setTimeout(resolve,40));
+    // Wait for the actual activation-request event, not an arbitrary 40ms
+    // under a loaded CI runner. Fail if the complete precache never reaches it.
+    let timeout;
+    try {
+      await Promise.race([
+        activationRequested,
+        new Promise((_,reject)=>{
+          timeout=setTimeout(()=>reject(Error("full PWA precache never requested activation")),3000);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timeout);
+    }
     assert.equal(requested,true,"full PWA precache must finish before activation");
     assert.equal(finished,false,"install event must retain activation promise");
   }finally{
