@@ -10,7 +10,7 @@ const withdraw = source("../../src/pages/withdraw.tsx");
 
 function style(selector) {
   const start = css.lastIndexOf("/* Exchange physical XH-07 uses the standalone three-row KPI layout.");
-  assert.ok(start > 0, "dedicated USER-only visual material must exist");
+  assert.ok(start >= 0, "dedicated USER-only visual material must exist");
   const tail = css.slice(start);
   const found = tail.indexOf(selector);
   assert.ok(found >= 0, "missing CSS selector: " + selector);
