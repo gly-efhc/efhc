@@ -303,15 +303,18 @@ self.addEventListener("message", event => {
   if (data.type === "SKIP_WAITING") {
     wait(async () => {
       if (data.buildId && data.buildId !== config.build_id) return;
+      const windows = await self.clients.matchAll({type:"window",includeUncontrolled:true});
+      const scopedWindows = windows.filter(client => {
+        try { return isScoped(new URL(client.url)); } catch { return false; }
+      });
+      // A cold gate or one idle tab cannot authorize dropping bundles used
+      // in another open tab. Wait for single-client handoff.
+      if (scopedWindows.length > 1) return;
       if (data.efhcSafeToActivate !== true) {
-        // The old EFHC client sends this legacy message unconditionally.
-        // Permit the one-time migration only when there is one live window:
-        // the old full-bundle cache remains available until the new UI loads.
+        // One-time migration from the old client that sent SKIP_WAITING
+        // unconditionally; retain its old hashed chunks for the idle reload.
         const old = await collectLegacy();
-        const windows = await self.clients.matchAll({type:"window"});
-        if (!old.length || windows.filter(client => {
-          try { return isScoped(new URL(client.url)); } catch { return false; }
-        }).length !== 1) return;
+        if (!old.length || scopedWindows.length !== 1) return;
       }
       await self.skipWaiting();
     });
