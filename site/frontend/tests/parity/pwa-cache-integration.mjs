@@ -756,51 +756,40 @@ try {
         await thirdTab.close();
       }
 
-      // Q14: actual worker retirement at 24h. Simulate two old generations
-      // in CacheStorage, an aged retained immutable chunk, and one unrelated
-      // origin cache. No fake test-only message handlers in the worker.
-      const agedLegacy="efhc-pwa-test-aged-static";
-      const agedRuntime="efhc-public-pages-test-aged";
-      const youngLegacy="efhc-pwa-test-young-static";
+      // Latest OWNER decision supersedes Q14's 24h delay. Obsolete EFHC
+      // generation caches retire immediately after safe replacement, but an
+      // unverified open tab must keep its last-known-good resources.
+      const oldLegacy="efhc-pwa-test-prior-static";
+      const oldRuntime="efhc-public-pages-test-prior";
+      const oldStatic="efhc-static-assets-test-prior";
       const unrelated="efhc-unrelated-app-test";
-      const retiredUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
-      const youngUrl=new URL("/efhc/_next/static/efhc-old-young.js",origin).href;
-      await page.evaluate(async ({agedLegacy,agedRuntime,youngLegacy,unrelated,retiredUrl,youngUrl}) => {
+      const staleJsUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
+      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,unrelated,staleJsUrl}) => {
         const put=async(name,url,value)=>{
           const bucket=await caches.open(name);
           await bucket.put(url,new Response(value,{status:200}));
         };
-        await put(agedLegacy,retiredUrl,"legacy-old");
-        await put(agedRuntime,new URL("/efhc/legacy-test/index.html",location.origin).href,"runtime-old");
-        await put(youngLegacy,youngUrl,"recent-old");
+        await put(oldLegacy,staleJsUrl,"legacy-old");
+        await put(oldRuntime,new URL("/efhc/legacy-test/index.html",location.origin).href,"runtime-old");
+        await put(oldStatic,new URL("/efhc/_next/static/efhc-old-retired.css",location.origin).href,"static-old");
         await put(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-        await put("efhc-legacy-assets",retiredUrl,"preserved-old");
-        const meta=await caches.open("efhc-legacy-retirement-meta");
-        const aged=Date.now()-25*60*60*1000;
-        for(const [kind,value,when] of [
-          ["cache",agedLegacy,aged],["cache",agedRuntime,aged],
-          ["cache",youngLegacy,Date.now()],["asset",retiredUrl,aged],
-        ]) {
-          const key="/efhc/_efhc_internal/lifecycle/"+kind+"/"+encodeURIComponent(value);
-          await meta.put(key,new Response(String(when)));
-        }
-      },{agedLegacy,agedRuntime,youngLegacy,unrelated,retiredUrl,youngUrl});
+        await put("efhc-legacy-assets",staleJsUrl,"preserved-old");
+      },{oldLegacy,oldRuntime,oldStatic,unrelated,staleJsUrl});
       const stale=await context.newPage();
       try {
         await stale.goto(base+"unverified-old-tab-for-retirement/",{
           waitUntil:"domcontentloaded",timeout:25000});
-        // An unverified window holds its last-known-good resources even
-        // after 24h. The latest worker may only prune after safe recovery.
         await page.evaluate(() =>
           navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"}));
         await page.waitForTimeout(500);
-        const blocked=await page.evaluate(async ({agedLegacy,agedRuntime,retiredUrl})=>({
+        const blocked=await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,staleJsUrl})=>({
           names:await caches.keys(),
-          retained:Boolean(await (await caches.open("efhc-legacy-assets")).match(retiredUrl)),
-        }),{agedLegacy,agedRuntime,retiredUrl});
-        assert.ok(blocked.names.includes(agedLegacy) &&
-          blocked.names.includes(agedRuntime) && blocked.retained,
-        "An unverified old tab must block retirement, even after 24 hours");
+          retained:Boolean(await (await caches.open("efhc-legacy-assets")).match(staleJsUrl)),
+        }),{oldLegacy,oldRuntime,oldStatic,staleJsUrl});
+        assert.ok(blocked.names.includes(oldLegacy) &&
+          blocked.names.includes(oldRuntime) && blocked.names.includes(oldStatic) &&
+          blocked.retained,
+        "An unverified old tab must block immediate retirement");
       }finally{
         await stale.close();
       }
@@ -813,26 +802,22 @@ try {
         });
         navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"});
       },thirdBuildId);
-      await page.waitForFunction(async ({agedLegacy,agedRuntime}) => {
+      await page.waitForFunction(async ({oldLegacy,oldRuntime,oldStatic}) => {
         const names=await caches.keys();
-        return !names.includes(agedLegacy)&&!names.includes(agedRuntime);
-      },{agedLegacy,agedRuntime},{timeout:15000});
-      const retired=await page.evaluate(async ({youngLegacy,unrelated,retiredUrl,youngUrl})=>({
+        return !names.includes(oldLegacy) && !names.includes(oldRuntime) &&
+          !names.includes(oldStatic) && !names.includes("efhc-legacy-assets");
+      },{oldLegacy,oldRuntime,oldStatic},{timeout:15000});
+      const retired=await page.evaluate(async unrelated=>({
         names:await caches.keys(),
-        oldAsset:Boolean(await (await caches.open("efhc-legacy-assets")).match(retiredUrl)),
-        youngAsset:Boolean(await (await caches.open(youngLegacy)).match(youngUrl)),
-      }),{youngLegacy,unrelated,retiredUrl,youngUrl});
-      assert.equal(retired.oldAsset,false,
-        "Old preserved immutable JS must expire after 24h and safe recovery");
-      assert.ok(retired.names.includes(youngLegacy)&&retired.youngAsset,
-        "Young last-known-good generation must survive before 24h");
-      assert.ok(retired.names.includes(unrelated),
-        "Workbox migration must never erase caches from another scope");
-      console.log("PWA_WORKBOX_24H_LEGACY_SAFE_RETIREMENT",JSON.stringify({
-        oldDeleted:true,youngPreserved:true,otherScopePreserved:true,
+        unaffected:Boolean(await (await caches.open(unrelated))
+          .match(new URL("/other-app/data.txt",location.origin).href)),
+      }),unrelated);
+      assert.ok(retired.names.includes(unrelated)&&retired.unaffected,
+        "EFHC migration must never erase caches from another scope");
+      console.log("PWA_WORKBOX_IMMEDIATE_SAFE_RETIREMENT",JSON.stringify({
+        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
       }));
-      await Promise.all([youngLegacy,unrelated].map(name=>page.evaluate(
-        cacheName=>caches.delete(cacheName),name)));
+      await page.evaluate(name=>caches.delete(name),unrelated);
     }finally{
       await writeFile(workerFile,originalWorker,"utf8");
       await writeFile(configFile,originalConfig,"utf8");
