@@ -189,7 +189,7 @@ async function prefetchDeferred(priority = []) {
   ].map(scoped);
   const ordered = [...new Set([...high,...fixed,...config.precache_deferred])]
     .filter(path => deferred.has(path) &&
-      !/\/audio\/|\.mp3$/i.test(path) &&
+      !/\.mp3$/i.test(path) &&
       // Language files are cached on actual use by an owner, not in bulk.
       (!isLocale(path) || /\/(?:locale|faq)\/en\.json$/i.test(path)));
   let position = 0, done = 0, failed = 0;
