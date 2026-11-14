@@ -742,36 +742,84 @@ try {
         }));
         assert.deepEqual(cOffline,{build:thirdBuildId,third:true,css:"third",react:true},
           "Offline A→B→C reopened mixed builds");
-        // OWNER superseded the old 24h retention: a C tab must not rely on
-        // downloading B's obsolete files. Old live tabs are protected by the
-        // separate negative test below, then old caches retire immediately.
+        // Native Serwist handles its own precache generations; the compatibility
+        // contract for pre-Serwist open tabs is tested separately below.
         console.log("PWA_SERWIST_A_B_C_OFFLINE",JSON.stringify(cOffline));
       } finally {
         await context.setOffline(false);
         await thirdTab.close();
       }
 
-      // Serwist's native revision lifecycle does not own legacy EFHC buckets.
-      // In particular it must NEVER delete another app's cache. Compatibility
-      // retirement of old custom buckets is a separate one-time migration gate.
+      // Native Serwist owns new generations. A one-time scoped migration
+      // retires only old EFHC/Workbox public caches after ALL old clients
+      // leave or verify this generation; never delete any other app cache.
+      const oldLegacy="efhc-pwa-test-prior-static";
+      const oldRuntime="efhc-public-pages-test-prior";
+      const oldStatic="efhc-static-assets-test-prior";
       const unrelated="efhc-unrelated-app-test";
-      await page.evaluate(async name=>{
-        const bucket=await caches.open(name);
-        await bucket.put(new URL("/other-app/data.txt",location.origin).href,
-          new Response("other-app",{status:200}));
-      },unrelated);
-      await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
-        type:"GET_CACHE_STATUS",
-      }));
-      const preserved=await page.evaluate(async name=>({
+      const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
+      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl}) => {
+        const store=async (name,url,value)=>{
+          const cache=await caches.open(name);
+          await cache.put(url,new Response(value,{status:200}));
+        };
+        await store(oldLegacy,oldUrl,"legacy-old");
+        await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
+        await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
+        await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
+      },{oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl});
+      const stale=await context.newPage();
+      try {
+        await stale.goto(base+"unverified-old-tab-for-retirement/",{
+          waitUntil:"domcontentloaded",timeout:25000,
+        });
+        await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
+          type:"GET_CACHE_STATUS",
+        }));
+        await page.waitForTimeout(350);
+        const guarded=await page.evaluate(async names=>({
+          keys:await caches.keys(),
+          staleCached:Boolean(await (await caches.open(names.oldLegacy))
+            .match(names.oldUrl)),
+        }),{oldLegacy,oldUrl});
+        assert.ok(guarded.keys.includes(oldLegacy) &&
+          guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
+          guarded.staleCached,"An unverified old tab must retain all legacy assets");
+        // The previous worker's immutable assets remain obtainable while
+        // the new Serwist worker controls network requests.
+        await context.setOffline(true);
+        const legacyResponse=await stale.evaluate(async url=>
+          fetch(url).then(response=>response.text()).catch(()=>null),oldUrl);
+        assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
+      }finally {
+        await context.setOffline(false);
+        await stale.close();
+      }
+      await page.evaluate(buildId=>{
+        const assets=[...document.querySelectorAll("script[src]")]
+          .map(el=>new URL(el.src).pathname)
+          .filter(path=>path.includes("/_next/static/"));
+        navigator.serviceWorker.controller?.postMessage({
+          type:"CLIENT_BUILD_READY",buildId,assets,
+        });
+        navigator.serviceWorker.controller?.postMessage({
+          type:"GET_CACHE_STATUS",
+        });
+      },thirdBuildId);
+      await page.waitForFunction(async names=>{
+        const keys=await caches.keys();
+        return !keys.includes(names.oldLegacy) &&
+          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic);
+      },{oldLegacy,oldRuntime,oldStatic},{timeout:15000});
+      const kept=await page.evaluate(async name=>({
         names:await caches.keys(),
         unrelated:Boolean(await (await caches.open(name))
           .match(new URL("/other-app/data.txt",location.origin).href)),
       }),unrelated);
-      assert.ok(preserved.names.includes(unrelated) && preserved.unrelated,
-        "Native Serwist lifecycle must never delete caches from other app scopes");
-      console.log("PWA_SERWIST_OTHER_SCOPE_PRESERVED",JSON.stringify({
-        otherScopePreserved:true,
+      assert.ok(kept.names.includes(unrelated)&&kept.unrelated,
+        "Migration must not delete other scope caches");
+      console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
+        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
       }));
       await page.evaluate(name=>caches.delete(name),unrelated);
     }finally{

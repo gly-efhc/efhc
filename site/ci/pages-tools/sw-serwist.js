@@ -10,6 +10,9 @@ const BASE = __EFHC_BASE_PATH__;
 const expected = new Set(CONFIG.precache || []);
 const deferred = new Set(CONFIG.precache_deferred || []);
 const critical = new Set(CONFIG.precache_critical || []);
+// A transient compatibility set, not a second cache manager or retention policy.
+// Native Serwist owns every new precache/runtime entry and its expiration.
+const readyClients = new Set();
 const cacheNames = {
   pages:"efhc-serwist-pages",
   assets:"efhc-serwist-assets",
@@ -66,6 +69,50 @@ const localeStrategy = new StaleWhileRevalidate({
     maxEntries:48,maxAgeSeconds:180*24*3600,purgeOnQuotaError:true,
   })],
 });
+// One-time legacy migration only. Serwist does not own caches written by
+// earlier EFHC/Workbox workers. Inspect exact names AND scoped request URLs:
+// never delete other applications' CacheStorage or owner-scoped data.
+async function legacyPublicCaches() {
+  const names = await caches.keys();
+  const legacy = names.filter(name =>
+    /^efhc-pwa-.+-static$/.test(name) ||
+    /^efhc-public-pages-/.test(name) ||
+    /^efhc-static-assets-/.test(name) ||
+    name === "efhc-legacy-assets" ||
+    /^workbox-precache-/.test(name));
+  const safe = [];
+  for (const name of legacy) {
+    const entries = await (await caches.open(name)).keys();
+    if ((entries.length || name.startsWith("efhc-")) &&
+        entries.every(request => {
+          try {return inScope(new URL(request.url));}
+          catch {return false;}
+        })) safe.push(name);
+  }
+  return safe;
+}
+async function retireLegacyCachesOnce() {
+  const windows = (await self.clients.matchAll({
+    type:"window",includeUncontrolled:true,
+  })).filter(client => {
+    try {return inScope(new URL(client.url));}
+    catch {return false;}
+  });
+  if (!windows.length || windows.some(client => !readyClients.has(client.id))) {
+    return;
+  }
+  // This runs only for legacy cache names after every scoped client has
+  // attested to this generation. Native Serwist handles all later revisions.
+  for (const name of await legacyPublicCaches()) await caches.delete(name);
+}
+async function legacyAssetFallback(request) {
+  for (const name of await legacyPublicCaches()) {
+    const hit = await (await caches.open(name)).match(request,{ignoreSearch:true});
+    if (hit && hit.ok) return hit;
+  }
+  return null;
+}
+
 const networkOnly = new NetworkOnly();
 const sw = new Serwist({
   precacheEntries:self.__SW_MANIFEST,
@@ -110,8 +157,20 @@ const sw = new Serwist({
     {matcher:({request,url,sameOrigin}) => sameOrigin &&
       request.method==="GET" && inScope(url) &&
       (/\/_next\/static\//.test(url.pathname) ||
+       /\.[a-f0-9]{16}\.css$/i.test(url.pathname) ||
        (expected.has(url.pathname) && !isHtml(url.pathname))),
-     handler:assetsStrategy},
+     handler:async ({event,request,url}) => {
+       try {return await assetsStrategy.handle({event,request});}
+       catch (error) {
+         // A pre-Serwist open tab can still need its previous immutable JS/CSS.
+         if (/\/_next\/static\//.test(url.pathname) ||
+             /\.[a-f0-9]{16}\.css$/i.test(url.pathname)) {
+           const prior=await legacyAssetFallback(request);
+           if (prior) return prior;
+         }
+         throw error;
+       }
+     }},
   ],
 });
 sw.addEventListeners();
@@ -194,8 +253,21 @@ self.addEventListener("message",event => {
     wait(() => prefetchDeferred(Array.isArray(data.urls)?data.urls:[],event));
     return;
   }
+  if(data.type==="CLIENT_BUILD_READY") {
+    wait(async () => {
+      if (data.buildId!==CONFIG.build_id ||
+          !event.source?.id || !event.source?.url ||
+          !inScope(new URL(event.source.url)) ||
+          !Array.isArray(data.assets) || !data.assets.length ||
+          !data.assets.every(url=>typeof url==="string" && expected.has(url))) return;
+      readyClients.add(event.source.id);
+      await retireLegacyCachesOnce();
+    });
+    return;
+  }
   if(data.type==="GET_CACHE_STATUS") {
     wait(async () => {
+      await retireLegacyCachesOnce();
       const status=await Promise.all(CONFIG.precache.map(isCached));
       const cached=status.filter(Boolean).length;
       await notify({type:"CACHE_STATUS",buildId:CONFIG.build_id,
