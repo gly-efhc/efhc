@@ -64,7 +64,7 @@ try {
   const invalid={
     injectionMissing:worker.includes("self.__SW_MANIFEST"),
     unexpandedBuild:worker.includes("__EFHC_BUILD_CONFIG__"),
-    remoteScripts:/\\bimportScripts\\s*\\(\\s*["']https?:/i.test(worker),
+    remoteScripts:/\bimportScripts\s*\(\s*["']https?:/i.test(worker),
     cdnDependency:/https:\/\/(?:storage.googleapis|cdn)/i.test(worker),
   };
   if(Object.values(invalid).some(Boolean)) {
