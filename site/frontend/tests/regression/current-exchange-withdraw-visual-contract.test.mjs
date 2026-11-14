@@ -84,15 +84,19 @@ test("fifth Withdraw template has independent CT accent rails, no false invalid 
 });
 
 test("all physical XH and WD material rules target actual USER main ancestry", () => {
-  const prefix = 'html[data-interface-app-mode="user"][data-color-theme-id]\\n';
-  const rules = css.split(prefix).slice(1);
+  const marker = 'html[data-interface-app-mode="user"][data-color-theme-id]';
+  const rules = css.split(marker).slice(1);
   assert.ok(rules.length >= 20);
   for (const rule of rules) {
-    assert.match(rule, /^#efhc-main-content \\.efhc-(?:exchange|withdraw)-shell/,
-      "WD/XH material rule must not lose to generic CT rules");
+    const selector = rule.trimStart();
+    assert.ok(
+      selector.startsWith("#efhc-main-content .efhc-exchange-shell")
+      || selector.startsWith("#efhc-main-content .efhc-withdraw-shell"),
+      "WD/XH material rule must not lose to generic CT rules",
+    );
   }
   const app = source("../../src/pages/_app.tsx");
-  assert.match(app, /exchange-withdraw-material\\.css/);
-  assert.match(css, /#efhc-main-content \\.efhc-withdraw-shell\\[data-wd="WD-10"\\] :is\\(/);
-  assert.match(css, /border-inline-color:\\s*transparent\\s*!important/);
+  assert.ok(app.includes("exchange-withdraw-material.css"));
+  assert.ok(css.includes('#efhc-main-content .efhc-withdraw-shell[data-wd="WD-10"] :is('));
+  assert.ok(css.includes("border-inline-color: transparent !important;"));
 });
