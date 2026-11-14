@@ -742,15 +742,10 @@ try {
         }));
         assert.deepEqual(cOffline,{build:thirdBuildId,third:true,css:"third",react:true},
           "Offline A→B→C reopened mixed builds");
-        const oldJs=await thirdTab.evaluate(async url => {
-          const result=await fetch(url);
-          return {status:result.status,body:await result.text()};
-        },scriptUrl);
-        assert.equal(oldJs.status,200,"legacy B chunk must survive transition to C");
-        assert.match(oldJs.body,/__EFHC_NEW_PWA_ASSET__/,
-          "stale B bundle served an incorrect generation");
+        // OWNER superseded the old 24h retention: a C tab must not rely on
+        // downloading B's obsolete files. Old live tabs are protected by the
+        // separate negative test below, then old caches retire immediately.
         console.log("PWA_WORKBOX_A_B_C_OFFLINE",JSON.stringify(cOffline));
-        console.log("PWA_WORKBOX_OLD_B_CHUNK_PRESERVED",oldJs.status);
       } finally {
         await context.setOffline(false);
         await thirdTab.close();
