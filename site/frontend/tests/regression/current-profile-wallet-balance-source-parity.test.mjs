@@ -80,6 +80,21 @@ test("gear opens only source four toggles and avatar retains advanced services",
   assert.match(shared, /data-modal-reference-layout=\{props\.referenceLayout\}/);
 });
 
+test("OWNER Q2=A: the sole compact settings gear is inline in the Profile topbar", () => {
+  const profile = file("../../src/features/profile/WebProfilePage.tsx");
+  const css = file("../../src/styles/globals.css");
+  const start = profile.indexOf('className="efhc-profile-topbar source-profile-topbar"');
+  const end = profile.indexOf('className="efhc-profile-hero source-profile-hero"', start);
+  assert.ok(start >= 0 && end > start);
+  const header = profile.slice(start, end);
+  assert.match(header, /data-profile-settings-entry="profile-header" data-profile-settings-placement="header"/);
+  assert.match(header, /onClick=\{\(\) => setSettingsOpen\(true\)\}/);
+  assert.equal((profile.match(/data-profile-settings-entry=/g) || []).length, 1);
+  const interfaceCard = profile.slice(profile.indexOf('className="source-card source-profile-settings-card'), profile.indexOf("<ProfileSettingsDialog"));
+  assert.doesNotMatch(interfaceCard, /data-profile-settings-entry=/);
+  assert.match(css, /#profilePage \.source-profile-topbar \.efhc-profile-topbar_actions > \.efhc-profile-settings-button \{[\s\S]*?position: static;/);
+});
+
 test("all locale dictionaries have guest and verified account action labels", () => {
   const langs = ["da", "de", "en", "es", "fr", "hi", "id", "it", "ja", "ko", "pl", "pt", "ru", "sw", "tr", "uk"];
   for (const lang of langs) {
