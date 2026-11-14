@@ -1,0 +1,40 @@
+name: EFHC temporary Workbox dependency lock
+
+on:
+  push:
+    branches: ['recovery/cycle0042-iteration34-workbox']
+    paths: ['.github/workflows/efhc-workbox-lock.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  lock:
+    name: Generate reproducible Workbox dependency lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Resolve exactly declared dependencies into package-lock
+        run: |
+          set -euo pipefail
+          cd site/frontend
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Commit dependency lock to current source branch only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add site/frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo 'EFHC_WORKBOX_LOCK_ALREADY_CURRENT'
+          else
+            git commit -m 'Lock Workbox tooling dependencies for iteration 34'
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
