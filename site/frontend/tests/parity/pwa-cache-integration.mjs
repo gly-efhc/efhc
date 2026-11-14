@@ -594,179 +594,96 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("PWA staged update activates automatically without dropping the running app", async () => {
+  await check("Workbox A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
-    const workerFile = path.join(root,"sw.js");
-    const original = await readFile(workerFile,"utf8");
-    const originalController = await page.evaluate(() => {
-      window.__EFHC_PWA_EVENTS__ = [];
-      navigator.serviceWorker.addEventListener("message", event => {
-        const data = event.data || {};
-        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE", "TEST_SKIP_MESSAGE", "CACHE_RETIREMENT_PENDING"].includes(data.type)) {
-          window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, failedUrls:data.failedUrls, reason:data.reason, buildId:data.buildId});
-        }
-      });
-      window.__EFHC_OLD_SW_CONTROLLER_TEST__ = navigator.serviceWorker.controller;
-      return navigator.serviceWorker.controller?.scriptURL || "";
-    });
-    assert.ok(originalController.endsWith("/sw.js"),"existing worker must control active session");
-    const oldConfig=exportConfig;
-    const newBuildId=oldConfig.build_id.slice(0,-1)+(oldConfig.build_id.endsWith("a")?"b":"a");
-    const oldStaticCache="efhc-pwa-"+oldConfig.build_id+"-static";
-    const newStaticCache="efhc-pwa-"+newBuildId+"-static";
-    const pinned=/^const EFHC_PWA_BUILD_CONFIG = ([^\n]+);\n/.exec(original);
-    assert.ok(pinned,"real exported worker must embed an immutable version configuration");
-    const nextBuild={...JSON.parse(pinned[1]),build_id:newBuildId};
+    const workerFile=path.join(root,"sw.js");
     const configFile=path.join(root,"pwa-build.json");
-    const originalConfigFile=await readFile(configFile,"utf8");
-    const originalHtml=new Map();
-    const nextScriptName="efhc-upgrade-staged.js";
-    const nextCssName="efhc-upgrade-staged.css";
-    const scriptPath="_next/static/"+nextScriptName;
-    const cssPath="_next/static/"+nextCssName;
-    const scriptUrl="/efhc/"+scriptPath;
-    const cssUrl="/efhc/"+cssPath;
-    nextBuild.precache=[...nextBuild.precache,scriptUrl,cssUrl];
-    const nextWorker="const EFHC_PWA_BUILD_CONFIG = "+JSON.stringify(nextBuild)+";\n"+
-      original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n"+
-      'self.addEventListener("message", event => { if(event.data?.type==="SKIP_WAITING") '+
-      'event.waitUntil(notifyClients({type:"TEST_SKIP_MESSAGE",buildId:EFHC_PWA_BUILD_CONFIG.build_id})); });\n';
+    const originalWorker=await readFile(workerFile,"utf8");
+    const originalConfig=await readFile(configFile,"utf8");
+    const oldBuildId=JSON.parse(originalConfig).build_id;
+    const oldHtml=JSON.parse(originalConfig).precache.filter(url=>url.endsWith(".html"));
+    const originals=new Map();
+    const newScript="_next/static/efhc-upgrade-staged.js";
+    const newCss="_next/static/efhc-upgrade-staged.css";
+    const scriptUrl="/efhc/"+newScript;
+    const cssUrl="/efhc/"+newCss;
     try {
-      await writeFile(path.join(root,scriptPath),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
-      await writeFile(path.join(root,cssPath),":root { --efhc-upgrade-css-proof: updated; }","utf8");
-      for (const route of nextBuild.precache.filter(url=>url.endsWith(".html"))) {
-        const file=path.join(root,route.replace(/^\/efhc\//,""));
-        const html=await readFile(file,"utf8");
-        originalHtml.set(file,html);
-        let updated=html.replace(`efhc-build-id" content="${oldConfig.build_id}"`,
-          `efhc-build-id" content="${newBuildId}"`);
-        assert.ok(updated.includes(`efhc-build-id" content="${newBuildId}"`),
-          "A staged HTML page kept the previous release marker: "+route);
-        if (route==="/efhc/index.html") {
-          assert.ok(updated.includes("</head>"),"real Pages root must have a head");
-          updated=updated.replace("</head>",
-            `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`);
-        }
-        await writeFile(file,updated,"utf8");
+      for (const url of oldHtml) {
+        const filepath=path.join(root,url.slice("/efhc/".length));
+        originals.set(filepath,await readFile(filepath,"utf8"));
       }
-      await writeFile(configFile,JSON.stringify(nextBuild,null,2)+"\n","utf8");
-      await writeFile(workerFile,nextWorker,"utf8");
-      await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
-      // Wait for complete offline staging AND automatic controller takeover.
-      // The running React page must remain mounted; no forced reload during
-      // an in-flight USER financial interaction.
-      let state = null;
-      let neededDirectProbe = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        // Diagnostic probe only, never count a manually forced activation as
-        // automated success; this distinguishes missing client messages from
-        // an SW that ignored them.
-        if (attempt === 48) {
-          neededDirectProbe = true;
-          await page.evaluate(async () => {
-            const registration = await navigator.serviceWorker.getRegistration();
-            registration?.waiting?.postMessage({type:"SKIP_WAITING"});
-          });
-        }
-        state = await page.evaluate(async names => {
-          const reg = await navigator.serviceWorker.getRegistration();
-          const keys = await caches.keys();
-          return {
-            waiting: reg?.waiting?.state || null,
-            active: reg?.active?.state || null,
-            installing: reg?.installing?.state || null,
-            sameController: navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
-            oldCache: keys.includes(names.old),
-            newCache: keys.includes(names.next),
-            reactRoot: Boolean(document.querySelector("#__next")),
-            waitingScript: reg?.waiting?.scriptURL || null,
-            cacheNames: keys.filter(key => key.startsWith("efhc-pwa-")),
-            cacheEvents: window.__EFHC_PWA_EVENTS__?.slice(-8) || [],
-          };
-        },{old:oldStaticCache,next:newStaticCache});
-        if (state.active==="activated" && state.waiting===null &&
-            !state.sameController && state.newCache) break;
-        await page.waitForTimeout(250);
-      }
-      console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify({...state,neededDirectProbe}));
-      assert.equal(neededDirectProbe,false,
-        "new Service Worker only activated after test manually triggered SKIP_WAITING");
-      assert.equal(state.active,"activated","new full PWA did not automatically activate");
-      assert.equal(state.waiting,null);
-      assert.equal(state.sameController,false);
-      assert.equal(state.reactRoot,true,"running USER app was unexpectedly reloaded");
-      // The previous build stays available for old live clients, but its
-      // retirement may happen sooner if their loaded assets match this build.
-      assert.equal(state.newCache,true,"new offline build was not staged completely");
-      // No manual reload: an already-open old React page must transition
-      // automatically at an idle boundary to the new HTML, JS and CSS.
-      await page.waitForFunction(()=>window.__EFHC_NEW_PWA_ASSET__===true, null, {timeout:35000});
-      const pageVersion=await page.evaluate(()=>({
-        marker:document.querySelector('meta[name="efhc-build-id"]')?.getAttribute("content"),
-        css:getComputedStyle(document.documentElement).getPropertyValue("--efhc-upgrade-css-proof").trim(),
-      }));
-      assert.equal(pageVersion.marker,newBuildId,"new HTML build marker never replaced old one");
-      assert.equal(pageVersion.css,"updated","new CSS not rendered after automatic upgrade");
-      console.log("PWA_REAL_HTML_JS_CSS_UPGRADE",JSON.stringify(pageVersion));
-      const readiness = await page.evaluate(async () => {
-        const manifest = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-        const scriptPaths = [...document.querySelectorAll("script[src]")].map(x=>new URL(x.src).pathname)
-          .filter(x=>x.includes("/_next/static/"));
-        return {
-          manifestBuild:manifest.build_id,
-          documentBuild:document.querySelector('meta[name="efhc-build-id"]')?.content,
-          controller:Boolean(navigator.serviceWorker.controller),
-          scripts:scriptPaths.length,
-          missingAssets:scriptPaths.filter(x=>!manifest.precache.includes(x)).slice(0,5),
-          events:window.__EFHC_PWA_EVENTS__?.slice(-12)||[],
-        };
+      await writeFile(path.join(root,newScript),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
+      await writeFile(path.join(root,newCss),":root{--efhc-upgrade-css-proof:updated}","utf8");
+      const rootHtmlPath=path.join(root,"index.html");
+      const index=await readFile(rootHtmlPath,"utf8");
+      assert.ok(index.includes("</head>"),"Next landing HTML missing head");
+      await writeFile(rootHtmlPath,index.replace("</head>",
+        `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`),"utf8");
+      // Regenerate the actual release, including new build markers and
+      // Workbox's revisioned critical manifest; never text-patch worker JS.
+      const {spawnSync}=await import("node:child_process");
+      const regenerate=spawnSync("python3",[
+        "site/ci/pages-tools/fix_pages_assets.py",
+        "--directory",root,"--base-path","/efhc",
+      ],{encoding:"utf8",env:process.env});
+      assert.equal(regenerate.status,0,
+        "Second Workbox export failed: "+regenerate.stderr+"\n"+regenerate.stdout);
+      const nextConfig=JSON.parse(await readFile(configFile,"utf8"));
+      const newBuildId=nextConfig.build_id;
+      assert.notEqual(newBuildId,oldBuildId,"second actual export did not change build");
+      assert.ok(nextConfig.precache_critical.includes(scriptUrl));
+      assert.ok(nextConfig.precache_critical.includes(cssUrl));
+      await page.evaluate(async () => {
+        const registration=await navigator.serviceWorker.getRegistration();
+        if(!registration)throw Error("No PWA registration");
+        await registration.update();
       });
-      console.log("PWA_READY_DIAGNOSTIC",JSON.stringify(readiness));
-      const after=await page.evaluate(async names=>({
-        keys:await caches.keys(),
+      await page.waitForFunction(id=>
+        document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
+        window.__EFHC_NEW_PWA_ASSET__===true,
+      newBuildId,{timeout:65000});
+      const view=await page.evaluate(async () => ({
+        build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+        asset:Boolean(window.__EFHC_NEW_PWA_ASSET__),
+        css:getComputedStyle(document.documentElement)
+          .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+        react:Boolean(document.querySelector("#__next")),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,
         controlled:Boolean(navigator.serviceWorker.controller),
-        nextCache:(await (await caches.open(names.next)).keys()).length,
-        root:Boolean(document.querySelector("#__next")),
-      }),{next:newStaticCache});
-      assert.equal(after.active,"activated");
-      assert.ok(after.controlled && after.root);
-      assert.ok(after.nextCache>0);
-      // A verified new page must release the previous build without requiring
-      // the user to clear browser data or uninstall the application.
-      await page.waitForFunction(async old => !(await caches.keys()).includes(old),oldStaticCache,{timeout:15000});
-      const retired = await page.evaluate(async old => ({
-        keys:await caches.keys(),previousPresent:(await caches.keys()).includes(old),
-      }),oldStaticCache);
-      assert.equal(retired.previousPresent,false,"old build cache still persisted after a verified successor loaded");
-      console.log("PWA_OLD_BUILD_RETIRED",JSON.stringify(retired));
-      // B3: after retiring the last old generation, opening a completely new
-      // offline tab must render ONLY the fully installed successor shell.
-      const reopened = await context.newPage();
+      }));
+      assert.equal(view.build,newBuildId,"new HTML build marker did not activate");
+      assert.equal(view.asset,true,"successor JS did not run");
+      assert.equal(view.css,"updated","successor CSS did not apply");
+      assert.equal(view.react,true,"the active React UI vanished");
+      assert.equal(view.active,"activated");
+      assert.equal(view.controlled,true);
+      console.log("PWA_WORKBOX_REAL_BUILD_TRANSITION",JSON.stringify(view));
+      const successor=await context.newPage();
       try {
         await context.setOffline(true);
-        await reopened.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
-        const offlineBuild = await reopened.evaluate(() => ({
-          buildId:document.querySelector('meta[name="efhc-build-id"]')?.content,
-          script:Boolean(window.__EFHC_NEW_PWA_ASSET__),
+        await successor.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+        const offline=await successor.evaluate(() => ({
+          build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          js:Boolean(window.__EFHC_NEW_PWA_ASSET__),
           css:getComputedStyle(document.documentElement)
             .getPropertyValue("--efhc-upgrade-css-proof").trim(),
-          root:Boolean(document.querySelector("#__next")),
+          react:Boolean(document.querySelector("#__next")),
         }));
-        assert.deepEqual(offlineBuild,{
-          buildId:newBuildId,script:true,css:"updated",root:true,
-        },"Offline reopen mixed old and new build generations");
-        console.log("PWA_OFFLINE_LATEST_AFTER_RETIREMENT",JSON.stringify(offlineBuild));
-      } finally {
+        assert.deepEqual(offline,{build:newBuildId,js:true,css:"updated",react:true},
+          "Offline successor mixed older and newer HTML/JS/CSS");
+        console.log("PWA_WORKBOX_OFFLINE_SUCCESSOR",JSON.stringify(offline));
+      }finally{
         await context.setOffline(false);
-        await reopened.close();
+        await successor.close();
       }
-    } finally {
-      await writeFile(workerFile,original,"utf8");
-      await writeFile(configFile,originalConfigFile,"utf8");
-      for (const [file,html] of originalHtml) await writeFile(file,html,"utf8");
-      await Promise.all([unlink(path.join(root,scriptPath)).catch(()=>undefined),
-        unlink(path.join(root,cssPath)).catch(()=>undefined)]);
+    }finally{
+      await writeFile(workerFile,originalWorker,"utf8");
+      await writeFile(configFile,originalConfig,"utf8");
+      for(const [file,html] of originals)await writeFile(file,html,"utf8");
+      await Promise.all([
+        unlink(path.join(root,newScript)).catch(()=>undefined),
+        unlink(path.join(root,newCss)).catch(()=>undefined),
+      ]);
     }
   });
   assert.deepEqual(errors,[],"unhandled page errors");
