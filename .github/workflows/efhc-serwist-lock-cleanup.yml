@@ -1,0 +1,58 @@
+# Temporary branch-only dependency reconciliation; no publishing or main access.
+name: EFHC — Serwist lock cleanup
+
+on:
+  push:
+    branches: ['recovery/**']
+    paths:
+      - '.github/workflows/efhc-serwist-lock-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.repository == 'gly-efhc/efhc'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Drop obsolete Workbox lock entries using npm resolution
+        working-directory: site/frontend
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Assert Serwist-only root dependencies
+        working-directory: site/frontend
+        run: |
+          node - <<'JS'
+          const pkg=require('./package.json');
+          const lock=require('./package-lock.json');
+          if(pkg.devDependencies['workbox-build'] || lock.packages['node_modules/workbox-build']) {
+            throw Error('EFHC_LEGACY_WORKBOX_DEPENDENCY_REMAINS');
+          }
+          for (const name of ['serwist','@serwist/next','@serwist/cli']) {
+            if(pkg.devDependencies[name] !== '9.5.13' ||
+               lock.packages['node_modules/'+name]?.version !== '9.5.13') {
+              throw Error('EFHC_SERWIST_LOCK_INCOMPLETE '+name);
+            }
+          }
+          console.log('EFHC_SERWIST_ONLY_LOCK_PASS');
+          JS
+      - name: Save verified lockfile in the isolated feature branch
+        run: |
+          set -euo pipefail
+          git add site/frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo EFHC_SERWIST_LOCK_CLEAN
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Remove obsolete Workbox npm lock entries after Serwist migration'
+          git push origin "HEAD:${GITHUB_REF}"
+          echo EFHC_SERWIST_LOCK_RECONCILED
