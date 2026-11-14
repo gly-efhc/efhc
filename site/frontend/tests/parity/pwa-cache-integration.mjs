@@ -102,7 +102,8 @@ try {
       for (const name of await caches.keys()) {
         for (const req of await (await caches.open(name)).keys()) cached.add(new URL(req.url).pathname);
       }
-      const required = cfg.precache.filter(url=>!url.endsWith(".mp3"));
+      const required = cfg.precache.filter(url=>!url.endsWith(".mp3") &&
+        !/\/(?:locale|faq)\/(?!en\.json$)[^/]+\.json$/.test(url));
       return {registered:Boolean(reg?.active),scope:reg?.scope,cachedCount:cached.size,
         missing:required.filter(url=>!cached.has(url)),cachedPaths:[...cached]};
     });
