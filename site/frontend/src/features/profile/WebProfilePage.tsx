@@ -355,6 +355,27 @@ export default function WebProfilePage(props: Props) {
               {t("nav.admin")}
             </button>
           ) : null}
+          <button
+            type="button"
+            className="efhc-profile-settings-button source-button secondary"
+            aria-label={t("profile.settings_title")}
+            title={t("profile.settings_title")}
+            onClick={() => setSettingsOpen(true)}
+            data-profile-settings-entry="profile-header" data-profile-settings-placement="header"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d={SETTINGS_GEAR_INNER_PATH} />
+              <path d={SETTINGS_GEAR_OUTER_PATH} />
+            </svg>
+          </button>
           <button type="button" className="source-button secondary" data-app-navigation="exit-profile" onClick={() => goHome(router)}>
             {t("profile.exit")}
           </button>
@@ -551,27 +572,7 @@ export default function WebProfilePage(props: Props) {
                   {t("profile.interface_account_note")}
                 </p>
               </div>
-              <button
-                type="button"
-                className="efhc-profile-settings-button source-button secondary"
-                aria-label={t("profile.settings_title")}
-                title={t("profile.settings_title")}
-                onClick={() => setSettingsOpen(true)}
-                data-profile-settings-entry="profile-modal"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d={SETTINGS_GEAR_INNER_PATH} />
-                  <path d={SETTINGS_GEAR_OUTER_PATH} />
-                </svg>
-              </button>
+
             </div>
             <div className="source-profile-compact-controls">
               <div className="source-profile-compact-control">
