@@ -92,11 +92,11 @@ jobs:
           set -euo pipefail
           SOURCE="site/ci/pages-tools"
           DEST="$RUNNER_TEMP/efhc-pages-tools"
-          for file in prepare_pages.py fix_pages_assets.py verify_export.py browser-smoke.mjs; do
+          for file in prepare_pages.py fix_pages_assets.py verify_export.py browser-smoke.mjs inject_workbox.mjs sw-workbox.js; do
             test -s "$SOURCE/$file" || { echo "Missing Pages tool: $file; run EFHC Import first" >&2; exit 1; }
           done
           mkdir -p "$DEST"
-          cp -- "$SOURCE/prepare_pages.py" "$SOURCE/fix_pages_assets.py" "$SOURCE/verify_export.py" "$SOURCE/browser-smoke.mjs" "$DEST/"
+          cp -- "$SOURCE/prepare_pages.py" "$SOURCE/fix_pages_assets.py" "$SOURCE/verify_export.py" "$SOURCE/browser-smoke.mjs" "$SOURCE/inject_workbox.mjs" "$SOURCE/sw-workbox.js" "$DEST/"
           python3 -m py_compile "$DEST/prepare_pages.py" "$DEST/fix_pages_assets.py" "$DEST/verify_export.py"
           node --check "$DEST/browser-smoke.mjs"
           echo 'EFHC_PAGES_VERSIONED_TOOLS_READY=PASS'
@@ -247,7 +247,7 @@ jobs:
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
           set -euo pipefail
-          python3 "$RUNNER_TEMP/efhc-pages-tools/fix_pages_assets.py" \
+          EFHC_WORKBOX_PACKAGE_JSON="$RUNNER_TEMP/efhc-demo-build/package.json" python3 "$RUNNER_TEMP/efhc-pages-tools/fix_pages_assets.py" \
             --directory "$RUNNER_TEMP/efhc-demo-build/out" \
             --base-path "/${REPO_NAME}" 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/asset-fix.log"
