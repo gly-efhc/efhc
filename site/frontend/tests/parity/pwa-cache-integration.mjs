@@ -504,9 +504,14 @@ try {
       const proof = await page.evaluate(async (cssPath) => {
          const cachesList = await caches.keys();
         let cached = false;
-        for (const name of cachesList.filter(name => name.endsWith("-static"))) {
+        for (const name of cachesList) {
           const cache = await caches.open(name);
-          if (await cache.match(cssPath)) cached = true;
+          for (const request of await cache.keys()) {
+            if (new URL(request.url).pathname === cssPath) {
+              cached = true;
+              break;
+            }
+          }
         }
         const coin = document.querySelector(".efhc-independent-shell[data-interface-app-mode='user'] .efhc-energy-stage_coin");
         if (!coin) throw Error("Missing rendered Energy coin for offline CSS check");
