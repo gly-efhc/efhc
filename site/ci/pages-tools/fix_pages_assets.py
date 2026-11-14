@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -163,6 +164,12 @@ def main():
     # project pages have been physically deleted. Do not ship these artifacts.
     for name in ('404.html', '500.html'):
         (root / name).unlink(missing_ok=True)
+    # Next static export can also generate a nested error route.
+    # These routes are not part of EFHC's approved offline UI.
+    for name in ('404', '500'):
+        retired = root / name
+        if retired.is_dir():
+            shutil.rmtree(retired)
     changed = 0
     for p in root.rglob('*'):
         if not p.is_file() or p.name == 'sw.js' or p.suffix not in ('.html', '.css', '.js'):
