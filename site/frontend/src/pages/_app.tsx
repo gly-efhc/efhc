@@ -638,6 +638,22 @@ function AppInner(props: {
   const [splashMounted, setSplashMounted] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [shellTimeoutReady, setShellTimeoutReady] = useState(false);
+  // The static HTML splash owns the update gate before React can hydrate.
+  // This state only releases the existing React shell after that gate.
+  const [pwaGateReady, setPwaGateReady] = useState(false);
+  useEffect(() => {
+    const state = (window as Window & {
+      __EFHC_PWA_GATE__?: {ready: boolean};
+    }).__EFHC_PWA_GATE__;
+    if (!state || state.ready) setPwaGateReady(true);
+    const finish = () => setPwaGateReady(true);
+    window.addEventListener("efhc:pwa-gate-ready", finish);
+    const fallback = window.setTimeout(finish, 20500);
+    return () => {
+      window.removeEventListener("efhc:pwa-gate-ready", finish);
+      window.clearTimeout(fallback);
+    };
+  }, []);
 
   const splashReady = useMemo(() => {
     // Browser/PWA must never stay blank because Telegram data
@@ -657,7 +673,7 @@ function AppInner(props: {
     uiDictLoaded,
   ]);
 
-  const effectiveSplashReady = splashReady || shellTimeoutReady;
+  const effectiveSplashReady = (splashReady || shellTimeoutReady) && pwaGateReady;
   const shellProgress = useMemo(() => {
     const steps = [
       uiDictLoaded,
