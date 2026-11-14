@@ -417,9 +417,18 @@ export function PwaRuntimeStatus(props: {
       const staged = registration.waiting;
       if (!staged) return;
       setWaiting(staged);
-      // The worker has completed its fail-closed full precache. Ask the
-      // verified new worker to activate without reloading this live page.
-      staged.postMessage({ type: "SKIP_WAITING" });
+      // A new Workbox worker has finished only the critical shell. Never
+      // force its activation during a mutation, user editing, wallet handoff,
+      // background tab or recent activity. The pre-React cold-start gate can
+      // independently activate a safe update under the existing splash.
+      const safeIdle =
+        navigator.onLine && document.visibilityState === "visible" &&
+        queryClient.isMutating() === 0 && !hasActiveEditor() &&
+        Date.now() - lastInteractionAt >= 6000 &&
+        !(document.activeElement instanceof HTMLInputElement &&
+          document.activeElement.type === "password");
+      if (!safeIdle) return;
+      staged.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
     };
     const checkForUpdate = () => {
       if (disposed || !trackedRegistration || !navigator.onLine ||
