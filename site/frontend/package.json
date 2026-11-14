@@ -50,7 +50,8 @@
     "@types/react-dom": "19.2.3",
     "postcss": "^8.5.10",
     "tailwindcss": "4.3.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "workbox-build": "7.4.1"
   },
   "overrides": {
     "axios": "$axios",
