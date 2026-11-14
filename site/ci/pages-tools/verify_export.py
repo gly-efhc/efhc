@@ -38,8 +38,7 @@ def main():
     if config.get('static_export') is not True or not config.get('precache'):
         raise ValueError('PWA full static export precache is not configured')
     expected = base.rstrip('/') + '/'
-    # The candidate Workbox split must be complete and disjoint. Switching the
-    # active SW to critical-only installation is a later, separately tested step.
+    # Serwist atomically installs critical assets; deferred assets populate later.
     critical = config.get('precache_critical')
     deferred = config.get('precache_deferred')
     if not isinstance(critical, list) or not isinstance(deferred, list):

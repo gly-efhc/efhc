@@ -14,18 +14,6 @@ import {
   type RuntimeProgressDetail,
 } from "../lib/runtimeProgress";
 
-type CacheLimit = {
-  max_age_seconds: number;
-  max_bytes: number;
-  max_entries: number;
-};
-
-type AdaptiveCachePolicy = {
-  content: CacheLimit;
-  static: CacheLimit;
-  tier: "conservative" | "standard" | "expanded";
-};
-
 const SAFE_PREFETCH_ROUTES = new Set([
   "/",
   "/app",
@@ -47,64 +35,6 @@ const FINANCIAL_ROUTES = new Set([
   "/panels/portfolio",
   "/withdraw",
 ]);
-
-async function resolveAdaptiveCachePolicy(): Promise<
-  AdaptiveCachePolicy
-> {
-  const runtimeNavigator = navigator as Navigator & {
-    connection?: { saveData?: boolean; effectiveType?: string };
-    deviceMemory?: number;
-  };
-  const memory = Number(runtimeNavigator.deviceMemory || 0);
-  const estimate = await navigator.storage?.estimate?.().catch(() => null);
-  const quota = Number(estimate?.quota || 0);
-  const saveData = Boolean(runtimeNavigator.connection?.saveData);
-  const lowQuota = quota > 0 && quota < 200 * 1024 * 1024;
-  if (saveData || (memory > 0 && memory <= 2) || lowQuota) {
-    return {
-      tier: "conservative",
-      static: {
-        max_entries: 180,
-        max_age_seconds: 2_592_000,
-        max_bytes: 36 * 1024 * 1024,
-      },
-      content: {
-        max_entries: 90,
-        max_age_seconds: 604_800,
-        max_bytes: 20 * 1024 * 1024,
-      },
-    };
-  }
-  const expanded = memory >= 4 && quota >= 500 * 1024 * 1024;
-  if (expanded) {
-    return {
-      tier: "expanded",
-      static: {
-        max_entries: 520,
-        max_age_seconds: 3_888_000,
-        max_bytes: 180 * 1024 * 1024,
-      },
-      content: {
-        max_entries: 300,
-        max_age_seconds: 1_209_600,
-        max_bytes: 80 * 1024 * 1024,
-      },
-    };
-  }
-  return {
-    tier: "standard",
-    static: {
-      max_entries: 320,
-      max_age_seconds: 2_592_000,
-      max_bytes: 92 * 1024 * 1024,
-    },
-    content: {
-      max_entries: 180,
-      max_age_seconds: 604_800,
-      max_bytes: 48 * 1024 * 1024,
-    },
-  };
-}
 
 function connectionAllowsPrefetch(): boolean {
   const connection = (
@@ -313,7 +243,6 @@ export function PwaRuntimeStatus(props: {
     let verifyInFlight = false;
     let autoReloadBuildId = "";
     let staleDetectedAt = 0;
-    let lastCacheSweepAt = 0;
     const markActivity = () => { lastInteractionAt = Date.now(); };
     const hasActiveEditor = () => Boolean(document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
@@ -394,12 +323,8 @@ export function PwaRuntimeStatus(props: {
           navigator.serviceWorker.controller?.postMessage({
             type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
           });
-          // On every verified application load, request an immediate sweep of
-          // predecessor PWA generations. Never erase owner-scoped local data.
-          if (Date.now() - lastCacheSweepAt >= 30_000) {
-            lastCacheSweepAt = Date.now();
-            navigator.serviceWorker.controller?.postMessage({type: "GET_CACHE_STATUS"});
-          }
+          // The one-shot legacy migration is handled inside Serwist only after
+          // every scoped client confirms its build; no app-controlled GC timer.
           staleDetectedAt = 0;
           const verifiedKey = "efhc:pwa-reload:" + manifest.build_id;
           try {
@@ -422,7 +347,7 @@ export function PwaRuntimeStatus(props: {
       const staged = registration.waiting;
       if (!staged) return;
       setWaiting(staged);
-      // A new Workbox worker has finished only the critical shell. Never
+      // Serwist installs only the critical shell. Never
       // force its activation during a mutation, user editing, wallet handoff,
       // background tab or recent activity. The pre-React cold-start gate can
       // independently activate a safe update under the existing splash.
@@ -484,9 +409,6 @@ export function PwaRuntimeStatus(props: {
         setCacheBytes(Number(data.completedBytes || 0));
         window.setTimeout(() => setCacheVisible(false), 900);
       }
-      if (data.type === "CACHE_RETIREMENT_PENDING") {
-        void verifyLoadedBuild();
-      }
       if (data.type === "CACHE_STATUS") {
         setCacheEntries(
           Number(data.staticEntries || 0) +
@@ -544,12 +466,6 @@ export function PwaRuntimeStatus(props: {
         cleanupIdle = idle(() => {
           const target =
             navigator.serviceWorker.controller || registration.active;
-          void resolveAdaptiveCachePolicy().then((policy) => {
-            target?.postMessage({
-              policy,
-              type: "SET_CACHE_POLICY",
-            });
-          });
           target?.postMessage({ type: "GET_CACHE_STATUS" });
           if (!connectionAllowsPrefetch()) return;
           void Promise.all(
@@ -617,8 +533,8 @@ export function PwaRuntimeStatus(props: {
     } catch { /* Ignore inaccessible session storage. */ }
   }, []);
 
-  // A staged update retains old chunks only while legacy pages are open.
-  // After a verified shell is loaded, obsolete CacheStorage is retired.
+  // Serwist owns native cache revisions. The one-time legacy compatibility
+  // path preserves old bundles until every scoped tab safely switches.
   // A mismatched bundle reloads at idle, never during a React Query mutation.
 
   useEffect(() => {
@@ -645,7 +561,12 @@ export function PwaRuntimeStatus(props: {
   }, []);
 
   const applyUpdate = () => {
-    waiting?.postMessage({ type: "SKIP_WAITING" });
+    // Do not activate over a financial mutation or an unsaved focused editor.
+    const activeEditor = document.querySelector(
+      "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
+    );
+    if (queryClient.isMutating() > 0 || activeEditor) return;
+    waiting?.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
     setWaiting(null);
   };
 

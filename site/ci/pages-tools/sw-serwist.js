@@ -75,11 +75,12 @@ const localeStrategy = new StaleWhileRevalidate({
 async function legacyPublicCaches() {
   const names = await caches.keys();
   const legacy = names.filter(name =>
-    /^efhc-pwa-.+-static$/.test(name) ||
+    /^efhc-pwa-.+-(?:static|content)$/.test(name) ||
     /^efhc-public-pages-/.test(name) ||
     /^efhc-static-assets-/.test(name) ||
     name === "efhc-legacy-assets" ||
-    /^workbox-precache-/.test(name));
+    /^workbox-precache-/.test(name) ||
+    /^efhc.*wb-precache/.test(name));
   const safe = [];
   for (const name of legacy) {
     const entries = await (await caches.open(name)).keys();
@@ -160,16 +161,21 @@ const sw = new Serwist({
        /\.[a-f0-9]{16}\.css$/i.test(url.pathname) ||
        (expected.has(url.pathname) && !isHtml(url.pathname))),
      handler:async ({event,request,url}) => {
-       try {return await assetsStrategy.handle({event,request});}
+       let result;
+       try {result=await assetsStrategy.handle({event,request});}
        catch (error) {
-         // A pre-Serwist open tab can still need its previous immutable JS/CSS.
-         if (/\/_next\/static\//.test(url.pathname) ||
-             /\.[a-f0-9]{16}\.css$/i.test(url.pathname)) {
-           const prior=await legacyAssetFallback(request);
-           if (prior) return prior;
-         }
+         const prior=await legacyAssetFallback(request);
+         if (prior) return prior;
          throw error;
        }
+       // CacheFirst treats an HTTP 404 as a response rather than a network
+       // exception. An older live tab still needs its immutable JS/CSS.
+       if (!result?.ok && (/\/_next\/static\//.test(url.pathname) ||
+           /\.[a-f0-9]{16}\.css$/i.test(url.pathname))) {
+         const prior=await legacyAssetFallback(request);
+         if (prior) return prior;
+       }
+       return result;
      }},
   ],
 });

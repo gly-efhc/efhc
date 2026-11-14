@@ -50,16 +50,16 @@ const check = async (name,fn) => {
   console.log("PWA_INTEGRATION_PASS "+name);
 };
 try {
-  await check("Workbox installs critical shell then resumes every required offline page in background", async () => {
+  await check("Serwist installs critical shell then resumes every required offline page in background", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const config = await (await page.request.get(base+"pwa-build.json")).json();
     assert.equal(config.static_export,true);
     assert.ok(config.precache.length > 40,"real export required");
-    assert.ok(config.precache_critical.length > 4,"Workbox critical shell missing");
+    assert.ok(config.precache_critical.length > 4,"Serwist critical shell missing");
     assert.ok(config.precache_deferred.length > 0,"deferred export missing");
     await page.evaluate(() => Promise.race([
       navigator.serviceWorker.ready.then(() => true),
-      new Promise((_,reject) => setTimeout(() => reject(Error("Workbox install timeout")),95000)),
+      new Promise((_,reject) => setTimeout(() => reject(Error("Serwist install timeout")),95000)),
     ]));
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
     const criticalState = await page.evaluate(async () => {
@@ -72,20 +72,20 @@ try {
       }
       return {keys,missing:cfg.precache_critical.filter(url=>!paths.has(url))};
     });
-    assert.deepEqual(criticalState.missing,[],"Workbox must atomically cache critical shell before activation");
+    assert.deepEqual(criticalState.missing,[],"Serwist must atomically cache critical shell before activation");
     assert.ok(criticalState.keys.some(name=>name.includes("precache")),
-      "Workbox precache container missing");
+      "Serwist precache container missing");
     await page.evaluate(async () => {
       const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
       await new Promise((resolve,reject) => {
         const timer=setTimeout(()=>{navigator.serviceWorker.removeEventListener("message",onMessage);
-          reject(Error("Workbox deferred queue did not finish"));},95000);
+          reject(Error("Serwist deferred queue did not finish"));},95000);
         function onMessage(event) {
           const data=event.data||{};
           if(data.type==="CACHE_COMPLETE"&&data.reason==="deferred"){
             clearTimeout(timer);
             navigator.serviceWorker.removeEventListener("message",onMessage);
-            if(data.failed)reject(Error("Workbox deferred resources failed: "+data.failed));
+            if(data.failed)reject(Error("Serwist deferred resources failed: "+data.failed));
             else resolve(true);
           }
         }
@@ -116,7 +116,7 @@ try {
     assert.ok(info.cachedPaths.some(path=>path.includes("/_next/static/")));
     assert.ok(info.cachedPaths.every(path=>!path.includes("/api/")&&!path.includes("runtime-config.json")),
       "never cache API/private credentials");
-    results.push({name:"workbox_offline_inventory",status:"INFO",count:info.cachedCount});
+    results.push({name:"serwist_offline_inventory",status:"INFO",count:info.cachedCount});
   });
   await check("rendered public CSS links use content-addressed paths for every root stylesheet", async () => {
     await page.locator("#__next").waitFor({state:"attached"});
@@ -684,7 +684,7 @@ try {
 
       // Generate a THIRD real release. B's dynamic JS/CSS are no longer on
       // the HTTP server; a stale B tab must still be able to fetch them from
-      // Workbox's protected legacy cache until safe retirement.
+      // Serwist's protected legacy cache until safe retirement.
       await writeFile(path.join(root,thirdScript),
         "window.__EFHC_THIRD_PWA_ASSET__=true;","utf8");
       await writeFile(path.join(root,thirdCss),
@@ -751,7 +751,7 @@ try {
       }
 
       // Native Serwist owns new generations. A one-time scoped migration
-      // retires only old EFHC/Workbox public caches after ALL old clients
+      // retires only old EFHC/Serwist public caches after ALL old clients
       // leave or verify this generation; never delete any other app cache.
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
@@ -787,6 +787,10 @@ try {
           guarded.staleCached,"An unverified old tab must retain all legacy assets");
         // The previous worker's immutable assets remain obtainable while
         // the new Serwist worker controls network requests.
+        const onlineLegacy=await stale.evaluate(async url=>
+          fetch(url).then(response=>response.text()).catch(()=>null),oldUrl);
+        assert.equal(onlineLegacy,"legacy-old",
+          "A successor HTTP 404 must fall back to verified legacy immutable JS");
         await context.setOffline(true);
         const legacyResponse=await stale.evaluate(async url=>
           fetch(url).then(response=>response.text()).catch(()=>null),oldUrl);
