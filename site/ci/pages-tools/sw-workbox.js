@@ -183,21 +183,26 @@ async function cacheHas(path) {
     isLocale(path) ? paths.locale : paths.assets;
   return Boolean(await (await caches.open(name)).match(path));
 }
-async function storeDeferred(path) {
+async function storeDeferred(path,event) {
   if (!deferred.has(path) || await cacheHas(path)) return true;
   const request = new Request(new URL(path, self.location.origin).href, {
     credentials: "same-origin",cache: "reload",
   });
+  if (isMedia(path) || isLocale(path)) {
+    // Workbox ExpirationPlugin must own media writes, including proactive
+    // downloads. A raw cache.put would bypass purgeOnQuotaError and eviction.
+    const response = await (isMedia(path) ? mediaStrategy : localeStrategy)
+      .handle({event,request});
+    return Boolean(response && response.ok);
+  }
   const response = await fetch(request);
   if (!response || !response.ok) return false;
   if (isHtml(path)) await verifiedHtml.fetchDidSucceed({request,response});
-  const cacheName = isHtml(path) ? paths.pages :
-    isMedia(path) ? paths.media :
-    isLocale(path) ? paths.locale : paths.assets;
+  const cacheName = isHtml(path) ? paths.pages : paths.assets;
   await (await caches.open(cacheName)).put(request, response.clone());
   return true;
 }
-async function prefetchDeferred(priority = []) {
+async function prefetchDeferred(priority = [], event) {
   if (activePrefetch) return activePrefetch;
   // The fixed order and requested URLs are only an in-memory session hint.
   // No navigation-history key, per-owner tracking, or persistent queue.
@@ -217,7 +222,7 @@ async function prefetchDeferred(priority = []) {
     while (position < ordered.length) {
       const path = ordered[position++];
       try {
-        const success = await storeDeferred(path);
+        const success = await storeDeferred(path,event);
         if (!success) failed++;
       } catch { failed++; }
       done++;
@@ -259,7 +264,11 @@ async function forgetLegacyTimestamp(kind, value) {
 async function collectLegacy() {
   const keys = await caches.keys();
   const candidates = keys.filter(name =>
-    name.startsWith(ownPrefix) && /-(?:static|content)$/.test(name));
+    // Include both original EFHC caches and obsolete build-scoped Workbox
+    // runtime page/static caches. Shared media and owner data are excluded.
+    (name.startsWith(ownPrefix) && /-(?:static|content)$/.test(name)) ||
+    (name.startsWith("efhc-public-pages-") && name !== paths.pages) ||
+    (name.startsWith("efhc-static-assets-") && name !== paths.assets));
   const proven = [];
   for (const name of candidates) {
     const bucket = await caches.open(name);
@@ -394,7 +403,7 @@ self.addEventListener("message", event => {
     return;
   }
   if (data.type === "CACHE_URLS" || data.type === "PREFETCH_PRIORITY") {
-    wait(async () => prefetchDeferred(Array.isArray(data.urls) ? data.urls : []));
+    wait(async () => prefetchDeferred(Array.isArray(data.urls) ? data.urls : [], event));
     return;
   }
   if (data.type === "SET_CACHE_POLICY") {
