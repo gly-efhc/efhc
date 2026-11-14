@@ -31,7 +31,10 @@ const entries=await Promise.all(critical.map(async url=>{
   const contents=await readFile(path.join(root,url.slice(base.length+1)));
   return {url,revision:createHash("sha256").update(contents).digest("hex")};
 }));
-const sourcePath=path.join(root,".efhc-serwist-source.mjs");
+// The synthetic export used by regression tests may be outside the frontend
+// tree. Bundle imports must resolve against the installed frontend package.
+// Build-scoped filenames prevent a concurrent export from overwriting source.
+const sourcePath=path.join(pkgDir,".efhc-serwist-source-"+config.build_id+".mjs");
 const manifestPath=path.join(root,".efhc-serwist-critical.json");
 const template=await readFile(path.join(import.meta.dirname,"sw-serwist.js"),"utf8");
 const source=template
@@ -48,7 +51,8 @@ try {
   const cli=path.join(pkgDir,"node_modules",".bin","serwist");
   const result=spawnSync(cli,["build",path.join(pkgDir,"serwist.config.mjs")],{
     cwd:pkgDir,
-    env:{...process.env,EFHC_SERWIST_EXPORT_DIR:root},
+    env:{...process.env,EFHC_SERWIST_EXPORT_DIR:root,
+      EFHC_SERWIST_SW_SRC:sourcePath},
     encoding:"utf8",
     maxBuffer:8*1024*1024,
   });
