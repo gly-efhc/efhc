@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import path from "node:path";
 
-const root=path.resolve(import.meta.dirname,"../../../..");
+const root=path.resolve(import.meta.dirname,"../../..");
 const read=p=>readFileSync(path.join(root,p),"utf8");
 
 test("Serwist source candidate has no independent PWA cache writer",()=>{
