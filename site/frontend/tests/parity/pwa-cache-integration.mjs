@@ -344,7 +344,11 @@ try {
   await check("every exported application HTML route remains navigable without transport", async () => {
     const htmlRoutes = exportConfig.precache.filter(url =>
       url.endsWith(".html") && !/\/offline(?:-readonly)?\.html$/.test(url));
-    assert.ok(htmlRoutes.length >= 42,"all Next static routes are required, not just six smoke pages");
+    // The old 42-route floor counted Next's generated 404/index.html. EFHC
+    // deliberately removes that unapproved technical route from the export.
+    assert.ok(htmlRoutes.length >= 41,"all 41 approved Next routes are required, not just six smoke pages");
+    assert.ok(!htmlRoutes.some(route => /\\/(?:404|500)\\/(?:index\\.html)?$/.test(route)),
+      "retired technical error routes must not reappear in the cached page set");
     await context.setOffline(true);
     try {
       for (const html of htmlRoutes) {
