@@ -61,6 +61,42 @@ def fingerprint_public_stylesheets(root: Path) -> int:
     return len(mapping)
 
 
+
+def partition_pwa_resources(root: Path, base: str, included: list[str]) -> tuple[list[str], list[str]]:
+    """Prepare a deterministic candidate shell for Workbox without changing the active SW.
+
+    The minimum shell starts with the current landing HTML and its immediate
+    same-scope dependencies. Its sufficiency must pass offline browser tests
+    before it becomes the actual install list.
+    """
+    mandatory = {
+        'index.html', 'offline.html', 'offline-readonly.html',
+        'manifest.webmanifest', 'public-runtime-config.js',
+        'locale/en.json', 'faq/en.json',
+    }
+    available = set(included)
+    critical = {base + '/' + path for path in mandatory if base + '/' + path in available}
+    asset_ref = re.compile(r'(?:src|href)=[\\'"]([^\\'"]+)[\\'"]')
+    asset_suffixes = ('.js', '.css', '.svg', '.avif', '.webp', '.png',
+                      '.ico', '.woff', '.woff2', '.jpg', '.jpeg')
+    for page in ('index.html', 'offline.html', 'offline-readonly.html'):
+        current = root / page
+        if not current.is_file():
+            continue
+        for target in asset_ref.findall(current.read_text(encoding='utf-8')):
+            asset = target.split('?', 1)[0].split('#', 1)[0]
+            if asset.startswith(base + '/') and asset.endswith(asset_suffixes):
+                if asset in available:
+                    critical.add(asset)
+    priority = [item for item in included if item in critical]
+    deferred = [item for item in included if item not in critical]
+    if base + '/index.html' not in critical or not any(
+        '/_next/static/' in item and item.endswith('.js') for item in critical
+    ):
+        raise ValueError('PWA critical shell is missing landing HTML or Next JavaScript')
+    return priority, deferred
+
+
 def configure_pwa(root: Path, base: str) -> tuple[int, int]:
     worker = root / 'sw.js'
     manifest_file = root / 'manifest.webmanifest'
@@ -110,10 +146,14 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
         raise ValueError('PWA requires exported HTML routes and compiled Next assets')
     if len(included) > 3000 or total_bytes > 480 * 1024 * 1024:
         raise ValueError('PWA precache exceeds supported limits; do not silently omit pages')
+    critical, deferred = partition_pwa_resources(root, base, included)
     config = {
         'build_id': digest.hexdigest()[:24],
         'static_export': True,
         'precache': included,
+        # Candidate partition only: the existing SW still installs full precache.
+        'precache_critical': critical,
+        'precache_deferred': deferred,
         'cache_limits': {
             'static': {
                 'max_entries': max(500, len(included) + 20),
