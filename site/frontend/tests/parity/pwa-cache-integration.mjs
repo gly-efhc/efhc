@@ -844,6 +844,87 @@ try {
       ]);
     }
   });
+  await check("Serwist failed critical update retains the previously installed offline worker",async()=>{
+    const missingUrl=exportConfig.precache_critical.find(url=>
+      url.endsWith("/offline-readonly.html"));
+    assert.ok(missingUrl,"Critical offline fallback must be in the Serwist install manifest");
+    const missingPath=path.join(root,missingUrl.slice("/efhc/".length));
+    const workerPath=path.join(root,"sw.js");
+    const originalCritical=await readFile(missingPath);
+    const originalWorker=await readFile(workerPath,"utf8");
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    try {
+      const tab=await isolated.newPage();
+      await tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:25000});
+      const installed=await tab.evaluate(async appBase=>{
+        const reg=await navigator.serviceWorker.register(appBase+"sw.js",{
+          scope:appBase,updateViaCache:"none",
+        });
+        const active=await Promise.race([
+          navigator.serviceWorker.ready.then(r=>r.active),
+          new Promise((_,reject)=>setTimeout(()=>
+            reject(Error("Original Serwist install timeout")),30000)),
+        ]);
+        return Boolean(active&&reg.active);
+      },base);
+      assert.equal(installed,true,"Predecessor must be active before interrupted update");
+      // Change the source worker to trigger a real update while making one
+      // required install file return HTTP 404. The older precache remains.
+      await writeFile(workerPath,originalWorker+
+        "\n/* synthetic incomplete successor, not a release */\n","utf8");
+      await unlink(missingPath);
+      const verdict=await tab.evaluate(async appBase=>{
+        const reg=await navigator.serviceWorker.getRegistration(appBase);
+        if(!reg?.active) throw Error("Predecessor not registered");
+        const predecessor=reg.active;
+        return await new Promise(resolve=>{
+          let finished=false;
+          const complete=result=>{
+            if(finished)return;
+            finished=true;
+            clearTimeout(timeout);
+            reg.removeEventListener("updatefound",onNew);
+            resolve({result,oldStillActive:reg.active===predecessor,
+              activeState:reg.active?.state||null,
+              waitingState:reg.waiting?.state||null});
+          };
+          const onNew=()=>{
+            const next=reg.installing;
+            if(!next)return;
+            const onState=()=>{
+              if(next.state==="redundant")complete("rejected");
+              else if(next.state==="activated")complete("unexpected_activation");
+            };
+            next.addEventListener("statechange",onState);
+            onState();
+          };
+          const timeout=setTimeout(()=>complete("timeout"),20000);
+          reg.addEventListener("updatefound",onNew);
+          void reg.update().catch(()=>complete("rejected"));
+          onNew();
+        });
+      },base);
+      assert.equal(verdict.result,"rejected",
+        "Serwist must reject a new worker whose critical file is missing");
+      assert.equal(verdict.oldStillActive,true,
+        "Failed successor must not replace the previously active worker");
+      assert.equal(verdict.activeState,"activated");
+      assert.equal(verdict.waitingState,null);
+      await isolated.setOffline(true);
+      const response=await tab.goto(base+"offline.html",{
+        waitUntil:"domcontentloaded",timeout:20000,
+      });
+      assert.equal(response?.ok(),true,
+        "The predecessor must continue to serve its critical fallback offline");
+      console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",JSON.stringify(verdict));
+    }finally{
+      await Promise.all([
+        writeFile(workerPath,originalWorker,"utf8"),
+        writeFile(missingPath,originalCritical),
+      ]);
+      await isolated.close();
+    }
+  });
   assert.deepEqual(errors,[],"unhandled page errors");
 } finally {
   await context.setOffline(false).catch(()=>undefined);
