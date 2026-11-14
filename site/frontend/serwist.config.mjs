@@ -9,6 +9,10 @@ const out=process.env.EFHC_SERWIST_EXPORT_DIR;
 if(!out || !path.isAbsolute(out)) {
   throw Error("EFHC_SERWIST_EXPORT_DIR must be an absolute export path");
 }
+if(!process.env.EFHC_SERWIST_SW_SRC ||
+   !path.isAbsolute(process.env.EFHC_SERWIST_SW_SRC)) {
+  throw Error("EFHC_SERWIST_SW_SRC must be an absolute module path");
+}
 const critical=JSON.parse(readFileSync(
   path.join(out,".efhc-serwist-critical.json"),"utf8"));
 if(!Array.isArray(critical) || !critical.length ||
@@ -16,7 +20,7 @@ if(!Array.isArray(critical) || !critical.length ||
   throw Error("EFHC_SERWIST_CRITICAL_MANIFEST_INVALID");
 }
 export default serwist({
-  swSrc:path.join(out,".efhc-serwist-source.mjs"),
+  swSrc:process.env.EFHC_SERWIST_SW_SRC,
   swDest:path.join(out,"sw.js"),
   globDirectory:out,
   globPatterns:[],
