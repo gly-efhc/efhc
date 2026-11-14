@@ -23626,6 +23626,27 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 }
 
 
+/* I07 OWNER Q2=A: Profile settings is one inline header action, never a floating overlay.
+   The compact four-toggle dialog and all CT/PM material tokens are unchanged. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-topbar .efhc-profile-topbar_actions > .efhc-profile-settings-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.3rem;
+  width: 2.3rem !important;
+  height: 2.3rem;
+  min-width: 2.3rem;
+  min-height: 2.3rem;
+  margin: 0;
+  padding: .35rem !important;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .30);
+  border-radius: .72rem;
+  color: var(--efhc-ct-accent);
+  background: transparent !important;
+  box-shadow: none;
+  position: static;
+}
+
 /* Source Profile mobile grid placement: CSS order from the prior React topbar
    must not auto-place title before Back. All 13 PM compositions retain their
    separate visual tokens and all CT01..CT10 continue to supply colors. */
