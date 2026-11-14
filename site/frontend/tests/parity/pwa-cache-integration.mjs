@@ -44,6 +44,23 @@ const errors = [];
 page.on("pageerror", error => errors.push(String(error.message)));
 await context.route("**/*", route => new URL(route.request().url()).origin === origin
   ? route.continue() : route.abort());
+const boundedSerwistPhase = async (name, action, timeoutMs=15000) => {
+  console.log("PWA_SERWIST_I35_BEGIN",name);
+  let timer;
+  try {
+    const result=await Promise.race([
+      Promise.resolve().then(action),
+      new Promise((_,reject)=>{timer=setTimeout(()=>
+        reject(Error("PWA_SERWIST_I35_TIMEOUT "+name+" "+timeoutMs+"ms")),timeoutMs);}),
+    ]);
+    console.log("PWA_SERWIST_I35_PASS",name);
+    return result;
+  } catch(error) {
+    console.error("PWA_SERWIST_I35_FAIL",name,String(error));
+    throw error;
+  } finally {clearTimeout(timer);}
+};
+
 const check = async (name,fn) => {
   await fn();
   results.push({name,status:"PASS"});
@@ -762,10 +779,9 @@ try {
       const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
       const stale=await context.newPage();
       try {
-        await stale.goto(base+"offline.html",{
-          waitUntil:"domcontentloaded",timeout:25000,
-        });
-      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
+        await boundedSerwistPhase("legacy.stale.goto",()=>
+          stale.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
+      await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
         const store=async (name,url,value)=>{
           const cache=await caches.open(name);
           await cache.put(url,new Response(value,{status:200}));
@@ -776,35 +792,40 @@ try {
         await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
         await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
         await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl});
-        await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
-          type:"GET_CACHE_STATUS",
-        }));
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
+        await boundedSerwistPhase("legacy.status.request",()=>page.evaluate(()=>
+          navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"})));
         await page.waitForTimeout(350);
-        const guarded=await page.evaluate(async names=>({
+        const guarded=await boundedSerwistPhase("legacy.guarded.inventory",()=>page.evaluate(async names=>({
           keys:await caches.keys(),
           staleCached:Boolean(await (await caches.open(names.oldLegacy))
             .match(names.oldUrl)),
-        }),{oldLegacy,oldUrl});
+        }),{oldLegacy,oldUrl}),15000);
         assert.ok(guarded.keys.includes(oldLegacy) &&
           guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
           guarded.keys.includes(oldMedia) && guarded.keys.includes(oldLocale) &&
           guarded.staleCached,"An unverified old tab must retain all legacy assets");
         // The previous worker's immutable assets remain obtainable while
         // the new Serwist worker controls network requests.
-        const onlineLegacy=await stale.evaluate(async url=>
-          fetch(url).then(response=>response.text()).catch(()=>null),oldUrl);
+        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.http404",()=>
+          stale.evaluate(async url=>Promise.race([
+            fetch(url).then(response=>response.text()).catch(()=>null),
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy 404 fetch timeout")),8500)),
+          ]),oldUrl),12000);
         assert.equal(onlineLegacy,"legacy-old",
           "A successor HTTP 404 must fall back to verified legacy immutable JS");
         await context.setOffline(true);
-        const legacyResponse=await stale.evaluate(async url=>
-          fetch(url).then(response=>response.text()).catch(()=>null),oldUrl);
+        const legacyResponse=await boundedSerwistPhase("legacy.fetch.offline",()=>
+          stale.evaluate(async url=>Promise.race([
+            fetch(url).then(response=>response.text()).catch(()=>null),
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy offline fetch timeout")),8500)),
+          ]),oldUrl),12000);
         assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
       }finally {
         await context.setOffline(false);
-        await stale.close();
+        await boundedSerwistPhase("legacy.stale.close",()=>stale.close(),11000);
       }
-      await page.evaluate(buildId=>{
+      await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
         const assets=[...document.querySelectorAll("script[src]")]
           .map(el=>new URL(el.src).pathname)
           .filter(path=>path.includes("/_next/static/"));
@@ -814,18 +835,18 @@ try {
         navigator.serviceWorker.controller?.postMessage({
           type:"GET_CACHE_STATUS",
         });
-      },thirdBuildId);
-      await page.waitForFunction(async names=>{
+      },thirdBuildId),15000);
+      await boundedSerwistPhase("legacy.retirement.wait",()=>page.waitForFunction(async names=>{
         const keys=await caches.keys();
         return !keys.includes(names.oldLegacy) &&
           !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic) &&
           !keys.includes(names.oldMedia) && !keys.includes(names.oldLocale);
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000});
-      const kept=await page.evaluate(async name=>({
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000}),19000);
+      const kept=await boundedSerwistPhase("legacy.other.scope.verify",()=>page.evaluate(async name=>({
         names:await caches.keys(),
         unrelated:Boolean(await (await caches.open(name))
           .match(new URL("/other-app/data.txt",location.origin).href)),
-      }),unrelated);
+      }),unrelated),15000);
       assert.ok(kept.names.includes(unrelated)&&kept.unrelated,
         "Migration must not delete other scope caches");
       console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
@@ -855,8 +876,9 @@ try {
     const isolated=await browser.newContext({serviceWorkers:"allow"});
     try {
       const tab=await isolated.newPage();
-      await tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:25000});
-      const installed=await tab.evaluate(async appBase=>{
+      await boundedSerwistPhase("interrupt.install.baseline",()=>
+        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
+      const installed=await boundedSerwistPhase("interrupt.worker.install",()=>tab.evaluate(async appBase=>{
         const reg=await navigator.serviceWorker.register(appBase+"sw.js",{
           scope:appBase,updateViaCache:"none",
         });
@@ -866,14 +888,14 @@ try {
             reject(Error("Original Serwist install timeout")),30000)),
         ]);
         return Boolean(active&&reg.active);
-      },base);
+      },base),35000);
       assert.equal(installed,true,"Predecessor must be active before interrupted update");
       // Change the source worker to trigger a real update while making one
       // required install file return HTTP 404. The older precache remains.
       await writeFile(workerPath,originalWorker+
         "\n/* synthetic incomplete successor, not a release */\n","utf8");
       await unlink(missingPath);
-      const verdict=await tab.evaluate(async appBase=>{
+      const verdict=await boundedSerwistPhase("interrupt.worker.update",()=>tab.evaluate(async appBase=>{
         const reg=await navigator.serviceWorker.getRegistration(appBase);
         if(!reg?.active) throw Error("Predecessor not registered");
         const predecessor=reg.active;
@@ -903,7 +925,7 @@ try {
           void reg.update().catch(()=>complete("rejected"));
           onNew();
         });
-      },base);
+      },base),28000);
       assert.equal(verdict.result,"rejected",
         "Serwist must reject a new worker whose critical file is missing");
       assert.equal(verdict.oldStillActive,true,
@@ -911,9 +933,8 @@ try {
       assert.equal(verdict.activeState,"activated");
       assert.equal(verdict.waitingState,null);
       await isolated.setOffline(true);
-      const response=await tab.goto(base+"offline.html",{
-        waitUntil:"domcontentloaded",timeout:20000,
-      });
+      const response=await boundedSerwistPhase("interrupt.predecessor.offline",()=>
+        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:14000}),18000);
       assert.equal(response?.ok(),true,
         "The predecessor must continue to serve its critical fallback offline");
       console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",JSON.stringify(verdict));
@@ -922,7 +943,7 @@ try {
         writeFile(workerPath,originalWorker,"utf8"),
         writeFile(missingPath,originalCritical),
       ]);
-      await isolated.close();
+      await boundedSerwistPhase("interrupt.context.close",()=>isolated.close(),11000);
     }
   });
   assert.deepEqual(errors,[],"unhandled page errors");
