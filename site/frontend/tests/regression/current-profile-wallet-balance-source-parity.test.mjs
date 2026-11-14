@@ -139,6 +139,10 @@ test("profile and withdraw CSV/XLSX exports use the same server stream with dist
   const history = file("../../src/components/profile/ProfileHistorySection.tsx");
 
   assert.match(service, /new URLSearchParams\(\{ category \}\)/);
+  assert.match(service, /response\.headers\.get\("content-type"\)/);
+  assert.match(service, /actualType !== expectedType/);
+  assert.match(service, /blob\.size === 0/);
+  assert.match(service, /URL\.revokeObjectURL\(url\), 60_000/);
   assert.match(service, /transportRawRequest\(`\/profile\/history\/export\.\$\{format\}\?\$\{query\.toString\(\)\}`/);
   assert.match(query, /downloadProfileHistoryExport\(format, category\)/);
   assert.match(profile, /mutateAsync\(\{ format, category: historyFilter \}\)/);

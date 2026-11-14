@@ -339,6 +339,43 @@ test("PWA verified install retains worker lifetime until skipWaiting completes",
   assert.equal(finished,true);
 });
 
+test("Full PWA installation uses bounded concurrency and still installs all resources",async()=>{
+  const h=harness();
+  await h.seed("A");
+  const assets=[
+    "/efhc/index.html",
+    "/efhc/withdraw/index.html",
+    ...Array.from({length:12},(_,i)=>"/efhc/_next/static/bundle-"+i+".js"),
+  ];
+  let concurrent=0,peak=0,network=0;
+  h.setFetch(async request=>{
+    concurrent++;
+    peak=Math.max(peak,concurrent);
+    network++;
+    await new Promise(resolve=>setTimeout(resolve,3));
+    concurrent--;
+    const pathname=new URL(request.url).pathname;
+    return new Response(pathname.endsWith(".html")
+      ? '<meta name="efhc-build-id" content="B">PAGE'
+      : "immutable content",{status:200});
+  });
+  const worker=h.makeWorker("B",{precache:assets},{
+    Request:class extends Request{
+      constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
+    },
+  });
+  await worker.dispatch("install");
+  assert.equal(network,assets.length,"every resource must be fetched at first install");
+  assert.ok(peak>1,"sequential fetches needlessly delay Telegram WebView upgrades");
+  assert.ok(peak<=4,"mobile installer must not open unbounded parallel requests");
+  const bucket=await h.cacheStorage.open("efhc-pwa-B-static");
+  for(const path of assets){
+    assert.ok(await bucket.match(path),"atomic release missing "+path);
+  }
+  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
+    "installation must not delete an active predecessor");
+});
+
 test("T8: failed install removes own incomplete generation without deleting predecessor",async()=>{
   const h=harness();await h.seed("A");
   h.setFetch(async request=>{

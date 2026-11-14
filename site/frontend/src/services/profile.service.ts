@@ -324,7 +324,7 @@ export async function downloadProfileOperationsCsv(args: {
     anchor.click();
     anchor.remove();
   } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   return {
@@ -381,7 +381,15 @@ export async function downloadProfileHistoryExport(
   const query = new URLSearchParams({ category });
   const response = await transportRawRequest(`/profile/history/export.${format}?${query.toString()}`, "GET");
   if (!response.ok) throw new Error("profile_history_export_failed");
+  // A stale session, gateway or offline fallback must never download HTML
+  // as a successful financial export.
+  const expectedType = format === "csv"
+    ? "text/csv"
+    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const actualType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+  if (actualType !== expectedType) throw new Error("profile_history_export_invalid_content_type");
   const blob = await response.blob();
+  if (blob.size === 0) throw new Error("profile_history_export_empty_file");
   const url = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement("a");
