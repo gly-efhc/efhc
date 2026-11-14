@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -221,6 +222,14 @@ def main():
             changed += 1
     fingerprinted = fingerprint_public_stylesheets(root)
     pages, resources = configure_pwa(root, base)
+    # The exported service worker is compiled from local Workbox modules AFTER
+    # basePath, CSS fingerprints and HTML build markers are finalized.
+    # It completely replaces the old custom precache worker in the artifact.
+    tool = Path(__file__).with_name('inject_workbox.mjs')
+    if not tool.is_file():
+        raise ValueError('Workbox injection tool missing from Pages build inputs')
+    subprocess.run(['node', str(tool), '--directory', str(root.resolve()),
+                    '--base-path', base], check=True)
     print(f'EFHC_DEMO_PUBLIC_ASSET_BASEPATH_OK files_rewritten={changed} pages_cached={pages} resources_cached={resources} fingerprinted_css={fingerprinted}')
 
 
