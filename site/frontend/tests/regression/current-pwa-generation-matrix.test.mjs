@@ -113,6 +113,8 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
   put("index.html",'<html><head><link rel="stylesheet" href="/efhc/visual.css"></head><body><script id="__NEXT_DATA__"></script><script src="/efhc/_next/static/main.js"></script></body></html>');
   put("404.html","<html><head></head><body>retired 404 page</body></html>");
   put("500.html","<html><head></head><body>retired 500 page</body></html>");
+  put("404/index.html","<html><head></head><body>retired nested 404 page</body></html>");
+  put("500/index.html","<html><head></head><body>retired nested 500 page</body></html>");
   put("_next/static/main.js",'const css="/user-shell.css";');
   put("_next/static/main.css","body{color:white}");
   put("visual.css","body{color:red}");
@@ -128,6 +130,10 @@ test("T1: public CSS has release-specific immutable URLs; an old tab keeps the o
     "Next generated 404 document must be physically deleted before publication");
   assert.equal(existsSync(path.join(rootDir,"500.html")),false,
     "Next generated 500 document must be physically deleted before publication");
+  assert.equal(existsSync(path.join(rootDir,"404")),false,
+    "Nested 404 route must be deleted from the export");
+  assert.equal(existsSync(path.join(rootDir,"500")),false,
+    "Nested 500 route must be deleted from the export");
   assert.equal(run("verify_export.py").status,0,"export must verify CSS fingerprint references");
   const hashed = name=>{
     const raw=readFileSync(path.join(rootDir,name));
