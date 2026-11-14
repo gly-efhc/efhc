@@ -54,8 +54,7 @@
     "postcss": "^8.5.10",
     "serwist": "9.5.13",
     "tailwindcss": "4.3.0",
-    "typescript": "^5.5.4",
-    "workbox-build": "7.4.1"
+    "typescript": "^5.5.4"
   },
   "overrides": {
     "axios": "$axios",
