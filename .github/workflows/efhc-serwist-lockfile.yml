@@ -1,0 +1,56 @@
+# One-shot, branch-only npm lockfile bootstrap for the Serwist migration.
+name: EFHC — Serwist locked dependencies
+
+on:
+  push:
+    branches: ['recovery/cycle0042-iteration34-workbox']
+    paths:
+      - 'site/frontend/package.json'
+      - '.github/workflows/efhc-serwist-lockfile.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    if: github.repository == 'gly-efhc/efhc'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Resolve pinned package lock
+        working-directory: site/frontend
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Verify resolved Serwist versions
+        working-directory: site/frontend
+        run: |
+          node - <<'JS'
+          const pkg = require('./package.json');
+          const lock = require('./package-lock.json');
+          for (const name of ['@serwist/next','@serwist/cli','serwist']) {
+            if(pkg.devDependencies[name] !== '9.5.13' ||
+               lock.packages['node_modules/'+name]?.version !== '9.5.13') {
+              throw Error('SERWIST_LOCKED_VERSION_MISMATCH '+name);
+            }
+          }
+          console.log('EFHC_SERWIST_LOCK_PASS');
+          JS
+      - name: Commit lockfile to feature branch
+        run: |
+          set -euo pipefail
+          git add site/frontend/package-lock.json
+          if git diff --cached --quiet; then
+            echo EFHC_SERWIST_LOCK_NO_CHANGE
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Cycle 0042: pin Serwist resolved npm lockfile'
+          git push origin HEAD:refs/heads/recovery/cycle0042-iteration34-workbox
+          echo EFHC_SERWIST_LOCK_PUSH_PASS
