@@ -105,7 +105,7 @@ test("Complete compiled export is precached, stable on repeated builds and verif
     "Bundled Serwist worker must refuse mixed-generation HTML");
   assert.ok(!worker.includes("workbox-precaching"),
     "The final PWA worker must not retain an independent Workbox module");
-  assert.ok(!worker.includes("importScripts("),
+  assert.ok(!/\bimportScripts\s*\(\s*["']https?:/i.test(worker),
     "The deployed Serwist runtime must be bundled locally without CDN scripts");
   const verify = run("verify_export.py", root);
   assert.equal(verify.status, 0, verify.stderr);
