@@ -756,6 +756,8 @@ try {
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
       const oldStatic="efhc-static-assets-test-prior";
+      const oldMedia="efhc-public-media";
+      const oldLocale="efhc-public-translations";
       const unrelated="efhc-unrelated-app-test";
       const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
       const stale=await context.newPage();
@@ -763,7 +765,7 @@ try {
         await stale.goto(base+"offline.html",{
           waitUntil:"domcontentloaded",timeout:25000,
         });
-      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl}) => {
+      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
         const store=async (name,url,value)=>{
           const cache=await caches.open(name);
           await cache.put(url,new Response(value,{status:200}));
@@ -771,8 +773,10 @@ try {
         await store(oldLegacy,oldUrl,"legacy-old");
         await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
         await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
+        await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
+        await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
         await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-      },{oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl});
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl});
         await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
           type:"GET_CACHE_STATUS",
         }));
@@ -784,6 +788,7 @@ try {
         }),{oldLegacy,oldUrl});
         assert.ok(guarded.keys.includes(oldLegacy) &&
           guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
+          guarded.keys.includes(oldMedia) && guarded.keys.includes(oldLocale) &&
           guarded.staleCached,"An unverified old tab must retain all legacy assets");
         // The previous worker's immutable assets remain obtainable while
         // the new Serwist worker controls network requests.
@@ -813,8 +818,9 @@ try {
       await page.waitForFunction(async names=>{
         const keys=await caches.keys();
         return !keys.includes(names.oldLegacy) &&
-          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic);
-      },{oldLegacy,oldRuntime,oldStatic},{timeout:15000});
+          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic) &&
+          !keys.includes(names.oldMedia) && !keys.includes(names.oldLocale);
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000});
       const kept=await page.evaluate(async name=>({
         names:await caches.keys(),
         unrelated:Boolean(await (await caches.open(name))
