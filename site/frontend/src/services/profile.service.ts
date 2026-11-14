@@ -324,7 +324,7 @@ export async function downloadProfileOperationsCsv(args: {
     anchor.click();
     anchor.remove();
   } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   return {
@@ -401,6 +401,6 @@ export async function downloadProfileHistoryExport(
     anchor.click();
     anchor.remove();
   } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
