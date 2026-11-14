@@ -61,11 +61,14 @@ try {
   if(result.error || result.status!==0) throw Error(
     "EFHC_SERWIST_CLI_BUILD_FAILED: "+(result.error?.message||result.status));
   const worker=await readFile(path.join(root,"sw.js"),"utf8");
-  if(worker.includes("self.__SW_MANIFEST") ||
-     worker.includes("__EFHC_BUILD_CONFIG__") ||
-     worker.includes("importScripts(") ||
-     /https:\/\/(?:storage.googleapis|cdn)/i.test(worker)) {
-    throw Error("EFHC_SERWIST_OUTPUT_INVALID");
+  const invalid={
+    injectionMissing:worker.includes("self.__SW_MANIFEST"),
+    unexpandedBuild:worker.includes("__EFHC_BUILD_CONFIG__"),
+    remoteScripts:/\\bimportScripts\\s*\\(\\s*["']https?:/i.test(worker),
+    cdnDependency:/https:\/\/(?:storage.googleapis|cdn)/i.test(worker),
+  };
+  if(Object.values(invalid).some(Boolean)) {
+    throw Error("EFHC_SERWIST_OUTPUT_INVALID "+JSON.stringify(invalid));
   }
   console.log("EFHC_SERWIST_CONFIGURATOR_PASS critical="+critical.length+
     " deferred="+deferred.length+" build="+config.build_id);
