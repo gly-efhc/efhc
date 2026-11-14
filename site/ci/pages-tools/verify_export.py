@@ -38,6 +38,21 @@ def main():
     if config.get('static_export') is not True or not config.get('precache'):
         raise ValueError('PWA full static export precache is not configured')
     expected = base.rstrip('/') + '/'
+    # The candidate Workbox split must be complete and disjoint. Switching the
+    # active SW to critical-only installation is a later, separately tested step.
+    critical = config.get('precache_critical')
+    deferred = config.get('precache_deferred')
+    if not isinstance(critical, list) or not isinstance(deferred, list):
+        raise ValueError('PWA critical/deferred partition is missing')
+    if (any(not isinstance(path, str) for path in critical + deferred)
+            or len(set(critical)) != len(critical)
+            or len(set(deferred)) != len(deferred)
+            or set(critical) & set(deferred)
+            or set(critical) | set(deferred) != set(config['precache'])
+            or len(critical) + len(deferred) != len(config['precache'])
+            or expected + 'index.html' not in critical
+            or not any('/_next/static/' in path and path.endswith('.js') for path in critical)):
+        raise ValueError('PWA critical/deferred partition violates export contract')
     missing = []
     for item in config['precache']:
         if not isinstance(item, str) or not item.startswith(expected) or '?' in item or '#' in item:
