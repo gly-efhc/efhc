@@ -79,6 +79,9 @@ async function legacyPublicCaches() {
     /^efhc-public-pages-/.test(name) ||
     /^efhc-static-assets-/.test(name) ||
     name === "efhc-legacy-assets" ||
+    name === "efhc-public-media" ||
+    name === "efhc-public-translations" ||
+    name === "efhc-legacy-retirement-meta" ||
     /^workbox-precache-/.test(name) ||
     /^efhc.*wb-precache/.test(name));
   const safe = [];
