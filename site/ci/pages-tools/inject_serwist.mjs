@@ -13,8 +13,9 @@ const root=path.resolve(arg("--directory") || "");
 const base=arg("--base-path") || "";
 if(!/^\/[A-Za-z0-9_.-]+$/.test(base)) throw Error("Invalid scoped base path");
 const localPkg=path.join(root,"..","package.json");
+const sourcePkg=new URL("../../frontend/package.json",import.meta.url).pathname;
 const pkgFile=path.resolve(process.env.EFHC_SERWIST_PACKAGE_JSON ||
-  (existsSync(localPkg) ? localPkg : "site/frontend/package.json"));
+  (existsSync(localPkg) ? localPkg : sourcePkg));
 const pkgDir=path.dirname(pkgFile);
 const config=JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"));
 const critical=config.precache_critical||[];
