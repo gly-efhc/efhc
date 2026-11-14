@@ -3,13 +3,13 @@
    This source never registers a second service worker and never caches auth/finance. */
 const EFHC_PWA_BUILD_CONFIG = __EFHC_BUILD_CONFIG__;
 const APP_BASE = __EFHC_BASE_PATH__;
-const WORKBOX_LIB_DIR = __EFHC_WORKBOX_DIR__;
-self.importScripts(APP_BASE + "/" + WORKBOX_LIB_DIR + "/workbox-sw.js");
-self.workbox.setConfig({
-  modulePathPrefix: APP_BASE + "/" + WORKBOX_LIB_DIR + "/",
-  debug: false,
-});
-const wb = self.workbox;
+// All Workbox modules are bundled locally into the same deployed sw.js.
+// The runtime has no importScripts/CDN dependency when offline.
+import * as precaching from "workbox-precaching";
+import * as routing from "workbox-routing";
+import * as strategies from "workbox-strategies";
+import * as expiration from "workbox-expiration";
+const wb = {precaching,routing,strategies,expiration};
 const config = EFHC_PWA_BUILD_CONFIG;
 const precacheList = self.__WB_MANIFEST;
 const expected = new Set(config.precache);
@@ -139,7 +139,7 @@ wb.routing.registerRoute(
     catch {
       // One-time migration: previously installed hashed bundles are retained.
       const retained = await caches.open(paths.preserved);
-      return (await retained.match(request)) || Response.error();
+      return (await retained.match(request, {ignoreSearch:true})) || Response.error();
     }
   },
 );
@@ -274,10 +274,10 @@ self.addEventListener("activate", event => {
     await self.clients.claim();
     await notify({type:"UPDATE_ACTIVATED",buildId:config.build_id});
     await retireLegacyWhenSafe();
-    // Background downloads may resume on every worker activation, and by
-    // explicit session hints. No deferred item is required for installation.
-    await prefetchDeferred();
   })());
+  // Activation must not wait for hundreds of deferred downloads.
+  // Existing clients enqueue the remaining files after startup/idle.
+  void prefetchDeferred();
 });
 self.addEventListener("message", event => {
   const data = event.data || {};
