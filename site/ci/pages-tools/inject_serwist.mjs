@@ -3,6 +3,7 @@
  */
 import {createHash} from "node:crypto";
 import {readFile,writeFile,unlink} from "node:fs/promises";
+import {existsSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 import path from "node:path";
 
@@ -11,8 +12,9 @@ const arg=flag => args[args.indexOf(flag)+1];
 const root=path.resolve(arg("--directory") || "");
 const base=arg("--base-path") || "";
 if(!/^\/[A-Za-z0-9_.-]+$/.test(base)) throw Error("Invalid scoped base path");
+const localPkg=path.join(root,"..","package.json");
 const pkgFile=path.resolve(process.env.EFHC_SERWIST_PACKAGE_JSON ||
-  "site/frontend/package.json");
+  (existsSync(localPkg) ? localPkg : "site/frontend/package.json"));
 const pkgDir=path.dirname(pkgFile);
 const config=JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"));
 const critical=config.precache_critical||[];

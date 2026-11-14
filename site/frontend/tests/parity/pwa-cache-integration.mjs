@@ -595,7 +595,7 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("Workbox A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
+  await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile=path.join(root,"sw.js");
     const configFile=path.join(root,"pwa-build.json");
@@ -625,14 +625,14 @@ try {
       await writeFile(rootHtmlPath,index.replace("</head>",
         `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`),"utf8");
       // Regenerate the actual release, including new build markers and
-      // Workbox's revisioned critical manifest; never text-patch worker JS.
+      // Serwist's revisioned critical manifest; never text-patch worker JS.
       const {spawnSync}=await import("node:child_process");
       const regenerate=spawnSync("python3",[
         "site/ci/pages-tools/fix_pages_assets.py",
         "--directory",root,"--base-path","/efhc",
       ],{encoding:"utf8",env:process.env});
       assert.equal(regenerate.status,0,
-        "Second Workbox export failed: "+regenerate.stderr+"\n"+regenerate.stdout);
+        "Second Serwist export failed: "+regenerate.stderr+"\n"+regenerate.stdout);
       const nextConfig=JSON.parse(await readFile(configFile,"utf8"));
       const newBuildId=nextConfig.build_id;
       assert.notEqual(newBuildId,oldBuildId,"second actual export did not change build");
@@ -662,7 +662,7 @@ try {
       assert.equal(view.react,true,"the active React UI vanished");
       assert.equal(view.active,"activated");
       assert.equal(view.controlled,true);
-      console.log("PWA_WORKBOX_REAL_BUILD_TRANSITION",JSON.stringify(view));
+      console.log("PWA_SERWIST_REAL_BUILD_TRANSITION",JSON.stringify(view));
       const successor=await context.newPage();
       try {
         await context.setOffline(true);
@@ -676,7 +676,7 @@ try {
         }));
         assert.deepEqual(offline,{build:newBuildId,js:true,css:"updated",react:true},
           "Offline successor mixed older and newer HTML/JS/CSS");
-        console.log("PWA_WORKBOX_OFFLINE_SUCCESSOR",JSON.stringify(offline));
+        console.log("PWA_SERWIST_OFFLINE_SUCCESSOR",JSON.stringify(offline));
       }finally{
         await context.setOffline(false);
         await successor.close();
@@ -703,7 +703,7 @@ try {
         "--directory",root,"--base-path","/efhc",
       ],{encoding:"utf8",env:process.env});
       assert.equal(thirdRegenerate.status,0,
-        "Third Workbox export failed: "+thirdRegenerate.stderr+"\n"+thirdRegenerate.stdout);
+        "Third Serwist export failed: "+thirdRegenerate.stderr+"\n"+thirdRegenerate.stdout);
       const thirdConfig=JSON.parse(await readFile(configFile,"utf8"));
       const thirdBuildId=thirdConfig.build_id;
       assert.notEqual(thirdBuildId,newBuildId,"C must differ from B");
@@ -745,72 +745,33 @@ try {
         // OWNER superseded the old 24h retention: a C tab must not rely on
         // downloading B's obsolete files. Old live tabs are protected by the
         // separate negative test below, then old caches retire immediately.
-        console.log("PWA_WORKBOX_A_B_C_OFFLINE",JSON.stringify(cOffline));
+        console.log("PWA_SERWIST_A_B_C_OFFLINE",JSON.stringify(cOffline));
       } finally {
         await context.setOffline(false);
         await thirdTab.close();
       }
 
-      // Latest OWNER decision supersedes Q14's 24h delay. Obsolete EFHC
-      // generation caches retire immediately after safe replacement, but an
-      // unverified open tab must keep its last-known-good resources.
-      const oldLegacy="efhc-pwa-test-prior-static";
-      const oldRuntime="efhc-public-pages-test-prior";
-      const oldStatic="efhc-static-assets-test-prior";
+      // Serwist's native revision lifecycle does not own legacy EFHC buckets.
+      // In particular it must NEVER delete another app's cache. Compatibility
+      // retirement of old custom buckets is a separate one-time migration gate.
       const unrelated="efhc-unrelated-app-test";
-      const staleJsUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
-      await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,unrelated,staleJsUrl}) => {
-        const put=async(name,url,value)=>{
-          const bucket=await caches.open(name);
-          await bucket.put(url,new Response(value,{status:200}));
-        };
-        await put(oldLegacy,staleJsUrl,"legacy-old");
-        await put(oldRuntime,new URL("/efhc/legacy-test/index.html",location.origin).href,"runtime-old");
-        await put(oldStatic,new URL("/efhc/_next/static/efhc-old-retired.css",location.origin).href,"static-old");
-        await put(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-        await put("efhc-legacy-assets",staleJsUrl,"preserved-old");
-      },{oldLegacy,oldRuntime,oldStatic,unrelated,staleJsUrl});
-      const stale=await context.newPage();
-      try {
-        await stale.goto(base+"unverified-old-tab-for-retirement/",{
-          waitUntil:"domcontentloaded",timeout:25000});
-        await page.evaluate(() =>
-          navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"}));
-        await page.waitForTimeout(500);
-        const blocked=await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,staleJsUrl})=>({
-          names:await caches.keys(),
-          retained:Boolean(await (await caches.open("efhc-legacy-assets")).match(staleJsUrl)),
-        }),{oldLegacy,oldRuntime,oldStatic,staleJsUrl});
-        assert.ok(blocked.names.includes(oldLegacy) &&
-          blocked.names.includes(oldRuntime) && blocked.names.includes(oldStatic) &&
-          blocked.retained,
-        "An unverified old tab must block immediate retirement");
-      }finally{
-        await stale.close();
-      }
-      await page.evaluate(async buildId => {
-        const assets=[...document.querySelectorAll("script[src]")]
-          .map(el=>new URL(el.src).pathname)
-          .filter(path=>path.includes("/_next/static/"));
-        navigator.serviceWorker.controller?.postMessage({
-          type:"CLIENT_BUILD_READY",buildId,assets,
-        });
-        navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"});
-      },thirdBuildId);
-      await page.waitForFunction(async ({oldLegacy,oldRuntime,oldStatic}) => {
-        const names=await caches.keys();
-        return !names.includes(oldLegacy) && !names.includes(oldRuntime) &&
-          !names.includes(oldStatic) && !names.includes("efhc-legacy-assets");
-      },{oldLegacy,oldRuntime,oldStatic},{timeout:15000});
-      const retired=await page.evaluate(async unrelated=>({
+      await page.evaluate(async name=>{
+        const bucket=await caches.open(name);
+        await bucket.put(new URL("/other-app/data.txt",location.origin).href,
+          new Response("other-app",{status:200}));
+      },unrelated);
+      await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
+        type:"GET_CACHE_STATUS",
+      }));
+      const preserved=await page.evaluate(async name=>({
         names:await caches.keys(),
-        unaffected:Boolean(await (await caches.open(unrelated))
+        unrelated:Boolean(await (await caches.open(name))
           .match(new URL("/other-app/data.txt",location.origin).href)),
       }),unrelated);
-      assert.ok(retired.names.includes(unrelated)&&retired.unaffected,
-        "EFHC migration must never erase caches from another scope");
-      console.log("PWA_WORKBOX_IMMEDIATE_SAFE_RETIREMENT",JSON.stringify({
-        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
+      assert.ok(preserved.names.includes(unrelated) && preserved.unrelated,
+        "Native Serwist lifecycle must never delete caches from other app scopes");
+      console.log("PWA_SERWIST_OTHER_SCOPE_PRESERVED",JSON.stringify({
+        otherScopePreserved:true,
       }));
       await page.evaluate(name=>caches.delete(name),unrelated);
     }finally{

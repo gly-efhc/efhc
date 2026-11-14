@@ -97,8 +97,11 @@ def main():
     pages = len(list(root.rglob('*.html')))
     if len([item for item in config['precache'] if item.endswith('.html')]) != pages:
         raise ValueError('PWA does not cover every static HTML page')
-    if 'const EFHC_PWA_BUILD_CONFIG =' not in worker.read_text(encoding='utf-8'):
-        raise ValueError('Service Worker missing pinned build configuration')
+    bundled = worker.read_text(encoding='utf-8')
+    if ('EFHC_HTML_GENERATION_MISMATCH' not in bundled
+            or 'efhc-serwist-pages' not in bundled
+            or '__SW_MANIFEST' in bundled):
+        raise ValueError('Deployed Serwist worker is missing pinned generation and native cache strategies')
     deployed_manifest = json.loads(manifest.read_text(encoding='utf-8'))
     if deployed_manifest.get('scope') != expected:
         raise ValueError('PWA Manifest scope differs from Pages basePath')

@@ -99,13 +99,14 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.ok(manifest.start_url.startsWith("/efhc/"));
   const worker = readFileSync(path.join(root, "sw.js"), "utf8");
   new vm.Script(worker);
-  assert.match(worker, /const EFHC_PWA_BUILD_CONFIG =/);
+  assert.ok(worker.includes("efhc-serwist-pages"),
+    "Final worker must use the Serwist-only public pages strategy");
   assert.ok(worker.includes("EFHC_HTML_GENERATION_MISMATCH"),
-    "Bundled Workbox worker must refuse mixed-generation HTML");
-  assert.ok(worker.includes("efhc-public-pages-"),
-    "Bundled Workbox worker must use build-pinned offline page cache");
+    "Bundled Serwist worker must refuse mixed-generation HTML");
+  assert.ok(!worker.includes("workbox-precaching"),
+    "The final PWA worker must not retain an independent Workbox module");
   assert.ok(!worker.includes("importScripts("),
-    "The deployed Workbox runtime must be bundled locally without CDN scripts");
+    "The deployed Serwist runtime must be bundled locally without CDN scripts");
   const verify = run("verify_export.py", root);
   assert.equal(verify.status, 0, verify.stderr);
   const again = run("fix_pages_assets.py", root);

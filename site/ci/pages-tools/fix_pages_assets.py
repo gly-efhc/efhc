@@ -182,13 +182,8 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
         else:
             html = marker + html
         page.write_text(html, encoding='utf-8')
-    raw = worker.read_text(encoding='utf-8')
-    # Idempotent on repeated export normalization. The versioned SW cannot
-    # accidentally adopt new deployed build metadata during a running session.
-    if raw.startswith('const EFHC_PWA_BUILD_CONFIG = '):
-        raw = raw.split('\n', 1)[1]
-    prefix_source = 'const EFHC_PWA_BUILD_CONFIG = ' + json.dumps(config, ensure_ascii=False, separators=(',', ':')) + ';\n'
-    worker.write_text(prefix_source + raw, encoding='utf-8')
+    # The legacy worker exists in the source copy only until the verified
+    # Serwist cutover. Never mutate or publish it as the final worker.
     return html_count, len(included)
 
 
@@ -222,12 +217,11 @@ def main():
             changed += 1
     fingerprinted = fingerprint_public_stylesheets(root)
     pages, resources = configure_pwa(root, base)
-    # The exported service worker is compiled from local Workbox modules AFTER
-    # basePath, CSS fingerprints and HTML build markers are finalized.
-    # It completely replaces the old custom precache worker in the artifact.
-    tool = Path(__file__).with_name('inject_workbox.mjs')
+    # Serwist Configurator builds the ONLY deployed Service Worker AFTER
+    # Next export, Pages basePath, stylesheet hashing and HTML build markers.
+    tool = Path(__file__).with_name('inject_serwist.mjs')
     if not tool.is_file():
-        raise ValueError('Workbox injection tool missing from Pages build inputs')
+        raise ValueError('Serwist Configurator tool missing from Pages build inputs')
     subprocess.run(['node', str(tool), '--directory', str(root.resolve()),
                     '--base-path', base], check=True)
     print(f'EFHC_DEMO_PUBLIC_ASSET_BASEPATH_OK files_rewritten={changed} pages_cached={pages} resources_cached={resources} fingerprinted_css={fingerprinted}')
