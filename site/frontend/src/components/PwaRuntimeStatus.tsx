@@ -341,6 +341,11 @@ export function PwaRuntimeStatus(props: {
         window.sessionStorage.setItem(key, String(attempts + 1));
         window.sessionStorage.setItem(key + ":at", String(Date.now()));
       } catch { /* Storage is optional; a live reload is still bounded by unload. */ }
+      try {
+        window.sessionStorage.setItem("efhc:pwa-scroll-restore",
+          JSON.stringify({path: window.location.pathname + window.location.search,
+            y: window.scrollY, at: Date.now()}));
+      } catch { /* The page still upgrades without scroll persistence. */ }
       window.location.reload();
     };
     const verifyLoadedBuild = async () => {
@@ -511,6 +516,9 @@ export function PwaRuntimeStatus(props: {
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     for (const name of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(name, markActivity, {passive: true});
+    // A returned external wallet window is never treated as idle immediately.
+    window.addEventListener("focus", markActivity);
+    window.addEventListener("blur", markActivity);
     cleanupReloadTimer = window.setInterval(attemptIdleReload, 1000);
     const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
     // An UPDATE_AVAILABLE message may arrive during install, before the
@@ -571,6 +579,8 @@ export function PwaRuntimeStatus(props: {
       if (cleanupReloadTimer !== null) window.clearInterval(cleanupReloadTimer);
       for (const name of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(name, markActivity);
+      window.removeEventListener("focus", markActivity);
+      window.removeEventListener("blur", markActivity);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("pageshow", onPageResumed);
       window.removeEventListener("online", onPageResumed);
@@ -588,6 +598,24 @@ export function PwaRuntimeStatus(props: {
       navigator.serviceWorker.removeEventListener("message", onMessage);
     };
   }, [enabled]);
+
+  useEffect(() => {
+    try {
+      const key = "efhc:pwa-scroll-restore";
+      const value = window.sessionStorage.getItem(key);
+      if (!value) return;
+      const saved = JSON.parse(value) as {path?:string;y?:number;at?:number};
+      window.sessionStorage.removeItem(key);
+      if (saved.path !== window.location.pathname + window.location.search ||
+          !Number.isFinite(saved.y) ||
+          !Number.isFinite(saved.at) ||
+          Date.now() - Number(saved.at) > 60_000) return;
+      const frame = window.requestAnimationFrame(() => {
+        window.scrollTo({top:Math.max(0,Number(saved.y)),behavior:"auto"});
+      });
+      return () => window.cancelAnimationFrame(frame);
+    } catch { /* Ignore inaccessible session storage. */ }
+  }, []);
 
   // A staged update retains old chunks only while legacy pages are open.
   // After a verified shell is loaded, obsolete CacheStorage is retired.
