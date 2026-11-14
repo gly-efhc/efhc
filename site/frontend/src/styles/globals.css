@@ -23625,6 +23625,61 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
   margin-top: .55rem;
 }
 
+
+/* Source Profile mobile grid placement: CSS order from the prior React topbar
+   must not auto-place title before Back. All 13 PM compositions retain their
+   separate visual tokens and all CT01..CT10 continue to supply colors. */
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-topbar > button[data-app-navigation="back"] {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+  justify-self: start;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-topbar > strong {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+  justify-self: stretch;
+  text-align: center;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-topbar > .efhc-profile-topbar_actions {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  order: 0 !important;
+  justify-self: end;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-hero .source-profile-identity {
+  justify-items: stretch !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-hero .efhc-profile-name-row {
+  display: flex;
+  justify-self: stretch !important;
+  justify-content: flex-start !important;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-hero .source-profile-name {
+  justify-self: start !important;
+  text-align: left !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-hero .standalone-profile-global-id {
+  justify-self: stretch;
+  justify-content: flex-start !important;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+#profilePage .source-profile-hero .source-profile-third-row {
+  justify-self: stretch;
+  margin-top: 0;
+}
+
 /* USER achievement caption transparency and active CT history materials. */
 /* Remove only the decorative layer directly behind the achievement label.
    Keep the enclosing card, level indicators and progress track intact. */
