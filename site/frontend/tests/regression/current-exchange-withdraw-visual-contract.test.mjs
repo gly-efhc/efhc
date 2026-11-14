@@ -14,7 +14,7 @@ function style(selector) {
   const tail = css.slice(start);
   const found = tail.indexOf(selector);
   assert.ok(found >= 0, "missing CSS selector: " + selector);
-  const open = tail.indexOf("{", found + selector.length);
+  const open = tail.indexOf("{", found);
   const close = tail.indexOf("}", open + 1);
   assert.ok(open >= 0 && close > open, "CSS declaration must be closed: " + selector);
   return tail.slice(open + 1, close);
