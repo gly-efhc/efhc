@@ -753,16 +753,16 @@ try {
       // Native Serwist owns new generations. A one-time scoped migration
       // retires only old EFHC/Serwist public caches after ALL old clients
       // leave or verify this generation; never delete any other app cache.
-      const stale=await context.newPage();
-      try {
-        await stale.goto(base+"offline.html",{
-          waitUntil:"domcontentloaded",timeout:25000,
-        });
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
       const oldStatic="efhc-static-assets-test-prior";
       const unrelated="efhc-unrelated-app-test";
       const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
+      const stale=await context.newPage();
+      try {
+        await stale.goto(base+"offline.html",{
+          waitUntil:"domcontentloaded",timeout:25000,
+        });
       await page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl}) => {
         const store=async (name,url,value)=>{
           const cache=await caches.open(name);
