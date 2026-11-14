@@ -22,8 +22,10 @@ const paths = {
   media: "efhc-public-media",
   locale: "efhc-public-translations",
   preserved: "efhc-legacy-assets",
+  legacyMeta: "efhc-legacy-retirement-meta",
 };
 const ownedClients = new Set();
+const LEGACY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 let activePrefetch = null;
 let lastCacheReport = 0;
 const scoped = value => APP_BASE + "/" + value.replace(/^\/+/, "");
@@ -233,9 +235,31 @@ async function prefetchDeferred(priority = []) {
   try { await activePrefetch; } finally { activePrefetch = null; }
 }
 
+// Metadata is public, scope-specific and stored in CacheStorage. It contains
+// no Global ID, user route history, token or financial data. A Service Worker
+// can be terminated at any time, so a JS timer cannot enforce 24h retirement.
+const legacyMetaRequest = (kind, value) =>
+  scoped("_efhc_internal/lifecycle/" + kind + "/" + encodeURIComponent(value));
+async function legacyFirstSeen(kind, value) {
+  const meta = await caches.open(paths.legacyMeta);
+  const key = legacyMetaRequest(kind, value);
+  const found = await meta.match(key);
+  if (found) {
+    const time = Number(await found.text());
+    if (Number.isFinite(time) && time > 0 && time <= Date.now()) return time;
+  }
+  const time = Date.now();
+  await meta.put(key, new Response(String(time)));
+  return time;
+}
+async function forgetLegacyTimestamp(kind, value) {
+  await (await caches.open(paths.legacyMeta)).delete(legacyMetaRequest(kind, value));
+}
+
 async function collectLegacy() {
   const keys = await caches.keys();
-  const candidates = keys.filter(key => key.startsWith(ownPrefix) && /-(?:static|content)$/.test(key));
+  const candidates = keys.filter(name =>
+    name.startsWith(ownPrefix) && /-(?:static|content)$/.test(name));
   const proven = [];
   for (const name of candidates) {
     const bucket = await caches.open(name);
@@ -247,32 +271,61 @@ async function collectLegacy() {
   return proven;
 }
 async function snapshotOldWorkboxAssets() {
+  // Workbox itself removes entries no longer in the active precache on
+  // activation. Retain only replaced immutable JS/CSS, not duplicated
+  // current-release resources, and never copy cross-origin private entries.
   const keys = (await caches.keys()).filter(key =>
     /workbox.*precache|efhc.*wb-precache/.test(key));
   const target = await caches.open(paths.preserved);
   for (const name of keys) {
     const bucket = await caches.open(name);
     for (const request of await bucket.keys()) {
-      const path = new URL(request.url).pathname;
-      if (!path.startsWith(APP_BASE + "/_next/static/") &&
-          !/\.[a-f0-9]{16}\.css$/.test(path)) continue;
-      if (await target.match(request)) continue;
-      const hit = await bucket.match(request);
-      if (hit) {
-        try { await target.put(request,hit.clone()); }
-        catch { return; }
+      const url = new URL(request.url);
+      const path = url.pathname;
+      if (!isScoped(url) || expected.has(path) ||
+          (!path.startsWith(scoped("_next/static/")) &&
+           !/\.[a-f0-9]{16}\.css$/.test(path))) continue;
+      if (!await target.match(request)) {
+        const hit = await bucket.match(request);
+        if (hit) {
+          // A quota error rejects installing the new worker: the already
+          // active worker/caches remain intact instead of risking a stale tab.
+          await target.put(request, hit.clone());
+        }
       }
+      await legacyFirstSeen("asset", request.url);
     }
   }
 }
 async function retireLegacyWhenSafe() {
+  // Always timestamp discovered old generations, even if an old tab still
+  // holds them. The SW may sleep for 24h; cleanup runs on its next event.
+  const names = await collectLegacy();
+  const observed = await Promise.all(names.map(async name => ({
+    name,firstSeen:await legacyFirstSeen("cache",name),
+  })));
   const windows = await self.clients.matchAll({type:"window",includeUncontrolled:true});
   const scopedWindows = windows.filter(client => {
     try { return isScoped(new URL(client.url)); } catch { return false; }
   });
+  // Safety exception to 24h: leave the last-known-good generation while
+  // any live tab has not verified that it is running this worker's build.
   if (scopedWindows.some(client => !ownedClients.has(client.id))) return;
-  const names = await collectLegacy();
-  for (const name of names) await caches.delete(name);
+  const now = Date.now();
+  for (const entry of observed) {
+    if (now - entry.firstSeen < LEGACY_MAX_AGE_MS) continue;
+    if (await caches.delete(entry.name)) {
+      await forgetLegacyTimestamp("cache",entry.name);
+    }
+  }
+  const preserved = await caches.open(paths.preserved);
+  for (const request of await preserved.keys()) {
+    const firstSeen = await legacyFirstSeen("asset",request.url);
+    if (now - firstSeen < LEGACY_MAX_AGE_MS) continue;
+    if (await preserved.delete(request)) {
+      await forgetLegacyTimestamp("asset",request.url);
+    }
+  }
 }
 async function reportCache() {
   const now = Date.now();
