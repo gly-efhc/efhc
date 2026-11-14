@@ -143,6 +143,24 @@ wb.routing.registerRoute(
     }
   },
 );
+// A live tab from the previous release can request a hashed chunk no longer
+// listed in this release. Preserve its own verified cache until safe reload.
+wb.routing.registerRoute(
+  ({request,url}) => request.method === "GET" && isScoped(url) &&
+    url.pathname.startsWith(scoped("_next/static/")) &&
+    !expected.has(url.pathname),
+  async ({request}) => {
+    const retained = await caches.open(paths.preserved);
+    const hit = await retained.match(request,{ignoreSearch:true});
+    if (hit) return hit;
+    for (const name of await collectLegacy()) {
+      if (!name.endsWith("-static")) continue;
+      const old = await (await caches.open(name)).match(request,{ignoreSearch:true});
+      if (old) return old;
+    }
+    return fetch(request);
+  },
+);
 wb.routing.registerRoute(
   ({request,url}) => request.method === "GET" && isScoped(url) &&
     deferred.has(url.pathname) && isLocale(url.pathname),
