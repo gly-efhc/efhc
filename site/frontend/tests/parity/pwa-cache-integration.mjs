@@ -50,39 +50,72 @@ const check = async (name,fn) => {
   console.log("PWA_INTEGRATION_PASS "+name);
 };
 try {
-  await check("real Chromium installs entire build-scoped offline resource set", async () => {
+  await check("Workbox installs critical shell then resumes every required offline page in background", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const config = await (await page.request.get(base+"pwa-build.json")).json();
     assert.equal(config.static_export,true);
-    assert.ok(config.precache.length > 40, "full static export assets required");
+    assert.ok(config.precache.length > 40,"real export required");
+    assert.ok(config.precache_critical.length > 4,"Workbox critical shell missing");
+    assert.ok(config.precache_deferred.length > 0,"deferred export missing");
     await page.evaluate(() => Promise.race([
       navigator.serviceWorker.ready.then(() => true),
-      new Promise((_,reject) => setTimeout(() => reject(Error("PWA install timeout")), 95000)),
+      new Promise((_,reject) => setTimeout(() => reject(Error("Workbox install timeout")),95000)),
     ]));
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
+    const criticalState = await page.evaluate(async () => {
+      const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const keys = await caches.keys();
+      const paths = new Set();
+      for (const name of keys) {
+        for (const req of await (await caches.open(name)).keys())
+          paths.add(new URL(req.url).pathname);
+      }
+      return {keys,missing:cfg.precache_critical.filter(url=>!paths.has(url))};
+    });
+    assert.deepEqual(criticalState.missing,[],"Workbox must atomically cache critical shell before activation");
+    assert.ok(criticalState.keys.some(name=>name.includes("precache")),
+      "Workbox precache container missing");
+    await page.evaluate(async () => {
+      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      await new Promise((resolve,reject) => {
+        const timer=setTimeout(()=>{navigator.serviceWorker.removeEventListener("message",onMessage);
+          reject(Error("Workbox deferred queue did not finish"));},95000);
+        function onMessage(event) {
+          const data=event.data||{};
+          if(data.type==="CACHE_COMPLETE"&&data.reason==="deferred"){
+            clearTimeout(timer);
+            navigator.serviceWorker.removeEventListener("message",onMessage);
+            if(data.failed)reject(Error("Workbox deferred resources failed: "+data.failed));
+            else resolve(true);
+          }
+        }
+        navigator.serviceWorker.addEventListener("message",onMessage);
+        navigator.serviceWorker.controller.postMessage({
+          type:"PREFETCH_PRIORITY",urls:config.precache_deferred,
+        });
+      });
+    });
     const info = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
-      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-      const cacheName = "efhc-pwa-" + config.build_id + "-static";
-      const cache = await caches.open(cacheName);
-      const cached = new Set((await cache.keys()).map(req=>new URL(req.url).pathname));
-      return {
-        registered: Boolean(reg?.active),
-        scope: reg?.scope,
-        cachedCount: cached.size,
-        precacheCount: config.precache.length,
-        missing: config.precache.filter(url=>!cached.has(url)),
-        cachedPaths: [...cached],
-      };
+      const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const cached = new Set();
+      for (const name of await caches.keys()) {
+        for (const req of await (await caches.open(name)).keys()) cached.add(new URL(req.url).pathname);
+      }
+      const required = cfg.precache.filter(url=>!url.endsWith(".mp3"));
+      return {registered:Boolean(reg?.active),scope:reg?.scope,cachedCount:cached.size,
+        missing:required.filter(url=>!cached.has(url)),cachedPaths:[...cached]};
     });
     assert.equal(info.registered,true);
     assert.equal(info.scope,base);
-    assert.deepEqual(info.missing,[], "all pages, CSS, JS, languages, themes and resources must be in CacheStorage");
-    assert.ok(info.cachedPaths.some(s=>s.includes("/panels/portfolio/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/admin/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/browser-shop/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/_next/static/")));
-    assert.ok(info.cachedPaths.every(s=>!s.includes("/api/") && !s.includes("runtime-config.json")), "never cache API/credentials");
-    results.push({name:"precache_inventory",status:"INFO",count:info.cachedCount});
+    assert.deepEqual(info.missing,[],"all application pages and non-on-demand resources must be available offline");
+    for (const route of ["/panels/portfolio/index.html","/admin/index.html","/browser-shop/index.html"]) {
+      assert.ok(info.cachedPaths.some(path=>path.endsWith(route)),"Offline page missing: "+route);
+    }
+    assert.ok(info.cachedPaths.some(path=>path.includes("/_next/static/")));
+    assert.ok(info.cachedPaths.every(path=>!path.includes("/api/")&&!path.includes("runtime-config.json")),
+      "never cache API/private credentials");
+    results.push({name:"workbox_offline_inventory",status:"INFO",count:info.cachedCount});
   });
   await check("rendered public CSS links use content-addressed paths for every root stylesheet", async () => {
     await page.locator("#__next").waitFor({state:"attached"});
