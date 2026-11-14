@@ -347,7 +347,7 @@ try {
     // The old 42-route floor counted Next's generated 404/index.html. EFHC
     // deliberately removes that unapproved technical route from the export.
     assert.ok(htmlRoutes.length >= 41,"all 41 approved Next routes are required, not just six smoke pages");
-    assert.ok(!htmlRoutes.some(route => /\\/(?:404|500)\\/(?:index\\.html)?$/.test(route)),
+    assert.ok(!htmlRoutes.some(route => /\/(?:404|500)\/(?:index\.html)?$/.test(route)),
       "retired technical error routes must not reappear in the cached page set");
     await context.setOffline(true);
     try {
