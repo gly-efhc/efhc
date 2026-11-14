@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
-const css = source("../../src/styles/globals.css");
+const css = source("../../public/user-shell.css");
 const registry = source("../../src/lib/interfaceVariantRegistry.ts");
 const exchange = source("../../src/pages/exchange.tsx");
 const withdraw = source("../../src/pages/withdraw.tsx");

@@ -431,3 +431,180 @@
   --efhc-theme-accent:var(--efhc-ct-accent);
   --efhc-theme-edge:var(--efhc-settings-edge);
 }
+
+/* Exchange physical XH-07 uses the standalone three-row KPI layout.
+   The fourth selectable XH maps to physical XH-07. Keep its material,
+   measurements and numeric presentation independent from XH-04. */
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .28) !important;
+  border-radius: 1rem;
+  padding: .85rem;
+  background-color: rgba(11,17,29,.97) !important;
+  background-image: radial-gradient(
+    360px 180px at 100% 0%,
+    rgba(var(--efhc-ct-accent-rgb), .14), transparent 72%
+  ) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,.2);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-hero_head {
+  align-items: center;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-hero_body {
+  margin-top: .75rem;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-stats {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  gap: .48rem;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-stat {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,max-content);
+  align-items: center;
+  gap: .5rem;
+  min-width: 0;
+  width: 100%;
+  padding: .58rem .62rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .23);
+  border-radius: .78rem;
+  background: rgba(5,8,13,.32);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-stat_label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-exchange-shell .efhc-exchange-hero[data-xh="XH-07"] .efhc-game-stat_value {
+  min-width: 0;
+  max-width: 100%;
+  text-align: right;
+  font-size: clamp(.7rem,3vw,.83rem);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* Withdraw material is owned by the actual React hero and Card elements,
+   not the retired .efhc-withdraw-trust-rail selector. All five physical WD
+   variants inherit decorative hue from CT01–CT10, not hard-coded blue/gold. */
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] {
+  --wd-accent: var(--efhc-ct-accent);
+  --wd-edge: rgba(var(--efhc-ct-accent-rgb), .25);
+  --wd-soft: rgba(var(--efhc-ct-accent-rgb), .10);
+  --wd-card: rgba(12,22,38,.90);
+  --wd-radius: 14px;
+  --wd-shadow: 0 12px 28px rgba(0,0,0,.22);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-02"] {
+  --wd-edge: rgba(var(--efhc-ct-accent-rgb), .32);
+  --wd-soft: rgba(var(--efhc-ct-accent-rgb), .15);
+  --wd-card: rgba(10,22,39,.92);
+  --wd-radius: 18px;
+  --wd-shadow: inset 0 1px 0 rgba(255,255,255,.03),0 13px 30px rgba(0,0,0,.24);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-06"] {
+  --wd-edge: rgba(var(--efhc-ct-accent-rgb), .17);
+  --wd-soft: rgba(var(--efhc-ct-accent-rgb), .05);
+  --wd-card: rgba(7,10,15,.92);
+  --wd-radius: 9px;
+  --wd-shadow: none;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-10"] {
+  --wd-edge: rgba(var(--efhc-ct-accent-rgb), .20);
+  --wd-soft: rgba(var(--efhc-ct-accent-rgb), .05);
+  --wd-card: rgba(8,12,19,.97);
+  --wd-radius: 0px;
+  --wd-shadow: none;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-13"] {
+  --wd-edge: rgba(var(--efhc-ct-accent-rgb), .32);
+  --wd-soft: rgba(var(--efhc-ct-accent-rgb), .10);
+  --wd-card: rgba(11,17,30,.95);
+  --wd-radius: 19px;
+  --wd-shadow: 0 14px 32px rgba(0,0,0,.23);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] :is(
+  .efhc-withdraw-hero,
+  .efhc-withdraw-create-card,
+  .efhc-withdraw-requests-history
+) {
+  border: 1px solid var(--wd-edge) !important;
+  border-radius: var(--wd-radius) !important;
+  background-color: var(--wd-card) !important;
+  box-shadow: var(--wd-shadow) !important;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] :is(
+  .efhc-withdraw-create-card,
+  .efhc-withdraw-requests-history
+) {
+  background-image: radial-gradient(
+    340px 145px at 100% 0%, var(--wd-soft), transparent 72%
+  ) !important;
+}
+/* Preserve the OWNER-approved absence of the Withdraw hero corner flare. */
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] .efhc-withdraw-hero {
+  background-image: none !important;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] :is(
+  .efhc-withdraw-summary-list,
+  .efhc-withdraw-summary-row
+) {
+  border-color: rgba(var(--efhc-ct-accent-rgb), .22);
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] .efhc-input:not([data-amount-state="invalid"]) {
+  border-color: var(--wd-edge) !important;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd] :is(
+  .efhc-withdraw-max-cta,
+  .efhc-withdraw-request-filters .efhc-history-filter
+):not(.efhc-history-filter--active) {
+  border-color: var(--wd-edge);
+}
+
+/* WD-10 retains the reference's flat edge-to-edge card identity. */
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-10"] :is(
+  .efhc-withdraw-hero,
+  .efhc-withdraw-create-card,
+  .efhc-withdraw-requests-history
+) {
+  border-inline-color: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+/* WD-13 is intentionally distinct from WD-01. A CT-driven inner accent
+   rail and stronger material hierarchy introduce no new DOM or statuses. */
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-13"] .efhc-withdraw-hero {
+  box-shadow: inset 0 3px 0 rgba(var(--efhc-ct-accent-rgb),.40),
+              0 14px 32px rgba(0,0,0,.23) !important;
+}
+html[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-withdraw-shell[data-wd="WD-13"] :is(
+  .efhc-withdraw-create-card,
+  .efhc-withdraw-requests-history
+) {
+  box-shadow: inset 3px 0 0 rgba(var(--efhc-ct-accent-rgb),.34),
+              0 14px 32px rgba(0,0,0,.23) !important;
+}
