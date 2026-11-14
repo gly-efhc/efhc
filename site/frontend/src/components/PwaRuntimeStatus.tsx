@@ -26,13 +26,6 @@ type AdaptiveCachePolicy = {
   tier: "conservative" | "standard" | "expanded";
 };
 
-type NavTransition = {
-  count: number;
-  from: string;
-  to: string;
-};
-
-const NAV_HISTORY_KEY = "efhc_safe_nav_history_v1";
 const SAFE_PREFETCH_ROUTES = new Set([
   "/",
   "/app",
@@ -163,44 +156,6 @@ function idle(callback: () => void): () => void {
   return () => globalThis.clearTimeout(id);
 }
 
-function readTransitions(): NavTransition[] {
-  try {
-    const raw = window.localStorage.getItem(NAV_HISTORY_KEY) || "[]";
-    const value = JSON.parse(raw) as unknown;
-    return Array.isArray(value) ? value.slice(0, 80) : [];
-  } catch {
-    return [];
-  }
-}
-
-function recordTransition(from: string, to: string): void {
-  if (from === to || !SAFE_PREFETCH_ROUTES.has(to)) return;
-  try {
-    const entries = readTransitions();
-    const found = entries.find(
-      (entry) => entry.from === from && entry.to === to,
-    );
-    if (found) found.count += 1;
-    else entries.push({ count: 1, from, to });
-    entries.sort((left, right) => right.count - left.count);
-    window.localStorage.setItem(
-      NAV_HISTORY_KEY,
-      JSON.stringify(entries.slice(0, 80)),
-    );
-  } catch {
-    // Navigation learning is best effort only.
-  }
-}
-
-function predictedRoutes(current: string): string[] {
-  return readTransitions()
-    .filter((entry) => entry.from === current)
-    .filter((entry) => SAFE_PREFETCH_ROUTES.has(entry.to))
-    .sort((left, right) => right.count - left.count)
-    .map((entry) => entry.to)
-    .slice(0, 3);
-}
-
 function formatMegabytes(bytes: number): string {
   if (!bytes) return "0 MB";
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -215,7 +170,8 @@ export function PwaRuntimeStatus(props: {
   const router = useRouter();
   const { t } = props;
   const enabled = props.enabled !== false;
-  const previousRoute = useRef(router.pathname);
+  // Current-session-only navigation context. Never persist a visit history.
+  const recentSessionRoutes = useRef<string[]>([]);
   const queryClient = useQueryClient();
   const [cacheProgress, setCacheProgress] = useState(0);
   const [cacheVisible, setCacheVisible] = useState(false);
@@ -246,8 +202,8 @@ export function PwaRuntimeStatus(props: {
 
   const nextRoutes = useMemo(() => {
     const values = [
-      ...predictedRoutes(router.pathname),
       ...staticRoutes,
+      ...recentSessionRoutes.current.slice().reverse(),
     ];
     return [...new Set(values)]
       .filter((route) => SAFE_PREFETCH_ROUTES.has(route))
@@ -262,8 +218,10 @@ export function PwaRuntimeStatus(props: {
   routesForCacheRef.current = nextRoutes;
 
   useEffect(() => {
-    recordTransition(previousRoute.current, router.pathname);
-    previousRoute.current = router.pathname;
+    if (!SAFE_PREFETCH_ROUTES.has(router.pathname)) return;
+    const recent = recentSessionRoutes.current.filter(route => route !== router.pathname);
+    recent.push(router.pathname);
+    recentSessionRoutes.current = recent.slice(-4);
   }, [router.pathname]);
 
   const requestPersistence = useCallback(async () => {
