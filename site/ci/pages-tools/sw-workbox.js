@@ -84,7 +84,7 @@ const localeStrategy = new wb.strategies.StaleWhileRevalidate({
   cacheName: paths.locale,
   plugins: [new wb.expiration.ExpirationPlugin({
     maxEntries: 48,
-    maxAgeSeconds: 14 * 24 * 3600,
+    maxAgeSeconds: 180 * 24 * 3600,
     purgeOnQuotaError: true,
   })],
 });
