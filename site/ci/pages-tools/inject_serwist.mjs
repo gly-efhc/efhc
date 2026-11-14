@@ -46,7 +46,7 @@ try {
   await writeFile(sourcePath,source);
   await writeFile(manifestPath,JSON.stringify(entries));
   const cli=path.join(pkgDir,"node_modules",".bin","serwist");
-  const result=spawnSync(cli,["build","--config",path.join(pkgDir,"serwist.config.mjs")],{
+  const result=spawnSync(cli,["build",path.join(pkgDir,"serwist.config.mjs")],{
     cwd:pkgDir,
     env:{...process.env,EFHC_SERWIST_EXPORT_DIR:root},
     encoding:"utf8",
