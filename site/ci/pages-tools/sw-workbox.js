@@ -188,7 +188,10 @@ async function prefetchDeferred(priority = []) {
     "hub/index.html", "browser-shop/index.html",
   ].map(scoped);
   const ordered = [...new Set([...high,...fixed,...config.precache_deferred])]
-    .filter(path => deferred.has(path) && !/\/audio\/|\.mp3$/i.test(path));
+    .filter(path => deferred.has(path) &&
+      !/\/audio\/|\.mp3$/i.test(path) &&
+      // Language files are cached on actual use by an owner, not in bulk.
+      (!isLocale(path) || /\/(?:locale|faq)\/en\.json$/i.test(path)));
   let position = 0, done = 0, failed = 0;
   const run = async () => {
     while (position < ordered.length) {
@@ -275,9 +278,8 @@ self.addEventListener("activate", event => {
     await notify({type:"UPDATE_ACTIVATED",buildId:config.build_id});
     await retireLegacyWhenSafe();
   })());
-  // Activation must not wait for hundreds of deferred downloads.
-  // Existing clients enqueue the remaining files after startup/idle.
-  void prefetchDeferred();
+  // Client runtime sends session priorities after checking saveData and
+  // connection. Activation never starts a bulk download on its own.
 });
 self.addEventListener("message", event => {
   const data = event.data || {};
