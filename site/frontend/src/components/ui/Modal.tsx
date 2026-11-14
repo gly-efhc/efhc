@@ -119,6 +119,7 @@ export function Modal(
     closeDisabled?: boolean;
     portalColorThemeId?: ColorThemeId;
     referenceLayout?: "deposit" | "settings";
+    surface?: "withdraw-ad";
   }>,
 ) {
   const t = useT();
@@ -302,7 +303,11 @@ export function Modal(
   return createPortal(
     <div
       ref={overlayRef}
-      className={props.portalColorThemeId ? "fixed inset-0 efhc-modal-overlay efhc-user-direct-deposit-portal" : "fixed inset-0 efhc-modal-overlay"}
+      className={props.surface === "withdraw-ad"
+        ? "fixed inset-0 efhc-modal-overlay efhc-withdraw-ad-overlay"
+        : props.portalColorThemeId
+          ? "fixed inset-0 efhc-modal-overlay efhc-user-direct-deposit-portal"
+          : "fixed inset-0 efhc-modal-overlay"}
       data-interface-app-mode={props.portalColorThemeId ? "user" : undefined}
       data-color-theme-id={props.portalColorThemeId}
       aria-modal="true"
@@ -310,6 +315,7 @@ export function Modal(
       aria-label={props.title}
       data-modal-portal="body"
       data-modal-reference-layout={props.referenceLayout}
+      data-modal-surface={props.surface}
       tabIndex={-1}
       onClick={() => { if (!props.closeDisabled) props.onClose(); }}
     >

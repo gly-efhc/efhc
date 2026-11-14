@@ -9,6 +9,7 @@ import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import {
   deleteWallet,
   downloadProfileHistoryExport,
+  type ProfileHistoryExportCategory,
   getProfileBalanceHistoryPage,
   getProfilePhotoSources,
   getProfileExchangeHistoryPage,
@@ -185,8 +186,10 @@ export function useProfilePhotoSources(enabled = true) {
 
 export function useProfileHistoryExport() {
   return useMutation({
-    mutationFn: (format: "csv" | "xlsx") =>
-      downloadProfileHistoryExport(format),
+    mutationFn: ({ format, category }: {
+      format: "csv" | "xlsx";
+      category: ProfileHistoryExportCategory;
+    }) => downloadProfileHistoryExport(format, category),
   });
 }
 

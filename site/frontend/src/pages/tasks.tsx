@@ -260,7 +260,7 @@ export default function TasksPage(props: { snap: SyncSnapshot | null }) {
 
       {message ? <GameNotice title={t("common.status")} detail={message} /> : null}
       {hasError && !loading ? (
-        <EmptyState title={t("tasks.error_title")} detail={t("tasks.empty_detail")} actionLabel={t("common.refresh")} onAction={refresh} />
+        <EmptyState intent="error" title={t("tasks.error_title")} detail={t("tasks.empty_detail")} actionLabel={t("common.refresh")} onAction={refresh} />
       ) : null}
 
       <div className="efhc-tasks-grid efhc-compact-list-limit" data-tasks-list-card-layout="compact">

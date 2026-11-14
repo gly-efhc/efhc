@@ -33,7 +33,7 @@ import {
 import { useFaqCatalog } from "../hooks/faq/useFaqCatalog";
 import { ProfileFaqSection } from "./profile/ProfileFaqSection";
 import { ProfileWalletSection } from "./profile/ProfileWalletSection";
-import { ProfileHistorySection } from "./profile/ProfileHistorySection";
+import { ProfileHistorySection, normalizeHistoryFilter } from "./profile/ProfileHistorySection";
 import { CompactLanguagePicker } from "./profile/CompactLanguagePicker";
 import { ProfileAvatarVisual } from "./profile/ProfileAvatarVisual";
 import { AvatarPreferenceEditor } from "./profile/AvatarPreferenceEditor";
@@ -526,7 +526,7 @@ export function ProfileModal(props: Props) {
     if (historyExporting) return;
     setHistoryError(null);
     try {
-      await historyExport.mutateAsync(format);
+      await historyExport.mutateAsync({ format, category: normalizeHistoryFilter(historyFilter) });
     } catch (error) {
       setHistoryError(publicApiErrorMessage(error, t, "history.export_error"));
     }

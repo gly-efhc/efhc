@@ -16,7 +16,16 @@ try{
   await page.route('**/*',r=>new URL(r.request().url()).origin===new URL(base).origin?r.continue():r.abort());
   await page.addInitScript(defaults=>localStorage.setItem('EFHC_USER_SETTINGS_V1',JSON.stringify({lang:'ru',interface_settings_version:4,color_theme_id:'CT-01',interface_variants:defaults,music_enabled:false})),canon.DEFAULTS);
   try{
-   await page.goto(base+route,{waitUntil:'domcontentloaded'});await page.waitForSelector('.efhc-interface-customization-button');await page.waitForTimeout(600);
+   await page.goto(base+route,{waitUntil:'domcontentloaded'});
+      if(group==='AM'){
+       // Anonymous Pages must never expose Admin's design selector or private content.
+       await page.locator('[data-admin-route-guard-state="blocked"]').waitFor({state:'visible'});
+       assert.equal(await page.locator('[data-interface-variant-group="AM"],[data-admin-primitive="page"],[data-admin-visual-proof-route]').count(),0,'Admin requires server-attested authorization');
+       results.push({group,status:'PASS',selections:0,security:'anonymous-admin-denied'});
+       console.log('PASS Admin anonymous access denied; no private AM surface');
+       continue;
+      }
+      await page.waitForSelector('.efhc-interface-customization-button');await page.waitForTimeout(600);
    await page.locator('.efhc-interface-customization-button').click();
    const surface=page.locator(`[data-interface-variant-group="${group}"]`).first();await surface.waitFor({state:'attached'});
    const signatures=new Set();

@@ -372,23 +372,35 @@ export async function getUnifiedProfileHistoryPage(args?: {
   return profileHistoryPageSchema.parse(raw);
 }
 
+export type ProfileHistoryExportCategory = "all" | "purchases" | "exchange" | "withdraw" | "bonuses" | "panels";
+
 export async function downloadProfileHistoryExport(
   format: "csv" | "xlsx",
+  category: ProfileHistoryExportCategory,
 ): Promise<void> {
-  const response = await transportRawRequest(`/profile/history/export.${format}`, "GET");
+  const query = new URLSearchParams({ category });
+  const response = await transportRawRequest(`/profile/history/export.${format}?${query.toString()}`, "GET");
   if (!response.ok) throw new Error("profile_history_export_failed");
+  // A stale session, gateway or offline fallback must never download HTML
+  // as a successful financial export.
+  const expectedType = format === "csv"
+    ? "text/csv"
+    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const actualType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+  if (actualType !== expectedType) throw new Error("profile_history_export_invalid_content_type");
   const blob = await response.blob();
+  if (blob.size === 0) throw new Error("profile_history_export_empty_file");
   const url = URL.createObjectURL(blob);
   try {
     const anchor = document.createElement("a");
     const day = new Date().toISOString().slice(0, 10);
     anchor.href = url;
-    anchor.download = `EFHC_operations_${day}.${format}`;
+    anchor.download = `EFHC_${category}_${day}.${format}`;
     anchor.rel = "noopener";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
   } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }

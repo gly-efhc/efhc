@@ -130,3 +130,95 @@ test("deposit stays compact and external wallet owns transaction approval", () =
   assert.match(deposit, /void sendTransaction\(ready\.tx\)\.then\(/);
   assert.doesNotMatch(deposit, /routePrimaryWalletExecution/);
 });
+
+test("profile and withdraw CSV/XLSX exports use the same server stream with distinct category scope", () => {
+  const service = file("../../src/services/profile.service.ts");
+  const query = file("../../src/queries/useProfile.ts");
+  const profile = file("../../src/features/profile/WebProfilePage.tsx");
+  const withdraw = file("../../src/pages/withdraw.tsx");
+  const history = file("../../src/components/profile/ProfileHistorySection.tsx");
+
+  const downloadExport = service.slice(service.indexOf("export async function downloadProfileHistoryExport("));
+  assert.match(service, /new URLSearchParams\(\{ category \}\)/);
+  assert.match(downloadExport, /response\.headers\.get\("content-type"\)/);
+  assert.match(downloadExport, /actualType !== expectedType/);
+  assert.match(downloadExport, /blob\.size === 0/);
+  assert.match(downloadExport, /URL\.revokeObjectURL\(url\), 60_000/);
+  assert.match(service, /transportRawRequest\(`\/profile\/history\/export\.\$\{format\}\?\$\{query\.toString\(\)\}`/);
+  assert.match(query, /downloadProfileHistoryExport\(format, category\)/);
+  assert.match(profile, /mutateAsync\(\{ format, category: historyFilter \}\)/);
+  assert.match(profile, /useState<HistoryFilter>\("all"\)/);
+  assert.match(withdraw, /mutateAsync\(\{ format, category: "withdraw" \}\)/);
+  assert.equal((withdraw.match(/data-history-export="(?:csv|xlsx)-server-side"/g) || []).length, 2);
+  assert.doesNotMatch(withdraw, /withdraw\.latest_operations/);
+  assert.doesNotMatch(withdraw, /useWalletBalanceHistory/);
+  for (const category of ["all", "purchases", "exchange", "withdraw", "bonuses", "panels"]) {
+    assert.ok(history.includes('"' + category + '"'), category);
+    assert.ok(service.includes('"' + category + '"'), category);
+  }
+});
+
+test("withdraw owner-approved form and user activity contracts remain independent of export", () => {
+  const withdraw = file("../../src/pages/withdraw.tsx");
+  const queries = file("../../src/queries/useWithdrawals.ts");
+  const modal = file("../../src/components/ui/Modal.tsx");
+  const layout = file("../../src/components/Layout.tsx");
+  const css = file("../../src/styles/globals.css");
+  assert.match(withdraw, /useWithdrawalsPage\(\{ statusFilter: "all" \}\)/);
+  assert.match(withdraw, /\.filter\(\(item\) => statusFilter === "all" \|\| item\.status === statusFilter\)/);
+  assert.match(withdraw, /document\.addEventListener\("pointerdown", refreshOnActivity/);
+  assert.match(withdraw, /document\.addEventListener\("visibilitychange", refreshOnActivity/);
+  assert.match(withdraw, /data-withdraw-action="load-more"/);
+  assert.match(withdraw, /\[data-withdraw-action="load-more"\]/);
+  assert.match(withdraw, /lastRefreshAtRef\.current, request\.dataUpdatedAt\) < 10_000/);
+  assert.doesNotMatch(withdraw, /refreshWithdrawSurface|withdraw\.refresh_history/);
+  assert.doesNotMatch(withdraw, /efhc-withdraw-primary-summary/);
+  assert.match(withdraw, /!primaryWallet \? \(/);
+  assert.match(withdraw, /t\("withdraw\.create_request"\)/);
+  assert.match(withdraw, /t\("withdraw\.amount_exceeds_balance"\)/);
+  assert.match(withdraw, /data-amount-state=\{amountTouched && amountIssue/);
+  assert.match(withdraw, /surface="withdraw-ad"/);
+  assert.match(withdraw, /setWithdrawAdOpen\(phase !== "viewing" && phase !== "verifying"\)/);
+  assert.match(queries, /refetchType: "none"/);
+  assert.match(queries, /reflectConfirmedRequest/);
+  assert.match(queries, /staleTime: 10_000/);
+  assert.match(queries, /refetchOnWindowFocus: false/);
+  assert.match(modal, /data-modal-surface=\{props\.surface\}/);
+  assert.match(layout, /efhc-user-toast-stack/);
+  assert.match(layout, /isAdminRoute/);
+  assert.match(css, /efhc-withdraw-create-card \[data-withdraw-action="create"\]/);
+  assert.match(css, /efhc-modal-overlay\[data-modal-surface="withdraw-ad"\]/);
+  assert.match(css, /efhc-user-toast\[data-toast-kind="error"\]/);
+});
+
+test("all ten CTs and only accepted XH/WD design bindings stay available", () => {
+  const registry = file("../../src/lib/interfaceVariantRegistry.ts");
+  const css = file("../../src/styles/globals.css");
+  const baseTheme = file("../../src/styles/user-interface-material.css");
+  const wdThemes = file("../../src/styles/faq-withdraw-themes.css");
+  assert.match(registry, /XH: numbered\("XH", 6\)/);
+  assert.match(registry, /WD: numbered\("WD", 5\)/);
+  assert.match(registry, /XS: numbered\("XS", 1\)/);
+  assert.match(registry, /XC: numbered\("XC", 1\)/);
+  assert.match(registry, /XA: numbered\("XA", 1\)/);
+  for (const design of ["XH-01", "XH-02", "XH-04", "XH-07", "XH-10", "XH-12"]) {
+    assert.ok(css.includes('data-xh="' + design + '"'), design);
+  }
+  for (const design of ["WD-01", "WD-02", "WD-06", "WD-10"]) {
+    assert.ok(css.includes('data-wd="' + design + '"'), design);
+  }
+  assert.ok(wdThemes.includes('data-wd="WD-13"'));
+  for (let n = 1; n <= 10; n++) {
+    assert.ok(baseTheme.includes('data-color-theme-id="CT-' + String(n).padStart(2, "0") + '"'));
+  }
+});
+
+test("all supported languages include distinct withdrawal over-balance feedback", () => {
+  for (const lang of ["da","de","en","es","fr","hi","id","it","ja","ko","pl","pt","ru","sw","tr","uk"]) {
+    const dict = JSON.parse(file("../../public/locale/" + lang + ".json"));
+    assert.ok(dict["withdraw.amount_exceeds_balance"]?.trim(), lang);
+    assert.ok(dict["withdraw.min_hint"]?.trim(), lang);
+    assert.ok(dict["withdraw.export_success"]?.trim(), lang);
+    assert.ok(dict["withdraw.export_error"]?.trim(), lang);
+  }
+});

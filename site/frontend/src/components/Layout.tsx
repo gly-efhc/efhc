@@ -494,7 +494,7 @@ export function Layout(
     });
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
-    }, 3200);
+    }, kind === "error" ? 6500 : 4200);
   }
 
   async function confirm(
@@ -873,34 +873,40 @@ export function Layout(
         </div>
 
         {toasts.length ? (
-          <div
-            className={
-              "fixed left-0 right-0 bottom-24 z-40 " +
-              "pointer-events-none"
-            }
-          >
-            <div className="max-w-xl mx-auto px-4 grid gap-2">
+          <div className={isAdminRoute
+            ? "fixed left-0 right-0 bottom-24 z-40 pointer-events-none"
+            : "efhc-user-toast-stack"}>
+            <div className={isAdminRoute ? "max-w-xl mx-auto px-4 grid gap-2" : "efhc-user-toast-list"}>
               {toasts.map((item) => (
                 <div
                   key={item.id}
                   role={item.kind === "error" ? "alert" : "status"}
                   aria-live={item.kind === "error" ? "assertive" : "polite"}
                   aria-atomic="true"
-                  className={
-                    "pointer-events-none rounded-2xl px-4 py-3 " +
-                    "text-sm backdrop-blur " +
-                    "bg-[var(--tg-secondary-bg)] " +
-                    "text-[var(--tg-text)] border " +
-                    "border-[color:var(--tg-hint)]"
-                  }
+                  data-toast-kind={isAdminRoute ? undefined : item.kind}
+                  className={isAdminRoute
+                    ? "pointer-events-none rounded-2xl px-4 py-3 text-sm backdrop-blur bg-[var(--tg-secondary-bg)] text-[var(--tg-text)] border border-[color:var(--tg-hint)]"
+                    : "efhc-user-toast"}
                 >
-                  {item.msg}
+                  {isAdminRoute ? item.msg : (
+                    <>
+                      <span className="efhc-user-toast-icon" aria-hidden="true">
+                        {item.kind === "success" ? "✓" : item.kind === "error" ? "!" : "i"}
+                      </span>
+                      <span className="efhc-user-toast-message">{item.msg}</span>
+                      <button
+                        type="button"
+                        className="efhc-user-toast-close"
+                        aria-label={t("common.close")}
+                        onClick={() => setToasts((prev) => prev.filter((entry) => entry.id !== item.id))}
+                      >×</button>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         ) : null}
-
 
         <DepositModal
           open={depositOpen}

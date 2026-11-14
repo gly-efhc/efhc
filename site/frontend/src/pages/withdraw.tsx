@@ -5,7 +5,6 @@ import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { Card } from "../components/ui/Card";
 import { EmptyState } from "../components/ui/EmptyState";
-import { TelegramStatusBadge } from "../components/ui/telegram/TelegramStatusBadge";
 import type { SyncSnapshot } from "../hooks/useSnapshot";
 import { useWalletsMe } from "../hooks/useWalletsMe";
 import { publicApiErrorMessage } from "../lib/publicError";
@@ -14,20 +13,15 @@ import { WITHDRAW_REQUIRED_AD_PLACEMENT_CODE } from "../lib/ads/systemPlacements
 import type { AdRunPhase } from "../lib/ads/types";
 import { cmp8, format8, formatD8ToHuman } from "../lib/format";
 import { newIdempotencyKey } from "../lib/idempotency";
-import { hapticMedium, hapticSelection, onTelegramViewportChanged } from "../lib/telegram";
+import { hapticMedium, onTelegramViewportChanged } from "../lib/telegram";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import { useT } from "../hooks/useT";
 import { useInterfaceVariantSurface } from "../hooks/useInterfaceVariantSurface";
 import { GameHero, GamePageShell } from "../components/ui/GameShell";
-import {
-  balanceHistoryReasonLabel,
-  balanceTypeLabel,
-  withdrawStatusLabel,
-} from "../lib/humanLabels";
+import { withdrawStatusLabel } from "../lib/humanLabels";
 import {
   useCancelWithdrawRequest,
   useCreateWithdrawRequest,
-  useWalletBalanceHistory,
   useWithdrawalsPage,
 } from "../queries/useWithdrawals";
 import type { DbId } from "../types/db-id";
@@ -52,10 +46,6 @@ function isValidD8(raw: string): boolean {
   if (value.includes("e") || value.includes("E")) return false;
   if (value.includes("-")) return false;
   return /^\d+(\.\d{0,8})?$/.test(value);
-}
-
-function balanceAsset(balanceType: "main" | "bonus"): "EFHCm" | "EFHCb" {
-  return balanceType === "bonus" ? "EFHCb" : "EFHCm";
 }
 
 export default function WithdrawPage(props: {
@@ -83,19 +73,23 @@ export default function WithdrawPage(props: {
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const createSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [amountTouched, setAmountTouched] = useState(false);
   const [withdrawAdOpen, setWithdrawAdOpen] = useState(false);
   const [withdrawAdBusy, setWithdrawAdBusy] = useState(false);
   const [withdrawAdPhase, setWithdrawAdPhase] = useState<AdRunPhase | null>(null);
   const historyExport = useProfileHistoryExport();
   const historyExporting = historyExport.isPending;
-  const withdrawalsQ = useWithdrawalsPage({ statusFilter });
+  const withdrawalsQ = useWithdrawalsPage({ statusFilter: "all" });
+  const lastRefreshAtRef = useRef(Date.now());
+  const withdrawalsRef = useRef(withdrawalsQ);
+  withdrawalsRef.current = withdrawalsQ;
   const items = useMemo(() => {
     const pages = withdrawalsQ.data?.pages;
-    return Array.isArray(pages)
+    return (Array.isArray(pages)
       ? pages.flatMap((page) => Array.isArray(page?.items) ? page.items : [])
-      : [];
-  }, [withdrawalsQ.data]);
-  const historyQ = useWalletBalanceHistory();
+      : []
+    ).filter((item) => statusFilter === "all" || item.status === statusFilter);
+  }, [withdrawalsQ.data, statusFilter]);
 
   useEffect(() => {
     let frameOne = 0;
@@ -153,11 +147,34 @@ export default function WithdrawPage(props: {
       if (frameTwo) window.cancelAnimationFrame(frameTwo);
     };
   }, []);
+  useEffect(() => {
+    const refreshOnActivity = (event: Event) => {
+      if (!globalId || document.visibilityState === "hidden") return;
+      if (event.type !== "visibilitychange") {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest('[data-public-surface="withdraw"]')) return;
+        // The confirmed create/cancel mutation is the status source for that action.
+        if (target.closest('[data-withdraw-action="create"],[data-withdraw-action="cancel"],[data-withdraw-action="load-more"]')) return;
+      }
+      const request = withdrawalsRef.current;
+      const now = Date.now();
+      if (request.isFetching || now - Math.max(lastRefreshAtRef.current, request.dataUpdatedAt) < 10_000) return;
+      lastRefreshAtRef.current = now;
+      void request.refetch({ cancelRefetch: false });
+    };
+    document.addEventListener("pointerdown", refreshOnActivity, { passive: true });
+    document.addEventListener("keydown", refreshOnActivity);
+    document.addEventListener("visibilitychange", refreshOnActivity);
+    return () => {
+      document.removeEventListener("pointerdown", refreshOnActivity);
+      document.removeEventListener("keydown", refreshOnActivity);
+      document.removeEventListener("visibilitychange", refreshOnActivity);
+    };
+  }, [globalId]);
+
   const createWithdrawMutation = useCreateWithdrawRequest();
   const cancelWithdrawMutation = useCancelWithdrawRequest();
-  const historyItems = Array.isArray(historyQ.data) ? historyQ.data : [];
   const loading = withdrawalsQ.isLoading || withdrawalsQ.isFetching;
-  const historyLoading = historyQ.isLoading || historyQ.isFetching;
   const loadMoreError = withdrawalsQ.isFetchNextPageError && withdrawalsQ.error
     ? publicApiErrorMessage(withdrawalsQ.error, t)
     : null;
@@ -168,9 +185,6 @@ export default function WithdrawPage(props: {
       : null;
   const cancelError = cancelWithdrawMutation.error
     ? publicApiErrorMessage(cancelWithdrawMutation.error, t)
-    : null;
-  const historyError = historyQ.error
-    ? publicApiErrorMessage(historyQ.error, t)
     : null;
   const pages = withdrawalsQ.data?.pages;
   // Older Android WebView engines do not implement Array.prototype.at.
@@ -190,16 +204,18 @@ export default function WithdrawPage(props: {
     () => mainBalance !== null && cmp8(mainBalance, "10.00000000") >= 0,
     [mainBalance],
   );
-  const withdrawAmountOk = useMemo(() => {
-    if (mainBalance === null || !isValidD8(amount)) return false;
-    const normalized = format8(amount);
-    return (
-      cmp8(normalized, "10.00000000") >= 0 && cmp8(normalized, mainBalance) <= 0
-    );
+  const amountIssue = useMemo(() => {
+    if (!amount.trim()) return "missing";
+    if (!isValidD8(amount)) return "invalid";
+    const value = format8(amount);
+    if (cmp8(value, "10.00000000") < 0) return "minimum";
+    if (mainBalance === null || cmp8(value, mainBalance) > 0) return "balance";
+    return null;
   }, [amount, mainBalance]);
+  const withdrawAmountOk = amountIssue === null;
 
   const activeWallets = useMemo(
-    () => (walletsMe.data?.wallets || []).filter((wallet) => wallet.is_active),
+    () => (walletsMe.data?.wallets || []).filter((wallet) => wallet.is_active && wallet.proof_verified === true),
     [walletsMe.data?.wallets],
   );
   const primaryWallet = useMemo(
@@ -213,20 +229,13 @@ export default function WithdrawPage(props: {
   const requestTitle = (id: DbId): string =>
     t("withdraw.request_number").replace("{id}", String(id));
 
-  const historyReasonLabel = (reason: string): string =>
-    balanceHistoryReasonLabel(reason, t);
-
-  async function refreshWithdrawSurface() {
-    await Promise.all([withdrawalsQ.refetch(), historyQ.refetch()]);
-  }
-
-  async function exportHistory(format: "csv" | "xlsx") {
+  async function exportWithdrawRequests(format: "csv" | "xlsx") {
     if (historyExporting) return;
     try {
-      await historyExport.mutateAsync(format);
-      toast(t("history.export_success"), "success");
+      await historyExport.mutateAsync({ format, category: "withdraw" });
+      toast(t("withdraw.export_success"), "success");
     } catch {
-      toast(t("history.export_error"), "error");
+      toast(t("withdraw.export_error"), "error");
     }
   }
 
@@ -250,15 +259,21 @@ export default function WithdrawPage(props: {
       const result = await AdManager.runRewardedAd({
         taskCode: WITHDRAW_REQUIRED_AD_PLACEMENT_CODE,
         appLanguage: lang,
-        onPhase: setWithdrawAdPhase,
+        onPhase: (phase) => {
+          setWithdrawAdPhase(phase);
+          // The provider owns the actual ad window; do not cover its controls.
+          setWithdrawAdOpen(phase !== "viewing" && phase !== "verifying");
+        },
         requireZeroReward: true,
       });
       if (!result.session.rewarded) {
         setWithdrawAdPhase("failed");
+        setWithdrawAdOpen(true);
         toast(t("withdraw.ad_required_failed"), "error");
         return false;
       }
       setWithdrawAdPhase("rewarded");
+      setWithdrawAdOpen(false);
       return true;
     } catch (caught: unknown) {
       const code = adManagerErrorCode(caught);
@@ -268,6 +283,7 @@ export default function WithdrawPage(props: {
           ? t("withdraw.ad_required_skipped")
           : t("withdraw.ad_required_failed");
       setWithdrawAdPhase(code === "NO_FILL" ? "no_fill" : code === "DAILY_LIMIT_REACHED" ? "daily_limit" : "failed");
+      setWithdrawAdOpen(true);
       toast(text, "error");
       return false;
     } finally {
@@ -300,8 +316,6 @@ export default function WithdrawPage(props: {
         idempotencyKey: newIdempotencyKey(),
       });
       toast(t("withdraw.request_accepted"), "success");
-      await withdrawalsQ.refetch();
-      await historyQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -320,8 +334,6 @@ export default function WithdrawPage(props: {
         idempotencyKey: newIdempotencyKey(),
       });
       toast(t("withdraw.toast_canceled"), "success");
-      await withdrawalsQ.refetch();
-      await historyQ.refetch();
     } catch {
       // The mutation error is rendered through the safe public error helper.
     }
@@ -363,7 +375,7 @@ export default function WithdrawPage(props: {
 
       <Card
         title={t("withdraw.new_request")}
-        className="efhc-withdraw-create-card efhc-withdraw-action-card efhc-exchange-card-variant"
+        className="efhc-withdraw-create-card efhc-withdraw-action-card"
         data-withdraw-create-dialog="exchange-family-v278"
       >
         <div ref={createSurfaceRef} className="efhc-exchange-panel efhc-withdraw-create-card_body">
@@ -383,6 +395,7 @@ export default function WithdrawPage(props: {
               onClick={() => {
                 hapticMedium(settings.haptics_enabled);
                 if (mainBalance !== null) setAmount(mainBalance);
+                setAmountTouched(false);
               }}
               disabled={!withdrawMinOk}
             >
@@ -397,35 +410,36 @@ export default function WithdrawPage(props: {
             <input
               ref={amountInputRef}
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
               className="efhc-input mt-2 w-full tabular-nums"
+              data-amount-state={amountTouched && amountIssue ? "invalid" : "valid"}
               inputMode="decimal"
-              aria-invalid={!withdrawAmountOk}
-              aria-describedby={!withdrawAmountOk ? "efhc-withdraw-amount-helper" : undefined}
+              aria-invalid={amountTouched && !withdrawAmountOk}
+              aria-describedby={amountTouched && !withdrawAmountOk ? "efhc-withdraw-amount-helper" : undefined}
               data-withdraw-amount-input="efhcm-main-only"
             />
           </label>
 
-          {primaryWallet ? (
-            <div className="efhc-withdraw-primary-summary" data-withdraw-wallet-source="profile-primary" data-withdraw-wallet-id={String(primaryWallet.id)}>
-              <span>{t("wallet.primary_wallet")}</span>
-              <strong>{maskWallet(primaryWallet.wallet_address)}</strong>
-            </div>
-          ) : (
-            <Button variant="secondary" className="w-full" onClick={() => openWalletConnect()}>
-              {t("withdraw.connect_wallet")}
-            </Button>
-          )}
+          {!primaryWallet ? (
+             <Button variant="secondary" className="w-full" onClick={() => openWalletConnect()}>
+               {t("withdraw.connect_wallet")}
+             </Button>
+           ) : null}
 
-          {!withdrawAmountOk ? (
-            <div
-              id="efhc-withdraw-amount-helper"
-              className="efhc-exchange-helper efhc-exchange-helper--warning"
-            >
-              {t("withdraw.amount_invalid_range")}
-            </div>
-          ) : null}
-          {error ? <div className="text-sm text-red-600">{error}</div> : null}
+          {amountTouched && amountIssue ? (
+             <div
+               id="efhc-withdraw-amount-helper"
+               className="efhc-exchange-helper efhc-exchange-helper--warning"
+               role="alert"
+             >
+               {amountIssue === "balance"
+                 ? t("withdraw.amount_exceeds_balance")
+                 : amountIssue === "minimum"
+                   ? t("withdraw.min_hint")
+                   : t("withdraw.amount_invalid_range")}
+             </div>
+           ) : null}
+          {error ? <div className="text-sm text-red-600" role="alert">{error}</div> : null}
 
           <Button
             className="mt-3 w-full"
@@ -473,11 +487,11 @@ export default function WithdrawPage(props: {
             ))}
           </div>
 
-          {cancelError ? <div className="text-sm text-red-600">{cancelError}</div> : null}
+          {cancelError ? <div className="text-sm text-red-600" role="alert">{cancelError}</div> : null}
           {loading && items.length === 0 ? (
             <EmptyState title={t("withdraw.loading_requests")} />
           ) : null}
-          {!loading && items.length === 0 ? (
+          {!loading && items.length === 0 && !withdrawalsQ.hasNextPage ? (
             <EmptyState title={t("withdraw.no_requests_yet")} />
           ) : null}
 
@@ -559,6 +573,7 @@ export default function WithdrawPage(props: {
               <Button
                 variant="secondary"
                 disabled={withdrawalsQ.isFetchingNextPage}
+                data-withdraw-action="load-more"
                 aria-busy={withdrawalsQ.isFetchingNextPage}
                 onClick={() => void withdrawalsQ.fetchNextPage()}
               >
@@ -567,27 +582,22 @@ export default function WithdrawPage(props: {
                   : t("common.load_more")}
               </Button>
             ) : null}
-            <Button
-              variant="secondary"
-              onClick={() => {
-                hapticSelection(settings.haptics_enabled);
-                void refreshWithdrawSurface();
-              }}
-            >
-              {t("common.refresh")}
-            </Button>
-          </div>
+            </div>
         </div>
       </Card>
 
       <Modal
         open={withdrawAdOpen}
+        surface="withdraw-ad"
         onClose={() => { if (!withdrawAdBusy) setWithdrawAdOpen(false); }}
         closeDisabled={withdrawAdBusy}
         title={t("tasks.ad_modal_title")}
       >
-        <div className="space-y-3" data-withdraw-required-ad-modal="ads-module-zero-reward">
-          <div className="efhc-ad-countdown" data-ad-countdown="state">{withdrawAdPhaseLabel()}</div>
+        <div className="efhc-withdraw-ad-status" data-withdraw-required-ad-modal="ads-module-zero-reward" data-ad-phase={withdrawAdPhase || "loading"}>
+          <span className="efhc-withdraw-ad-status-icon" aria-hidden="true">
+            {withdrawAdBusy ? "…" : withdrawAdPhase === "rewarded" ? "✓" : "!"}
+          </span>
+          <p className="efhc-withdraw-ad-status-message" role="status">{withdrawAdPhaseLabel()}</p>
           <Button
             className="w-full"
             disabled={withdrawAdBusy}
@@ -598,97 +608,26 @@ export default function WithdrawPage(props: {
         </div>
       </Modal>
 
-      <Card title={t("withdraw.latest_operations")}>
-
-        <div className="space-y-3 text-sm">
-          {historyError ? (
-            <div className="text-sm text-red-600">{historyError}</div>
-          ) : null}
-          {historyLoading && historyItems.length === 0 ? (
-            <EmptyState
-              title={t("withdraw.loading_history")}
-              detail={t("withdraw.reading_balance_movements")}
-            />
-          ) : null}
-          {!historyLoading && historyItems.length === 0 ? (
-            <EmptyState
-              title={t("withdraw.history_empty")}
-              detail={t("withdraw.history_empty_detail")}
-            />
-          ) : null}
-          {historyItems.map((item) => {
-            const balanceLabel = balanceTypeLabel(item.balance_type, t);
-            const directionLabel = item.direction === "credit"
-              ? t("withdraw.credit")
-              : t("withdraw.debit");
-            const rowLabel = [
-              historyReasonLabel(item.reason),
-              directionLabel,
-              balanceLabel,
-            ].join(" · ");
-            return (
-              <div
-                key={item.id}
-                className="rounded-2xl border p-3 space-y-1 efhc-withdraw-history-row"
-                data-withdraw-history-balance-type-label="semantic"
-                aria-label={rowLabel}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="font-semibold">
-                    {historyReasonLabel(item.reason)}
-                  </div>
-                  <TelegramStatusBadge
-                    label={directionLabel}
-                    tone={
-                      item.direction === "credit" ? "connected" : "warning"
-                    }
-                  />
-                </div>
-                <div
-                  className="text-xs text-[color:var(--tg-hint)]"
-                  data-withdraw-history-balance-type-raw-hidden="true"
-                >
-                  <span data-withdraw-history-balance-type="localized">
-                    {balanceLabel}
-                  </span>
-                  <span aria-hidden="true"> · </span>
-                  <span>{formatDate(item.created_at, lang)}</span>
-                </div>
-                <div className="efhc-withdraw-amount-row">
-                  <span>{balanceAsset(item.balance_type)}</span>
-                  <strong className="efhc-financial-number">
-                    {item.amount_efhc}
-                  </strong>
-                </div>
-              </div>
-            );
-          })}
-          <Button variant="secondary" onClick={() => void historyQ.refetch()}>
-            {t("withdraw.refresh_history")}
+      <div className="efhc-withdraw-history-export" data-withdraw-history-export="withdraw-requests-csv-xlsx">
+        <div className="efhc-withdraw-history-export-actions">
+          <Button
+            variant="secondary"
+            disabled={historyExporting}
+            data-history-export="csv-server-side"
+            onClick={() => void exportWithdrawRequests("csv")}
+          >
+            {historyExporting ? t("history.exporting") : t("history.export_csv")}
           </Button>
-          <div className="efhc-withdraw-history-export" data-withdraw-history-export="profile-history-csv-xlsx">
-            <div className="efhc-withdraw-history-export-title">{t("history.operations_title")}</div>
-            <div className="efhc-withdraw-history-export-actions">
-              <Button
-                variant="secondary"
-                disabled={historyExporting}
-                data-history-export="csv-server-side"
-                onClick={() => void exportHistory("csv")}
-              >
-                {historyExporting ? t("history.exporting") : t("history.export_csv")}
-              </Button>
-              <Button
-                variant="secondary"
-                disabled={historyExporting}
-                data-history-export="xlsx-server-side"
-                onClick={() => void exportHistory("xlsx")}
-              >
-                {t("history.export_xlsx")}
-              </Button>
-            </div>
-          </div>
+          <Button
+            variant="secondary"
+            disabled={historyExporting}
+            data-history-export="xlsx-server-side"
+            onClick={() => void exportWithdrawRequests("xlsx")}
+          >
+            {t("history.export_xlsx")}
+          </Button>
         </div>
-      </Card>
+      </div>
     </GamePageShell>
   );
 }

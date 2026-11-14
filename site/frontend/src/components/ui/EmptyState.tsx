@@ -7,6 +7,7 @@ export function EmptyState(
     detail?: string;
     actionLabel?: string;
     onAction?: () => void;
+    intent?: "error" | "neutral";
   },
 ) {
   const containerCls = [
@@ -16,7 +17,11 @@ export function EmptyState(
     "bg-[color:var(--tg-secondary-bg)]/40",
   ].join(" ");
   return (
-    <div className={containerCls}>
+    <div
+      className={containerCls}
+      data-user-feedback-kind={props.intent}
+      role={props.intent === "error" ? "alert" : undefined}
+    >
       <div className="font-semibold">{props.title}</div>
       {props.detail ? (
         <div className="text-sm text-[color:var(--tg-hint)] mt-1">

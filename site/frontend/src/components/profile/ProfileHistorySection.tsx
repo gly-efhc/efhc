@@ -34,7 +34,7 @@ type Props = {
   error: string | null;
   nextCursor: string | null;
   activeFilter: string;
-  onFilterChange: (filter: string) => void;
+  onFilterChange: (filter: HistoryFilter) => void;
   onRefresh: () => void;
   onLoadMore: () => void;
   onExportCsv?: () => void;
@@ -53,7 +53,7 @@ const FILTERS: HistoryFilter[] = [
   "panels",
 ];
 
-function normalizeFilter(value: string): HistoryFilter {
+export function normalizeHistoryFilter(value: string): HistoryFilter {
   return FILTERS.includes(value as HistoryFilter)
     ? (value as HistoryFilter)
     : "all";
@@ -118,7 +118,7 @@ export function ProfileHistorySection(props: Props) {
     dotsPlacement: "below",
   });
   const variant = historySurface.variant;
-  const activeFilter = normalizeFilter(props.activeFilter);
+  const activeFilter = normalizeHistoryFilter(props.activeFilter);
 
   const operations = useMemo<HistoryOperationModel[]>(() => (
     props.items
