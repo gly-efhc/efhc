@@ -753,6 +753,11 @@ try {
       // Native Serwist owns new generations. A one-time scoped migration
       // retires only old EFHC/Serwist public caches after ALL old clients
       // leave or verify this generation; never delete any other app cache.
+      const stale=await context.newPage();
+      try {
+        await stale.goto(base+"offline.html",{
+          waitUntil:"domcontentloaded",timeout:25000,
+        });
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
       const oldStatic="efhc-static-assets-test-prior";
@@ -768,11 +773,6 @@ try {
         await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
         await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
       },{oldLegacy,oldRuntime,oldStatic,unrelated,oldUrl});
-      const stale=await context.newPage();
-      try {
-        await stale.goto(base+"unverified-old-tab-for-retirement/",{
-          waitUntil:"domcontentloaded",timeout:25000,
-        });
         await page.evaluate(()=>navigator.serviceWorker.controller?.postMessage({
           type:"GET_CACHE_STATUS",
         }));
