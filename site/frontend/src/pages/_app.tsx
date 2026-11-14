@@ -372,6 +372,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <link rel="stylesheet" href={`${router.basePath}/responsive-layout.css`} data-efhc-visual-patch="mobile-width-only-v923" />
           <link rel="stylesheet" href={`${router.basePath}/user-shell.css`} data-efhc-visual-adapter="user-shell" />
           <link rel="stylesheet" href={`${router.basePath}/react-viewport.css`} data-efhc-visual-adapter="react-host" />
+          <link rel="stylesheet" href={`${router.basePath}/exchange-withdraw-material.css`} data-efhc-visual-adapter="exchange-withdraw" />
           <link rel="stylesheet" href={`${router.basePath}/referrals.css`} data-efhc-visual-adapter="referrals" />
           <link rel="stylesheet" href={`${router.basePath}/progress-models.css`} data-efhc-visual-adapter="progress-models" />
         </>
