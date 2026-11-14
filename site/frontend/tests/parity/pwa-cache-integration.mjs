@@ -606,6 +606,10 @@ try {
     const originals=new Map();
     const newScript="_next/static/efhc-upgrade-staged.js";
     const newCss="_next/static/efhc-upgrade-staged.css";
+    const thirdScript="_next/static/efhc-upgrade-third.js";
+    const thirdCss="_next/static/efhc-upgrade-third.css";
+    const thirdScriptUrl="/efhc/"+thirdScript;
+    const thirdCssUrl="/efhc/"+thirdCss;
     const scriptUrl="/efhc/"+newScript;
     const cssUrl="/efhc/"+newCss;
     try {
@@ -677,6 +681,80 @@ try {
         await context.setOffline(false);
         await successor.close();
       }
+
+      // Generate a THIRD real release. B's dynamic JS/CSS are no longer on
+      // the HTTP server; a stale B tab must still be able to fetch them from
+      // Workbox's protected legacy cache until safe retirement.
+      await writeFile(path.join(root,thirdScript),
+        "window.__EFHC_THIRD_PWA_ASSET__=true;","utf8");
+      await writeFile(path.join(root,thirdCss),
+        ":root{--efhc-upgrade-css-proof:third}","utf8");
+      const secondIndex=await readFile(rootHtmlPath,"utf8");
+      assert.ok(secondIndex.includes(scriptUrl)&&secondIndex.includes(cssUrl),
+        "B index missing the staged version assets");
+      await writeFile(rootHtmlPath,
+        secondIndex.replace(scriptUrl,thirdScriptUrl).replace(cssUrl,thirdCssUrl),"utf8");
+      await Promise.all([
+        unlink(path.join(root,newScript)),
+        unlink(path.join(root,newCss)),
+      ]);
+      const thirdRegenerate=spawnSync("python3",[
+        "site/ci/pages-tools/fix_pages_assets.py",
+        "--directory",root,"--base-path","/efhc",
+      ],{encoding:"utf8",env:process.env});
+      assert.equal(thirdRegenerate.status,0,
+        "Third Workbox export failed: "+thirdRegenerate.stderr+"\n"+thirdRegenerate.stdout);
+      const thirdConfig=JSON.parse(await readFile(configFile,"utf8"));
+      const thirdBuildId=thirdConfig.build_id;
+      assert.notEqual(thirdBuildId,newBuildId,"C must differ from B");
+      assert.ok(thirdConfig.precache_critical.includes(thirdScriptUrl));
+      assert.ok(thirdConfig.precache_critical.includes(thirdCssUrl));
+      assert.ok(!thirdConfig.precache.includes(scriptUrl),
+        "B's removed JS must not be in the new release manifest");
+      await page.evaluate(async () => {
+        const reg=await navigator.serviceWorker.getRegistration();
+        if(!reg)throw Error("No B registration before C");
+        await reg.update();
+      });
+      await page.waitForFunction(id=>
+        document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
+        window.__EFHC_THIRD_PWA_ASSET__===true,
+      thirdBuildId,{timeout:65000});
+      const cLive=await page.evaluate(()=>({
+        build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+        third:Boolean(window.__EFHC_THIRD_PWA_ASSET__),
+        css:getComputedStyle(document.documentElement)
+          .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+        react:Boolean(document.querySelector("#__next")),
+      }));
+      assert.deepEqual(cLive,{build:thirdBuildId,third:true,css:"third",react:true},
+        "A→B→C did not activate a coherent third HTML/JS/CSS release");
+      const thirdTab=await context.newPage();
+      try {
+        await context.setOffline(true);
+        await thirdTab.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+        const cOffline=await thirdTab.evaluate(() => ({
+          build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          third:Boolean(window.__EFHC_THIRD_PWA_ASSET__),
+          css:getComputedStyle(document.documentElement)
+            .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+          react:Boolean(document.querySelector("#__next")),
+        }));
+        assert.deepEqual(cOffline,{build:thirdBuildId,third:true,css:"third",react:true},
+          "Offline A→B→C reopened mixed builds");
+        const oldJs=await thirdTab.evaluate(async url => {
+          const result=await fetch(url);
+          return {status:result.status,body:await result.text()};
+        },scriptUrl);
+        assert.equal(oldJs.status,200,"legacy B chunk must survive transition to C");
+        assert.match(oldJs.body,/__EFHC_NEW_PWA_ASSET__/,
+          "stale B bundle served an incorrect generation");
+        console.log("PWA_WORKBOX_A_B_C_OFFLINE",JSON.stringify(cOffline));
+        console.log("PWA_WORKBOX_OLD_B_CHUNK_PRESERVED",oldJs.status);
+      } finally {
+        await context.setOffline(false);
+        await thirdTab.close();
+      }
     }finally{
       await writeFile(workerFile,originalWorker,"utf8");
       await writeFile(configFile,originalConfig,"utf8");
@@ -684,6 +762,8 @@ try {
       await Promise.all([
         unlink(path.join(root,newScript)).catch(()=>undefined),
         unlink(path.join(root,newCss)).catch(()=>undefined),
+        unlink(path.join(root,thirdScript)).catch(()=>undefined),
+        unlink(path.join(root,thirdCss)).catch(()=>undefined),
       ]);
     }
   });
