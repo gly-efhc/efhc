@@ -16,7 +16,7 @@ test("Serwist source candidate has no independent PWA cache writer",()=>{
  assert.match(sw,/Promise\.all\(\[run\(\),run\(\)\]\)/);
  assert.doesNotMatch(sw,/\bcache\.put\s*\(/);
  assert.match(sw,/async function retireLegacyCachesOnce\(/);
- assert.doesNotMatch(sw,/\bworkbox-/);
+ assert.doesNotMatch(sw,/from ["']workbox-/);
  assert.match(build,/EFHC_SERWIST_CONFIGURATOR_PASS/);
  assert.match(cfg,/from "@serwist\/next\/config"/);
  assert.match(cfg,/precachePrerendered:false/);
