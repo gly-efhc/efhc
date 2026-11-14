@@ -76,7 +76,7 @@ def partition_pwa_resources(root: Path, base: str, included: list[str]) -> tuple
     }
     available = set(included)
     critical = {base + '/' + path for path in mandatory if base + '/' + path in available}
-    asset_ref = re.compile(r'(?:src|href)=[\\'"]([^\\'"]+)[\\'"]')
+    asset_ref = re.compile(r"""(?:src|href)=["']([^"']+)["']""")
     asset_suffixes = ('.js', '.css', '.svg', '.avif', '.webp', '.png',
                       '.ico', '.woff', '.woff2', '.jpg', '.jpeg')
     for page in ('index.html', 'offline.html', 'offline-readonly.html'):
