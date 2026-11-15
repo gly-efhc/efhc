@@ -61,6 +61,29 @@ const boundedSerwistPhase = async (name, action, timeoutMs=15000) => {
   } finally {clearTimeout(timer);}
 };
 
+const verifyOfflineSplashReload=async(tab,phase)=>{
+  // Playwright may report a null navigation response when Service Workers
+  // handle the request. Prove a fresh document and the real EFHC splash,
+  // not just a successful call to page.reload().
+  await tab.evaluate(()=>{window.efhcOfflineReloadWitness=true;});
+  await boundedSerwistPhase(phase,()=>tab.reload({
+    waitUntil:"domcontentloaded",timeout:15000,
+  }),19000);
+  const state=await tab.evaluate(()=>({
+    path:location.pathname,
+    freshDocument:window.efhcOfflineReloadWitness!==true,
+    controller:Boolean(navigator.serviceWorker.controller),
+    splash:Boolean(document.querySelector(".efhc-entry-splash_content")),
+    title:document.title,
+  }));
+  console.log("PWA_SERWIST_OFFLINE_RELOAD",phase,JSON.stringify(state));
+  assert.equal(state.path,new URL(base).pathname+"offline.html");
+  assert.equal(state.freshDocument,true,"Offline navigation must create a new document");
+  assert.equal(state.controller,true,"The installed Serwist worker must control the offline page");
+  assert.equal(state.splash,true,"The existing EFHC splash must render offline");
+  return state;
+};
+
 const check = async (name,fn) => {
   await fn();
   results.push({name,status:"PASS"});
@@ -998,11 +1021,9 @@ try {
       assert.equal(verdict.activeState,"activated");
       assert.equal(verdict.waitingState,null);
       await isolated.setOffline(true);
-      const response=await boundedSerwistPhase("interrupt.predecessor.offline",()=>
-        tab.reload({waitUntil:"domcontentloaded",timeout:14000}),18000);
-      assert.equal(response?.ok(),true,
-        "The predecessor must continue to serve its critical fallback offline");
-      console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",JSON.stringify(verdict));
+      const offline=await verifyOfflineSplashReload(tab,"interrupt.predecessor.offline");
+      console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",
+        JSON.stringify({verdict,offline}));
     }finally{
       await Promise.all([
         writeFile(workerPath,originalWorker,"utf8"),
@@ -1083,18 +1104,13 @@ try {
         media,state,precache,
       }));
       await isolated.setOffline(true);
-      const offline=await boundedSerwistPhase("quota.predecessor.offline",()=>
-        tab.reload({
-          waitUntil:"domcontentloaded",timeout:15000,
-        }),19000);
+      const offline=await verifyOfflineSplashReload(tab,"quota.predecessor.offline");
       console.log("PWA_SERWIST_QUOTA_DIAGNOSTIC",JSON.stringify({
         before:{usage:before.usage,quota:before.quota},
         constrained:{usage:constrained.usage,quota:constrained.quota,
           overrideActive:constrained.overrideActive},
-        media,state,precache,offline:{ok:offline?.ok(),status:offline?.status()},
+        media,state,precache,offline,
       }));
-      assert.equal(offline?.ok(),true,
-        "Quota exhaustion must not remove the installed offline shell");
       assert.equal(media.ok,true,
         "Runtime public media must remain accessible online when caching exceeds quota");
       assert.equal(state.mediaCachedIn.length,0,
