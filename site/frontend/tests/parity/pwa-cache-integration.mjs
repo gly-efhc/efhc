@@ -874,19 +874,32 @@ try {
         // Bringing the connection online first triggers offline.html's own
         // online event reload, which races a navigation to about:blank.
         // This navigation is local and cannot require a network response.
-        await boundedSerwistPhase("legacy.stale.leave.scope",()=>
-          stale.goto("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
-        // goto() can resolve while Chromium is still committing the new
-        // document; neither stale.url() nor page.evaluate() is reliable
-        // until the out-of-scope navigation is explicitly confirmed.
+        // Register the URL observer BEFORE the local navigation. Chromium
+        // can commit about:blank between the navigation and a subsequent
+        // independent waitForURL call, especially under SW interception.
+        await boundedSerwistPhase("legacy.stale.leave.scope",async()=>
+          Promise.all([
+            stale.waitForURL("about:blank",{waitUntil:"commit",timeout:12000}),
+            stale.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000}),
+          ]),16000);
+        // Assert the actual replacement document, not just a navigation event
+        // or the Playwright navigation handle. The old controlled page cannot
+        // satisfy the about:blank origin and controller checks.
         await boundedSerwistPhase("legacy.stale.scope.committed",()=>
-          stale.waitForURL("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
+          stale.waitForFunction(()=>
+            location.href==="about:blank" &&
+            document.readyState!=="loading" &&
+            !navigator.serviceWorker.controller,
+            null,{timeout:12000}),16000);
+        const scopeExit=await stale.evaluate(()=>({
+          href:location.href,readyState:document.readyState,
+          controller:Boolean(navigator.serviceWorker.controller),
+        }));
         assert.equal(stale.url(),"about:blank",
           "The old EFHC client must be replaced by an out-of-scope document");
+        assert.equal(scopeExit.href,"about:blank");
+        assert.equal(scopeExit.controller,false,
+          "The new about:blank document must not be controlled by Serwist");
         assert.equal(stale.isClosed(),false,
           "Scope exit must succeed even while the Chromium tab remains open");
         // The worker filters live clients by URL, not by CDP target status.
