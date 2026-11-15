@@ -3,7 +3,7 @@
  * prime financial data or grant Admin privileges.
  */
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir, unlink, utimes } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, utimes, stat } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { localPagesBase } from "./pages-base.mjs";
@@ -940,6 +940,7 @@ try {
   await check("Serwist refuses unsafe native activation while older scoped clients exist", async () => {
     const workerPath=path.join(root,"sw.js");
     const originalWorker=await readFile(workerPath,"utf8");
+    const originalTimes=await stat(workerPath);
     const isolated=await browser.newContext({serviceWorkers:"allow"});
     try {
       const first=await isolated.newPage();
@@ -1017,7 +1018,9 @@ try {
       console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify(blocked));
     } finally {
       await writeFile(workerPath,originalWorker,"utf8");
-      await utimes(workerPath,new Date(),new Date(Date.now()+5000));
+      // Do not poison the next interrupted-update test: preserve this
+      // fixture's original HTTP Last-Modified rather than a future timestamp.
+      await utimes(workerPath,originalTimes.atime,originalTimes.mtime);
       await boundedSerwistPhase("message.guard.context.close",()=>isolated.close(),15000);
     }
   });
