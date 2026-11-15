@@ -999,7 +999,7 @@ try {
       assert.equal(verdict.waitingState,null);
       await isolated.setOffline(true);
       const response=await boundedSerwistPhase("interrupt.predecessor.offline",()=>
-        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:14000}),18000);
+        tab.reload({waitUntil:"domcontentloaded",timeout:14000}),18000);
       assert.equal(response?.ok(),true,
         "The predecessor must continue to serve its critical fallback offline");
       console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",JSON.stringify(verdict));
@@ -1084,7 +1084,7 @@ try {
       }));
       await isolated.setOffline(true);
       const offline=await boundedSerwistPhase("quota.predecessor.offline",()=>
-        tab.goto(base+"offline.html",{
+        tab.reload({
           waitUntil:"domcontentloaded",timeout:15000,
         }),19000);
       console.log("PWA_SERWIST_QUOTA_DIAGNOSTIC",JSON.stringify({
