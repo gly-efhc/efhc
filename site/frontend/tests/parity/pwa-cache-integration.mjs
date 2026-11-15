@@ -965,10 +965,21 @@ try {
       await first.waitForFunction(async scope=>
         Boolean((await navigator.serviceWorker.getRegistration(scope))?.waiting),
         base,{timeout:18000});
-      await first.evaluate(async scope=>{
+      const beforeMessage=await first.evaluate(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
-        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
+        const snapshot={
+          active:reg?.active?.state||null,
+          waiting:reg?.waiting?.state||null,
+          installing:reg?.installing?.state||null,
+          controller:navigator.serviceWorker.controller?.state||null,
+          controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
+        };
+        reg?.waiting?.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
+        return snapshot;
       },base);
+      console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
+      assert.equal(beforeMessage.waiting,"installed",
+        "A fresh Serwist release must remain waiting while two scoped clients are open");
       await first.waitForTimeout(700);
       const blocked=await first.evaluate(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
