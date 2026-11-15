@@ -3,7 +3,7 @@
  * prime financial data or grant Admin privileges.
  */
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, utimes } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { localPagesBase } from "./pages-base.mjs";
@@ -44,45 +44,144 @@ const errors = [];
 page.on("pageerror", error => errors.push(String(error.message)));
 await context.route("**/*", route => new URL(route.request().url()).origin === origin
   ? route.continue() : route.abort());
+const boundedSerwistPhase = async (name, action, timeoutMs=15000) => {
+  console.log("PWA_SERWIST_I35_BEGIN",name);
+  let timer;
+  try {
+    const result=await Promise.race([
+      Promise.resolve().then(action),
+      new Promise((_,reject)=>{timer=setTimeout(()=>
+        reject(Error("PWA_SERWIST_I35_TIMEOUT "+name+" "+timeoutMs+"ms")),timeoutMs);}),
+    ]);
+    console.log("PWA_SERWIST_I35_PASS",name);
+    return result;
+  } catch(error) {
+    console.error("PWA_SERWIST_I35_FAIL",name,String(error));
+    throw error;
+  } finally {clearTimeout(timer);}
+};
+
+const verifyOfflineSplashReload=async(tab,phase)=>{
+  // Playwright may report a null navigation response when Service Workers
+  // handle the request. Prove a fresh document and the real EFHC splash,
+  // not just a successful call to page.reload().
+  await tab.evaluate(()=>{window.efhcOfflineReloadWitness=true;});
+  let navigationError=null;
+  try {
+    await boundedSerwistPhase(phase,()=>tab.reload({
+      waitUntil:"domcontentloaded",timeout:15000,
+    }),19000);
+  } catch(error) {navigationError=String(error);}
+  // Chromium may commit a fresh offline SW document after Playwright has
+  // rejected the navigation handle. Wait for the document proof itself:
+  // the old page still has the witness and therefore cannot pass this gate.
+  const documentProof=await boundedSerwistPhase(phase+".document.ready",()=>
+    tab.waitForFunction(()=>window.efhcOfflineReloadWitness!==true &&
+      Boolean(navigator.serviceWorker.controller) &&
+      Boolean(document.querySelector(".efhc-entry-splash_content")),
+      null,{timeout:12000}),16000);
+  await documentProof.dispose();
+  const state=await tab.evaluate(()=>({
+    path:location.pathname,
+    freshDocument:window.efhcOfflineReloadWitness!==true,
+    controller:Boolean(navigator.serviceWorker.controller),
+    controllerScript:navigator.serviceWorker.controller?.scriptURL||null,
+    splash:Boolean(document.querySelector(".efhc-entry-splash_content")),
+    title:document.title,
+  })).catch(error=>({inspectionError:String(error)}));
+  console.log("PWA_SERWIST_OFFLINE_RELOAD",phase,
+    JSON.stringify({navigationError,state}));
+  assert.equal(state.path,new URL(base).pathname+"offline.html");
+  assert.equal(state.freshDocument,true,"Offline navigation must create a new document");
+  assert.equal(state.controller,true,"The installed Serwist worker must control the offline page");
+  assert.equal(new URL(state.controllerScript).pathname,
+    new URL(base).pathname+"sw.js","The correct scoped worker must control the document");
+  assert.equal(state.splash,true,"The existing EFHC splash must render offline");
+  // Chromium sometimes reports ERR_ABORTED to Playwright even after it has
+  // committed the new Service Worker document. A browser-level success is
+  // proven above, independently of the nullable/rejected navigation handle.
+  // Never accept any other navigation failure or a missing real document.
+  if(navigationError) {
+    assert.match(navigationError,/net::ERR_ABORTED/,
+      "A non-abort browser navigation failure must fail the offline test");
+    console.log("PWA_SERWIST_NAVIGATION_HANDLE_ABORTED_AFTER_DOCUMENT_COMMIT",phase);
+  }
+  return state;
+};
+
 const check = async (name,fn) => {
   await fn();
   results.push({name,status:"PASS"});
   console.log("PWA_INTEGRATION_PASS "+name);
 };
 try {
-  await check("real Chromium installs entire build-scoped offline resource set", async () => {
+  await check("Serwist installs critical shell then resumes every required offline page in background", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const config = await (await page.request.get(base+"pwa-build.json")).json();
     assert.equal(config.static_export,true);
-    assert.ok(config.precache.length > 40, "full static export assets required");
+    assert.ok(config.precache.length > 40,"real export required");
+    assert.ok(config.precache_critical.length > 4,"Serwist critical shell missing");
+    assert.ok(config.precache_deferred.length > 0,"deferred export missing");
     await page.evaluate(() => Promise.race([
       navigator.serviceWorker.ready.then(() => true),
-      new Promise((_,reject) => setTimeout(() => reject(Error("PWA install timeout")), 95000)),
+      new Promise((_,reject) => setTimeout(() => reject(Error("Serwist install timeout")),95000)),
     ]));
+    await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller),null,{timeout:15000});
+    const criticalState = await page.evaluate(async () => {
+      const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const keys = await caches.keys();
+      const paths = new Set();
+      for (const name of keys) {
+        for (const req of await (await caches.open(name)).keys())
+          paths.add(new URL(req.url).pathname);
+      }
+      return {keys,missing:cfg.precache_critical.filter(url=>!paths.has(url))};
+    });
+    assert.deepEqual(criticalState.missing,[],"Serwist must atomically cache critical shell before activation");
+    assert.ok(criticalState.keys.some(name=>name.includes("precache")),
+      "Serwist precache container missing");
+    await page.evaluate(async () => {
+      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      await new Promise((resolve,reject) => {
+        const timer=setTimeout(()=>{navigator.serviceWorker.removeEventListener("message",onMessage);
+          reject(Error("Serwist deferred queue did not finish"));},95000);
+        function onMessage(event) {
+          const data=event.data||{};
+          if(data.type==="CACHE_COMPLETE"&&data.reason==="deferred"){
+            clearTimeout(timer);
+            navigator.serviceWorker.removeEventListener("message",onMessage);
+            if(data.failed)reject(Error("Serwist deferred resources failed: "+data.failed));
+            else resolve(true);
+          }
+        }
+        navigator.serviceWorker.addEventListener("message",onMessage);
+        navigator.serviceWorker.controller.postMessage({
+          type:"PREFETCH_PRIORITY",urls:config.precache_deferred,
+        });
+      });
+    });
     const info = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
-      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-      const cacheName = "efhc-pwa-" + config.build_id + "-static";
-      const cache = await caches.open(cacheName);
-      const cached = new Set((await cache.keys()).map(req=>new URL(req.url).pathname));
-      return {
-        registered: Boolean(reg?.active),
-        scope: reg?.scope,
-        cachedCount: cached.size,
-        precacheCount: config.precache.length,
-        missing: config.precache.filter(url=>!cached.has(url)),
-        cachedPaths: [...cached],
-      };
+      const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const cached = new Set();
+      for (const name of await caches.keys()) {
+        for (const req of await (await caches.open(name)).keys()) cached.add(new URL(req.url).pathname);
+      }
+      const required = cfg.precache.filter(url=>!url.endsWith(".mp3") &&
+        !/\/(?:locale|faq)\/(?!en\.json$)[^/]+\.json$/.test(url));
+      return {registered:Boolean(reg?.active),scope:reg?.scope,cachedCount:cached.size,
+        missing:required.filter(url=>!cached.has(url)),cachedPaths:[...cached]};
     });
     assert.equal(info.registered,true);
     assert.equal(info.scope,base);
-    assert.deepEqual(info.missing,[], "all pages, CSS, JS, languages, themes and resources must be in CacheStorage");
-    assert.ok(info.cachedPaths.some(s=>s.includes("/panels/portfolio/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/admin/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/browser-shop/index.html")));
-    assert.ok(info.cachedPaths.some(s=>s.includes("/_next/static/")));
-    assert.ok(info.cachedPaths.every(s=>!s.includes("/api/") && !s.includes("runtime-config.json")), "never cache API/credentials");
-    results.push({name:"precache_inventory",status:"INFO",count:info.cachedCount});
+    assert.deepEqual(info.missing,[],"all application pages and non-on-demand resources must be available offline");
+    for (const route of ["/panels/portfolio/index.html","/admin/index.html","/browser-shop/index.html"]) {
+      assert.ok(info.cachedPaths.some(path=>path.endsWith(route)),"Offline page missing: "+route);
+    }
+    assert.ok(info.cachedPaths.some(path=>path.includes("/_next/static/")));
+    assert.ok(info.cachedPaths.every(path=>!path.includes("/api/")&&!path.includes("runtime-config.json")),
+      "never cache API/private credentials");
+    results.push({name:"serwist_offline_inventory",status:"INFO",count:info.cachedCount});
   });
   await check("rendered public CSS links use content-addressed paths for every root stylesheet", async () => {
     await page.locator("#__next").waitFor({state:"attached"});
@@ -344,7 +443,11 @@ try {
   await check("every exported application HTML route remains navigable without transport", async () => {
     const htmlRoutes = exportConfig.precache.filter(url =>
       url.endsWith(".html") && !/\/offline(?:-readonly)?\.html$/.test(url));
-    assert.ok(htmlRoutes.length >= 42,"all Next static routes are required, not just six smoke pages");
+    // The old 42-route floor counted Next's generated 404/index.html. EFHC
+    // deliberately removes that unapproved technical route from the export.
+    assert.ok(htmlRoutes.length >= 41,"all 41 approved Next routes are required, not just six smoke pages");
+    assert.ok(!htmlRoutes.some(route => /\/(?:404|500)\/(?:index\.html)?$/.test(route)),
+      "retired technical error routes must not reappear in the cached page set");
     await context.setOffline(true);
     try {
       for (const html of htmlRoutes) {
@@ -467,9 +570,14 @@ try {
       const proof = await page.evaluate(async (cssPath) => {
          const cachesList = await caches.keys();
         let cached = false;
-        for (const name of cachesList.filter(name => name.endsWith("-static"))) {
+        for (const name of cachesList) {
           const cache = await caches.open(name);
-          if (await cache.match(cssPath)) cached = true;
+          for (const request of await cache.keys()) {
+            if (new URL(request.url).pathname === cssPath) {
+              cached = true;
+              break;
+            }
+          }
         }
         const coin = document.querySelector(".efhc-independent-shell[data-interface-app-mode='user'] .efhc-energy-stage_coin");
         if (!coin) throw Error("Missing rendered Energy coin for offline CSS check");
@@ -552,179 +660,514 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("PWA staged update activates automatically without dropping the running app", async () => {
+  await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
-    const workerFile = path.join(root,"sw.js");
-    const original = await readFile(workerFile,"utf8");
-    const originalController = await page.evaluate(() => {
-      window.__EFHC_PWA_EVENTS__ = [];
-      navigator.serviceWorker.addEventListener("message", event => {
-        const data = event.data || {};
-        if (["CACHE_FAILED", "CACHE_COMPLETE", "UPDATE_ACTIVATED", "UPDATE_AVAILABLE", "TEST_SKIP_MESSAGE", "CACHE_RETIREMENT_PENDING"].includes(data.type)) {
-          window.__EFHC_PWA_EVENTS__.push({type:data.type, failed:data.failed, failedUrls:data.failedUrls, reason:data.reason, buildId:data.buildId});
-        }
-      });
-      window.__EFHC_OLD_SW_CONTROLLER_TEST__ = navigator.serviceWorker.controller;
-      return navigator.serviceWorker.controller?.scriptURL || "";
-    });
-    assert.ok(originalController.endsWith("/sw.js"),"existing worker must control active session");
-    const oldConfig=exportConfig;
-    const newBuildId=oldConfig.build_id.slice(0,-1)+(oldConfig.build_id.endsWith("a")?"b":"a");
-    const oldStaticCache="efhc-pwa-"+oldConfig.build_id+"-static";
-    const newStaticCache="efhc-pwa-"+newBuildId+"-static";
-    const pinned=/^const EFHC_PWA_BUILD_CONFIG = ([^\n]+);\n/.exec(original);
-    assert.ok(pinned,"real exported worker must embed an immutable version configuration");
-    const nextBuild={...JSON.parse(pinned[1]),build_id:newBuildId};
+    const workerFile=path.join(root,"sw.js");
     const configFile=path.join(root,"pwa-build.json");
-    const originalConfigFile=await readFile(configFile,"utf8");
-    const originalHtml=new Map();
-    const nextScriptName="efhc-upgrade-staged.js";
-    const nextCssName="efhc-upgrade-staged.css";
-    const scriptPath="_next/static/"+nextScriptName;
-    const cssPath="_next/static/"+nextCssName;
-    const scriptUrl="/efhc/"+scriptPath;
-    const cssUrl="/efhc/"+cssPath;
-    nextBuild.precache=[...nextBuild.precache,scriptUrl,cssUrl];
-    const nextWorker="const EFHC_PWA_BUILD_CONFIG = "+JSON.stringify(nextBuild)+";\n"+
-      original.slice(pinned[0].length)+"\n// EFHC_TEST_STAGED_VERSION_"+Date.now()+"\n"+
-      'self.addEventListener("message", event => { if(event.data?.type==="SKIP_WAITING") '+
-      'event.waitUntil(notifyClients({type:"TEST_SKIP_MESSAGE",buildId:EFHC_PWA_BUILD_CONFIG.build_id})); });\n';
+    const originalWorker=await readFile(workerFile,"utf8");
+    const originalConfig=await readFile(configFile,"utf8");
+    const oldBuildId=JSON.parse(originalConfig).build_id;
+    const oldHtml=JSON.parse(originalConfig).precache.filter(url=>url.endsWith(".html"));
+    const originals=new Map();
+    const newScript="_next/static/efhc-upgrade-staged.js";
+    const newCss="_next/static/efhc-upgrade-staged.css";
+    const thirdScript="_next/static/efhc-upgrade-third.js";
+    const thirdCss="_next/static/efhc-upgrade-third.css";
+    const thirdScriptUrl="/efhc/"+thirdScript;
+    const thirdCssUrl="/efhc/"+thirdCss;
+    const scriptUrl="/efhc/"+newScript;
+    const cssUrl="/efhc/"+newCss;
     try {
-      await writeFile(path.join(root,scriptPath),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
-      await writeFile(path.join(root,cssPath),":root { --efhc-upgrade-css-proof: updated; }","utf8");
-      for (const route of nextBuild.precache.filter(url=>url.endsWith(".html"))) {
-        const file=path.join(root,route.replace(/^\/efhc\//,""));
-        const html=await readFile(file,"utf8");
-        originalHtml.set(file,html);
-        let updated=html.replace(`efhc-build-id" content="${oldConfig.build_id}"`,
-          `efhc-build-id" content="${newBuildId}"`);
-        assert.ok(updated.includes(`efhc-build-id" content="${newBuildId}"`),
-          "A staged HTML page kept the previous release marker: "+route);
-        if (route==="/efhc/index.html") {
-          assert.ok(updated.includes("</head>"),"real Pages root must have a head");
-          updated=updated.replace("</head>",
-            `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`);
-        }
-        await writeFile(file,updated,"utf8");
+      for (const url of oldHtml) {
+        const filepath=path.join(root,url.slice("/efhc/".length));
+        originals.set(filepath,await readFile(filepath,"utf8"));
       }
-      await writeFile(configFile,JSON.stringify(nextBuild,null,2)+"\n","utf8");
-      await writeFile(workerFile,nextWorker,"utf8");
-      await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update());
-      // Wait for complete offline staging AND automatic controller takeover.
-      // The running React page must remain mounted; no forced reload during
-      // an in-flight USER financial interaction.
-      let state = null;
-      let neededDirectProbe = false;
-      for (let attempt = 0; attempt < 100; attempt++) {
-        // Diagnostic probe only, never count a manually forced activation as
-        // automated success; this distinguishes missing client messages from
-        // an SW that ignored them.
-        if (attempt === 48) {
-          neededDirectProbe = true;
-          await page.evaluate(async () => {
-            const registration = await navigator.serviceWorker.getRegistration();
-            registration?.waiting?.postMessage({type:"SKIP_WAITING"});
-          });
-        }
-        state = await page.evaluate(async names => {
-          const reg = await navigator.serviceWorker.getRegistration();
-          const keys = await caches.keys();
-          return {
-            waiting: reg?.waiting?.state || null,
-            active: reg?.active?.state || null,
-            installing: reg?.installing?.state || null,
-            sameController: navigator.serviceWorker.controller===window.__EFHC_OLD_SW_CONTROLLER_TEST__,
-            oldCache: keys.includes(names.old),
-            newCache: keys.includes(names.next),
-            reactRoot: Boolean(document.querySelector("#__next")),
-            waitingScript: reg?.waiting?.scriptURL || null,
-            cacheNames: keys.filter(key => key.startsWith("efhc-pwa-")),
-            cacheEvents: window.__EFHC_PWA_EVENTS__?.slice(-8) || [],
-          };
-        },{old:oldStaticCache,next:newStaticCache});
-        if (state.active==="activated" && state.waiting===null &&
-            !state.sameController && state.newCache) break;
-        await page.waitForTimeout(250);
-      }
-      console.log("PWA_ATOMIC_UPGRADE_STATE",JSON.stringify({...state,neededDirectProbe}));
-      assert.equal(neededDirectProbe,false,
-        "new Service Worker only activated after test manually triggered SKIP_WAITING");
-      assert.equal(state.active,"activated","new full PWA did not automatically activate");
-      assert.equal(state.waiting,null);
-      assert.equal(state.sameController,false);
-      assert.equal(state.reactRoot,true,"running USER app was unexpectedly reloaded");
-      // The previous build stays available for old live clients, but its
-      // retirement may happen sooner if their loaded assets match this build.
-      assert.equal(state.newCache,true,"new offline build was not staged completely");
-      // No manual reload: an already-open old React page must transition
-      // automatically at an idle boundary to the new HTML, JS and CSS.
-      await page.waitForFunction(()=>window.__EFHC_NEW_PWA_ASSET__===true, null, {timeout:35000});
-      const pageVersion=await page.evaluate(()=>({
-        marker:document.querySelector('meta[name="efhc-build-id"]')?.getAttribute("content"),
-        css:getComputedStyle(document.documentElement).getPropertyValue("--efhc-upgrade-css-proof").trim(),
-      }));
-      assert.equal(pageVersion.marker,newBuildId,"new HTML build marker never replaced old one");
-      assert.equal(pageVersion.css,"updated","new CSS not rendered after automatic upgrade");
-      console.log("PWA_REAL_HTML_JS_CSS_UPGRADE",JSON.stringify(pageVersion));
-      const readiness = await page.evaluate(async () => {
-        const manifest = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-        const scriptPaths = [...document.querySelectorAll("script[src]")].map(x=>new URL(x.src).pathname)
-          .filter(x=>x.includes("/_next/static/"));
-        return {
-          manifestBuild:manifest.build_id,
-          documentBuild:document.querySelector('meta[name="efhc-build-id"]')?.content,
-          controller:Boolean(navigator.serviceWorker.controller),
-          scripts:scriptPaths.length,
-          missingAssets:scriptPaths.filter(x=>!manifest.precache.includes(x)).slice(0,5),
-          events:window.__EFHC_PWA_EVENTS__?.slice(-12)||[],
-        };
+      await writeFile(path.join(root,newScript),"window.__EFHC_NEW_PWA_ASSET__=true;","utf8");
+      await writeFile(path.join(root,newCss),":root{--efhc-upgrade-css-proof:updated}","utf8");
+      const rootHtmlPath=path.join(root,"index.html");
+      const index=await readFile(rootHtmlPath,"utf8");
+      assert.ok(index.includes("</head>"),"Next landing HTML missing head");
+      await writeFile(rootHtmlPath,index.replace("</head>",
+        `<link rel="stylesheet" href="${cssUrl}"><script defer src="${scriptUrl}"></script></head>`),"utf8");
+      // Regenerate the actual release, including new build markers and
+      // Serwist's revisioned critical manifest; never text-patch worker JS.
+      const {spawnSync}=await import("node:child_process");
+      const regenerate=spawnSync("python3",[
+        "site/ci/pages-tools/fix_pages_assets.py",
+        "--directory",root,"--base-path","/efhc",
+      ],{encoding:"utf8",env:process.env});
+      assert.equal(regenerate.status,0,
+        "Second Serwist export failed: "+regenerate.stderr+"\n"+regenerate.stdout);
+      const nextConfig=JSON.parse(await readFile(configFile,"utf8"));
+      const newBuildId=nextConfig.build_id;
+      assert.notEqual(newBuildId,oldBuildId,"second actual export did not change build");
+      assert.ok(nextConfig.precache_critical.includes(scriptUrl));
+      assert.ok(nextConfig.precache_critical.includes(cssUrl));
+      await page.evaluate(async () => {
+        const registration=await navigator.serviceWorker.getRegistration();
+        if(!registration)throw Error("No PWA registration");
+        await registration.update();
       });
-      console.log("PWA_READY_DIAGNOSTIC",JSON.stringify(readiness));
-      const after=await page.evaluate(async names=>({
-        keys:await caches.keys(),
+      await page.waitForFunction(id=>
+        document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
+        window.__EFHC_NEW_PWA_ASSET__===true,
+      newBuildId,{timeout:65000});
+      const view=await page.evaluate(async () => ({
+        build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+        asset:Boolean(window.__EFHC_NEW_PWA_ASSET__),
+        css:getComputedStyle(document.documentElement)
+          .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+        react:Boolean(document.querySelector("#__next")),
         active:(await navigator.serviceWorker.getRegistration())?.active?.state,
         controlled:Boolean(navigator.serviceWorker.controller),
-        nextCache:(await (await caches.open(names.next)).keys()).length,
-        root:Boolean(document.querySelector("#__next")),
-      }),{next:newStaticCache});
-      assert.equal(after.active,"activated");
-      assert.ok(after.controlled && after.root);
-      assert.ok(after.nextCache>0);
-      // A verified new page must release the previous build without requiring
-      // the user to clear browser data or uninstall the application.
-      await page.waitForFunction(async old => !(await caches.keys()).includes(old),oldStaticCache,{timeout:15000});
-      const retired = await page.evaluate(async old => ({
-        keys:await caches.keys(),previousPresent:(await caches.keys()).includes(old),
-      }),oldStaticCache);
-      assert.equal(retired.previousPresent,false,"old build cache still persisted after a verified successor loaded");
-      console.log("PWA_OLD_BUILD_RETIRED",JSON.stringify(retired));
-      // B3: after retiring the last old generation, opening a completely new
-      // offline tab must render ONLY the fully installed successor shell.
-      const reopened = await context.newPage();
+      }));
+      assert.equal(view.build,newBuildId,"new HTML build marker did not activate");
+      assert.equal(view.asset,true,"successor JS did not run");
+      assert.equal(view.css,"updated","successor CSS did not apply");
+      assert.equal(view.react,true,"the active React UI vanished");
+      assert.equal(view.active,"activated");
+      assert.equal(view.controlled,true);
+      console.log("PWA_SERWIST_REAL_BUILD_TRANSITION",JSON.stringify(view));
+      const successor=await context.newPage();
       try {
         await context.setOffline(true);
-        await reopened.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
-        const offlineBuild = await reopened.evaluate(() => ({
-          buildId:document.querySelector('meta[name="efhc-build-id"]')?.content,
-          script:Boolean(window.__EFHC_NEW_PWA_ASSET__),
+        await successor.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+        const offline=await successor.evaluate(() => ({
+          build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          js:Boolean(window.__EFHC_NEW_PWA_ASSET__),
           css:getComputedStyle(document.documentElement)
             .getPropertyValue("--efhc-upgrade-css-proof").trim(),
-          root:Boolean(document.querySelector("#__next")),
+          react:Boolean(document.querySelector("#__next")),
         }));
-        assert.deepEqual(offlineBuild,{
-          buildId:newBuildId,script:true,css:"updated",root:true,
-        },"Offline reopen mixed old and new build generations");
-        console.log("PWA_OFFLINE_LATEST_AFTER_RETIREMENT",JSON.stringify(offlineBuild));
+        assert.deepEqual(offline,{build:newBuildId,js:true,css:"updated",react:true},
+          "Offline successor mixed older and newer HTML/JS/CSS");
+        console.log("PWA_SERWIST_OFFLINE_SUCCESSOR",JSON.stringify(offline));
+      }finally{
+        await context.setOffline(false);
+        await successor.close();
+      }
+
+      // Generate a THIRD real release. B's dynamic JS/CSS are no longer on
+      // the HTTP server; a stale B tab must still be able to fetch them from
+      // Serwist's protected legacy cache until safe retirement.
+      await writeFile(path.join(root,thirdScript),
+        "window.__EFHC_THIRD_PWA_ASSET__=true;","utf8");
+      await writeFile(path.join(root,thirdCss),
+        ":root{--efhc-upgrade-css-proof:third}","utf8");
+      const secondIndex=await readFile(rootHtmlPath,"utf8");
+      assert.ok(secondIndex.includes(scriptUrl)&&secondIndex.includes(cssUrl),
+        "B index missing the staged version assets");
+      await writeFile(rootHtmlPath,
+        secondIndex.replace(scriptUrl,thirdScriptUrl).replace(cssUrl,thirdCssUrl),"utf8");
+      await Promise.all([
+        unlink(path.join(root,newScript)),
+        unlink(path.join(root,newCss)),
+      ]);
+      const thirdRegenerate=spawnSync("python3",[
+        "site/ci/pages-tools/fix_pages_assets.py",
+        "--directory",root,"--base-path","/efhc",
+      ],{encoding:"utf8",env:process.env});
+      assert.equal(thirdRegenerate.status,0,
+        "Third Serwist export failed: "+thirdRegenerate.stderr+"\n"+thirdRegenerate.stdout);
+      const thirdConfig=JSON.parse(await readFile(configFile,"utf8"));
+      const thirdBuildId=thirdConfig.build_id;
+      assert.notEqual(thirdBuildId,newBuildId,"C must differ from B");
+      assert.ok(thirdConfig.precache_critical.includes(thirdScriptUrl));
+      assert.ok(thirdConfig.precache_critical.includes(thirdCssUrl));
+      assert.ok(!thirdConfig.precache.includes(scriptUrl),
+        "B's removed JS must not be in the new release manifest");
+      await page.evaluate(async () => {
+        const reg=await navigator.serviceWorker.getRegistration();
+        if(!reg)throw Error("No B registration before C");
+        await reg.update();
+      });
+      await page.waitForFunction(id=>
+        document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
+        window.__EFHC_THIRD_PWA_ASSET__===true,
+      thirdBuildId,{timeout:65000});
+      const cLive=await page.evaluate(()=>({
+        build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+        third:Boolean(window.__EFHC_THIRD_PWA_ASSET__),
+        css:getComputedStyle(document.documentElement)
+          .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+        react:Boolean(document.querySelector("#__next")),
+      }));
+      assert.deepEqual(cLive,{build:thirdBuildId,third:true,css:"third",react:true},
+        "A→B→C did not activate a coherent third HTML/JS/CSS release");
+      const thirdTab=await context.newPage();
+      try {
+        await context.setOffline(true);
+        await thirdTab.goto(base,{waitUntil:"domcontentloaded",timeout:25000});
+        const cOffline=await thirdTab.evaluate(() => ({
+          build:document.querySelector('meta[name="efhc-build-id"]')?.content,
+          third:Boolean(window.__EFHC_THIRD_PWA_ASSET__),
+          css:getComputedStyle(document.documentElement)
+            .getPropertyValue("--efhc-upgrade-css-proof").trim(),
+          react:Boolean(document.querySelector("#__next")),
+        }));
+        assert.deepEqual(cOffline,{build:thirdBuildId,third:true,css:"third",react:true},
+          "Offline A→B→C reopened mixed builds");
+        // Native Serwist handles its own precache generations; the compatibility
+        // contract for pre-Serwist open tabs is tested separately below.
+        console.log("PWA_SERWIST_A_B_C_OFFLINE",JSON.stringify(cOffline));
       } finally {
         await context.setOffline(false);
-        await reopened.close();
+        await thirdTab.close();
       }
+
+      // Native Serwist owns new generations. A one-time scoped migration
+      // retires only old EFHC/Serwist public caches after ALL old clients
+      // leave or verify this generation; never delete any other app cache.
+      const oldLegacy="efhc-pwa-test-prior-static";
+      const oldRuntime="efhc-public-pages-test-prior";
+      const oldStatic="efhc-static-assets-test-prior";
+      const oldMedia="efhc-public-media";
+      const oldLocale="efhc-public-translations";
+      const unrelated="efhc-unrelated-app-test";
+      const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
+      const stale=await context.newPage();
+      try {
+        await boundedSerwistPhase("legacy.stale.goto",()=>
+          stale.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
+      await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
+        const store=async (name,url,value)=>{
+          const cache=await caches.open(name);
+          await cache.put(url,new Response(value,{status:200}));
+        };
+        await store(oldLegacy,oldUrl,"legacy-old");
+        await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
+        await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
+        await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
+        await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
+        await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
+        await boundedSerwistPhase("legacy.status.request",()=>page.evaluate(()=>
+          navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"})));
+        await page.waitForTimeout(350);
+        const guarded=await boundedSerwistPhase("legacy.guarded.inventory",()=>page.evaluate(async names=>({
+          keys:await caches.keys(),
+          staleCached:Boolean(await (await caches.open(names.oldLegacy))
+            .match(names.oldUrl)),
+        }),{oldLegacy,oldUrl}),15000);
+        assert.ok(guarded.keys.includes(oldLegacy) &&
+          guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
+          guarded.keys.includes(oldMedia) && guarded.keys.includes(oldLocale) &&
+          guarded.staleCached,"An unverified old tab must retain all legacy assets");
+        // The previous worker's immutable assets remain obtainable while
+        // the new Serwist worker controls network requests.
+        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.http404",()=>
+          stale.evaluate(async url=>Promise.race([
+            fetch(url).then(response=>response.text()).catch(()=>null),
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy 404 fetch timeout")),8500)),
+          ]),oldUrl),12000);
+        assert.equal(onlineLegacy,"legacy-old",
+          "A successor HTTP 404 must fall back to verified legacy immutable JS");
+        await context.setOffline(true);
+        const legacyResponse=await boundedSerwistPhase("legacy.fetch.offline",()=>
+          stale.evaluate(async url=>Promise.race([
+            fetch(url).then(response=>response.text()).catch(()=>null),
+            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy offline fetch timeout")),8500)),
+          ]),oldUrl),12000);
+        assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
+      }finally {
+        await context.setOffline(false);
+        // Close the browser target itself, as a user closing the tab does.
+        // Playwright's page.close() may wait indefinitely for a page whose
+        // service-worker fetch is still settling after an offline transition.
+        // The test must prove that the window was really detached before
+        // allowing the one-shot retirement of legacy public assets.
+        const tabProtocol=await context.newCDPSession(stale);
+        const {targetInfo}=await boundedSerwistPhase("legacy.target.identity",()=>
+          tabProtocol.send("Target.getTargetInfo"),11000);
+        const browserProtocol=await browser.newBrowserCDPSession();
+        try {
+          const closeResult=await boundedSerwistPhase("legacy.stale.close",()=>
+            browserProtocol.send("Target.closeTarget",{
+              targetId:targetInfo.targetId,
+            }),11000);
+          assert.equal(closeResult.success,true,
+            "Chromium must acknowledge removal of the old window");
+          // A Playwright close event can lag behind an already removed CDP
+          // target under an offline/online SW transition. Verify the real
+          // Chromium target is gone instead of relying on an event callback.
+          await boundedSerwistPhase("legacy.stale.detached",async()=>{
+            for(let attempt=0;attempt<60;attempt++) {
+              const {targetInfos}=await browserProtocol.send("Target.getTargets");
+              if(!targetInfos.some(target=>target.targetId===targetInfo.targetId))return;
+              await new Promise(resolve=>setTimeout(resolve,200));
+            }
+            throw Error("Old Chromium window target remains after close");
+          },16000);
+        } finally {
+          await browserProtocol.detach().catch(()=>undefined);
+        }
+      }
+      await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
+        const assets=[...document.querySelectorAll("script[src]")]
+          .map(el=>new URL(el.src).pathname)
+          .filter(path=>path.includes("/_next/static/"));
+        navigator.serviceWorker.controller?.postMessage({
+          type:"CLIENT_BUILD_READY",buildId,assets,
+        });
+        navigator.serviceWorker.controller?.postMessage({
+          type:"GET_CACHE_STATUS",
+        });
+      },thirdBuildId),15000);
+      await boundedSerwistPhase("legacy.retirement.wait",()=>page.waitForFunction(async names=>{
+        const keys=await caches.keys();
+        return !keys.includes(names.oldLegacy) &&
+          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic) &&
+          !keys.includes(names.oldMedia) && !keys.includes(names.oldLocale);
+      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000}),19000);
+      const kept=await boundedSerwistPhase("legacy.other.scope.verify",()=>page.evaluate(async name=>({
+        names:await caches.keys(),
+        unrelated:Boolean(await (await caches.open(name))
+          .match(new URL("/other-app/data.txt",location.origin).href)),
+      }),unrelated),15000);
+      assert.ok(kept.names.includes(unrelated)&&kept.unrelated,
+        "Migration must not delete other scope caches");
+      console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
+        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
+      }));
+      await page.evaluate(name=>caches.delete(name),unrelated);
+    }finally{
+      await writeFile(workerFile,originalWorker,"utf8");
+      await writeFile(configFile,originalConfig,"utf8");
+      for(const [file,html] of originals)await writeFile(file,html,"utf8");
+      await Promise.all([
+        unlink(path.join(root,newScript)).catch(()=>undefined),
+        unlink(path.join(root,newCss)).catch(()=>undefined),
+        unlink(path.join(root,thirdScript)).catch(()=>undefined),
+        unlink(path.join(root,thirdCss)).catch(()=>undefined),
+      ]);
+    }
+  });
+  await check("Serwist failed critical update retains the previously installed offline worker",async()=>{
+    const missingUrl=exportConfig.precache_critical.find(url=>
+      url.endsWith("/offline-readonly.html"));
+    assert.ok(missingUrl,"Critical offline fallback must be in the Serwist install manifest");
+    const missingPath=path.join(root,missingUrl.slice("/efhc/".length));
+    const workerPath=path.join(root,"sw.js");
+    const originalCritical=await readFile(missingPath);
+    const originalWorker=await readFile(workerPath,"utf8");
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    try {
+      const tab=await isolated.newPage();
+      await boundedSerwistPhase("interrupt.install.baseline",()=>
+        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
+      const installed=await boundedSerwistPhase("interrupt.worker.install",()=>tab.evaluate(async appBase=>{
+        const reg=await navigator.serviceWorker.register(appBase+"sw.js",{
+          scope:appBase,updateViaCache:"none",
+        });
+        const active=await Promise.race([
+          navigator.serviceWorker.ready.then(r=>r.active),
+          new Promise((_,reject)=>setTimeout(()=>
+            reject(Error("Original Serwist install timeout")),30000)),
+        ]);
+        return Boolean(active&&reg.active);
+      },base),35000);
+      assert.equal(installed,true,"Predecessor must be active before interrupted update");
+      // Revision-aware precaching may reuse an unchanged critical entry even
+      // if its original file disappears. Change the actual compiled critical
+      // manifest URL so the successor MUST fetch a missing dependency; only
+      // modifying the worker's trailing comment does not prove install failure.
+      const unavailableUrl=missingUrl.replace(
+        /offline-readonly\.html$/,"offline-unavailable-critical.html");
+      assert.notEqual(unavailableUrl,missingUrl);
+      assert.ok(originalWorker.includes(missingUrl),
+        "The real Serwist worker must contain the critical manifest URL");
+      const incompleteWorker=originalWorker.replaceAll(missingUrl,unavailableUrl)+
+        "\n/* synthetic incomplete successor, not a release */\n";
+      // Python's local static server exposes Last-Modified with one-second
+      // precision. An immediate rewrite can appear unchanged to the browser
+      // update fetch (HTTP 304), never triggering the negative install.
+      // Give the deliberately broken, TEST-ONLY successor a distinct mtime.
+      const originalHttp=await tab.request.get(base+"sw.js",{
+        headers:{"Cache-Control":"no-cache"},
+      });
+      const previousModified=originalHttp.headers()["last-modified"];
+      await writeFile(workerPath,incompleteWorker,"utf8");
+      await utimes(workerPath,new Date(),new Date(Date.now()+5000));
+      await unlink(missingPath);
+      const served=await tab.request.get(base+"sw.js",{
+        headers:{"Cache-Control":"no-cache"},
+      });
+      assert.equal(served.ok(),true,"Updated worker must be served from local export");
+      assert.ok((await served.text()).includes(unavailableUrl),
+        "The browser must be offered the intentionally broken critical manifest");
+      const currentModified=served.headers()["last-modified"];
+      assert.ok(currentModified && previousModified &&
+        currentModified!==previousModified,
+        "A new worker must have a distinct HTTP Last-Modified for the real update test");
+      console.log("PWA_SERWIST_INTERRUPT_SCRIPT_HTTP",JSON.stringify({
+        previousModified,currentModified,
+      }));
+      const observed={workers:[],criticalRequests:[],criticalResponses:[]};
+      isolated.on("serviceworker",worker=>observed.workers.push(worker.url()));
+      isolated.on("request",request=>{
+        if(request.url().includes("offline-unavailable-critical.html")) {
+          observed.criticalRequests.push(request.url());
+        }
+      });
+      isolated.on("response",response=>{
+        if(response.url().includes("offline-unavailable-critical.html")) {
+          observed.criticalResponses.push({url:response.url(),status:response.status()});
+        }
+      });
+      const verdict=await boundedSerwistPhase("interrupt.worker.update",()=>tab.evaluate(async appBase=>{
+        const reg=await navigator.serviceWorker.getRegistration(appBase);
+        if(!reg?.active) throw Error("Predecessor not registered");
+        const predecessor=reg.active;
+        const events=[];
+        return await new Promise(resolve=>{
+          let finished=false;
+          const complete=result=>{
+            if(finished)return;
+            finished=true;
+            clearTimeout(timeout);
+            reg.removeEventListener("updatefound",onNew);
+            resolve({result,events,oldStillActive:reg.active===predecessor,
+              activeState:reg.active?.state||null,
+              installingState:reg.installing?.state||null,
+              waitingState:reg.waiting?.state||null,
+              controllerState:navigator.serviceWorker.controller?.state||null});
+          };
+          const onNew=()=>{
+            const next=reg.installing;
+            events.push("observed-installing:"+(next?.state||"none"));
+            if(!next)return;
+            const onState=()=>{
+              events.push("installing-state:"+next.state);
+              if(next.state==="redundant")complete("rejected");
+              else if(next.state==="activated")complete("unexpected_activation");
+            };
+            next.addEventListener("statechange",onState);
+            onState();
+          };
+          const timeout=setTimeout(()=>complete("timeout"),20000);
+          reg.addEventListener("updatefound",onNew);
+          events.push("update-called");
+          void reg.update().then(
+            ()=>{events.push("update-resolved");onNew();},
+            error=>{events.push("update-rejected:"+String(error));complete("rejected");}
+          );
+          onNew();
+        });
+      },base),28000);
+      console.log("PWA_SERWIST_INTERRUPT_DIAGNOSTIC",JSON.stringify({verdict,observed}));
+      assert.equal(verdict.result,"rejected",
+        "Serwist must reject a new worker whose critical file is missing");
+      assert.equal(verdict.oldStillActive,true,
+        "Failed successor must not replace the previously active worker");
+      assert.equal(verdict.activeState,"activated");
+      assert.equal(verdict.waitingState,null);
+      await isolated.setOffline(true);
+      const offline=await verifyOfflineSplashReload(tab,"interrupt.predecessor.offline");
+      console.log("PWA_SERWIST_INTERRUPTED_INSTALL_SAFE",
+        JSON.stringify({verdict,offline}));
+    }finally{
+      await Promise.all([
+        writeFile(workerPath,originalWorker,"utf8"),
+        writeFile(missingPath,originalCritical),
+      ]);
+      await boundedSerwistPhase("interrupt.context.close",()=>isolated.close(),11000);
+    }
+  });
+  await check("Serwist keeps the installed offline shell when Chromium media cache quota is exhausted",async()=>{
+    // Dedicated browser profile and real CDP quota: no synthetic quota-success
+    // flag, no changes to the main page or user-scoped browser storage.
+    const quotaFile=path.join(root,"quota-overflow.webp");
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    let protocol;
+    try {
+      await writeFile(quotaFile,Buffer.alloc(5*1024*1024,0x52));
+      const tab=await isolated.newPage();
+      await boundedSerwistPhase("quota.baseline.goto",()=>
+        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000}),22000);
+      await boundedSerwistPhase("quota.worker.ready",()=>tab.evaluate(async appBase=>{
+        await navigator.serviceWorker.register(appBase+"sw.js",{
+          scope:appBase,updateViaCache:"none",
+        });
+        return await Promise.race([
+          navigator.serviceWorker.ready.then(reg=>Boolean(reg.active)),
+          new Promise((_,reject)=>setTimeout(()=>
+            reject(Error("Quota baseline Serwist install timeout")),30000)),
+        ]);
+      },base),35000);
+      await tab.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),
+        null,{timeout:12000});
+      protocol=await isolated.newCDPSession(tab);
+      const before=await protocol.send("Storage.getUsageAndQuota",{origin});
+      assert.ok(Number.isFinite(before.usage)&&before.usage>=0,
+        "Actual Chromium storage usage is required for the quota test");
+      const limit=Math.ceil(before.usage+256*1024);
+      await protocol.send("Storage.overrideQuotaForOrigin",{origin,quotaSize:limit});
+      const constrained=await protocol.send("Storage.getUsageAndQuota",{origin});
+      assert.equal(constrained.overrideActive,true,
+        "Chromium must confirm that a real quota override is active");
+      assert.ok(constrained.quota < 5*1024*1024+before.usage,
+        "The new media payload must exceed the constrained storage budget");
+      const media=await boundedSerwistPhase("quota.media.fetch",()=>tab.evaluate(
+        async url=>{
+          try {
+            const response=await fetch(url,{cache:"no-store"});
+            const body=await response.arrayBuffer();
+            return {ok:response.ok,status:response.status,bytes:body.byteLength};
+          } catch(error) {
+            return {ok:false,status:null,error:String(error)};
+          }
+        },base+"quota-overflow.webp"),20000);
+      assert.equal(media.bytes,5*1024*1024,
+        "The entire quota-overflow media response must be consumed before disabling network");
+      const state=await tab.evaluate(async url=>{
+        const names=await caches.keys();
+        const cached=[];
+        for(const name of names) {
+          if(await (await caches.open(name)).match(url))cached.push(name);
+        }
+        return {names,mediaCachedIn:cached};
+      },base+"quota-overflow.webp");
+      const precache=await tab.evaluate(async()=>{
+        const names=await caches.keys();
+        const details=[];
+        for(const name of names) {
+          const cached=await caches.open(name);
+          const urls=(await cached.keys()).map(request=>new URL(request.url).pathname);
+          details.push({name,count:urls.length,
+            offlineHtml:urls.includes("/efhc/offline.html"),
+            offlineReadonly:urls.includes("/efhc/offline-readonly.html")});
+        }
+        const registration=await navigator.serviceWorker.getRegistration();
+        return {controller:Boolean(navigator.serviceWorker.controller),
+          activeState:registration?.active?.state||null,details};
+      });
+      console.log("PWA_SERWIST_QUOTA_BEFORE_OFFLINE",JSON.stringify({
+        before:{usage:before.usage,quota:before.quota},
+        constrained:{usage:constrained.usage,quota:constrained.quota,
+          overrideActive:constrained.overrideActive},
+        media,state,precache,
+      }));
+      await isolated.setOffline(true);
+      const offline=await verifyOfflineSplashReload(tab,"quota.predecessor.offline");
+      console.log("PWA_SERWIST_QUOTA_DIAGNOSTIC",JSON.stringify({
+        before:{usage:before.usage,quota:before.quota},
+        constrained:{usage:constrained.usage,quota:constrained.quota,
+          overrideActive:constrained.overrideActive},
+        media,state,precache,offline,
+      }));
+      assert.equal(media.ok,true,
+        "Runtime public media must remain accessible online when caching exceeds quota");
+      assert.equal(state.mediaCachedIn.length,0,
+        "Oversized media must not be retained beyond the measured quota");
     } finally {
-      await writeFile(workerFile,original,"utf8");
-      await writeFile(configFile,originalConfigFile,"utf8");
-      for (const [file,html] of originalHtml) await writeFile(file,html,"utf8");
-      await Promise.all([unlink(path.join(root,scriptPath)).catch(()=>undefined),
-        unlink(path.join(root,cssPath)).catch(()=>undefined)]);
+      if(protocol) {
+        await protocol.send("Storage.overrideQuotaForOrigin",{origin})
+          .catch(()=>undefined);
+        await protocol.detach().catch(()=>undefined);
+      }
+      await isolated.setOffline(false).catch(()=>undefined);
+      await isolated.close().catch(()=>undefined);
+      await unlink(quotaFile).catch(()=>undefined);
     }
   });
   assert.deepEqual(errors,[],"unhandled page errors");

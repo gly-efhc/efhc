@@ -14,25 +14,6 @@ import {
   type RuntimeProgressDetail,
 } from "../lib/runtimeProgress";
 
-type CacheLimit = {
-  max_age_seconds: number;
-  max_bytes: number;
-  max_entries: number;
-};
-
-type AdaptiveCachePolicy = {
-  content: CacheLimit;
-  static: CacheLimit;
-  tier: "conservative" | "standard" | "expanded";
-};
-
-type NavTransition = {
-  count: number;
-  from: string;
-  to: string;
-};
-
-const NAV_HISTORY_KEY = "efhc_safe_nav_history_v1";
 const SAFE_PREFETCH_ROUTES = new Set([
   "/",
   "/app",
@@ -54,64 +35,6 @@ const FINANCIAL_ROUTES = new Set([
   "/panels/portfolio",
   "/withdraw",
 ]);
-
-async function resolveAdaptiveCachePolicy(): Promise<
-  AdaptiveCachePolicy
-> {
-  const runtimeNavigator = navigator as Navigator & {
-    connection?: { saveData?: boolean; effectiveType?: string };
-    deviceMemory?: number;
-  };
-  const memory = Number(runtimeNavigator.deviceMemory || 0);
-  const estimate = await navigator.storage?.estimate?.().catch(() => null);
-  const quota = Number(estimate?.quota || 0);
-  const saveData = Boolean(runtimeNavigator.connection?.saveData);
-  const lowQuota = quota > 0 && quota < 200 * 1024 * 1024;
-  if (saveData || (memory > 0 && memory <= 2) || lowQuota) {
-    return {
-      tier: "conservative",
-      static: {
-        max_entries: 180,
-        max_age_seconds: 2_592_000,
-        max_bytes: 36 * 1024 * 1024,
-      },
-      content: {
-        max_entries: 90,
-        max_age_seconds: 604_800,
-        max_bytes: 20 * 1024 * 1024,
-      },
-    };
-  }
-  const expanded = memory >= 4 && quota >= 500 * 1024 * 1024;
-  if (expanded) {
-    return {
-      tier: "expanded",
-      static: {
-        max_entries: 520,
-        max_age_seconds: 3_888_000,
-        max_bytes: 180 * 1024 * 1024,
-      },
-      content: {
-        max_entries: 300,
-        max_age_seconds: 1_209_600,
-        max_bytes: 80 * 1024 * 1024,
-      },
-    };
-  }
-  return {
-    tier: "standard",
-    static: {
-      max_entries: 320,
-      max_age_seconds: 2_592_000,
-      max_bytes: 92 * 1024 * 1024,
-    },
-    content: {
-      max_entries: 180,
-      max_age_seconds: 604_800,
-      max_bytes: 48 * 1024 * 1024,
-    },
-  };
-}
 
 function connectionAllowsPrefetch(): boolean {
   const connection = (
@@ -163,44 +86,6 @@ function idle(callback: () => void): () => void {
   return () => globalThis.clearTimeout(id);
 }
 
-function readTransitions(): NavTransition[] {
-  try {
-    const raw = window.localStorage.getItem(NAV_HISTORY_KEY) || "[]";
-    const value = JSON.parse(raw) as unknown;
-    return Array.isArray(value) ? value.slice(0, 80) : [];
-  } catch {
-    return [];
-  }
-}
-
-function recordTransition(from: string, to: string): void {
-  if (from === to || !SAFE_PREFETCH_ROUTES.has(to)) return;
-  try {
-    const entries = readTransitions();
-    const found = entries.find(
-      (entry) => entry.from === from && entry.to === to,
-    );
-    if (found) found.count += 1;
-    else entries.push({ count: 1, from, to });
-    entries.sort((left, right) => right.count - left.count);
-    window.localStorage.setItem(
-      NAV_HISTORY_KEY,
-      JSON.stringify(entries.slice(0, 80)),
-    );
-  } catch {
-    // Navigation learning is best effort only.
-  }
-}
-
-function predictedRoutes(current: string): string[] {
-  return readTransitions()
-    .filter((entry) => entry.from === current)
-    .filter((entry) => SAFE_PREFETCH_ROUTES.has(entry.to))
-    .sort((left, right) => right.count - left.count)
-    .map((entry) => entry.to)
-    .slice(0, 3);
-}
-
 function formatMegabytes(bytes: number): string {
   if (!bytes) return "0 MB";
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -215,7 +100,8 @@ export function PwaRuntimeStatus(props: {
   const router = useRouter();
   const { t } = props;
   const enabled = props.enabled !== false;
-  const previousRoute = useRef(router.pathname);
+  // Current-session-only navigation context. Never persist a visit history.
+  const recentSessionRoutes = useRef<string[]>([]);
   const queryClient = useQueryClient();
   const [cacheProgress, setCacheProgress] = useState(0);
   const [cacheVisible, setCacheVisible] = useState(false);
@@ -246,8 +132,8 @@ export function PwaRuntimeStatus(props: {
 
   const nextRoutes = useMemo(() => {
     const values = [
-      ...predictedRoutes(router.pathname),
       ...staticRoutes,
+      ...recentSessionRoutes.current.slice().reverse(),
     ];
     return [...new Set(values)]
       .filter((route) => SAFE_PREFETCH_ROUTES.has(route))
@@ -262,8 +148,10 @@ export function PwaRuntimeStatus(props: {
   routesForCacheRef.current = nextRoutes;
 
   useEffect(() => {
-    recordTransition(previousRoute.current, router.pathname);
-    previousRoute.current = router.pathname;
+    if (!SAFE_PREFETCH_ROUTES.has(router.pathname)) return;
+    const recent = recentSessionRoutes.current.filter(route => route !== router.pathname);
+    recent.push(router.pathname);
+    recentSessionRoutes.current = recent.slice(-4);
   }, [router.pathname]);
 
   const requestPersistence = useCallback(async () => {
@@ -355,7 +243,6 @@ export function PwaRuntimeStatus(props: {
     let verifyInFlight = false;
     let autoReloadBuildId = "";
     let staleDetectedAt = 0;
-    let lastCacheSweepAt = 0;
     const markActivity = () => { lastInteractionAt = Date.now(); };
     const hasActiveEditor = () => Boolean(document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
@@ -383,6 +270,11 @@ export function PwaRuntimeStatus(props: {
         window.sessionStorage.setItem(key, String(attempts + 1));
         window.sessionStorage.setItem(key + ":at", String(Date.now()));
       } catch { /* Storage is optional; a live reload is still bounded by unload. */ }
+      try {
+        window.sessionStorage.setItem("efhc:pwa-scroll-restore",
+          JSON.stringify({path: window.location.pathname + window.location.search,
+            y: window.scrollY, at: Date.now()}));
+      } catch { /* The page still upgrades without scroll persistence. */ }
       window.location.reload();
     };
     const verifyLoadedBuild = async () => {
@@ -431,12 +323,8 @@ export function PwaRuntimeStatus(props: {
           navigator.serviceWorker.controller?.postMessage({
             type: "CLIENT_BUILD_READY", buildId: manifest.build_id, assets,
           });
-          // On every verified application load, request an immediate sweep of
-          // predecessor PWA generations. Never erase owner-scoped local data.
-          if (Date.now() - lastCacheSweepAt >= 30_000) {
-            lastCacheSweepAt = Date.now();
-            navigator.serviceWorker.controller?.postMessage({type: "GET_CACHE_STATUS"});
-          }
+          // The one-shot legacy migration is handled inside Serwist only after
+          // every scoped client confirms its build; no app-controlled GC timer.
           staleDetectedAt = 0;
           const verifiedKey = "efhc:pwa-reload:" + manifest.build_id;
           try {
@@ -459,9 +347,18 @@ export function PwaRuntimeStatus(props: {
       const staged = registration.waiting;
       if (!staged) return;
       setWaiting(staged);
-      // The worker has completed its fail-closed full precache. Ask the
-      // verified new worker to activate without reloading this live page.
-      staged.postMessage({ type: "SKIP_WAITING" });
+      // Serwist installs only the critical shell. Never
+      // force its activation during a mutation, user editing, wallet handoff,
+      // background tab or recent activity. The pre-React cold-start gate can
+      // independently activate a safe update under the existing splash.
+      const safeIdle =
+        navigator.onLine && document.visibilityState === "visible" &&
+        queryClient.isMutating() === 0 && !hasActiveEditor() &&
+        Date.now() - lastInteractionAt >= 6000 &&
+        !(document.activeElement instanceof HTMLInputElement &&
+          document.activeElement.type === "password");
+      if (!safeIdle) return;
+      staged.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
     };
     const checkForUpdate = () => {
       if (disposed || !trackedRegistration || !navigator.onLine ||
@@ -512,9 +409,6 @@ export function PwaRuntimeStatus(props: {
         setCacheBytes(Number(data.completedBytes || 0));
         window.setTimeout(() => setCacheVisible(false), 900);
       }
-      if (data.type === "CACHE_RETIREMENT_PENDING") {
-        void verifyLoadedBuild();
-      }
       if (data.type === "CACHE_STATUS") {
         setCacheEntries(
           Number(data.staticEntries || 0) +
@@ -544,6 +438,9 @@ export function PwaRuntimeStatus(props: {
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     for (const name of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(name, markActivity, {passive: true});
+    // A returned external wallet window is never treated as idle immediately.
+    window.addEventListener("focus", markActivity);
+    window.addEventListener("blur", markActivity);
     cleanupReloadTimer = window.setInterval(attemptIdleReload, 1000);
     const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
     // An UPDATE_AVAILABLE message may arrive during install, before the
@@ -569,12 +466,6 @@ export function PwaRuntimeStatus(props: {
         cleanupIdle = idle(() => {
           const target =
             navigator.serviceWorker.controller || registration.active;
-          void resolveAdaptiveCachePolicy().then((policy) => {
-            target?.postMessage({
-              policy,
-              type: "SET_CACHE_POLICY",
-            });
-          });
           target?.postMessage({ type: "GET_CACHE_STATUS" });
           if (!connectionAllowsPrefetch()) return;
           void Promise.all(
@@ -604,6 +495,8 @@ export function PwaRuntimeStatus(props: {
       if (cleanupReloadTimer !== null) window.clearInterval(cleanupReloadTimer);
       for (const name of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(name, markActivity);
+      window.removeEventListener("focus", markActivity);
+      window.removeEventListener("blur", markActivity);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("pageshow", onPageResumed);
       window.removeEventListener("online", onPageResumed);
@@ -622,8 +515,26 @@ export function PwaRuntimeStatus(props: {
     };
   }, [enabled]);
 
-  // A staged update retains old chunks only while legacy pages are open.
-  // After a verified shell is loaded, obsolete CacheStorage is retired.
+  useEffect(() => {
+    try {
+      const key = "efhc:pwa-scroll-restore";
+      const value = window.sessionStorage.getItem(key);
+      if (!value) return;
+      const saved = JSON.parse(value) as {path?:string;y?:number;at?:number};
+      window.sessionStorage.removeItem(key);
+      if (saved.path !== window.location.pathname + window.location.search ||
+          !Number.isFinite(saved.y) ||
+          !Number.isFinite(saved.at) ||
+          Date.now() - Number(saved.at) > 60_000) return;
+      const frame = window.requestAnimationFrame(() => {
+        window.scrollTo({top:Math.max(0,Number(saved.y)),behavior:"auto"});
+      });
+      return () => window.cancelAnimationFrame(frame);
+    } catch { /* Ignore inaccessible session storage. */ }
+  }, []);
+
+  // Serwist owns native cache revisions. The one-time legacy compatibility
+  // path preserves old bundles until every scoped tab safely switches.
   // A mismatched bundle reloads at idle, never during a React Query mutation.
 
   useEffect(() => {
@@ -650,7 +561,12 @@ export function PwaRuntimeStatus(props: {
   }, []);
 
   const applyUpdate = () => {
-    waiting?.postMessage({ type: "SKIP_WAITING" });
+    // Do not activate over a financial mutation or an unsaved focused editor.
+    const activeEditor = document.querySelector(
+      "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
+    );
+    if (queryClient.isMutating() > 0 || activeEditor) return;
+    waiting?.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
     setWaiting(null);
   };
 

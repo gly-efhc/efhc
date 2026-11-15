@@ -38,6 +38,20 @@ def main():
     if config.get('static_export') is not True or not config.get('precache'):
         raise ValueError('PWA full static export precache is not configured')
     expected = base.rstrip('/') + '/'
+    # Serwist atomically installs critical assets; deferred assets populate later.
+    critical = config.get('precache_critical')
+    deferred = config.get('precache_deferred')
+    if not isinstance(critical, list) or not isinstance(deferred, list):
+        raise ValueError('PWA critical/deferred partition is missing')
+    if (any(not isinstance(path, str) for path in critical + deferred)
+            or len(set(critical)) != len(critical)
+            or len(set(deferred)) != len(deferred)
+            or set(critical) & set(deferred)
+            or set(critical) | set(deferred) != set(config['precache'])
+            or len(critical) + len(deferred) != len(config['precache'])
+            or expected + 'index.html' not in critical
+            or not any('/_next/static/' in path and path.endswith('.js') for path in critical)):
+        raise ValueError('PWA critical/deferred partition violates export contract')
     missing = []
     for item in config['precache']:
         if not isinstance(item, str) or not item.startswith(expected) or '?' in item or '#' in item:
@@ -47,8 +61,12 @@ def main():
             missing.append(item)
     if missing:
         raise ValueError(f'PWA resources absent: {missing[:5]}')
-    for retired in ('404.html', '500.html'):
-        if (root / retired).exists() or expected + retired in config['precache']:
+    for retired in ('404', '500'):
+        if ((root / (retired + '.html')).exists()
+                or (root / retired).exists()
+                or any(path == expected + retired + '.html'
+                       or path.startswith(expected + retired + '/')
+                       for path in config['precache'])):
             raise ValueError('Retired technical HTML is present in the published artifact: ' + retired)
     # Deleted operator route must never be reintroduced by source/public imports
     # or retained in any new precache generation.
@@ -78,8 +96,11 @@ def main():
     pages = len(list(root.rglob('*.html')))
     if len([item for item in config['precache'] if item.endswith('.html')]) != pages:
         raise ValueError('PWA does not cover every static HTML page')
-    if 'const EFHC_PWA_BUILD_CONFIG =' not in worker.read_text(encoding='utf-8'):
-        raise ValueError('Service Worker missing pinned build configuration')
+    bundled = worker.read_text(encoding='utf-8')
+    if ('EFHC_HTML_GENERATION_MISMATCH' not in bundled
+            or 'efhc-serwist-pages' not in bundled
+            or '__SW_MANIFEST' in bundled):
+        raise ValueError('Deployed Serwist worker is missing pinned generation and native cache strategies')
     deployed_manifest = json.loads(manifest.read_text(encoding='utf-8'))
     if deployed_manifest.get('scope') != expected:
         raise ValueError('PWA Manifest scope differs from Pages basePath')

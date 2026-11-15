@@ -1,3 +1,8 @@
+/** Serwist-only PWA generation regression contracts.
+ * Source invariants are paired with the mandatory real Chromium A→B→C,
+ * interrupted-loading, old-tab and offline route acceptance.
+ * The former custom Service Worker test harness was retired with that engine.
+ */
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync,writeFileSync,mkdirSync,copyFileSync,mkdtempSync,rmSync,existsSync} from "node:fs";
@@ -6,445 +11,167 @@ import {createHash} from "node:crypto";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
-import vm from "node:vm";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const source = readFileSync(path.join(root,"public/sw.js"),"utf8");
-const toolsDir = path.resolve(root, "../ci/pages-tools");
-const origin = "https://efhc.example";
-const scope = origin + "/efhc/";
-const url = value => new URL(typeof value === "string" ? value : value.url, origin).href;
+const frontend=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../..");
+const toolsDir=path.resolve(frontend,"../ci/pages-tools");
+const read=p=>readFileSync(path.join(frontend,p),"utf8");
+const worker=readFileSync(path.join(toolsDir,"sw-serwist.js"),"utf8");
+const builder=readFileSync(path.join(toolsDir,"inject_serwist.mjs"),"utf8");
+const cfg=read("serwist.config.mjs");
+const runtime=read("src/components/PwaRuntimeStatus.tsx");
 
-function harness() {
-  const buckets=new Map();
-  const clients={value:[]};
-  let fetcher=async () => { throw Error("offline"); };
-  const posted=[];
-  const cacheStorage={
-    keys:async()=>[...buckets.keys()],
-    delete:async name=>buckets.delete(name),
-    open:async name=>{
-      if(!buckets.has(name))buckets.set(name,new Map());
-      const values=buckets.get(name);
-      return {
-        match:async req=>values.get(url(req))?.clone(),
-        put:async(req,res)=>{values.set(url(req),res.clone());},
-        delete:async req=>values.delete(url(req)),
-        keys:async()=>[...values.keys()].map(url=>({url})),
-      };
-    },
-    match:async req=>{
-      for(const name of buckets.keys()){
-        const hit=await(await cacheStorage.open(name)).match(req);
-        if(hit)return hit;
-      }
-      return undefined;
-    },
-  };
-  const createClient=(id,pathname="/efhc/")=>({
-    id,url:origin+pathname,postMessage:message=>posted.push({id,message}),
-  });
-  const seed=async (build, extras={})=>{
-    const s=await cacheStorage.open("efhc-pwa-"+build+"-static");
-    await s.put("/efhc/index.html",new Response("HTML "+build,{status:200}));
-    for(const [key,value] of Object.entries(extras)){
-      await s.put(key,new Response(value,{status:200}));
-    }
-    await cacheStorage.open("efhc-pwa-"+build+"-content");
-    return s;
-  };
-  const makeWorker=(build, overrides={}, lifecycle={})=>{
-    const events=new Map();
-    const config={
-      build_id:build,static_export:true,
-      precache:["/efhc/index.html","/efhc/_next/static/"+build+".js"],
-      cache_limits:{
-        static:{max_entries:200,max_age_seconds:2592000,max_bytes:10485760},
-        content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880},
-      },
-      ...overrides,
-    };
-    const sandbox={
-      URL,Request:lifecycle.Request || Request,Response,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
-      caches:cacheStorage,fetch:(...args)=>fetcher(...args),
-      EFHC_PWA_BUILD_CONFIG:config,
-      self:{
-        registration:{scope,active:{}},
-        location:{origin},navigator:{onLine:false},
-        clients:{matchAll:async()=>clients.value,claim:async()=>undefined},
-        skipWaiting:lifecycle.skipWaiting || (async()=>undefined),
-        addEventListener:(name,handler)=>events.set(name,handler),
-      },
-    };
-    vm.runInNewContext(source+"\nthis.exportsForTest={cacheFirst,navigationFallback};",sandbox,{filename:"sw.js"});
-    const dispatch=async (type,extra={})=>{
-      let result;
-      const lifetimes=[];
-      const ev={
-        data:extra.data,source:extra.source,request:extra.request,
-        ports:extra.ports,
-        waitUntil:p=>lifetimes.push(Promise.resolve(p)),
-        respondWith:p=>{result=Promise.resolve(p);},
-      };
-      assert.ok(events.has(type),"Missing "+type+" handler");
-      events.get(type)(ev);
-      await Promise.all(lifetimes);
-      return result ? await result : undefined;
-    };
-    return {...sandbox.exportsForTest,dispatch,config};
-  };
-  const ready=async(worker,client,build)=>{
-    await worker.dispatch("message",{source:client,data:{
-      type:"CLIENT_BUILD_READY",buildId:build,
-      assets:["/efhc/_next/static/"+build+".js"],
-    }});
-  };
-  return {cacheStorage,buckets,clients,createClient,seed,makeWorker,ready,posted,
-    setFetch:fn=>fetcher=fn};
-}
-
-test("T1: public CSS has release-specific immutable URLs; an old tab keeps the old style",async t=>{
-  const rootDir=mkdtempSync(path.join(tmpdir(),"efhc-css-generation-"));
-  t.after(()=>rmSync(rootDir,{recursive:true,force:true}));
-  const put=(name,value)=>{
-    const p=path.join(rootDir,name);mkdirSync(path.dirname(p),{recursive:true});
-    writeFileSync(p,value,"utf8");
-  };
-  put("index.html",'<html><head><link rel="stylesheet" href="/efhc/visual.css"></head><body><script id="__NEXT_DATA__"></script><script src="/efhc/_next/static/main.js"></script></body></html>');
-  put("404.html","<html><head></head><body>retired 404 page</body></html>");
-  put("500.html","<html><head></head><body>retired 500 page</body></html>");
-  put("_next/static/main.js",'const css="/user-shell.css";');
-  put("_next/static/main.css","body{color:white}");
-  put("visual.css","body{color:red}");
-  put("user-shell.css","body{margin:0}");
-  put("public-runtime-config.js","window.__EFHC_PUBLIC_CONFIG__={};");
-  for(const name of ["sw.js","manifest.webmanifest","offline.html","offline-readonly.html"])
-    copyFileSync(path.join(root,"public",name),path.join(rootDir,name));
-  const run=script=>spawnSync("python3",[path.join(toolsDir,script),
-    "--directory",rootDir,"--base-path","/efhc"],{encoding:"utf8"});
-  const first=run("fix_pages_assets.py");
-  assert.equal(first.status,0,first.stderr);
-  assert.equal(existsSync(path.join(rootDir,"404.html")),false,
-    "Next generated 404 document must be physically deleted before publication");
-  assert.equal(existsSync(path.join(rootDir,"500.html")),false,
-    "Next generated 500 document must be physically deleted before publication");
-  assert.equal(run("verify_export.py").status,0,"export must verify CSS fingerprint references");
-  const hashed = name=>{
-    const raw=readFileSync(path.join(rootDir,name));
-    return name.slice(0,-4)+"."+createHash("sha256").update(raw).digest("hex").slice(0,16)+".css";
-  };
-  const visual=hashed("visual.css"),shell=hashed("user-shell.css");
-  const html=readFileSync(path.join(rootDir,"index.html"),"utf8");
-  const js=readFileSync(path.join(rootDir,"_next/static/main.js"),"utf8");
-  assert.ok(html.includes("/"+visual));
-  assert.ok(js.includes("/"+shell));
-  assert.ok(!html.includes('href="/efhc/visual.css"'));
-  const config=JSON.parse(readFileSync(path.join(rootDir,"pwa-build.json")));
-  assert.ok(config.precache.includes("/efhc/"+visual));
-  assert.ok(config.precache.includes("/efhc/"+shell));
-  const originalManifest=readFileSync(path.join(rootDir,"pwa-build.json"),"utf8");
-  assert.equal(run("fix_pages_assets.py").status,0,"export rewrite is repeatable");
-  assert.equal(readFileSync(path.join(rootDir,"pwa-build.json"),"utf8"),originalManifest);
-
-  const h=harness(),old=h.createClient("old");
-  h.clients.value=[old,h.createClient("new")];
-  const aCss="/efhc/style.a1b2c3d4e5f6a7b8.css";
-  const bCss="/efhc/style.fedcba9876543210.css";
-  await h.seed("A",{[aCss]:"red"});
-  await h.seed("B",{[bCss]:"blue"});
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  assert.equal(await(await worker.cacheFirst(new Request(origin+aCss))).text(),"red");
-  assert.equal(await(await worker.cacheFirst(new Request(origin+bCss))).text(),"blue");
-});
-
-test("Deleted development route is absent from Service Worker routing",()=>{
-  assert.doesNotMatch(source,/isRetiredRoute|\/dev\/neon/);
-  assert.ok(!source.includes('event.respondWith(new Response("", {status: 404'),
-    "Deleted pages cannot leave behind a synthetic 404 route stub");
-});
-
-test("New verified worker purges old HTML immediately without discarding legacy hashed JS",async()=>{
-  const h=harness(),legacy=h.createClient("old-tab","/efhc/withdraw/");
-  h.clients.value=[legacy];
-  const old=await h.seed("A",{
-    "/efhc/withdraw/index.html":"obsolete withdraw",
-    "/efhc/dev/neon/index.html":"obsolete operator console",
-    "/efhc/_next/static/legacy.js":"still needed by old tab",
-  });
-  await h.seed("B",{"/efhc/withdraw/index.html":"verified withdraw"});
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  assert.equal(await old.match("/efhc/index.html"),undefined);
-  assert.equal(await old.match("/efhc/withdraw/index.html"),undefined);
-  assert.equal(await old.match("/efhc/dev/neon/index.html"),undefined);
-  assert.equal(await(await old.match("/efhc/_next/static/legacy.js")).text(),
-    "still needed by old tab", "Do not break an active legacy tab");
-  const navigation=await worker.navigationFallback(
-    new Request(origin+"/efhc/withdraw/"),{});
-  assert.equal(await navigation.text(),"verified withdraw",
-    "Offline navigation must never resurrect the previous HTML document");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
-    "Only the obsolete HTML should be purged before old tabs reload");
-});
-
-test("Historical cache generations without HTML still retire after the old tab closes",async()=>{
-  const h=harness();
-  h.clients.value=[h.createClient("legacy","/efhc/withdraw/")];
-  const original=await h.seed("A",{
-    "/efhc/_next/static/old-chunk.js":"retained for the live legacy tab",
-  });
-  await h.seed("B");
-  await h.makeWorker("B").dispatch("activate");
-  assert.equal(await original.match("/efhc/index.html"),undefined,
-    "Obsolete HTML is purged immediately during first activation");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
-    "Assets remain while an older document is live");
-
-  const orphan=await h.cacheStorage.open("efhc-pwa-interrupted-content");
-  await orphan.put("/efhc/locale/en.json",new Response("{}"));
-  const foreign=await h.cacheStorage.open("efhc-pwa-another-app-content");
-  await foreign.put("/another-app/locale/en.json",new Response("{}"));
-
-  h.clients.value=[];
-  await h.seed("C");
-  await h.makeWorker("C").dispatch("activate");
-  const remaining=await h.cacheStorage.keys();
-  assert.ok(remaining.includes("efhc-pwa-C-static"));
-  assert.ok(remaining.includes("efhc-pwa-C-content"));
-  assert.ok(!remaining.includes("efhc-pwa-A-static"));
-  assert.ok(!remaining.includes("efhc-pwa-A-content"));
-  assert.ok(!remaining.includes("efhc-pwa-B-static"));
-  assert.ok(!remaining.includes("efhc-pwa-B-content"));
-  assert.ok(!remaining.includes("efhc-pwa-interrupted-content"));
-  assert.ok(remaining.includes("efhc-pwa-another-app-content"),
-    "Never purge an unrelated application on the same origin");
-});
-
-test("T2: a restarted worker restores predecessor inventory before first old chunk request",async()=>{
-  const h=harness(),old=h.createClient("old"),newTab=h.createClient("new");
-  h.clients.value=[old,newTab];
-  const chunk="/efhc/_next/static/old-only.js";
-  await h.seed("A",{[chunk]:"old chunk"});
-  await h.seed("B");
-  await h.makeWorker("B").dispatch("activate");
-  const resumed=h.makeWorker("B");
-  let network=0;
-  h.setFetch(async()=>{network++;throw Error("offline");});
-  const r=await resumed.cacheFirst(new Request(origin+chunk));
-  assert.equal(await r.text(),"old chunk");assert.equal(network,0);
-});
-
-test("T3: an unrelated origin-window cannot block scope retirement",async()=>{
-  const h=harness(),current=h.createClient("current"),outsider=h.createClient("outsider","/second-app/");
-  h.clients.value=[current,outsider];
-  await h.seed("A");await h.seed("B");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  await h.ready(worker,current,"B");
-  assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-});
-
-test("T4: readiness persists over worker restart without another READY message",async()=>{
-  const h=harness(),current=h.createClient("current"),old=h.createClient("old","/efhc/panels/");
-  h.clients.value=[current,old];
-  await h.seed("A");await h.seed("B");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  await h.ready(worker,current,"B");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-  h.clients.value=[current];
-  await h.makeWorker("B").dispatch("message",{source:current,data:{type:"GET_CACHE_STATUS"}});
-  assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-});
-
-test("T5: a closed previously-ready tab is not a permanent retirement blocker",async()=>{
-  const h=harness(),first=h.createClient("first"),second=h.createClient("second");
-  h.clients.value=[first,second];
-  await h.seed("A");await h.seed("B");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  await h.ready(worker,first,"B");
-  h.clients.value=[first];
-  await h.makeWorker("B").dispatch("message",{source:first,data:{type:"GET_CACHE_STATUS"}});
-  assert.deepEqual((await h.cacheStorage.keys()).filter(k=>k==="efhc-pwa-A-static"),[]);
-});
-
-test("T6: an unready in-scope old tab retains its full old build",async()=>{
-  const h=harness(),current=h.createClient("current"),legacy=h.createClient("legacy","/efhc/panels/");
-  h.clients.value=[current,legacy];
-  await h.seed("A");await h.seed("B");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  await h.ready(worker,current,"B");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-});
-
-test("T7: A/B/C succession retains both predecessors until last legacy page closes",async()=>{
-  const h=harness(),current=h.createClient("current"),legacy=h.createClient("legacy","/efhc/panels/");
-  h.clients.value=[current,legacy];
-  await h.seed("A");await h.seed("B");await h.seed("C");
-  const worker=h.makeWorker("C");
-  await worker.dispatch("activate");
-  await h.ready(worker,current,"C");
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-B-static"));
-  h.clients.value=[current];
-  await h.makeWorker("C").dispatch("message",{source:current,data:{type:"GET_CACHE_STATUS"}});
-  assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-A-static"));
-  assert.ok(!(await h.cacheStorage.keys()).includes("efhc-pwa-B-static"));
-});
-
-test("PWA verified install retains worker lifetime until skipWaiting completes",async()=>{
-  const h=harness();
-  let releaseActivation=()=>undefined;
-  const activation=new Promise(resolve=>{releaseActivation=resolve;});
-  let requested=false;
-  let finished=false;
-  let confirmActivation=()=>undefined;
-  const activationRequested=new Promise(resolve=>{confirmActivation=resolve;});
-  h.setFetch(async req=>{
-    const pathname=new URL(typeof req==="string"?req:req.url,origin).pathname;
-    return new Response(pathname.endsWith(".html")
-      ? '<meta name="efhc-build-id" content="B">'
-      : "asset",{status:200});
-  });
-  const worker=h.makeWorker("B",{},{
-    Request: class extends Request {
-      constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
-    },
-    skipWaiting:()=>{requested=true;confirmActivation();return activation;},
-  });
-  const installing=worker.dispatch("install").then(()=>{finished=true;});
-  try{
-    // Wait for the actual activation-request event, not an arbitrary 40ms
-    // under a loaded CI runner. Fail if the complete precache never reaches it.
-    let timeout;
-    try {
-      await Promise.race([
-        activationRequested,
-        new Promise((_,reject)=>{
-          timeout=setTimeout(()=>reject(Error("full PWA precache never requested activation")),3000);
-        }),
-      ]);
-    } finally {
-      clearTimeout(timeout);
-    }
-    assert.equal(requested,true,"full PWA precache must finish before activation");
-    assert.equal(finished,false,"install event must retain activation promise");
-  }finally{
-    releaseActivation();
+test("T1: release-specific CSS fingerprints are included before Serwist generates one worker",t=>{
+  const folder=mkdtempSync(path.join(tmpdir(),"efhc-serwist-css-"));
+  t.after(()=>rmSync(folder,{recursive:true,force:true}));
+  function write(file,value) {
+    const target=path.join(folder,file);
+    mkdirSync(path.dirname(target),{recursive:true});
+    writeFileSync(target,value,"utf8");
   }
-  await installing;
-  assert.equal(finished,true);
+  write("index.html",'<html><head><link rel="stylesheet" href="/efhc/visual.css"></head><body><script id="__NEXT_DATA__"></script><script src="/efhc/_next/static/main.js"></script></body></html>');
+  write("404.html","retired");
+  write("500.html","retired");
+  write("404/index.html","retired nested");
+  write("500/index.html","retired nested");
+  write("_next/static/main.js",'const css="/user-shell.css";');
+  write("_next/static/main.css","body{color:white}");
+  write("visual.css","body{color:red}");
+  write("user-shell.css","body{margin:0}");
+  write("public-runtime-config.js","window.__EFHC_PUBLIC_CONFIG__={};");
+  for(const name of ["manifest.webmanifest","offline.html","offline-readonly.html"])
+    copyFileSync(path.join(frontend,"public",name),path.join(folder,name));
+  const invoke=tool=>spawnSync("python3",[
+    path.join(toolsDir,tool),"--directory",folder,"--base-path","/efhc",
+  ],{encoding:"utf8",env:process.env});
+  const generated=invoke("fix_pages_assets.py");
+  assert.equal(generated.status,0,generated.stderr+"\n"+generated.stdout);
+  assert.equal(existsSync(path.join(folder,"404.html")),false);
+  assert.equal(existsSync(path.join(folder,"500.html")),false);
+  assert.equal(existsSync(path.join(folder,"404")),false);
+  assert.equal(existsSync(path.join(folder,"500")),false);
+  assert.equal(invoke("verify_export.py").status,0,"Serwist export and Pages assets must verify");
+  const hash=name=>name.slice(0,-4)+"."+
+    createHash("sha256").update(readFileSync(path.join(folder,name)))
+      .digest("hex").slice(0,16)+".css";
+  const cssA=hash("visual.css"),cssB=hash("user-shell.css");
+  assert.ok(readFileSync(path.join(folder,"index.html"),"utf8").includes("/"+cssA));
+  assert.ok(readFileSync(path.join(folder,"_next/static/main.js"),"utf8").includes("/"+cssB));
+  const meta=JSON.parse(readFileSync(path.join(folder,"pwa-build.json"),"utf8"));
+  assert.ok(meta.precache.includes("/efhc/"+cssA));
+  assert.ok(meta.precache.includes("/efhc/"+cssB));
+  assert.ok(meta.precache_critical.includes("/efhc/index.html"));
+  assert.ok(meta.precache_critical.includes("/efhc/_next/static/main.js"));
+  assert.ok(!meta.cache_limits,"Serwist owns native cache limits, not EFHC's old cache-policy engine");
+  const first=readFileSync(path.join(folder,"pwa-build.json"),"utf8");
+  assert.equal(invoke("fix_pages_assets.py").status,0,"Export must be reproducible");
+  assert.equal(readFileSync(path.join(folder,"pwa-build.json"),"utf8"),first);
+  const bundled=readFileSync(path.join(folder,"sw.js"),"utf8");
+  assert.ok(bundled.includes("EFHC_HTML_GENERATION_MISMATCH"));
+  assert.ok(!bundled.includes("self.__SW_MANIFEST"),"Configurator must inject the manifest");
 });
 
-test("Full PWA installation uses bounded concurrency and still installs all resources",async()=>{
-  const h=harness();
-  await h.seed("A");
-  const assets=[
-    "/efhc/index.html",
-    "/efhc/withdraw/index.html",
-    ...Array.from({length:12},(_,i)=>"/efhc/_next/static/bundle-"+i+".js"),
-  ];
-  let concurrent=0,peak=0,network=0;
-  h.setFetch(async request=>{
-    concurrent++;
-    peak=Math.max(peak,concurrent);
-    network++;
-    await new Promise(resolve=>setTimeout(resolve,3));
-    concurrent--;
-    const pathname=new URL(request.url).pathname;
-    return new Response(pathname.endsWith(".html")
-      ? '<meta name="efhc-build-id" content="B">PAGE'
-      : "immutable content",{status:200});
-  });
-  const worker=h.makeWorker("B",{precache:assets},{
-    Request:class extends Request{
-      constructor(input,init){super(new URL(typeof input==="string"?input:input.url,origin),init);}
-    },
-  });
-  await worker.dispatch("install");
-  assert.equal(network,assets.length,"every resource must be fetched at first install");
-  assert.ok(peak>1,"sequential fetches needlessly delay Telegram WebView upgrades");
-  assert.ok(peak<=4,"mobile installer must not open unbounded parallel requests");
-  const bucket=await h.cacheStorage.open("efhc-pwa-B-static");
-  for(const path of assets){
-    assert.ok(await bucket.match(path),"atomic release missing "+path);
-  }
-  assert.ok((await h.cacheStorage.keys()).includes("efhc-pwa-A-static"),
-    "installation must not delete an active predecessor");
+test("T2: immutable old JS/CSS has an address-scoped legacy fallback on failed fetch",()=>{
+  assert.match(worker,/async function legacyAssetFallback/);
+  assert.match(worker,/legacyAssetFallback\(request\)/);
+  assert.match(worker,/!result\?\.ok/,"HTTP 404 must be caught as well as exceptions");
+  assert.match(worker,/\/_next/);
+  assert.match(worker,/\.css/);
 });
 
-test("T8: failed install removes own incomplete generation without deleting predecessor",async()=>{
-  const h=harness();await h.seed("A");
-  h.setFetch(async request=>{
-    if(url(request).endsWith("/index.html"))
-      return new Response('<meta name="efhc-build-id" content="B">',{status:200});
-    throw Error("missing chunk");
-  });
-  const worker=h.makeWorker("B");
-  await assert.rejects(worker.dispatch("install"),/EFHC_REQUIRED_PRECACHE_FAILED/);
-  const keys=await h.cacheStorage.keys();
-  assert.ok(keys.includes("efhc-pwa-A-static"));
-  assert.ok(!keys.includes("efhc-pwa-B-static"));
-  assert.ok(!keys.includes("efhc-pwa-B-content"));
+test("T3: unrelated applications are excluded from legacy retirement",()=>{
+  assert.match(worker,/const inScope/);
+  assert.match(worker,/request\.url/);
+  assert.match(worker,/entries\.every\(request =>/);
+  assert.match(worker,/inScope\(new URL\(request\.url\)\)/);
+  assert.doesNotMatch(worker,/caches\.delete\(["']?[^"']*other/);
 });
 
-test("T9: online no-store build metadata is never supplied from stale content cache",async()=>{
-  const h=harness();
-  const old=await h.cacheStorage.open("efhc-pwa-A-content");
-  await old.put("/efhc/pwa-build.json",new Response(JSON.stringify({build_id:"A"}),{status:200}));
-  let calls=0;
-  h.setFetch(async()=>{calls++;return new Response(JSON.stringify({build_id:"B"}),{status:200});});
-  const worker=h.makeWorker("B");
-  const req=new Request(origin+"/efhc/pwa-build.json",{cache:"no-store"});
-  const response=await worker.dispatch("fetch",{request:req});
-  assert.equal((await response.json()).build_id,"B");
-  assert.equal(calls,1);
+test("T4: migration readiness is scoped to a verified active client",()=>{
+  assert.match(worker,/data\.type==="CLIENT_BUILD_READY"/);
+  assert.match(worker,/data\.buildId!==CONFIG\.build_id/);
+  assert.match(worker,/expected\.has\(url\)/);
+  assert.match(worker,/readyClients\.add\(event\.source\.id\)/);
 });
 
-test("T10: missing current offline HTML never resurrects an obsolete generation",async()=>{
-  const h=harness(),current=h.createClient("current"),old=h.createClient("old");
-  h.clients.value=[current,old];
-  await h.seed("A");await h.seed("B");const c=await h.seed("C");
-  const worker=h.makeWorker("C");
-  await worker.dispatch("activate");
-  await c.delete("/efhc/index.html");
-  const response=await worker.navigationFallback(new Request(origin+"/efhc/"),{waitUntil:()=>{}});
-  assert.notEqual(await response.text(),"HTML B",
-    "Retired documents cannot replace a missing current build");
-  assert.equal(response.status,503,"A corrupted current shell must fail closed, not display old code");
+test("T5: closing old tabs can release only proved legacy EFHC buckets",()=>{
+  assert.match(worker,/retireLegacyCachesOnce\(\)/);
+  assert.match(worker,/windows\.some\(client => !readyClients\.has\(client\.id\)\)/);
+  assert.match(worker,/for \(const name of await legacyPublicCaches\(\)\) await caches\.delete\(name\)/);
 });
 
-test("T11: a cache owned by a second origin-sibling app is not deleted",async()=>{
-  const h=harness(),current=h.createClient("current");
-  h.clients.value=[current];
-  await h.seed("A");await h.seed("B");
-  const sibling=await h.cacheStorage.open("efhc-pwa-sibling-static");
-  await sibling.put("/second-app/index.html",new Response("other app"));
-  await h.cacheStorage.open("efhc-pwa-sibling-content");
-  const worker=h.makeWorker("B");
-  await worker.dispatch("activate");
-  await h.ready(worker,current,"B");
-  const keys=await h.cacheStorage.keys();
-  assert.ok(keys.includes("efhc-pwa-sibling-static"));
-  assert.ok(keys.includes("efhc-pwa-sibling-content"));
-  assert.ok(!keys.includes("efhc-pwa-A-static"));
+test("T6: an unready old tab protects its cache",()=>{
+  assert.match(worker,/if \(!windows\.length \|\| windows\.some/);
+  assert.match(worker,/readyClients/);
+  assert.match(worker,/if \(data\.buildId!==CONFIG\.build_id/);
 });
 
-test("T12: idle reload is bounded to three attempts and reports an explicit stall",()=>{
-  const runtime=readFileSync(path.join(root,"src/components/PwaRuntimeStatus.tsx"),"utf8");
+test("T7: A→B→C worker revisions use native Serwist precache lifecycle",()=>{
+  assert.match(worker,/precacheEntries:self\.__SW_MANIFEST/);
+  assert.match(worker,/cleanupOutdatedCaches:true/);
+  assert.match(worker,/new Serwist\(/);
+  assert.doesNotMatch(worker,/new Workbox|from ["']workbox-/);
+});
+
+test("T8: a missing critical resource rejects atomic installation, without committing a partial custom cache",()=>{
+  assert.match(builder,/config\.precache_critical/);
+  assert.match(builder,/readFile\(path\.join\(root,url\.slice/);
+  assert.match(worker,/precacheOptions:\{/);
+  assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
+  assert.match(cfg,/additionalPrecacheEntries:critical/);
+});
+
+test("T9: build metadata and private APIs are network only",()=>{
+  assert.match(worker,/const networkOnly = new NetworkOnly/);
+  assert.match(worker,/isSensitive\(url\.pathname\),handler:networkOnly/);
+  assert.match(worker,/scoped\("pwa-build\.json"\),handler:networkOnly/);
+  assert.doesNotMatch(worker,/BackgroundSyncPlugin|Queue\(/);
+});
+
+test("T10: no stale-generation HTML fallback can mix releases",()=>{
+  assert.match(worker,/EFHC_HTML_GENERATION_MISMATCH/);
+  assert.match(worker,/cachedResponseWillBeUsed/);
+  assert.match(worker,/if \(!expected\.has\(pathname\)\)/);
+  assert.doesNotMatch(worker,/legacyHtmlFallback|efhc-legacy-html/);
+});
+
+test("T11: Serwist alone handles public runtime cache writes and expiry",()=>{
+  assert.match(worker,/new CacheFirst/);
+  assert.match(worker,/new NetworkFirst/);
+  assert.match(worker,/new StaleWhileRevalidate/);
+  assert.match(worker,/new ExpirationPlugin/);
+  assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
+  assert.doesNotMatch(runtime,/SET_CACHE_POLICY/);
+  assert.doesNotMatch(runtime,/resolveAdaptiveCachePolicy/);
+});
+
+test("T12: idle reload remains bounded and protects active financial operations",()=>{
   assert.match(runtime,/attempts >= 3/);
   assert.match(runtime,/lastAttemptAt/);
   assert.match(runtime,/retryDelayMs/);
   assert.match(runtime,/efhc:pwa-upgrade-stalled/);
   assert.match(runtime,/sessionStorage\.removeItem\(verifiedKey\)/);
   assert.match(runtime,/queryClient\.isMutating\(\) > 0/);
+  assert.match(runtime,/efhcSafeToActivate: true/);
 });
 
-test("Background music stops on hide/pagehide/freeze and cannot resume while hidden",()=>{
-  const audio=readFileSync(path.join(root,"src/components/BackgroundMusicController.tsx"),"utf8");
+test("Offline deferred resources are parallel but cached only by native Serwist",()=>{
+  assert.match(worker,/Promise\.all\(\[run\(\),run\(\)\]\)/);
+  assert.match(worker,/strategy\.handle\(\{event,request\}\)/);
+  assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
+  assert.match(runtime,/connectionAllowsPrefetch/);
+});
+
+test("A single scoped Service Worker is emitted by Serwist Configurator",()=>{
+  assert.match(cfg,/from "@serwist\/next\/config"/);
+  assert.match(cfg,/precachePrerendered:false/);
+  assert.match(cfg,/globPatterns:\[\]/);
+  assert.match(builder,/EFHC_SERWIST_CONFIGURATOR_PASS/);
+  assert.doesNotMatch(builder,/inject_workbox|sw-workbox/);
+  assert.match(runtime,/serviceWorker\.register/);
+});
+
+test("Background music stops on pagehide/freeze and cannot resume while hidden",()=>{
+  const audio=read("src/components/BackgroundMusicController.tsx");
   assert.match(audio,/addEventListener\("pagehide", stopForHiddenPage\)/);
   assert.match(audio,/addEventListener\("visibilitychange", onVisibilityChange\)/);
   assert.match(audio,/addEventListener\("freeze", stopForHiddenPage\)/);

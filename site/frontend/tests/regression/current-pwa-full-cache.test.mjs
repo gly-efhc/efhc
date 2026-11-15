@@ -26,10 +26,12 @@ test("Pages has a scoped Service Worker and does not delete the PWA files", () =
   assert.match(app, /router\.basePath\}\/manifest\.webmanifest/);
   assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
   assert.match(runtime, /trackedRegistration\.update\(\)/);
-  assert.match(runtime, /staged\.postMessage\(\{ type: "SKIP_WAITING" \}\)/);
+  assert.match(runtime, /staged\.postMessage\(\{ type: "SKIP_WAITING", efhcSafeToActivate: true \}\)/);
+  assert.match(runtime, /queryClient\.isMutating\(\) === 0/);
+  assert.match(runtime, /Date\.now\(\) - lastInteractionAt >= 6000/);
   assert.match(runtime, /CLIENT_BUILD_READY/);
   assert.match(runtime, /GET_ACTIVE_BUILD/);
-  assert.match(read("public/sw.js"), /ACTIVE_BUILD/);
+  assert.match(readFileSync(path.join(pagesTools, "sw-serwist.js"), "utf8"), /ACTIVE_BUILD/);
   assert.match(runtime, /controllerchange/);
   assert.match(runtime, /attemptIdleReload/);
   assert.match(runtime, /waitingActivationTimer/);
@@ -67,7 +69,6 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   put("_next/static/main.js", "globalThis.__EFHC_TEST_SHELL__=true;");
   put("_next/static/main.css", "body { color: white; }");
   put("public-runtime-config.js", "window.__EFHC_PUBLIC_CONFIG__={};");
-  copyFileSync(path.join(publicDir, "sw.js"), path.join(root, "sw.js"));
   copyFileSync(path.join(publicDir, "manifest.webmanifest"), path.join(root, "manifest.webmanifest"));
   copyFileSync(path.join(publicDir, "offline.html"), path.join(root, "offline.html"));
   copyFileSync(path.join(publicDir, "offline-readonly.html"), path.join(root, "offline-readonly.html"));
@@ -75,6 +76,15 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.equal(first.status, 0, first.stderr);
   const config = JSON.parse(readFileSync(path.join(root, "pwa-build.json"), "utf8"));
   assert.equal(config.static_export, true);
+  assert.ok(config.precache_critical.includes("/efhc/index.html"));
+  assert.ok(config.precache_critical.includes("/efhc/_next/static/main.js"));
+  assert.ok(config.precache_deferred.includes("/efhc/panels/index.html"));
+  assert.ok(config.precache_deferred.includes("/efhc/admin/users/index.html"));
+  const critical = new Set(config.precache_critical);
+  const deferred = new Set(config.precache_deferred);
+  assert.equal(critical.size + deferred.size, config.precache.length);
+  assert.deepEqual([...critical, ...deferred].sort(), [...config.precache].sort());
+  assert.ok([...critical].every(value => !deferred.has(value)));
   assert.match(readFileSync(path.join(root,"index.html"),"utf8"), new RegExp(`efhc-build-id" content="${config.build_id}"`));
   for (const route of ["index.html", "panels/index.html", "admin/users/index.html", "browser-shop/index.html"]) {
     assert.ok(config.precache.includes("/efhc/" + route), "Missing cached page: " + route);
@@ -88,8 +98,14 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.ok(manifest.start_url.startsWith("/efhc/"));
   const worker = readFileSync(path.join(root, "sw.js"), "utf8");
   new vm.Script(worker);
-  assert.match(worker, /const EFHC_PWA_BUILD_CONFIG =/);
-  assert.ok(worker.includes('p.startsWith("/assets/")'), "Worker scope-relative asset detection must remain intact");
+  assert.ok(worker.includes("efhc-serwist-pages"),
+    "Final worker must use the Serwist-only public pages strategy");
+  assert.ok(worker.includes("EFHC_HTML_GENERATION_MISMATCH"),
+    "Bundled Serwist worker must refuse mixed-generation HTML");
+  assert.ok(!worker.includes("workbox-precaching"),
+    "The final PWA worker must not retain an independent Workbox module");
+  assert.ok(!/\bimportScripts\s*\(\s*["']https?:/i.test(worker),
+    "The deployed Serwist runtime must be bundled locally without CDN scripts");
   const verify = run("verify_export.py", root);
   assert.equal(verify.status, 0, verify.stderr);
   const again = run("fix_pages_assets.py", root);
@@ -179,271 +195,41 @@ test("A newer local language/theme choice beats a pending older Telegram cloud r
   assert.equal(settings.loadSettings().color_theme_id, "CT-03");
 });
 
-test("A missing locale or theme asset aborts the full PWA install instead of reporting a ready offline shell", async () => {
-  const source = read("public/sw.js");
-  const events = new Map();
-  const origin = "https://efhc.example";
-  const scope = origin + "/efhc/";
-  const stored = new Map();
-  class RequestStub {
-    constructor(value) { this.url = new URL(value, scope).href; }
-  }
-  const disk = {
-    async match(req) { return stored.get(typeof req === "string" ? new URL(req, scope).href : req.url) || undefined; },
-    async put(req, response) { stored.set(req.url, response.clone()); },
-    async keys() { return [...stored.keys()].map(url => ({url})); },
-    async delete(req) { return stored.delete(req.url); },
-  };
-  const worker = {
-    registration: {scope, active:null},
-    location: {origin},
-    clients: {matchAll:async () => []},
-    addEventListener(type, handler) {events.set(type,handler);},
-  };
-  const config = {
-    build_id: "test-incomplete-locale",
-    static_export: true,
-    precache: ["/efhc/index.html","/efhc/locale/ru.json"],
-    cache_limits: {
-      static: {max_entries:100,max_age_seconds:2592000,max_bytes:16777216},
-      content: {max_entries:100,max_age_seconds:604800,max_bytes:16777216},
-    },
-  };
-  const sandbox = {
-    self:worker, URL, Headers, Response, Blob, Request:RequestStub, Date, console,
-    EFHC_PWA_BUILD_CONFIG:config,
-    caches: {open:async () => disk,match:async req=>disk.match(req),keys:async()=>[],delete:async()=>true},
-    fetch:async request => new Response(request.url.endsWith("ru.json") ? "missing" : '<html><meta name="efhc-build-id" content="test-incomplete-locale"></html>', {
-      status:request.url.endsWith("ru.json") ? 404 : 200,
-    }),
-  };
-  vm.runInNewContext(source,sandbox,{filename:"sw.js"});
-  let installing;
-  events.get("install")({waitUntil(promise){installing=promise;}});
-  await assert.rejects(installing,/EFHC_REQUIRED_PRECACHE_FAILED/);
-  assert.ok(stored.has(origin+"/efhc/index.html"),"valid page may stage, but worker must fail until locale is present");
+// Native Serwist owns atomic precache, runtime caching, and revision expiry.
+// The full export is tested above; real Chromium A→B→C, failed navigation,
+// older tabs, and offline routes are tested in tests/parity/pwa-cache-integration.mjs.
+test("Serwist installs only the final critical export without a second PWA engine",()=>{
+  const worker=readFileSync(path.join(pagesTools,"sw-serwist.js"),"utf8");
+  const builder=readFileSync(path.join(pagesTools,"inject_serwist.mjs"),"utf8");
+  const config=read("serwist.config.mjs");
+  assert.match(worker,/precacheEntries:self\.__SW_MANIFEST/);
+  assert.match(worker,/precacheOptions:\{/);
+  assert.match(builder,/config\.precache_critical/);
+  assert.match(builder,/EFHC_SERWIST_CONFIGURATOR_PASS/);
+  assert.match(config,/precachePrerendered:false/);
+  assert.doesNotMatch(worker,/from ["']workbox-/);
+  assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
 });
 
-
-// A controlling Service Worker owns an entire installed HTML/JS/CSS release.
-// Online updates must NOT mix new HTML with the previously installed chunks.
-test("PWA offline navigation opens a complete installed page without waiting for a worker update", async () => {
-  const source = read("public/sw.js");
-  const origin = "https://efhc.example";
-  const scope = origin + "/efhc/";
-  const cached = new Response("verified installed page", {status: 200});
-  let updates = 0, network = 0;
-  const sandbox = {
-    URL, Response, Request, Headers, Blob, Date, console,
-    self: {
-      registration: {scope,active:{},update:async()=>{updates++;}},
-      location:{origin},navigator:{onLine:false},
-      addEventListener:()=>{},clients:{matchAll:async()=>[]},
-    },
-    EFHC_PWA_BUILD_CONFIG:{
-      build_id:"current",static_export:true,precache:["/efhc/panels/index.html"],
-      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
-        content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
-    },
-    caches:{
-      match:async()=>undefined,
-      open:async()=>({match:async url=>String(url).endsWith("/panels/index.html")?cached.clone():undefined}),
-    },
-    fetch:async()=>{network++;throw Error("offline transport");},
-  };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;", sandbox);
-  const holds=[];
-  const response=await sandbox.navigateForTest(new Request(scope+"panels/"), {waitUntil:p=>holds.push(p)});
-  assert.equal(await response.text(),"verified installed page");
-  await Promise.all(holds);
-  assert.equal(updates,0,"cached navigation must not keep an update fetch event alive");
-  assert.match(read("src/components/PwaRuntimeStatus.tsx"), /trackedRegistration\.update\(\)/);
-  assert.equal(network,0,"an offline navigation must not request network HTML");
-  assert.match(source,/CLIENT_BUILD_READY/);
-  assert.match(source,/EFHC_STALE_HTML_BUILD/);
-  assert.match(source,/fetch\(request, \{cache: htmlDocument \? "no-store" : "reload"\}\)/);
-  assert.match(source,/retireObsoleteBuildsIfSafe/);
+test("Serwist rejects cross-generation HTML and never restores stale legacy HTML",()=>{
+  const worker=readFileSync(path.join(pagesTools,"sw-serwist.js"),"utf8");
+  assert.match(worker,/EFHC_HTML_GENERATION_MISMATCH/);
+  assert.match(worker,/cachedResponseWillBeUsed/);
+  assert.match(worker,/if \(!expected\.has\(pathname\)\)/);
+  assert.match(worker,/matchPrecache\(scoped\("offline\.html"\)\)/);
+  assert.match(worker,/async function legacyAssetFallback/);
+  assert.doesNotMatch(worker,/legacyHtmlFallback/);
 });
 
-test("Online navigation never combines next-release HTML with old controlling worker", async () => {
-  const source = read("public/sw.js");
-  const origin = "https://efhc.example";
-  const scope = origin + "/efhc/";
-  const oldPage = new Response('<meta name="efhc-build-id" content="old">OLD', {status:200});
-  const newest = new Response('<meta name="efhc-build-id" content="new">LATEST', {status:200});
-  let networkReads = 0;
-  const cache = {match:async () => oldPage.clone()};
-  const sandbox = {
-    URL, Response, Request, Headers, Blob, Date, console,
-    AbortController, setTimeout, clearTimeout,
-    self:{
-      registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
-      addEventListener:()=>{},clients:{matchAll:async()=>[]},
-    },
-    EFHC_PWA_BUILD_CONFIG:{
-      build_id:"old",static_export:true,precache:["/efhc/index.html"],
-      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
-      content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
-    },
-    caches:{open:async()=>cache,match:async()=>oldPage.clone()},
-    fetch:async()=>{networkReads++;return newest.clone();},
-  };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
-  const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
-  assert.match(await result.text(),/OLD/,"old controller must serve its own verified HTML");
-  assert.equal(networkReads,0,"a cached atomic release must not fetch a newer HTML document");
-});
-
-test("Evicted navigation recovers only from the controlling worker build",async()=>{
-  const source=read("public/sw.js"),origin="https://efhc.example",scope=origin+"/efhc/";
-  let onlineBuild="successor";
-  const sandbox={
-    URL,Response,Request,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
-    self:{registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
-      addEventListener:()=>{},clients:{matchAll:async()=>[]}},
-    EFHC_PWA_BUILD_CONFIG:{
-      build_id:"installed",static_export:true,precache:["/efhc/withdraw/index.html"],
-      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
-        content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
-    },
-    caches:{open:async()=>({match:async()=>undefined}),match:async()=>undefined},
-    fetch:async()=>new Response('<meta name="efhc-build-id" content="'+onlineBuild+'">PAGE',{status:200}),
-  };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
-  const request=new Request(scope+"withdraw/");
-  const mismatched=await sandbox.navigateForTest(request,{waitUntil:()=>{}});
-  assert.equal(mismatched.status,503,"a successor document must never run under an obsolete worker");
-  onlineBuild="installed";
-  const matched=await sandbox.navigateForTest(request,{waitUntil:()=>{}});
-  assert.match(await matched.text(),/PAGE/,"network can restore only same-build HTML");
-});
-
-test("When online HTML is incomplete, keep the verified offline version", async () => {
-  const source = read("public/sw.js");
-  const origin = "https://efhc.example", scope = origin + "/efhc/";
-  const verified = new Response("verified old offline page",{status:200});
-  const sandbox = {
-    URL,Response,Request,Headers,Blob,Date,console,AbortController,setTimeout,clearTimeout,
-    self:{registration:{scope,active:{}},location:{origin},navigator:{onLine:true},
-      addEventListener:()=>{},clients:{matchAll:async()=>[]}},
-    EFHC_PWA_BUILD_CONFIG:{
-      build_id:"old",static_export:true,precache:["/efhc/index.html"],
-      cache_limits:{static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
-      content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880}},
-    },
-    caches:{open:async()=>({match:async()=>verified.clone()}),match:async()=>verified.clone()},
-    fetch:async()=>new Response("incomplete publication",{status:200}),
-  };
-  vm.runInNewContext(source+"\nthis.navigateForTest = navigationFallback;",sandbox);
-  const result=await sandbox.navigateForTest(new Request(scope),{waitUntil:()=>{}});
-  assert.equal(await result.text(),"verified old offline page");
-});
-
-test("active old worker never deletes a successor's staged build; new worker retires only prior caches", async () => {
-  const source = read("public/sw.js");
-  const origin = "https://efhc.example";
-  const scope = origin + "/efhc/";
-  const cacheNames = new Set(["efhc-pwa-old-static","efhc-pwa-old-content"]);
-  const posted = [];
-  const client = {id:"same-tab",url:scope,postMessage(message){posted.push(message)}};
-  const oldClient = {id:"old-tab",url:scope+"panels/",postMessage(message){posted.push(message)}};
-  let openClients = [client, oldClient];
-  const buckets = new Map();
-  const cacheStorage = {
-    keys: async () => [...cacheNames],
-    delete: async name => {buckets.delete(name);return cacheNames.delete(name);},
-    open: async name => {
-      cacheNames.add(name);
-      if (!buckets.has(name)) buckets.set(name,new Map());
-      const values = buckets.get(name);
-      return {
-        match: async req => values.get(String(req))?.clone(),
-        put: async (req,response) => {values.set(String(req),response.clone());},
-        keys: async () => [...values.keys()].map(url=>({url})),
-      };
-    },
-    match: async () => undefined,
-  };
-  const makeWorker = buildId => {
-    const events = new Map();
-    const sandbox = {
-      URL, Headers, Response, Request, Blob, Date, console,
-      caches:cacheStorage,
-      self:{
-        registration:{scope,active:{}},
-        location:{origin},
-        clients:{
-          matchAll:async()=>openClients,
-          claim:async()=>undefined,
-        },
-        addEventListener:(type,listener)=>events.set(type,listener),
-      },
-      EFHC_PWA_BUILD_CONFIG:{
-        build_id:buildId,static_export:true,
-        precache:["/efhc/_next/static/"+buildId+".js"],
-        cache_limits:{
-          static:{max_entries:100,max_age_seconds:2592000,max_bytes:10485760},
-          content:{max_entries:40,max_age_seconds:604800,max_bytes:5242880},
-        },
-      },
-    };
-    vm.runInNewContext(source,sandbox,{filename:"sw.js"});
-    const dispatch = async (type,options={}) => {
-      let lifetime;
-      const event={
-        data:options.data,source:options.source,
-        waitUntil:promise=>{lifetime=promise;},
-      };
-      events.get(type)(event);
-      if(lifetime) await lifetime;
-    };
-    return {dispatch};
-  };
-  const oldStatic = await cacheStorage.open("efhc-pwa-old-static");
-  await oldStatic.put("/efhc/index.html",new Response("verified old HTML"));
-  const oldWorker = makeWorker("old");
-  await oldWorker.dispatch("activate");
-  // A successor preinstalls its static and content caches after the old
-  // worker has already activated.
-  cacheNames.add("efhc-pwa-next-static");
-  cacheNames.add("efhc-pwa-next-content");
-  await oldWorker.dispatch("message",{
-    source:client,
-    data:{
-      type:"CLIENT_BUILD_READY",buildId:"old",
-      assets:["/efhc/_next/static/old.js"],
-    },
-  });
-  assert.equal(cacheNames.has("efhc-pwa-next-static"),true,
-    "old active worker erased newly staged successor code");
-  assert.equal(cacheNames.has("efhc-pwa-next-content"),true,
-    "old active worker erased newly staged successor data");
-  const newWorker = makeWorker("next");
-  await newWorker.dispatch("activate");
-  assert.equal(cacheNames.has("efhc-pwa-old-static"),true,
-    "previous assets must survive until new client verifies its build");
-  // Browsers regularly terminate a SW and then restart it WITHOUT an
-  // activate event. Retirement inventory must be restored from CacheStorage.
-  const resumedWorker = makeWorker("next");
-  await resumedWorker.dispatch("message",{
-    source:client,
-    data:{
-      type:"CLIENT_BUILD_READY",buildId:"next",
-      assets:["/efhc/_next/static/next.js"],
-    },
-  });
-  assert.equal(cacheNames.has("efhc-pwa-old-static"),true,
-    "the old tab still needs its old immutable scripts");
-  // The old tab is closed. A later status request from the verified new tab
-  // rechecks retirement even though no activate event fires on the worker.
-  openClients = [client];
-  await resumedWorker.dispatch("message",{source:client,data:{type:"GET_CACHE_STATUS"}});
-  assert.equal(cacheNames.has("efhc-pwa-old-static"),false,
-    "a verified successor must retire the previous static build");
-  assert.equal(cacheNames.has("efhc-pwa-old-content"),false,
-    "a verified successor must retire the previous content build");
-  assert.equal(cacheNames.has("efhc-pwa-next-static"),true,
-    "the active successor's own assets must never be removed");
+test("Only scoped immutable legacy assets may be read; only proved EFHC caches may retire",()=>{
+  const worker=readFileSync(path.join(pagesTools,"sw-serwist.js"),"utf8");
+  assert.match(worker,/async function retireLegacyCachesOnce/);
+  assert.match(worker,/windows\.some\(client => !readyClients\.has\(client\.id\)\)/);
+  assert.match(worker,/entries\.every\(request =>/);
+  assert.match(worker,/inScope\(new URL\(request\.url\)\)/);
+  assert.match(worker,/async function legacyAssetFallback/);
+  assert.doesNotMatch(worker,/localStorage\.clear|indexedDB\.deleteDatabase/);
+  assert.doesNotMatch(worker,/caches\.keys\(\)\.then\(.*caches\.delete/);
 });
 
 test("Android maskable icon preserves the canonical EFHC logo and safe zone", () => {
