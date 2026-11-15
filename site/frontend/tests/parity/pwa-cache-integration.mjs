@@ -965,10 +965,10 @@ try {
       // State inspection and message delivery must be one browser-side
       // operation. reg.update() can briefly expose a previous waiting worker
       // while a successor is still installing; do not assert on that race.
-      await first.waitForFunction(async scope=>{
+      const waitingProof=await first.waitForFunction(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
         if(reg?.installing || reg?.waiting?.state!=="installed")return false;
-        window.__EFHC_ACTIVATION_PROBE__={
+        const snapshot={
           active:reg.active?.state||null,
           waiting:reg.waiting.state,
           installing:reg.installing?.state||null,
@@ -976,9 +976,10 @@ try {
           controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
         };
         reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
-        return true;
+        return snapshot;
       },base,{timeout:20000});
-      const beforeMessage=await first.evaluate(()=>window.__EFHC_ACTIVATION_PROBE__);
+      const beforeMessage=await waitingProof.jsonValue();
+      await waitingProof.dispose();
       console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
       assert.equal(beforeMessage.waiting,"installed",
         "A fresh Serwist release must remain waiting while two scoped clients are open");
