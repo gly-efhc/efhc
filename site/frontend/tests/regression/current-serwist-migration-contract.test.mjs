@@ -31,3 +31,30 @@ test("Serwist defers activation and document reload while the TON Connect modal 
   assert.match(source, /!walletModalOpenRef\.current &&\s*Date\.now\(\) - lastInteractionAt >= 6000/);
   assert.doesNotMatch(source, /staleDetectedAt|lastInteractionAt < 6000 &&/);
 });
+
+
+test("legacy Serwist control messages cannot bypass EFHC safety or public-only prefetch", () => {
+ const sw=read("ci/pages-tools/sw-serwist.js");
+ const runtime=read("frontend/src/components/PwaRuntimeStatus.tsx");
+ const doc=read("frontend/src/pages/_document.tsx");
+ // Serwist's own SKIP_WAITING and CACHE_URLS listeners must never receive
+ // the legacy messages before EFHC applies scope and operation guards.
+ const interception=sw.indexOf('self.addEventListener("message", event => {');
+ const native=sw.indexOf("const sw = new Serwist(");
+ assert.ok(interception>=0 && interception<native,
+   "legacy protocol interception must be registered before the native SDK");
+ const early=sw.slice(interception,native);
+ assert.match(early,/event\.stopImmediatePropagation\(\)/);
+ assert.match(early,/data\.type === "SKIP_WAITING"/);
+ assert.match(early,/data\.type === "CACHE_URLS"/);
+ assert.match(sw,/data\.efhcSafeToActivate !== true/);
+ assert.match(sw,/windows\.length > 1/);
+ assert.match(sw,/event\.source\?\.url/);
+ assert.match(sw,/data\.type==="ACTIVATE_WHEN_SAFE"/);
+ assert.match(sw,/data\.type==="PREFETCH_PRIORITY"/);
+ assert.match(runtime,/type: "ACTIVATE_WHEN_SAFE"/);
+ assert.match(runtime,/type: "PREFETCH_PRIORITY"/);
+ assert.match(doc,/ACTIVATE_WHEN_SAFE/);
+ assert.doesNotMatch(runtime,/type: "SKIP_WAITING"|type: "CACHE_URLS"/);
+ assert.doesNotMatch(doc,/SKIP_WAITING/);
+});
