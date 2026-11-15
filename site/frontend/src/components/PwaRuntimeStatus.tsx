@@ -360,7 +360,7 @@ export function PwaRuntimeStatus(props: {
         !(document.activeElement instanceof HTMLInputElement &&
           document.activeElement.type === "password");
       if (!safeIdle) return;
-      staged.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
+      staged.postMessage({ type: "ACTIVATE_WHEN_SAFE", efhcSafeToActivate: true });
     };
     const checkForUpdate = () => {
       if (disposed || !trackedRegistration || !navigator.onLine ||
@@ -476,7 +476,7 @@ export function PwaRuntimeStatus(props: {
             window.setTimeout(() => {
               target?.postMessage({
                 reason: "learned-idle-prefetch",
-                type: "CACHE_URLS",
+                type: "PREFETCH_PRIORITY",
                 urls: collectCacheableResources(),
               });
             }, 250);
@@ -568,7 +568,7 @@ export function PwaRuntimeStatus(props: {
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
     );
     if (queryClient.isMutating() > 0 || activeEditor) return;
-    waiting?.postMessage({ type: "SKIP_WAITING", efhcSafeToActivate: true });
+    waiting?.postMessage({ type: "ACTIVATE_WHEN_SAFE", efhcSafeToActivate: true });
     setWaiting(null);
   };
 
