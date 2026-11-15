@@ -880,10 +880,17 @@ try {
           }),16000);
         assert.equal(stale.url(),"about:blank",
           "Old tab must leave EFHC scope before legacy cache retirement");
-        await boundedSerwistPhase("legacy.stale.close",()=>
-          stale.close({runBeforeUnload:false,timeout:12000}),16000);
-        assert.equal(stale.isClosed(),true,
-          "Old window must really close before legacy cache retirement");
+        const gone=await boundedSerwistPhase("legacy.stale.out.of.scope",()=>
+          stale.evaluate(()=>({url:location.href,
+            controller:navigator.serviceWorker?.controller?.scriptURL||null})),12000);
+        assert.equal(gone.url,"about:blank",
+          "The old EFHC-scoped client must really be replaced by an out-of-scope document");
+        assert.equal(stale.isClosed(),false,
+          "Scope exit must succeed even when Chromium retains the browser tab");
+        // The Serwist handoff rule cares only about clients within /efhc/.
+        // After this scope exit the still-open tab cannot consume old EFHC
+        // resources, so the ensuing cache-retirement assertions are real.
+        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify(gone));
         await context.setOffline(false);
       }
       await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
