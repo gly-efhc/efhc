@@ -962,21 +962,23 @@ try {
         if(!reg)throw Error("Expected first Serwist registration");
         await reg.update();
       },base);
-      await first.waitForFunction(async scope=>
-        Boolean((await navigator.serviceWorker.getRegistration(scope))?.waiting),
-        base,{timeout:18000});
-      const beforeMessage=await first.evaluate(async scope=>{
+      // State inspection and message delivery must be one browser-side
+      // operation. reg.update() can briefly expose a previous waiting worker
+      // while a successor is still installing; do not assert on that race.
+      await first.waitForFunction(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
-        const snapshot={
-          active:reg?.active?.state||null,
-          waiting:reg?.waiting?.state||null,
-          installing:reg?.installing?.state||null,
+        if(reg?.installing || reg?.waiting?.state!=="installed")return false;
+        window.__EFHC_ACTIVATION_PROBE__={
+          active:reg.active?.state||null,
+          waiting:reg.waiting.state,
+          installing:reg.installing?.state||null,
           controller:navigator.serviceWorker.controller?.state||null,
           controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
         };
-        reg?.waiting?.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
-        return snapshot;
-      },base);
+        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
+        return true;
+      },base,{timeout:20000});
+      const beforeMessage=await first.evaluate(()=>window.__EFHC_ACTIVATION_PROBE__);
       console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
       assert.equal(beforeMessage.waiting,"installed",
         "A fresh Serwist release must remain waiting while two scoped clients are open");
