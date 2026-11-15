@@ -870,37 +870,32 @@ try {
           ]),oldUrl),12000);
         assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
       }finally {
+        // Leave the old worker's scope while the network is STILL OFFLINE.
+        // Bringing the connection online first triggers offline.html's own
+        // online event reload, which races a navigation to about:blank.
+        // This navigation is local and cannot require a network response.
+        await boundedSerwistPhase("legacy.stale.leave.scope",()=>
+          stale.goto("about:blank",{
+            waitUntil:"domcontentloaded",timeout:12000,
+          }),16000);
+        // goto() can resolve while Chromium is still committing the new
+        // document; neither stale.url() nor page.evaluate() is reliable
+        // until the out-of-scope navigation is explicitly confirmed.
+        await boundedSerwistPhase("legacy.stale.scope.committed",()=>
+          stale.waitForURL("about:blank",{
+            waitUntil:"domcontentloaded",timeout:12000,
+          }),16000);
+        assert.equal(stale.url(),"about:blank",
+          "The old EFHC client must be replaced by an out-of-scope document");
+        assert.equal(stale.isClosed(),false,
+          "Scope exit must succeed even while the Chromium tab remains open");
+        // The worker filters live clients by URL, not by CDP target status.
+        // The ensuing native legacy-retirement checks still prove that
+        // only EFHC-owned old caches may disappear.
+        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify({
+          url:stale.url(),tabOpen:!stale.isClosed(),
+        }));
         await context.setOffline(false);
-        // Close the browser target itself, as a user closing the tab does.
-        // Playwright's page.close() may wait indefinitely for a page whose
-        // service-worker fetch is still settling after an offline transition.
-        // The test must prove that the window was really detached before
-        // allowing the one-shot retirement of legacy public assets.
-        const tabProtocol=await context.newCDPSession(stale);
-        const {targetInfo}=await boundedSerwistPhase("legacy.target.identity",()=>
-          tabProtocol.send("Target.getTargetInfo"),11000);
-        const browserProtocol=await browser.newBrowserCDPSession();
-        try {
-          const closeResult=await boundedSerwistPhase("legacy.stale.close",()=>
-            browserProtocol.send("Target.closeTarget",{
-              targetId:targetInfo.targetId,
-            }),11000);
-          assert.equal(closeResult.success,true,
-            "Chromium must acknowledge removal of the old window");
-          // A Playwright close event can lag behind an already removed CDP
-          // target under an offline/online SW transition. Verify the real
-          // Chromium target is gone instead of relying on an event callback.
-          await boundedSerwistPhase("legacy.stale.detached",async()=>{
-            for(let attempt=0;attempt<60;attempt++) {
-              const {targetInfos}=await browserProtocol.send("Target.getTargets");
-              if(!targetInfos.some(target=>target.targetId===targetInfo.targetId))return;
-              await new Promise(resolve=>setTimeout(resolve,200));
-            }
-            throw Error("Old Chromium window target remains after close");
-          },16000);
-        } finally {
-          await browserProtocol.detach().catch(()=>undefined);
-        }
       }
       await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
         const assets=[...document.querySelectorAll("script[src]")]
