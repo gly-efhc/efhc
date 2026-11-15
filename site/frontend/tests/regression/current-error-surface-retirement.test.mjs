@@ -30,11 +30,13 @@ test("App mounts real USER/Admin/Shop routes, with no fatal page replacement",()
 });
 
 test("PWA never intercepts retired routes with synthetic 404 pages",()=>{
-  const worker=source("../../public/sw.js");
+  const worker=source("../../../ci/pages-tools/sw-serwist.js");
   assert.doesNotMatch(worker,/isRetiredRoute|QuietPageSurface|SafeErrorState/);
   assert.ok(!worker.includes('event.respondWith(new Response("", {status: 404'));
-  assert.match(worker,/purgeSupersededHtml/);
-  assert.match(worker,/previousBuildCachesAtActivation/);
+  assert.match(worker,/new Serwist\(/);
+  assert.match(worker,/async function retireLegacyCachesOnce\(/);
+  assert.match(worker,/async function legacyPublicCaches\(/);
+  assert.doesNotMatch(worker,/legacyHtmlFallback/);
 });
 
 test("The actual Withdraw page is retained in the tree for data-safe rendering",()=>{
