@@ -1004,6 +1004,85 @@ try {
       await boundedSerwistPhase("interrupt.context.close",()=>isolated.close(),11000);
     }
   });
+  await check("Serwist keeps the installed offline shell when Chromium media cache quota is exhausted",async()=>{
+    // Dedicated browser profile and real CDP quota: no synthetic quota-success
+    // flag, no changes to the main page or user-scoped browser storage.
+    const quotaFile=path.join(root,"quota-overflow.webp");
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    let protocol;
+    try {
+      await writeFile(quotaFile,Buffer.alloc(5*1024*1024,0x52));
+      const tab=await isolated.newPage();
+      await boundedSerwistPhase("quota.baseline.goto",()=>
+        tab.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000}),22000);
+      await boundedSerwistPhase("quota.worker.ready",()=>tab.evaluate(async appBase=>{
+        await navigator.serviceWorker.register(appBase+"sw.js",{
+          scope:appBase,updateViaCache:"none",
+        });
+        return await Promise.race([
+          navigator.serviceWorker.ready.then(reg=>Boolean(reg.active)),
+          new Promise((_,reject)=>setTimeout(()=>
+            reject(Error("Quota baseline Serwist install timeout")),30000)),
+        ]);
+      },base),35000);
+      await tab.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),
+        null,{timeout:12000});
+      protocol=await isolated.newCDPSession(tab);
+      const before=await protocol.send("Storage.getUsageAndQuota",{origin});
+      assert.ok(Number.isFinite(before.usage)&&before.usage>=0,
+        "Actual Chromium storage usage is required for the quota test");
+      const limit=Math.ceil(before.usage+256*1024);
+      await protocol.send("Storage.overrideQuotaForOrigin",{origin,quotaSize:limit});
+      const constrained=await protocol.send("Storage.getUsageAndQuota",{origin});
+      assert.equal(constrained.overrideActive,true,
+        "Chromium must confirm that a real quota override is active");
+      assert.ok(constrained.quota < 5*1024*1024+before.usage,
+        "The new media payload must exceed the constrained storage budget");
+      const media=await boundedSerwistPhase("quota.media.fetch",()=>tab.evaluate(
+        async url=>{
+          try {
+            const response=await fetch(url,{cache:"no-store"});
+            return {ok:response.ok,status:response.status};
+          } catch(error) {
+            return {ok:false,status:null,error:String(error)};
+          }
+        },base+"quota-overflow.webp"),20000);
+      const state=await tab.evaluate(async url=>{
+        const names=await caches.keys();
+        const cached=[];
+        for(const name of names) {
+          if(await (await caches.open(name)).match(url))cached.push(name);
+        }
+        return {names,mediaCachedIn:cached};
+      },base+"quota-overflow.webp");
+      await isolated.setOffline(true);
+      const offline=await boundedSerwistPhase("quota.predecessor.offline",()=>
+        tab.goto(base+"offline.html",{
+          waitUntil:"domcontentloaded",timeout:15000,
+        }),19000);
+      assert.equal(offline?.ok(),true,
+        "Quota exhaustion must not remove the installed offline shell");
+      console.log("PWA_SERWIST_QUOTA_DIAGNOSTIC",JSON.stringify({
+        before:{usage:before.usage,quota:before.quota},
+        constrained:{usage:constrained.usage,quota:constrained.quota,
+          overrideActive:constrained.overrideActive},
+        media,state,offline:offline?.ok(),
+      }));
+      assert.equal(media.ok,true,
+        "Runtime public media must remain accessible online when caching exceeds quota");
+      assert.equal(state.mediaCachedIn.length,0,
+        "Oversized media must not be retained beyond the measured quota");
+    } finally {
+      if(protocol) {
+        await protocol.send("Storage.overrideQuotaForOrigin",{origin})
+          .catch(()=>undefined);
+        await protocol.detach().catch(()=>undefined);
+      }
+      await isolated.setOffline(false).catch(()=>undefined);
+      await isolated.close().catch(()=>undefined);
+      await unlink(quotaFile).catch(()=>undefined);
+    }
+  });
   assert.deepEqual(errors,[],"unhandled page errors");
 } finally {
   await context.setOffline(false).catch(()=>undefined);
