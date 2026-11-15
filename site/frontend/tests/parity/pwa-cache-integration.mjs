@@ -965,21 +965,27 @@ try {
       // State inspection and message delivery must be one browser-side
       // operation. reg.update() can briefly expose a previous waiting worker
       // while a successor is still installing; do not assert on that race.
-      const waitingProof=await first.waitForFunction(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        if(reg?.installing || reg?.waiting?.state!=="installed")return false;
-        const snapshot={
-          active:reg.active?.state||null,
-          waiting:reg.waiting.state,
-          installing:reg.installing?.state||null,
-          controller:navigator.serviceWorker.controller?.state||null,
-          controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
-        };
-        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
-        return snapshot;
-      },base,{timeout:20000});
-      const beforeMessage=await waitingProof.jsonValue();
-      await waitingProof.dispose();
+      const beforeMessage=await boundedSerwistPhase("message.guard.stable.waiting",()=>
+        first.evaluate(async scope=>{
+          const deadline=Date.now()+18000;
+          let state=null;
+          while(Date.now()<deadline){
+            const reg=await navigator.serviceWorker.getRegistration(scope);
+            state={
+              active:reg?.active?.state||null,
+              waiting:reg?.waiting?.state||null,
+              installing:reg?.installing?.state||null,
+              controller:navigator.serviceWorker.controller?.state||null,
+              controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
+            };
+            if(state.waiting==="installed" && !state.installing){
+              reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
+              return state;
+            }
+            await new Promise(resolve=>setTimeout(resolve,75));
+          }
+          return state;
+        },base),22000);
       console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
       assert.equal(beforeMessage.waiting,"installed",
         "A fresh Serwist release must remain waiting while two scoped clients are open");
