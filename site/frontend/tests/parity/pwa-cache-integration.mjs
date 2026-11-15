@@ -3,7 +3,7 @@
  * prime financial data or grant Admin privileges.
  */
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, utimes } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { localPagesBase } from "./pages-base.mjs";
@@ -959,7 +959,16 @@ try {
         "The real Serwist worker must contain the critical manifest URL");
       const incompleteWorker=originalWorker.replaceAll(missingUrl,unavailableUrl)+
         "\n/* synthetic incomplete successor, not a release */\n";
+      // Python's local static server exposes Last-Modified with one-second
+      // precision. An immediate rewrite can appear unchanged to the browser
+      // update fetch (HTTP 304), never triggering the negative install.
+      // Give the deliberately broken, TEST-ONLY successor a distinct mtime.
+      const originalHttp=await tab.request.get(base+"sw.js",{
+        headers:{"Cache-Control":"no-cache"},
+      });
+      const previousModified=originalHttp.headers()["last-modified"];
       await writeFile(workerPath,incompleteWorker,"utf8");
+      await utimes(workerPath,new Date(),new Date(Date.now()+5000));
       await unlink(missingPath);
       const served=await tab.request.get(base+"sw.js",{
         headers:{"Cache-Control":"no-cache"},
@@ -967,6 +976,13 @@ try {
       assert.equal(served.ok(),true,"Updated worker must be served from local export");
       assert.ok((await served.text()).includes(unavailableUrl),
         "The browser must be offered the intentionally broken critical manifest");
+      const currentModified=served.headers()["last-modified"];
+      assert.ok(currentModified && previousModified &&
+        currentModified!==previousModified,
+        "A new worker must have a distinct HTTP Last-Modified for the real update test");
+      console.log("PWA_SERWIST_INTERRUPT_SCRIPT_HTTP",JSON.stringify({
+        previousModified,currentModified,
+      }));
       const observed={workers:[],criticalRequests:[],criticalResponses:[]};
       isolated.on("serviceworker",worker=>observed.workers.push(worker.url()));
       isolated.on("request",request=>{
