@@ -878,19 +878,23 @@ try {
           stale.goto("about:blank",{
             waitUntil:"domcontentloaded",timeout:12000,
           }),16000);
+        // goto() can resolve while Chromium is still committing the new
+        // document; neither stale.url() nor page.evaluate() is reliable
+        // until the out-of-scope navigation is explicitly confirmed.
+        await boundedSerwistPhase("legacy.stale.scope.committed",()=>
+          stale.waitForURL("about:blank",{
+            waitUntil:"domcontentloaded",timeout:12000,
+          }),16000);
         assert.equal(stale.url(),"about:blank",
-          "Old tab must leave EFHC scope before legacy cache retirement");
-        const gone=await boundedSerwistPhase("legacy.stale.out.of.scope",()=>
-          stale.evaluate(()=>({url:location.href,
-            controller:navigator.serviceWorker?.controller?.scriptURL||null})),12000);
-        assert.equal(gone.url,"about:blank",
-          "The old EFHC-scoped client must really be replaced by an out-of-scope document");
+          "The old EFHC client must be replaced by an out-of-scope document");
         assert.equal(stale.isClosed(),false,
-          "Scope exit must succeed even when Chromium retains the browser tab");
-        // The Serwist handoff rule cares only about clients within /efhc/.
-        // After this scope exit the still-open tab cannot consume old EFHC
-        // resources, so the ensuing cache-retirement assertions are real.
-        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify(gone));
+          "Scope exit must succeed even while the Chromium tab remains open");
+        // The worker filters live clients by URL, not by CDP target status.
+        // The ensuing native legacy-retirement checks still prove that
+        // only EFHC-owned old caches may disappear.
+        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify({
+          url:stale.url(),tabOpen:!stale.isClosed(),
+        }));
         await context.setOffline(false);
       }
       await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
