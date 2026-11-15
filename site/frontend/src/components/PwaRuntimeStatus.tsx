@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useQueryClient } from "@tanstack/react-query";
 import { appBasePath } from "../lib/appBasePath";
+import { useWalletProvider } from "../lib/wallet-provider";
 import React, {
   useCallback,
   useEffect,
@@ -99,6 +100,9 @@ export function PwaRuntimeStatus(props: {
 }) {
   const router = useRouter();
   const { t } = props;
+  const { modalOpened: walletModalOpened } = useWalletProvider();
+  const walletModalOpenRef = useRef(walletModalOpened);
+  walletModalOpenRef.current = walletModalOpened;
   const enabled = props.enabled !== false;
   // Current-session-only navigation context. Never persist a visit history.
   const recentSessionRoutes = useRef<string[]>([]);
@@ -242,7 +246,6 @@ export function PwaRuntimeStatus(props: {
     let cleanupReloadTimer: number | null = null;
     let verifyInFlight = false;
     let autoReloadBuildId = "";
-    let staleDetectedAt = 0;
     const markActivity = () => { lastInteractionAt = Date.now(); };
     const hasActiveEditor = () => Boolean(document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
@@ -250,8 +253,8 @@ export function PwaRuntimeStatus(props: {
     const attemptIdleReload = () => {
       if (disposed || !autoReloadBuildId || !navigator.onLine ||
           document.visibilityState === "hidden" ||
-          (Date.now() - lastInteractionAt < 6000 &&
-            (!staleDetectedAt || Date.now() - staleDetectedAt < 15000)) ||
+          walletModalOpenRef.current ||
+          Date.now() - lastInteractionAt < 6000 ||
           queryClient.isMutating() > 0 || hasActiveEditor()) return;
       const key = "efhc:pwa-reload:" + autoReloadBuildId;
       try {
@@ -325,7 +328,6 @@ export function PwaRuntimeStatus(props: {
           });
           // The one-shot legacy migration is handled inside Serwist only after
           // every scoped client confirms its build; no app-controlled GC timer.
-          staleDetectedAt = 0;
           const verifiedKey = "efhc:pwa-reload:" + manifest.build_id;
           try {
             window.sessionStorage.removeItem(verifiedKey);
@@ -336,7 +338,6 @@ export function PwaRuntimeStatus(props: {
           // A new worker cannot replace an already running React bundle.
           // Defer an automatic swap until user interactions and mutations finish.
           autoReloadBuildId = manifest.build_id;
-          if (!staleDetectedAt) staleDetectedAt = Date.now();
           attemptIdleReload();
         }
       } catch { /* Keep the last usable offline shell. */ }
@@ -354,6 +355,7 @@ export function PwaRuntimeStatus(props: {
       const safeIdle =
         navigator.onLine && document.visibilityState === "visible" &&
         queryClient.isMutating() === 0 && !hasActiveEditor() &&
+        !walletModalOpenRef.current &&
         Date.now() - lastInteractionAt >= 6000 &&
         !(document.activeElement instanceof HTMLInputElement &&
           document.activeElement.type === "password");

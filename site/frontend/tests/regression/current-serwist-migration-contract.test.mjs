@@ -22,3 +22,12 @@ test("Serwist source candidate has no independent PWA cache writer",()=>{
  assert.match(cfg,/precachePrerendered:false/);
  assert.match(cfg,/globPatterns:\[\]/);
 });
+
+
+test("Serwist defers activation and document reload while the TON Connect modal is open", () => {
+  const source = read("frontend/src/components/PwaRuntimeStatus.tsx");
+  assert.match(source, /import \{ useWalletProvider \} from "\.\.\/lib\/wallet-provider";/);
+  assert.match(source, /walletModalOpenRef\.current \|\|\s*Date\.now\(\) - lastInteractionAt < 6000/);
+  assert.match(source, /!walletModalOpenRef\.current &&\s*Date\.now\(\) - lastInteractionAt >= 6000/);
+  assert.doesNotMatch(source, /staleDetectedAt|lastInteractionAt < 6000 &&/);
+});
