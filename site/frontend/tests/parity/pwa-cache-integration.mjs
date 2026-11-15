@@ -66,17 +66,23 @@ const verifyOfflineSplashReload=async(tab,phase)=>{
   // handle the request. Prove a fresh document and the real EFHC splash,
   // not just a successful call to page.reload().
   await tab.evaluate(()=>{window.efhcOfflineReloadWitness=true;});
-  await boundedSerwistPhase(phase,()=>tab.reload({
-    waitUntil:"domcontentloaded",timeout:15000,
-  }),19000);
+  let navigationError=null;
+  try {
+    await boundedSerwistPhase(phase,()=>tab.reload({
+      waitUntil:"domcontentloaded",timeout:15000,
+    }),19000);
+  } catch(error) {navigationError=String(error);}
   const state=await tab.evaluate(()=>({
     path:location.pathname,
     freshDocument:window.efhcOfflineReloadWitness!==true,
     controller:Boolean(navigator.serviceWorker.controller),
     splash:Boolean(document.querySelector(".efhc-entry-splash_content")),
     title:document.title,
-  }));
-  console.log("PWA_SERWIST_OFFLINE_RELOAD",phase,JSON.stringify(state));
+  })).catch(error=>({inspectionError:String(error)}));
+  console.log("PWA_SERWIST_OFFLINE_RELOAD",phase,
+    JSON.stringify({navigationError,state}));
+  assert.equal(navigationError,null,
+    "Offline reload must not abort an installed Serwist-controlled page");
   assert.equal(state.path,new URL(base).pathname+"offline.html");
   assert.equal(state.freshDocument,true,"Offline navigation must create a new document");
   assert.equal(state.controller,true,"The installed Serwist worker must control the offline page");
@@ -1070,11 +1076,14 @@ try {
         async url=>{
           try {
             const response=await fetch(url,{cache:"no-store"});
-            return {ok:response.ok,status:response.status};
+            const body=await response.arrayBuffer();
+            return {ok:response.ok,status:response.status,bytes:body.byteLength};
           } catch(error) {
             return {ok:false,status:null,error:String(error)};
           }
         },base+"quota-overflow.webp"),20000);
+      assert.equal(media.bytes,5*1024*1024,
+        "The entire quota-overflow media response must be consumed before disabling network");
       const state=await tab.evaluate(async url=>{
         const names=await caches.keys();
         const cached=[];
