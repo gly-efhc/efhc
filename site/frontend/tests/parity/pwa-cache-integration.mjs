@@ -72,6 +72,15 @@ const verifyOfflineSplashReload=async(tab,phase)=>{
       waitUntil:"domcontentloaded",timeout:15000,
     }),19000);
   } catch(error) {navigationError=String(error);}
+  // Chromium may commit a fresh offline SW document after Playwright has
+  // rejected the navigation handle. Wait for the document proof itself:
+  // the old page still has the witness and therefore cannot pass this gate.
+  const documentProof=await boundedSerwistPhase(phase+".document.ready",()=>
+    tab.waitForFunction(()=>window.efhcOfflineReloadWitness!==true &&
+      Boolean(navigator.serviceWorker.controller) &&
+      Boolean(document.querySelector(".efhc-entry-splash_content")),
+      null,{timeout:12000}),16000);
+  await documentProof.dispose();
   const state=await tab.evaluate(()=>({
     path:location.pathname,
     freshDocument:window.efhcOfflineReloadWitness!==true,
