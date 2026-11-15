@@ -823,7 +823,29 @@ try {
         assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
       }finally {
         await context.setOffline(false);
-        await boundedSerwistPhase("legacy.stale.close",()=>stale.close(),11000);
+        // Close the browser target itself, as a user closing the tab does.
+        // Playwright's page.close() may wait indefinitely for a page whose
+        // service-worker fetch is still settling after an offline transition.
+        // The test must prove that the window was really detached before
+        // allowing the one-shot retirement of legacy public assets.
+        const tabProtocol=await context.newCDPSession(stale);
+        const {targetInfo}=await boundedSerwistPhase("legacy.target.identity",()=>
+          tabProtocol.send("Target.getTargetInfo"),11000);
+        const browserProtocol=await browser.newBrowserCDPSession();
+        try {
+          const detached=stale.waitForEvent("close",{timeout:12000});
+          const closeResult=await boundedSerwistPhase("legacy.stale.close",()=>
+            browserProtocol.send("Target.closeTarget",{
+              targetId:targetInfo.targetId,
+            }),11000);
+          assert.equal(closeResult.success,true,
+            "Chromium must acknowledge removal of the old window");
+          await boundedSerwistPhase("legacy.stale.detached",()=>detached,13000);
+          assert.equal(stale.isClosed(),true,
+            "Old client must be detached before legacy cache cleanup");
+        } finally {
+          await browserProtocol.detach().catch(()=>undefined);
+        }
       }
       await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
         const assets=[...document.querySelectorAll("script[src]")]
