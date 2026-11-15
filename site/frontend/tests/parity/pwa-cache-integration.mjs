@@ -912,11 +912,25 @@ try {
         return Boolean(active&&reg.active);
       },base),35000);
       assert.equal(installed,true,"Predecessor must be active before interrupted update");
-      // Change the source worker to trigger a real update while making one
-      // required install file return HTTP 404. The older precache remains.
-      await writeFile(workerPath,originalWorker+
-        "\n/* synthetic incomplete successor, not a release */\n","utf8");
+      // Revision-aware precaching may reuse an unchanged critical entry even
+      // if its original file disappears. Change the actual compiled critical
+      // manifest URL so the successor MUST fetch a missing dependency; only
+      // modifying the worker's trailing comment does not prove install failure.
+      const unavailableUrl=missingUrl.replace(
+        /offline-readonly\.html$/,"offline-unavailable-critical.html");
+      assert.notEqual(unavailableUrl,missingUrl);
+      assert.ok(originalWorker.includes(missingUrl),
+        "The real Serwist worker must contain the critical manifest URL");
+      const incompleteWorker=originalWorker.replaceAll(missingUrl,unavailableUrl)+
+        "\n/* synthetic incomplete successor, not a release */\n";
+      await writeFile(workerPath,incompleteWorker,"utf8");
       await unlink(missingPath);
+      const served=await tab.request.get(base+"sw.js",{
+        headers:{"Cache-Control":"no-cache"},
+      });
+      assert.equal(served.ok(),true,"Updated worker must be served from local export");
+      assert.ok((await served.text()).includes(unavailableUrl),
+        "The browser must be offered the intentionally broken critical manifest");
       const verdict=await boundedSerwistPhase("interrupt.worker.update",()=>tab.evaluate(async appBase=>{
         const reg=await navigator.serviceWorker.getRegistration(appBase);
         if(!reg?.active) throw Error("Predecessor not registered");
