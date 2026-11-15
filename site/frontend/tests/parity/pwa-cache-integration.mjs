@@ -870,13 +870,10 @@ try {
           ]),oldUrl),12000);
         assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
       }finally {
-        await context.setOffline(false);
-        // Leave the old worker's scope before closing its window. Chromium
-        // can retain a Target.closeTarget entry while an offline SW fetch is
-        // settling, even though the command returned success. A local
-        // about:blank navigation ends the EFHC client without a network
-        // request; then a normal close must actually finish. Retirement
-        // remains forbidden until that old EFHC client has left the scope.
+        // Leave the old worker's scope while the network is STILL OFFLINE.
+        // Bringing the connection online first triggers offline.html's own
+        // online event reload, which races a navigation to about:blank.
+        // This navigation is local and cannot require a network response.
         await boundedSerwistPhase("legacy.stale.leave.scope",()=>
           stale.goto("about:blank",{
             waitUntil:"domcontentloaded",timeout:12000,
@@ -887,6 +884,7 @@ try {
           stale.close({runBeforeUnload:false,timeout:12000}),16000);
         assert.equal(stale.isClosed(),true,
           "Old window must really close before legacy cache retirement");
+        await context.setOffline(false);
       }
       await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
         const assets=[...document.querySelectorAll("script[src]")]
