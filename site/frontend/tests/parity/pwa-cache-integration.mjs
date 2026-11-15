@@ -931,10 +931,23 @@ try {
       assert.equal(served.ok(),true,"Updated worker must be served from local export");
       assert.ok((await served.text()).includes(unavailableUrl),
         "The browser must be offered the intentionally broken critical manifest");
+      const observed={workers:[],criticalRequests:[],criticalResponses:[]};
+      isolated.on("serviceworker",worker=>observed.workers.push(worker.url()));
+      isolated.on("request",request=>{
+        if(request.url().includes("offline-unavailable-critical.html")) {
+          observed.criticalRequests.push(request.url());
+        }
+      });
+      isolated.on("response",response=>{
+        if(response.url().includes("offline-unavailable-critical.html")) {
+          observed.criticalResponses.push({url:response.url(),status:response.status()});
+        }
+      });
       const verdict=await boundedSerwistPhase("interrupt.worker.update",()=>tab.evaluate(async appBase=>{
         const reg=await navigator.serviceWorker.getRegistration(appBase);
         if(!reg?.active) throw Error("Predecessor not registered");
         const predecessor=reg.active;
+        const events=[];
         return await new Promise(resolve=>{
           let finished=false;
           const complete=result=>{
@@ -942,14 +955,18 @@ try {
             finished=true;
             clearTimeout(timeout);
             reg.removeEventListener("updatefound",onNew);
-            resolve({result,oldStillActive:reg.active===predecessor,
+            resolve({result,events,oldStillActive:reg.active===predecessor,
               activeState:reg.active?.state||null,
-              waitingState:reg.waiting?.state||null});
+              installingState:reg.installing?.state||null,
+              waitingState:reg.waiting?.state||null,
+              controllerState:navigator.serviceWorker.controller?.state||null});
           };
           const onNew=()=>{
             const next=reg.installing;
+            events.push("observed-installing:"+(next?.state||"none"));
             if(!next)return;
             const onState=()=>{
+              events.push("installing-state:"+next.state);
               if(next.state==="redundant")complete("rejected");
               else if(next.state==="activated")complete("unexpected_activation");
             };
@@ -958,10 +975,15 @@ try {
           };
           const timeout=setTimeout(()=>complete("timeout"),20000);
           reg.addEventListener("updatefound",onNew);
-          void reg.update().catch(()=>complete("rejected"));
+          events.push("update-called");
+          void reg.update().then(
+            ()=>{events.push("update-resolved");onNew();},
+            error=>{events.push("update-rejected:"+String(error));complete("rejected");}
+          );
           onNew();
         });
       },base),28000);
+      console.log("PWA_SERWIST_INTERRUPT_DIAGNOSTIC",JSON.stringify({verdict,observed}));
       assert.equal(verdict.result,"rejected",
         "Serwist must reject a new worker whose critical file is missing");
       assert.equal(verdict.oldStillActive,true,
