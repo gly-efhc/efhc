@@ -833,16 +833,23 @@ try {
           tabProtocol.send("Target.getTargetInfo"),11000);
         const browserProtocol=await browser.newBrowserCDPSession();
         try {
-          const detached=stale.waitForEvent("close",{timeout:12000});
           const closeResult=await boundedSerwistPhase("legacy.stale.close",()=>
             browserProtocol.send("Target.closeTarget",{
               targetId:targetInfo.targetId,
             }),11000);
           assert.equal(closeResult.success,true,
             "Chromium must acknowledge removal of the old window");
-          await boundedSerwistPhase("legacy.stale.detached",()=>detached,13000);
-          assert.equal(stale.isClosed(),true,
-            "Old client must be detached before legacy cache cleanup");
+          // A Playwright close event can lag behind an already removed CDP
+          // target under an offline/online SW transition. Verify the real
+          // Chromium target is gone instead of relying on an event callback.
+          await boundedSerwistPhase("legacy.stale.detached",async()=>{
+            for(let attempt=0;attempt<60;attempt++) {
+              const {targetInfos}=await browserProtocol.send("Target.getTargets");
+              if(!targetInfos.some(target=>target.targetId===targetInfo.targetId))return;
+              await new Promise(resolve=>setTimeout(resolve,200));
+            }
+            throw Error("Old Chromium window target remains after close");
+          },16000);
         } finally {
           await browserProtocol.detach().catch(()=>undefined);
         }
