@@ -1062,19 +1062,39 @@ try {
         }
         return {names,mediaCachedIn:cached};
       },base+"quota-overflow.webp");
+      const precache=await tab.evaluate(async()=>{
+        const names=await caches.keys();
+        const details=[];
+        for(const name of names) {
+          const cached=await caches.open(name);
+          const urls=(await cached.keys()).map(request=>new URL(request.url).pathname);
+          details.push({name,count:urls.length,
+            offlineHtml:urls.includes("/efhc/offline.html"),
+            offlineReadonly:urls.includes("/efhc/offline-readonly.html")});
+        }
+        const registration=await navigator.serviceWorker.getRegistration();
+        return {controller:Boolean(navigator.serviceWorker.controller),
+          activeState:registration?.active?.state||null,details};
+      });
+      console.log("PWA_SERWIST_QUOTA_BEFORE_OFFLINE",JSON.stringify({
+        before:{usage:before.usage,quota:before.quota},
+        constrained:{usage:constrained.usage,quota:constrained.quota,
+          overrideActive:constrained.overrideActive},
+        media,state,precache,
+      }));
       await isolated.setOffline(true);
       const offline=await boundedSerwistPhase("quota.predecessor.offline",()=>
         tab.goto(base+"offline.html",{
           waitUntil:"domcontentloaded",timeout:15000,
         }),19000);
-      assert.equal(offline?.ok(),true,
-        "Quota exhaustion must not remove the installed offline shell");
       console.log("PWA_SERWIST_QUOTA_DIAGNOSTIC",JSON.stringify({
         before:{usage:before.usage,quota:before.quota},
         constrained:{usage:constrained.usage,quota:constrained.quota,
           overrideActive:constrained.overrideActive},
-        media,state,offline:offline?.ok(),
+        media,state,precache,offline:{ok:offline?.ok(),status:offline?.status()},
       }));
+      assert.equal(offline?.ok(),true,
+        "Quota exhaustion must not remove the installed offline shell");
       assert.equal(media.ok,true,
         "Runtime public media must remain accessible online when caching exceeds quota");
       assert.equal(state.mediaCachedIn.length,0,
