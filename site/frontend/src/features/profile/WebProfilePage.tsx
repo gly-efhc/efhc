@@ -548,9 +548,9 @@ export default function WebProfilePage(props: Props) {
                   {t("profile.interface_account_note")}
                 </p>
               </div>
-                <button
+              <button
                 type="button"
-                  className="efhc-profile-settings-button source-button secondary"
+                className="efhc-profile-settings-button source-button secondary"
                 aria-label={t("profile.settings_title")}
                 title={t("profile.settings_title")}
                 onClick={() => setSettingsOpen(true)}
