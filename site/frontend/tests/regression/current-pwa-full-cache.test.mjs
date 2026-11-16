@@ -15,29 +15,25 @@ const run = (script, root) => spawnSync("python3", [
   path.join(pagesTools, script), "--directory", root, "--base-path", "/efhc",
 ], { encoding: "utf8" });
 
-test("Pages has a scoped Service Worker and does not delete the PWA files", () => {
+test("Pages has one Serwist worker with native update and prefetch APIs", () => {
   const prepare = readFileSync(path.join(pagesTools, "prepare_pages.py"), "utf8");
   const runtime = read("src/components/PwaRuntimeStatus.tsx");
+  const worker = readFileSync(path.join(pagesTools,"sw-serwist.js"),"utf8");
   const app = read("src/pages/_app.tsx");
-  assert.doesNotMatch(prepare, /public\/sw\.js'\)\.unlink/);
-  assert.doesNotMatch(prepare, /public\/manifest\.webmanifest'\)\.unlink/);
-  assert.match(runtime, /serviceWorker\.register\(`\$\{appBasePath\(\)\}\/sw\.js`/);
-  assert.match(runtime, /efhc:pwa-registration-failed/);
-  assert.match(app, /router\.basePath\}\/manifest\.webmanifest/);
-  assert.doesNotMatch(runtime, /return idle\(\(\) => waiting\.postMessage\(\{ type: "SKIP_WAITING" \}/);
-  assert.match(runtime, /trackedRegistration\.update\(\)/);
-  assert.match(runtime, /staged\.postMessage\(\{ type: "ACTIVATE_WHEN_SAFE", efhcSafeToActivate: true \}\)/);
-  assert.match(runtime, /queryClient\.isMutating\(\) === 0/);
-  assert.match(runtime, /Date\.now\(\) - lastInteractionAt >= 6000/);
-  assert.match(runtime, /CLIENT_BUILD_READY/);
-  assert.match(runtime, /GET_ACTIVE_BUILD/);
-  assert.match(readFileSync(path.join(pagesTools, "sw-serwist.js"), "utf8"), /ACTIVE_BUILD/);
-  assert.match(runtime, /controllerchange/);
-  assert.match(runtime, /attemptIdleReload/);
-  assert.match(runtime, /waitingActivationTimer/);
-  assert.match(runtime, /activateStagedWorker\(trackedRegistration\)/);
-  assert.match(runtime, /document\.addEventListener\("visibilitychange", onPageResumed\)/);
-  assert.match(runtime, /const onPageResumed = \(\) => \{checkForUpdate\(\); void verifyLoadedBuild\(\);\}/);
+  assert.doesNotMatch(prepare,/public\/sw\.js'\)\.unlink/);
+  assert.doesNotMatch(prepare,/public\/manifest\.webmanifest'\)\.unlink/);
+  assert.match(runtime,/serviceWorker\.register/);
+  assert.match(runtime,/registration\.update\(\)/);
+  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
+  assert.match(runtime,/queryClient\.isMutating\(\) === 0/);
+  assert.match(runtime,/!walletModalRef\.current && !handoffPending/);
+  assert.match(runtime,/controllerchange/);
+  assert.match(runtime,/document\.addEventListener\("visibilitychange",onResume\)/);
+  assert.match(worker,/sw\.addEventListeners\(\)/);
+  assert.match(worker,/skipWaiting:false/);
+  assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|PREFETCH_PRIORITY/);
+  assert.doesNotMatch(worker,/\bcaches\.(?:delete|open|keys)\(/);
+  assert.match(app,/router\.basePath\}\/manifest\.webmanifest/);
 });
 
 test("The Pages deploy workflow requires full offline Chromium acceptance before deployment", () => {
@@ -217,19 +213,17 @@ test("Serwist rejects cross-generation HTML and never restores stale legacy HTML
   assert.match(worker,/cachedResponseWillBeUsed/);
   assert.match(worker,/if \(!expected\.has\(pathname\)\)/);
   assert.match(worker,/matchPrecache\(scoped\("offline\.html"\)\)/);
-  assert.match(worker,/async function legacyAssetFallback/);
+  assert.doesNotMatch(worker,/legacyAssetFallback|legacyHtmlFallback/);
   assert.doesNotMatch(worker,/legacyHtmlFallback/);
 });
 
-test("Only scoped immutable legacy assets may be read; only proved EFHC caches may retire",()=>{
+test("Serwist owns public cache expiry without manual legacy GC or personal storage changes",()=>{
   const worker=readFileSync(path.join(pagesTools,"sw-serwist.js"),"utf8");
-  assert.match(worker,/async function retireLegacyCachesOnce/);
-  assert.match(worker,/windows\.some\(client => !readyClients\.has\(client\.id\)\)/);
-  assert.match(worker,/entries\.every\(request =>/);
-  assert.match(worker,/inScope\(new URL\(request\.url\)\)/);
-  assert.match(worker,/async function legacyAssetFallback/);
+  assert.match(worker,/new ExpirationPlugin\(/);
+  assert.match(worker,/cleanupOutdatedCaches:true/);
+  assert.doesNotMatch(worker,/retireLegacyCachesOnce|readyClients|legacyPublicCaches/);
+  assert.doesNotMatch(worker,/\bcaches\.(?:delete|open|keys)\(/);
   assert.doesNotMatch(worker,/localStorage\.clear|indexedDB\.deleteDatabase/);
-  assert.doesNotMatch(worker,/caches\.keys\(\)\.then\(.*caches\.delete/);
 });
 
 test("Android maskable icon preserves the canonical EFHC logo and safe zone", () => {
@@ -266,12 +260,13 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
   assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
 });
 
-test("Profile PWA maintenance checks the registered worker without clearing account caches", () => {
-  const settings = read("src/components/profile/ProfileSettingsDialog.tsx");
-  assert.match(settings, /registration\.update\(\)/);
-  assert.match(settings, /GET_CACHE_STATUS/);
-  assert.match(settings, /pwa\.maintenance_title/);
-  assert.doesNotMatch(settings, /localStorage\.clear\(|caches\.delete\(|indexedDB\.deleteDatabase\(/);
+test("Profile update checks Serwist without claiming a manual cache purge", () => {
+  const settings=read("src/components/profile/ProfileSettingsDialog.tsx");
+  assert.match(settings,/registration\.update\(\)/);
+  assert.match(settings,/pwa\.maintenance_title/);
+  assert.match(settings,/pwa\.native_cache_managed/);
+  assert.doesNotMatch(settings,/GET_CACHE_STATUS|CLEAN_STALE_PUBLIC_CACHE/);
+  assert.doesNotMatch(settings,/localStorage\.clear\(|caches\.delete\(|indexedDB\.deleteDatabase\(/);
 });
 
 test("Android native splash follows the approved EFHC loading surface", () => {
@@ -288,50 +283,24 @@ test("Android native splash follows the approved EFHC loading surface", () => {
   const pagesPrep = readFileSync(path.join(pagesTools, "prepare_pages.py"), "utf8");
   assert.doesNotMatch(documentSource, /efhc-bootstrap-splash/,
     "React must be the only startup splash; the PWA gate stays headless");
-  assert.match(documentSource, /__EFHC_PWA_GATE__/);
-  assert.match(documentSource, /efhc:pwa-gate-ready/);
+  assert.doesNotMatch(documentSource, /__EFHC_PWA_GATE__|efhc:pwa-gate-ready/);
   assert.match(appSource, /<SplashScreen\b/);
-  assert.match(appSource, /\(splashReady \|\| shellTimeoutReady\) && pwaGateReady/,
-    "The approved React splash must wait for both shell and PWA update gate");
+  assert.match(appSource, /effectiveSplashReady = splashReady \|\| shellTimeoutReady/,
+    "The React splash must not be held by a second PWA cache gate");
   assert.match(appSource, /if \(!effectiveSplashReady\)/);
   assert.match(pagesPrep, /src\/components\/SplashScreen\.tsx/,
     "Pages must correct the logo URL of the active React splash");
   assert.match(maskable, /id="mask-background"[^>]+fill="#000000"/);
 });
 
-test("PWA startup gate signals React without a second visible loading screen", async () => {
-  const doc = read("src/pages/_document.tsx");
-  const encoded = doc.match(/^const efhcBootstrapScript = (".*");$/m)?.[1];
-  assert.ok(encoded, "The headless PWA gate script must exist");
-  const script = JSON.parse(encoded);
-  assert.doesNotMatch(script, /efhc-bootstrap-splash|node\.remove\(/);
-  assert.match(script, /ACTIVATE_WHEN_SAFE/);
-  assert.match(script, /efhc:pwa-gate-ready/);
-  const dispatched = [];
-  const listeners = {};
-  const window = {
-    addEventListener(name, handler) {listeners[name] = handler;},
-    dispatchEvent(event) {dispatched.push(event.type);},
-  };
-  const document = {
-    querySelector(selector) {
-      if (selector.includes("meta[name")) return {content: "current-build"};
-      if (selector.includes("public-runtime-config.js"))
-        return {getAttribute: () => "/efhc/public-runtime-config.js"};
-      return null;
-    },
-  };
-  vm.runInNewContext(script, {
-    window, document, navigator: {}, console,
-    setTimeout() {return 1;}, clearTimeout() {},
-    fetch: async () => ({ok: true, json: async () => ({build_id: "current-build"})}),
-    AbortController,
-    Event: class {constructor(type) {this.type = type;}},
-  });
-  assert.equal(window.__EFHC_PWA_GATE__.ready, false);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(window.__EFHC_PWA_GATE__.ready, true);
-  assert.deepEqual(dispatched, ["efhc:pwa-gate-ready"]);
+test("Startup has no second cache bootstrap or hidden update gate", () => {
+  const doc=read("src/pages/_document.tsx");
+  const app=read("src/pages/_app.tsx");
+  assert.doesNotMatch(doc,/efhcBootstrapScript|repairOnce|ACTIVATE_WHEN_SAFE/);
+  assert.doesNotMatch(doc,/dangerouslySetInnerHTML/);
+  assert.doesNotMatch(app,/pwaGateReady|efhc:pwa-gate-ready/);
+  assert.match(app,/effectiveSplashReady = splashReady \|\| shellTimeoutReady/);
+  assert.match(app,/<SplashScreen\b/);
 });
 
 test("Splash logo stays vector-sharp without GPU scale rasterization", () => {
