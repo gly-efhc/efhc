@@ -46,8 +46,9 @@ const good = () => ({
 
 test("Android wallet handoff can reuse a valid server-issued proof only in its original tab and owner", () => {
   const tab = storage();
-  pending.savePendingTonProof(tab, owner, host, good());
-  assert.deepEqual(pending.loadPendingTonProof(tab, owner, host), good());
+  const initial = good();
+  pending.savePendingTonProof(tab, owner, host, initial);
+  assert.deepEqual(pending.loadPendingTonProof(tab, owner, host), initial);
   assert.equal(pending.loadPendingTonProof(storage(), owner, host), null);
   pending.clearPendingTonProof(tab);
   assert.equal(tab.size, 0);
