@@ -23626,7 +23626,7 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
 }
 
 
-/* Cycle0048 I08: OWNER screenshot 16.11.2026 — replace the redundant Admin
+/* OWNER screenshot 16.11.2026 — replace the redundant Admin
    status in the Profile hero upper right with the single compact settings entry.
    The real Admin navigation button and all RBAC permissions remain unchanged. */
 .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
@@ -23674,7 +23674,7 @@ html[data-interface-app-mode="user"][data-color-theme-id] .efhc-exchange-history
   white-space: nowrap;
 }
 
-/* Cycle0048 I08: precise screenshot-confirmed teal-to-gold pseudo progress
+/* Screenshot-confirmed teal-to-gold pseudo progress
    decoration directly before Wallet and Balance content. No progress, balance,
    PM/HI variant navigation or legitimate Energy meter is removed. */
 #profilePage [data-profile-content="wallet"] .efhc-wallet-trust-section::before,
