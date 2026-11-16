@@ -372,9 +372,11 @@ self.addEventListener("message",event => {
       await retireLegacyCachesOnce();
       const status=await Promise.all(CONFIG.precache.map(isCached));
       const cached=status.filter(Boolean).length;
-      await notify({type:"CACHE_STATUS",buildId:CONFIG.build_id,
+      const payload = {type:"CACHE_STATUS",buildId:CONFIG.build_id,
         precacheMissing:status.length-cached,staticEntries:cached,
-        contentEntries:0,staticBytes:0,contentBytes:0});
+        contentEntries:0,staticBytes:0,contentBytes:0};
+      event.ports?.[0]?.postMessage(payload);
+      await notify(payload);
     });
   }
 });
