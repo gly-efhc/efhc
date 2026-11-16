@@ -32,7 +32,7 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
   assert.match(runtime,/navigator\.serviceWorker\.addEventListener\("controllerchange"/);
   assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|PREFETCH_PRIORITY|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|CACHE_STATUS/);
-  assert.doesNotMatch(sw,/SKIP_WAITING|CACHE_URLS|ACTIVATE_WHEN_SAFE|PREFETCH_PRIORITY/);
+  assert.doesNotMatch(sw,/addEventListener\\("message"|data\\.type\\s*===|self\\.skipWaiting\\(/);
   assert.doesNotMatch(doc,/__EFHC_PWA_GATE__|efhcBootstrapScript|ACTIVATE_WHEN_SAFE|repairOnce/);
 });
 
