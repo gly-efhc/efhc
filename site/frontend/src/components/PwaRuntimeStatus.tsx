@@ -263,7 +263,7 @@ export function PwaRuntimeStatus(props: {
     const attemptIdleReload = () => {
       if (disposed || !autoReloadBuildId || !navigator.onLine ||
           document.visibilityState === "hidden" ||
-          walletModalOpenRef.current ||
+          walletModalOpenRef.current || walletHandoffPending ||
           Date.now() - lastInteractionAt < 6000 ||
           queryClient.isMutating() > 0 || hasActiveEditor()) return;
       const key = "efhc:pwa-reload:" + autoReloadBuildId;
