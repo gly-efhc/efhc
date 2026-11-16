@@ -34,8 +34,8 @@ test("PWA never intercepts retired routes with synthetic 404 pages",()=>{
   assert.doesNotMatch(worker,/isRetiredRoute|QuietPageSurface|SafeErrorState/);
   assert.ok(!worker.includes('event.respondWith(new Response("", {status: 404'));
   assert.match(worker,/new Serwist\(/);
-  assert.match(worker,/async function retireLegacyCachesOnce\(/);
-  assert.match(worker,/async function legacyPublicCaches\(/);
+  assert.match(worker,/cleanupOutdatedCaches:true/);
+  assert.doesNotMatch(worker,/retireLegacyCachesOnce|legacyPublicCaches/);
   assert.doesNotMatch(worker,/legacyHtmlFallback/);
 });
 
