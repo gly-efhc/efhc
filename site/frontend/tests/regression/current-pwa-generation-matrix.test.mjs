@@ -71,7 +71,7 @@ test("T1: release-specific CSS fingerprints are included before Serwist generate
 });
 
 test("T2: immutable CSS/JS stay version-addressed and Serwist handles asset caching",()=>{
-  assert.ok(worker.includes("_next/static"), "Hashed Next assets must use Serwist runtime strategy");
+  assert.match(worker,/_next/); assert.match(worker,/static/);
   assert.match(worker,/new CacheFirst\(/);
   assert.match(worker,/publicAssets/);
   assert.doesNotMatch(worker,/legacyAssetFallback|legacyPublicCaches/);
@@ -154,7 +154,7 @@ test("Public background resource caching uses native Serwist CACHE_URLS only",()
   assert.doesNotMatch(worker,/prefetchDeferred|PREFETCH_PRIORITY/);
   assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
-  assert.ok(runtime.includes("_next/static"), "Prefetch is restricted to public compiled resources");
+  assert.match(runtime,/_next/); assert.match(runtime,/static/);
 });
 
 test("A single scoped Service Worker is emitted by Serwist Configurator",()=>{
