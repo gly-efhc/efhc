@@ -74,6 +74,15 @@ export function ProfileWalletSection(props: Props) {
         </TelegramInfoBlock>
       ) : null}
 
+      {(props.connectionPhase === "error" || props.connectionPhase === "rejected")
+        && props.walletHint ? (
+          <TelegramInfoBlock
+            title={t("wallet.error_title")}
+            data-wallet-connection-feedback="safe"
+          >
+            {props.walletHint}
+          </TelegramInfoBlock>
+        ) : null}
       <div className="standalone-wallet-layout">
         <div
           className="source-card-title efhc-wallet-section-heading"
