@@ -48,6 +48,12 @@ import type { InterfaceAppMode, InterfaceVariantGroup } from
 import { useAvatarPreference } from "../queries/useAvatarPreference";
 import { getThemePageDescriptor } from "../lib/themePageRegistry";
 import { sameTonAddress } from "../lib/wallet-provider/primaryWalletRouting";
+import {
+  browserTonProofStorage,
+  clearPendingTonProof,
+  loadPendingTonProof,
+  savePendingTonProof,
+} from "../lib/ton/ton-proof-handoff";
 import { isDemoBackendMode } from "../demo/session";
 
 export type LayoutContextValue = {
@@ -395,6 +401,20 @@ export function Layout(
       .catch(() => setAvailableWallets([]));
   }, [activeAdapterId, listWallets]);
 
+  // On Android a wallet handoff can recreate this WebView. Restore only the
+  // same-tab, same-owner, still-valid server challenge before attempting to
+  // cryptographically bind the SDK-restored wallet; never trust this as proof.
+  useEffect(() => {
+    if (!globalId || !restoreSettled || !walletSession || hasBoundWallet
+      || proofState || activeAdapterId !== "tonconnect") return;
+    const recovered = loadPendingTonProof(
+      browserTonProofStorage(), String(globalId), window.location.hostname,
+    );
+    if (!recovered) return;
+    setProofState(recovered);
+    setWalletHint(t("wallet.proof_verifying"));
+  }, [activeAdapterId, globalId, hasBoundWallet, proofState, restoreSettled, t, walletSession]);
+
   // Acquire TON Proof only for the explicit wallet connection action below.
   // Background refreshes while a wallet is connecting would replace its
   // challenge and make the signed envelope fail server verification.
@@ -408,6 +428,11 @@ export function Layout(
     ) {
       return;
     }
+    // The restored SDK transport may arrive before its TON Proof connect item.
+    // Do not consume the server challenge against an incomplete wallet object.
+    if (activeAdapterId === "tonconnect"
+      && !(walletSession.raw as { connectItems?: { tonProof?: { proof?: unknown } } } | null)
+        ?.connectItems?.tonProof?.proof) return;
     const proofKey = String(
       (proofState.value as { payload_token?: unknown } | null)
         ?.payload_token ?? "proof",
@@ -429,6 +454,7 @@ export function Layout(
     setWalletHint(t("wallet.proof_verifying"));
     bindWallet(proofState)
       .then((bound) => {
+        clearPendingTonProof(browserTonProofStorage());
         if (!bound?.is_connected) {
           setConnectionPhase("error");
           setWalletHint(t("wallet.restore_requires_proof"));
@@ -447,6 +473,7 @@ export function Layout(
         }
       })
       .catch(() => {
+        clearPendingTonProof(browserTonProofStorage());
         setConnectionPhase("error");
         setWalletHint(t("wallet.proof_failed"));
       });
@@ -624,6 +651,12 @@ export function Layout(
       ? await prepareProof().catch(() => null)
       : null;
     setProofState(prepared);
+    if (mode === "binding") {
+      savePendingTonProof(
+        browserTonProofStorage(), String(globalId || ""),
+        window.location.hostname, prepared,
+      );
+    }
     if (mode === "binding" && !prepared) {
       // Binding requires a fresh server-issued TON Proof challenge. Never
       // offer a wallet connection that cannot be verified by the backend.
@@ -645,6 +678,7 @@ export function Layout(
       // openModal resolves when opened, not when a wallet is connected.
       // React hooks + backend TON Proof determine connection state.
     } catch (error) {
+      clearPendingTonProof(browserTonProofStorage());
       setWalletModalOpened(false);
       restoreTelegramMainButtonAfterWalletModal();
       setConnectionPhase(isUserRejected(error) ? "rejected" : "error");
@@ -665,6 +699,7 @@ export function Layout(
       return;
     }
     // Do not carry a previous one-time TON Proof into the next connect.
+    clearPendingTonProof(browserTonProofStorage());
     bindingAttemptRef.current = "";
     setProofState(null);
     setWalletModalOpened(false);
