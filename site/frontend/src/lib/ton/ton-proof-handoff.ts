@@ -10,7 +10,7 @@ import type { PreparedWalletProof } from "../wallet-provider/types";
  * signed transaction, session JWT, private key or cross-owner binding.
  * Backend cryptographic verification remains authoritative.
  */
-const KEY = "efhc.tonconnect.pending-proof.v1";
+const KEY = "efhc.tonconnect.pending-proof";
 
 type HandoffRecord = {
   v: 1;
