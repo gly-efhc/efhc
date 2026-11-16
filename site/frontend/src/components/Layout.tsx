@@ -625,6 +625,8 @@ export function Layout(
   }
 
   async function openWalletConnect(mode: "binding" | "execution_fallback" = "binding") {
+    // Only an explicitly selected execution fallback may skip TON Proof.
+    const bindingMode = mode !== "execution_fallback";
     hideTelegramMainButtonForWalletModal();
     setWalletModalOpened(true);
     setConnectionPhase("connecting");
@@ -632,7 +634,7 @@ export function Layout(
     // A live TonConnect session represents one selected address. Explicitly
     // connecting another wallet replaces only that session, not the server's
     // verified wallet_bindings for this Global ID.
-    if (walletSession && mode === "binding") {
+    if (walletSession && bindingMode) {
       try {
         await disconnectWallet();
       } catch {
@@ -647,17 +649,17 @@ export function Layout(
       setProofState(null);
       setProofAccepted(false);
     }
-    const prepared = mode === "binding"
+    const prepared = bindingMode
       ? await prepareProof().catch(() => null)
       : null;
     setProofState(prepared);
-    if (mode === "binding") {
+    if (bindingMode) {
       savePendingTonProof(
         browserTonProofStorage(), String(globalId || ""),
         window.location.hostname, prepared,
       );
     }
-    if (mode === "binding" && !prepared) {
+    if (bindingMode && !prepared) {
       // Binding requires a fresh server-issued TON Proof challenge. Never
       // offer a wallet connection that cannot be verified by the backend.
       setWalletModalOpened(false);
@@ -670,7 +672,7 @@ export function Layout(
     // The official TonConnect UI owns wallet selection and return/deep links.
     setWalletHint(prepared
       ? t("wallet.proof_ready")
-      : mode === "binding"
+      : bindingMode
         ? t("wallet.restore_requires_proof")
         : t("wallet.connection_ready"));
     try {
