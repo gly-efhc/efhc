@@ -48,7 +48,10 @@ test("legacy Serwist control messages cannot bypass EFHC safety or public-only p
  assert.match(early,/data\.type === "SKIP_WAITING"/);
  assert.match(early,/data\.type === "CACHE_URLS"/);
  assert.match(sw,/data\.efhcSafeToActivate !== true/);
- assert.match(sw,/windows\.length > 1/);
+ assert.match(sw,/activationReadyClients\.set\(senderId, Date\.now\(\)\)/);
+ assert.match(sw,/windows\.some\(client => now - \(activationReadyClients\.get\(client\.id\) \|\| 0\) > 4500\)/);
+ assert.match(sw,/data\.type==="CLIENT_ACTIVATION_BUSY"/);
+ assert.match(runtime,/type: "CLIENT_ACTIVATION_BUSY"/);
  assert.match(sw,/event\.source\?\.url/);
  assert.match(sw,/data\.type==="ACTIVATE_WHEN_SAFE"/);
  assert.match(sw,/data\.type==="PREFETCH_PRIORITY"/);
@@ -57,4 +60,22 @@ test("legacy Serwist control messages cannot bypass EFHC safety or public-only p
  assert.match(doc,/ACTIVATE_WHEN_SAFE/);
  assert.doesNotMatch(runtime,/type: "SKIP_WAITING"|type: "CACHE_URLS"/);
  assert.doesNotMatch(doc,/SKIP_WAITING/);
+});
+
+test("PWA maintenance is Serwist-scoped and never erases personal identity", () => {
+ const sw=read("ci/pages-tools/sw-serwist.js");
+ const settings=read("frontend/src/components/profile/ProfileSettingsDialog.tsx");
+ assert.match(sw,/data\.type==="CLEAN_STALE_PUBLIC_CACHE"/);
+ assert.match(sw,/NO_SERWIST_NATIVE_EQUIVALENT/);
+ assert.match(sw,/for \(const name of \[cacheNames\.pages, cacheNames\.assets\]\)/);
+ assert.match(sw,/clients\.length !== 1/);
+ assert.match(sw,/event\.data\.documentBuildId !== CONFIG\.build_id/);
+ assert.match(sw,/published\.build_id !== CONFIG\.build_id/);
+ assert.match(sw,/status:failed \? "partial" : "complete"/);
+ assert.doesNotMatch(sw,/localStorage\.clear|sessionStorage\.clear|indexedDB\.deleteDatabase/);
+ assert.match(settings,/new MessageChannel\(\)/);
+ assert.match(settings,/CLEAN_STALE_PUBLIC_CACHE/);
+ assert.match(settings,/PUBLIC_CACHE_CLEAN_RESULT/);
+ assert.match(settings,/role="status"/);
+ assert.doesNotMatch(settings,/caches\.delete\(|caches\.keys\(|localStorage\.clear\(/);
 });
