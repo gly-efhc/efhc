@@ -13,6 +13,8 @@ const critical = new Set(CONFIG.precache_critical || []);
 // A transient compatibility set, not a second cache manager or retention policy.
 // Native Serwist owns every new precache/runtime entry and its expiration.
 const readyClients = new Set();
+// Volatile consent for a single waiting-worker activation, not a cache policy.
+const activationReadyClients = new Map();
 const cacheNames = {
   pages:"efhc-serwist-pages",
   assets:"efhc-serwist-assets",
@@ -136,7 +138,14 @@ async function activateWhenSafe(data, event) {
     try {return inScope(new URL(client.url));}
     catch {return false;}
   });
-  if (windows.length > 1) return;
+  const senderId = event.source?.id;
+  if (!senderId || !windows.some(client => client.id === senderId)) return;
+  activationReadyClients.set(senderId, Date.now());
+  // Every scoped tab must independently attest that it is idle. A single
+  // tab cannot force an update over another tab's unsaved input or wallet.
+  const now = Date.now();
+  if (windows.some(client => now - (activationReadyClients.get(client.id) || 0) > 4500)) return;
+  activationReadyClients.clear();
   await self.skipWaiting();
 }
 self.addEventListener("message", event => {
@@ -216,6 +225,54 @@ const sw = new Serwist({
 });
 sw.addEventListeners();
 
+// Only an explicit user action may request this bounded Serwist-runtime prune.
+// Serwist continues to own every cache write, precache revision and expiration.
+async function cleanStalePublicCache(event) {
+  const reply = event.ports?.[0];
+  if (!reply) return;
+  const respond = result => reply.postMessage({type:"PUBLIC_CACHE_CLEAN_RESULT",
+    buildId:CONFIG.build_id,...result});
+  try {
+    if (!event.source?.url || !inScope(new URL(event.source.url)))
+      return respond({status:"unavailable",removed:0});
+    const clients = (await self.clients.matchAll({
+      type:"window",includeUncontrolled:true,
+    })).filter(client => {
+      try {return inScope(new URL(client.url));}
+      catch {return false;}
+    });
+    if (clients.length !== 1 || clients[0].id !== event.source.id)
+      return respond({status:"other_tabs",removed:0});
+    // Do not remove even obsolete public assets while offline or when this
+    // worker is older than the published build. Keep the last working shell.
+    const response = await fetch(scoped("pwa-build.json"),{cache:"no-store"});
+    if (!response.ok) return respond({status:"offline",removed:0});
+    const published = await response.json();
+    if (!published || published.build_id !== CONFIG.build_id)
+      return respond({status:"update_required",removed:0});
+    let removed = 0;
+    let failed = 0;
+    for (const name of Object.values(cacheNames)) {
+      const cache = await caches.open(name);
+      for (const request of await cache.keys()) {
+        let url;
+        try { url = new URL(request.url); } catch { continue; }
+        if (!inScope(url)) continue;
+        const obsolete = !expected.has(url.pathname) ||
+          (isHtml(url.pathname) && !(await correctHtml(await cache.match(request))));
+        if (!obsolete) continue;
+        try {
+          if (await cache.delete(request)) removed++;
+          else failed++;
+        } catch { failed++; }
+      }
+    }
+    respond({status:failed ? "partial" : "complete",removed,failed});
+  } catch {
+    respond({status:"failed",removed:0});
+  }
+}
+
 async function isCached(path) {
   if (critical.has(path)) return Boolean(await sw.matchPrecache(path));
   const name=isHtml(path)?cacheNames.pages:isLocale(path)?cacheNames.locale:
@@ -281,6 +338,17 @@ self.addEventListener("message",event => {
   }
   if(data.type==="ACTIVATE_WHEN_SAFE") {
     wait(() => activateWhenSafe(data,event));
+    return;
+  }
+  if(data.type==="CLIENT_ACTIVATION_BUSY") {
+    wait(() => {
+      if (!event.source?.url || !inScope(new URL(event.source.url))) return;
+      activationReadyClients.delete(event.source.id);
+    });
+    return;
+  }
+  if(data.type==="CLEAN_STALE_PUBLIC_CACHE") {
+    wait(() => cleanStalePublicCache(event));
     return;
   }
   if(data.type==="PREFETCH_PRIORITY") {
