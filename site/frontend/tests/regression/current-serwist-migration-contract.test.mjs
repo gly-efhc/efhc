@@ -28,7 +28,7 @@ test("Serwist defers activation and document reload while the TON Connect modal 
   const source = read("frontend/src/components/PwaRuntimeStatus.tsx");
   assert.match(source, /import \{ useWalletProvider \} from "\.\.\/lib\/wallet-provider";/);
   assert.match(source, /walletModalOpenRef\.current \|\|\s*Date\.now\(\) - lastInteractionAt < 6000/);
-  assert.match(source, /!walletModalOpenRef\.current &&\s*Date\.now\(\) - lastInteractionAt >= 6000/);
+  assert.match(source, /!walletModalOpenRef\.current && !walletHandoffPending &&\s*Date\.now\(\) - lastInteractionAt >= 6000/);
   assert.doesNotMatch(source, /staleDetectedAt|lastInteractionAt < 6000 &&/);
 });
 
