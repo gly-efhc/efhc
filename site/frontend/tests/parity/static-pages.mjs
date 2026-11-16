@@ -72,7 +72,7 @@ export async function verifyStaticPages({base,artifacts,widths=[390,1440],modes=
     if(mode==='slow')await page.waitForTimeout(3000).catch(()=>undefined);
     return r.fulfill({status:mode==='malformed'?200:Number(mode)||503,contentType:'application/json',headers,body:mode==='malformed'?'{}':'{"code":"TEST_API_UNAVAILABLE"}'}).catch(()=>undefined);
    });
-   const routes=mode==='offline'?staticRoutes:['','panels/portfolio','referrals','admin','admin/users','admin/bank','browser-shop'];
+   const routes=mode==='offline'?staticRoutes:['','panels/portfolio','referrals','withdraw','admin','admin/users','admin/bank','browser-shop'];
    try{for(const route of routes){const start=Date.now();try{
     const response=await page.goto(base+(route?route+'/':''),{waitUntil:'domcontentloaded'});assert.equal(response.status(),200);
     await assertSurface(page,route);await page.waitForTimeout(200);await assertSurface(page,route);

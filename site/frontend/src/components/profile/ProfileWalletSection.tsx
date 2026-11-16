@@ -96,7 +96,7 @@ export function ProfileWalletSection(props: Props) {
           data-wallet-provider-action="connect"
           data-linked-wallets={serverBoundWallets.length > 0 ? "present" : "empty"}
           disabled={props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"}
-          onClick={props.onConnect}
+          onClick={() => props.onConnect()}
         >
           {props.sessionRestoring || props.connectionPhase === "connecting" || props.connectionPhase === "verifying"
             ? t("wallet.connection_waiting")

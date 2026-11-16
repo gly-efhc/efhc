@@ -60,10 +60,12 @@ test("additional verified wallet connection replaces only the active transport s
   assert.match(profile, /wallet\.is_active && wallet\.proof_verified === true/);
   assert.equal((profile.match(/<Button/g) || []).length, 1, "reference wallet screen has one connect action");
   assert.match(profile, /t\("wallet\.connect_button"\)/);
-  assert.match(layout, /if \(walletSession && mode === "binding"\) \{/);
+  assert.match(layout, /const bindingMode = mode !== "execution_fallback";/);
+  assert.match(layout, /if \(walletSession && bindingMode\) \{/);
+  assert.match(profile, /onClick=\{\(\) => props\.onConnect\(\)\}/);
   assert.match(layout, /await disconnectWallet\(\)/);
   assert.match(layout, /setProofState\(null\)/);
-  assert.match(layout, /const prepared = mode === "binding"\s*\? await prepareProof\(\)/);
+  assert.match(layout, /const prepared = bindingMode\s*\? await prepareProof\(\)/);
   assert.match(webProfile, /label=\{t\("wallet\.title"\)\}/);
   assert.doesNotMatch(profile, /<input[^>]*wallet.address/i);
 });
@@ -83,7 +85,8 @@ test("real wallet Proof, chain and financial-send gates remain separate", () => 
 test("TON Proof is prepared once on explicit connection, never rotated by session effects", () => {
   const src = get("src/components/Layout.tsx");
   assert.equal([...src.matchAll(/\bprepareProof\s*\(/g)].length, 1);
-  assert.match(src, /mode === "binding"\s*\? await prepareProof\(\)/);
+  assert.match(src, /const bindingMode = mode !== "execution_fallback";/);
+  assert.match(src, /bindingMode\s*\? await prepareProof\(\)/);
   assert.match(src, /setProofState\(prepared\)/);
 });
 
@@ -103,7 +106,8 @@ test("EFHC owns Android Back and binding requires a matching server challenge", 
   const layout = get("src/components/Layout.tsx");
   const proof = get("src/lib/tonconnect.ts");
   assert.match(provider, /enableAndroidBackHandler=\{false\}/);
-  assert.match(layout, /if \(mode === "binding" && !prepared\) \{/);
+  assert.match(layout, /if \(bindingMode && !prepared\) \{/);
+  assert.match(layout, /const bindingMode = mode !== "execution_fallback";/);
   assert.match(layout, /setProofState\(prepared\)/);
   assert.match(proof, /String\(proof\.payload \?\? ""\) !== proofState\.ton_proof_payload/);
   assert.match(proof, /return await connectVerifiedTonWallet/);

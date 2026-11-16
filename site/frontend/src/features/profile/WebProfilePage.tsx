@@ -388,27 +388,7 @@ export default function WebProfilePage(props: Props) {
         <div className="efhc-profile-identity source-profile-identity">
           <div className="efhc-profile-name-row">
             <div className="efhc-profile-name source-profile-name">{username}</div>
-            <button
-              type="button"
-              className="efhc-profile-settings-button efhc-profile-settings-hero-entry source-button secondary"
-              aria-label={t("profile.settings_title")}
-              title={t("profile.settings_title")}
-              onClick={() => setSettingsOpen(true)}
-              data-profile-settings-entry="profile-hero-admin-slot" data-profile-settings-placement="hero-admin-slot"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d={SETTINGS_GEAR_INNER_PATH} />
-                <path d={SETTINGS_GEAR_OUTER_PATH} />
-              </svg>
-            </button>
+
           </div>
           <div
             className="efhc-profile-global-id standalone-profile-global-id"
@@ -568,7 +548,27 @@ export default function WebProfilePage(props: Props) {
                   {t("profile.interface_account_note")}
                 </p>
               </div>
-
+              <button
+                type="button"
+                className="efhc-profile-settings-button source-button secondary"
+                aria-label={t("profile.settings_title")}
+                title={t("profile.settings_title")}
+                onClick={() => setSettingsOpen(true)}
+                data-profile-settings-entry="interface-card" data-profile-settings-placement="interface-card"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d={SETTINGS_GEAR_INNER_PATH} />
+                  <path d={SETTINGS_GEAR_OUTER_PATH} />
+                </svg>
+              </button>
             </div>
             <div className="source-profile-compact-controls">
               <div className="source-profile-compact-control">

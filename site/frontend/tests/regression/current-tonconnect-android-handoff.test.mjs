@@ -90,3 +90,19 @@ test("React only restores pending proof for a live SDK session and backend still
   assert.doesNotMatch(helper, /localStorage|walletStateInit|signature:|privateKey/);
   assert.match(helper, /window\.sessionStorage/);
 });
+
+test("Profile Wallet click cannot pass React event as a non-binding TonConnect mode", () => {
+  const wallet = source("../../src/components/profile/ProfileWalletSection.tsx");
+  const layout = source("../../src/components/Layout.tsx");
+  const profile = source("../../src/features/profile/WebProfilePage.tsx");
+  assert.match(wallet, /onClick=\{\(\) => props\.onConnect\(\)\}/);
+  assert.doesNotMatch(wallet, /onClick=\{props\.onConnect\}/);
+  assert.match(profile, /onConnect=\{ctx\.openWalletConnect\}/);
+  assert.match(layout, /const bindingMode = mode !== "execution_fallback";/);
+  const connectStart = layout.indexOf("async function openWalletConnect(");
+  const connectEnd = layout.indexOf("async function disconnectWalletSession()", connectStart);
+  const connect = layout.slice(connectStart, connectEnd);
+  assert.match(connect, /bindingMode\s*\? await prepareProof\(\)/);
+  assert.match(connect, /if \(bindingMode && !prepared\)/);
+  assert.doesNotMatch(connect, /mode === "binding"/);
+});
