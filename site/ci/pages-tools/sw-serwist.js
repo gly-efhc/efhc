@@ -235,6 +235,11 @@ async function cleanStalePublicCache(event) {
   try {
     if (!event.source?.url || !inScope(new URL(event.source.url)))
       return respond({status:"unavailable",removed:0});
+    // A matching running document is required before runtime pruning: a
+    // client still rendering previous JavaScript may depend on old assets.
+    if (typeof event.data?.documentBuildId !== "string" ||
+        event.data.documentBuildId !== CONFIG.build_id)
+      return respond({status:"update_required",removed:0});
     const clients = (await self.clients.matchAll({
       type:"window",includeUncontrolled:true,
     })).filter(client => {
@@ -252,7 +257,13 @@ async function cleanStalePublicCache(event) {
       return respond({status:"update_required",removed:0});
     let removed = 0;
     let failed = 0;
-    for (const name of Object.values(cacheNames)) {
+    // NO_SERWIST_NATIVE_EQUIVALENT: ExpirationPlugin only expires by
+    // age/count, and cleanupOutdatedCaches only handles precache revisions.
+    // Here we remove proven obsolete runtime HTML/compiled assets by exact
+    // build manifest only on explicit user request; media/locale remain
+    // exclusively under their native Serwist ExpirationPlugin lifecycle.
+    for (const name of [cacheNames.pages, cacheNames.assets]) {
+      if (!(await caches.keys()).includes(name)) continue;
       const cache = await caches.open(name);
       for (const request of await cache.keys()) {
         let url;
