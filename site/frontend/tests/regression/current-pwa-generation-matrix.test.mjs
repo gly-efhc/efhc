@@ -70,39 +70,36 @@ test("T1: release-specific CSS fingerprints are included before Serwist generate
   assert.ok(!bundled.includes("self.__SW_MANIFEST"),"Configurator must inject the manifest");
 });
 
-test("T2: immutable old JS/CSS has an address-scoped legacy fallback on failed fetch",()=>{
-  assert.match(worker,/async function legacyAssetFallback/);
-  assert.match(worker,/legacyAssetFallback\(request\)/);
-  assert.match(worker,/!result\?\.ok/,"HTTP 404 must be caught as well as exceptions");
-  assert.match(worker,/\/_next/);
-  assert.match(worker,/\.css/);
+test("T2: immutable CSS/JS stay version-addressed and Serwist handles asset caching",()=>{
+  assert.match(worker,/\/\\_next/); // hashed Next static asset route
+  assert.match(worker,/new CacheFirst\(/);
+  assert.match(worker,/publicAssets/);
+  assert.doesNotMatch(worker,/legacyAssetFallback|legacyPublicCaches/);
 });
 
-test("T3: unrelated applications are excluded from legacy retirement",()=>{
+test("T3: unrelated applications are untouched by Serwist scope",()=>{
   assert.match(worker,/const inScope/);
-  assert.match(worker,/request\.url/);
-  assert.match(worker,/entries\.every\(request =>/);
-  assert.match(worker,/inScope\(new URL\(request\.url\)\)/);
-  assert.doesNotMatch(worker,/caches\.delete\(["']?[^"']*other/);
+  assert.match(worker,/url\.origin === self\.location\.origin/);
+  assert.match(worker,/url\.pathname\.startsWith\(BASE \+ "\/"\)/);
+  assert.doesNotMatch(worker,/\bcaches\.(?:delete|open|keys)\(/);
 });
 
-test("T4: migration readiness is scoped to a verified active client",()=>{
-  assert.match(worker,/data\.type==="CLIENT_BUILD_READY"/);
-  assert.match(worker,/data\.buildId!==CONFIG\.build_id/);
-  assert.match(worker,/expected\.has\(url\)/);
-  assert.match(worker,/readyClients\.add\(event\.source\.id\)/);
+test("T4: no EFHC custom client-generation cache handshake remains",()=>{
+  assert.match(worker,/cleanupOutdatedCaches:true/);
+  assert.doesNotMatch(worker,/CLIENT_BUILD_READY|readyClients|GET_ACTIVE_BUILD/);
+  assert.match(runtime,/serviceWorker\.register/);
 });
 
-test("T5: closing old tabs can release only proved legacy EFHC buckets",()=>{
-  assert.match(worker,/retireLegacyCachesOnce\(\)/);
-  assert.match(worker,/windows\.some\(client => !readyClients\.has\(client\.id\)\)/);
-  assert.match(worker,/for \(const name of await legacyPublicCaches\(\)\) await caches\.delete\(name\)/);
+test("T5: Serwist lifecycle supersedes EFHC manual legacy retirement",()=>{
+  assert.match(worker,/sw\.addEventListeners\(\)/);
+  assert.doesNotMatch(worker,/retireLegacyCachesOnce|legacyAssetFallback/);
+  assert.doesNotMatch(worker,/caches\.delete\(/);
 });
 
-test("T6: an unready old tab protects its cache",()=>{
-  assert.match(worker,/if \(!windows\.length \|\| windows\.some/);
-  assert.match(worker,/readyClients/);
-  assert.match(worker,/if \(data\.buildId!==CONFIG\.build_id/);
+test("T6: old tabs are not overridden by a custom forced activation",()=>{
+  assert.match(worker,/skipWaiting:false/);
+  assert.doesNotMatch(worker,/self\.skipWaiting\(|ACTIVATE_WHEN_SAFE/);
+  assert.doesNotMatch(runtime,/SKIP_WAITING|ACTIVATE_WHEN_SAFE/);
 });
 
 test("T7: A→B→C worker revisions use native Serwist precache lifecycle",()=>{
@@ -144,21 +141,20 @@ test("T11: Serwist alone handles public runtime cache writes and expiry",()=>{
   assert.doesNotMatch(runtime,/resolveAdaptiveCachePolicy/);
 });
 
-test("T12: idle reload remains bounded and protects active financial operations",()=>{
-  assert.match(runtime,/attempts >= 3/);
-  assert.match(runtime,/lastAttemptAt/);
-  assert.match(runtime,/retryDelayMs/);
-  assert.match(runtime,/efhc:pwa-upgrade-stalled/);
-  assert.match(runtime,/sessionStorage\.removeItem\(verifiedKey\)/);
-  assert.match(runtime,/queryClient\.isMutating\(\) > 0/);
-  assert.match(runtime,/efhcSafeToActivate: true/);
+test("T12: idle reload protects active financial operations",()=>{
+  assert.match(runtime,/queryClient\.isMutating\(\) === 0/);
+  assert.match(runtime,/!walletModalRef\.current && !handoffPending/);
+  assert.match(runtime,/!activeEditor\(\)/);
+  assert.match(runtime,/refreshPending = false/);
+  assert.doesNotMatch(runtime,/efhc:pwa-upgrade-stalled|ACTIVATE_WHEN_SAFE/);
 });
 
-test("Offline deferred resources are parallel but cached only by native Serwist",()=>{
-  assert.match(worker,/Promise\.all\(\[run\(\),run\(\)\]\)/);
-  assert.match(worker,/strategy\.handle\(\{event,request\}\)/);
+test("Public background resource caching uses native Serwist CACHE_URLS only",()=>{
+  assert.match(worker,/sw\.addEventListeners\(\)/);
+  assert.doesNotMatch(worker,/prefetchDeferred|PREFETCH_PRIORITY/);
   assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
-  assert.match(runtime,/connectionAllowsPrefetch/);
+  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
+  assert.match(runtime,/\/\\_next/);
 });
 
 test("A single scoped Service Worker is emitted by Serwist Configurator",()=>{
