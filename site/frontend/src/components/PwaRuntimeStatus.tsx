@@ -67,21 +67,27 @@ export function PwaRuntimeStatus(props: {
       }
       oldController = controller;
     };
-    const nativePrefetch = () => {
-      const controller = navigator.serviceWorker.controller;
-      if (!controller || !navigator.onLine) return;
-      const urls = [...document.querySelectorAll<HTMLScriptElement>("script[src]"),
-        ...document.querySelectorAll<HTMLLinkElement>("link[rel='stylesheet'][href]")]
-        .map(element => element.getAttribute("src") || element.getAttribute("href"))
-        .filter((value): value is string => typeof value === "string" && value.length > 0)
-        .map(value => new URL(value, location.href))
-        .filter(url => url.origin === location.origin &&
-          url.pathname.startsWith(scope) &&
-          (/\/_next\/static\//.test(url.pathname) || /\.[a-f0-9]{16}\.css$/i.test(url.pathname)))
-        .map(url => url.href);
-      if (!urls.length) return;
-      // Standard Serwist CACHE_URLS payload, handled by Serwist.handleCache.
-      controller.postMessage({type:"CACHE_URLS",payload:{urlsToCache:[...new Set(urls)]}});
+    const nativePrefetch = async () => {
+      if (disposed || !navigator.onLine) return;
+      try {
+        const active = navigator.serviceWorker.controller ||
+          (await navigator.serviceWorker.ready).active;
+        if (!active || disposed) return;
+        // The final Pages manifest, not an EFHC runtime queue, enumerates
+        // public exported resources. Serwist handles these URLs natively.
+        const response = await fetch(`${base}/pwa-build.json`, {cache:"no-store"});
+        if (!response.ok) return;
+        const manifest = await response.json() as {precache_deferred?: unknown};
+        if (!Array.isArray(manifest.precache_deferred)) return;
+        const urlsToCache = manifest.precache_deferred
+          .filter((value): value is string => typeof value === "string")
+          .filter(value => value.startsWith(scope) &&
+            !/\/(?:api|auth|wallet|connect|tonconnect)(?:\/|$)/i.test(value));
+        if (!urlsToCache.length) return;
+        active.postMessage({type:"CACHE_URLS",payload:{urlsToCache}});
+      } catch {
+        // Deferred public downloads are optional and retry upon next visit.
+      }
     };
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
@@ -102,7 +108,7 @@ export function PwaRuntimeStatus(props: {
       if (disposed) return;
       registration = result;
       checkForUpdate();
-      nativePrefetch();
+      void nativePrefetch();
     }).catch(error => {
       console.warn("EFHC_PWA_REGISTRATION_FAILED",error);
     });
