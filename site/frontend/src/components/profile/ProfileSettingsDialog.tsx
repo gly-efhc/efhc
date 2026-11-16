@@ -13,104 +13,203 @@ type CacheSnapshot = {
   missing: number;
 };
 
+type MaintenanceOutcome =
+  | "up_to_date"
+  | "update_pending"
+  | "checked_failed"
+  | "unavailable"
+  | "clear_complete"
+  | "clear_empty"
+  | "clear_partial"
+  | "clear_other_tabs"
+  | "clear_update_required"
+  | "clear_offline"
+  | "clear_failed";
+
+async function requestWorkerMessage(
+  worker: ServiceWorker,
+  type: string,
+  expectedType: string,
+): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const channel = new MessageChannel();
+    let settled = false;
+    let timeout = 0;
+    const finish = (value?: Record<string, unknown>, error?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      channel.port1.close();
+      channel.port2.close();
+      if (error) reject(error);
+      else resolve(value || {});
+    };
+    channel.port1.onmessage = event => {
+      const data = event.data as Record<string, unknown> | null;
+      if (data?.type === expectedType) finish(data);
+    };
+    timeout = window.setTimeout(
+      () => finish(undefined, new Error("PWA maintenance timed out")), 10000,
+    );
+    try {
+      worker.postMessage({type}, [channel.port2]);
+    } catch (error) {
+      finish(undefined, error instanceof Error ? error : new Error("PWA message failed"));
+    }
+  });
+}
+
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
-  const [checking, setChecking] = React.useState(false);
+  const [busy, setBusy] = React.useState<"update" | "clear" | null>(null);
   const [snapshot, setSnapshot] = React.useState<CacheSnapshot | null>(null);
-  const [outcome, setOutcome] = React.useState<"checked" | "unavailable" | "failed" | null>(null);
+  const [outcome, setOutcome] = React.useState<MaintenanceOutcome | null>(null);
+  const [removed, setRemoved] = React.useState(0);
+  const [failed, setFailed] = React.useState(0);
+
+  async function registrationAndWorker(): Promise<{
+    registration: ServiceWorkerRegistration;
+    worker: ServiceWorker;
+  } | null> {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+    const registration = await navigator.serviceWorker.getRegistration(`${appBasePath() || ""}/`);
+    const worker = registration?.active || navigator.serviceWorker.controller;
+    return registration && worker ? {registration, worker} : null;
+  }
 
   async function checkApplication(): Promise<void> {
-    if (checking) return;
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-      setOutcome("unavailable");
-      return;
-    }
-    setChecking(true);
+    if (busy) return;
+    setBusy("update");
     setOutcome(null);
     try {
-      const registration = await navigator.serviceWorker.getRegistration(`${appBasePath() || ""}/`);
-      if (!registration) {
+      if (!navigator.onLine) {
+        setOutcome("checked_failed");
+        return;
+      }
+      const current = await registrationAndWorker();
+      if (!current) {
         setOutcome("unavailable");
         return;
       }
-      let updateFailed = false;
-      try {
-        await registration.update();
-      } catch {
-        updateFailed = true;
-      }
-      const worker = registration.active || navigator.serviceWorker.controller;
-      if (!worker) {
-        setOutcome("unavailable");
-        return;
-      }
-      const result = await new Promise<CacheSnapshot>((resolve, reject) => {
-        let timer = 0;
-        const receive = (event: MessageEvent) => {
-          const data = event.data;
-          if (data?.type !== "CACHE_STATUS") return;
-          finish();
-          resolve({
-            buildId: String(data.buildId || ""),
-            entries: Math.max(0, Number(data.staticEntries || 0) + Number(data.contentEntries || 0)),
-            bytes: Math.max(0, Number(data.staticBytes || 0) + Number(data.contentBytes || 0)),
-            missing: Math.max(0, Number(data.precacheMissing || 0)),
-          });
-        };
-        const finish = () => {
-          window.clearTimeout(timer);
-          navigator.serviceWorker.removeEventListener("message", receive);
-        };
-        navigator.serviceWorker.addEventListener("message", receive);
-        timer = window.setTimeout(() => {
-          finish();
-          reject(new Error("PWA status timed out"));
-        }, 9000);
-        try {
-          worker.postMessage({ type: "GET_CACHE_STATUS" });
-        } catch (error) {
-          finish();
-          reject(error);
-        }
-      });
-      setSnapshot(result);
-      setOutcome(updateFailed ? "failed" : "checked");
+      // A successful update() only checks for an installation; it does not
+      // prove that the installed React document is already the new version.
+      await current.registration.update();
+      const report = await requestWorkerMessage(
+        current.registration.active || current.worker, "GET_CACHE_STATUS", "CACHE_STATUS",
+      );
+      const nextSnapshot = {
+        buildId: String(report.buildId || ""),
+        entries: Math.max(0, Number(report.staticEntries || 0) + Number(report.contentEntries || 0)),
+        bytes: Math.max(0, Number(report.staticBytes || 0) + Number(report.contentBytes || 0)),
+        missing: Math.max(0, Number(report.precacheMissing || 0)),
+      };
+      setSnapshot(nextSnapshot);
+      const response = await fetch(`${appBasePath()}/pwa-build.json`, {cache: "no-store"});
+      if (!response.ok) throw new Error("PWA build manifest unavailable");
+      const published = await response.json() as {build_id?: string};
+      if (!published.build_id || !nextSnapshot.buildId) throw new Error("PWA build unknown");
+      setOutcome(published.build_id === nextSnapshot.buildId &&
+        !current.registration.waiting && !current.registration.installing
+        ? "up_to_date" : "update_pending");
     } catch {
-      setOutcome("failed");
+      setOutcome("checked_failed");
     } finally {
-      setChecking(false);
+      setBusy(null);
     }
   }
+
+  async function clearApplicationCache(): Promise<void> {
+    if (busy) return;
+    setBusy("clear");
+    setOutcome(null);
+    setRemoved(0);
+    setFailed(0);
+    try {
+      if (!navigator.onLine) {
+        setOutcome("clear_offline");
+        return;
+      }
+      const current = await registrationAndWorker();
+      if (!current) {
+        setOutcome("unavailable");
+        return;
+      }
+      // A private MessageChannel response confirms this specific request,
+      // rather than mistaking another tab's CACHE_STATUS broadcast for success.
+      const result = await requestWorkerMessage(
+        current.registration.active || current.worker,
+        "CLEAN_STALE_PUBLIC_CACHE", "PUBLIC_CACHE_CLEAN_RESULT",
+      );
+      const removedCount = Math.max(0, Number(result.removed || 0));
+      setRemoved(removedCount);
+      setFailed(Math.max(0, Number(result.failed || 0)));
+      switch (result.status) {
+        case "complete": setOutcome(removedCount ? "clear_complete" : "clear_empty"); break;
+        case "partial": setOutcome("clear_partial"); break;
+        case "other_tabs": setOutcome("clear_other_tabs"); break;
+        case "update_required": setOutcome("clear_update_required"); break;
+        case "offline": setOutcome("clear_offline"); break;
+        default: setOutcome("clear_failed");
+      }
+    } catch {
+      setOutcome("clear_failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const outcomeLabel: Record<MaintenanceOutcome, string> = {
+    up_to_date: "pwa.up_to_date",
+    update_pending: "pwa.update_pending",
+    checked_failed: "pwa.check_failed",
+    unavailable: "pwa.unavailable",
+    clear_complete: "pwa.clear_removed",
+    clear_empty: "pwa.clear_empty",
+    clear_partial: "pwa.clear_partial",
+    clear_other_tabs: "pwa.clear_other_tabs",
+    clear_update_required: "pwa.clear_update_required",
+    clear_offline: "pwa.clear_offline",
+    clear_failed: "pwa.clear_failed",
+  };
 
   return (
     <details className="efhc-profile-pwa-maintenance">
       <summary>{t("pwa.maintenance_title")}</summary>
       <div className="efhc-profile-source-settings">
         <div className="standalone-settings-row">
-          <span>{t("pwa.check_now")}</span>
-          <button
-            type="button"
+          <span>{t("pwa.update_action")}</span>
+          <button type="button"
             className="source-button secondary standalone-setting-toggle"
-            disabled={checking}
-            onClick={() => void checkApplication()}
-          >
-            {t(checking ? "common.loading" : "common.refresh")}
+            disabled={busy !== null}
+            onClick={() => void checkApplication()}>
+            {t(busy === "update" ? "common.loading" : "pwa.update_now")}
+          </button>
+        </div>
+        <div className="standalone-settings-row">
+          <span>{t("pwa.clear_action")}</span>
+          <button type="button"
+            className="source-button secondary standalone-setting-toggle"
+            disabled={busy !== null}
+            onClick={() => void clearApplicationCache()}>
+            {t(busy === "clear" ? "common.loading" : "pwa.clear_now")}
           </button>
         </div>
         {snapshot ? (
           <div aria-live="polite">
             <small>{t("pwa.build")}: {snapshot.buildId}</small>
-            <small style={{ display: "block" }}>
+            <small style={{display: "block"}}>
               {t("pwa.cached_files")}: {snapshot.entries} · {(snapshot.bytes / (1024 * 1024)).toFixed(1)} MB
             </small>
-            <small style={{ display: "block" }}>
+            <small style={{display: "block"}}>
               {t("pwa.missing_files")}: {snapshot.missing}
             </small>
           </div>
         ) : null}
         {outcome ? (
           <small role="status">
-            {t(outcome === "checked" ? "pwa.checked" : outcome === "unavailable" ? "pwa.unavailable" : "pwa.check_failed")}
+            {t(outcomeLabel[outcome])}
+            {outcome === "clear_complete" || outcome === "clear_partial" ? ` ${removed}` : ""}
+            {outcome === "clear_partial" ? ` · ${t("pwa.clear_failed_entries")}: ${failed}` : ""}
           </small>
         ) : null}
       </div>
