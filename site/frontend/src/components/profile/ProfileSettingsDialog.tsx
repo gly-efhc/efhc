@@ -6,18 +6,16 @@ import { appBasePath } from "../../lib/appBasePath";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
 
-type CacheSnapshot = {
-  buildId: string;
-  entries: number;
-  bytes: number;
-  missing: number;
-};
-
+/** Native SW update check; all HTTP cache eviction stays with Serwist.
+ * Serwist has no standard API to manually erase only its runtime caches.
+ * Do not pretend that register.update() is a cache-clearing operation.
+ */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
   const [checking, setChecking] = React.useState(false);
-  const [snapshot, setSnapshot] = React.useState<CacheSnapshot | null>(null);
-  const [outcome, setOutcome] = React.useState<"checked" | "unavailable" | "failed" | null>(null);
+  const [outcome, setOutcome] = React.useState<
+    "checked" | "pending" | "unavailable" | "failed" | null
+  >(null);
 
   async function checkApplication(): Promise<void> {
     if (checking) return;
@@ -28,53 +26,17 @@ function PwaMaintenanceSection(): React.JSX.Element {
     setChecking(true);
     setOutcome(null);
     try {
-      const registration = await navigator.serviceWorker.getRegistration(`${appBasePath() || ""}/`);
+      if (!navigator.onLine) throw new Error("offline");
+      const registration = await navigator.serviceWorker.getRegistration(
+        `${appBasePath() || ""}/`,
+      );
       if (!registration) {
         setOutcome("unavailable");
         return;
       }
-      let updateFailed = false;
-      try {
-        await registration.update();
-      } catch {
-        updateFailed = true;
-      }
-      const worker = registration.active || navigator.serviceWorker.controller;
-      if (!worker) {
-        setOutcome("unavailable");
-        return;
-      }
-      const result = await new Promise<CacheSnapshot>((resolve, reject) => {
-        let timer = 0;
-        const receive = (event: MessageEvent) => {
-          const data = event.data;
-          if (data?.type !== "CACHE_STATUS") return;
-          finish();
-          resolve({
-            buildId: String(data.buildId || ""),
-            entries: Math.max(0, Number(data.staticEntries || 0) + Number(data.contentEntries || 0)),
-            bytes: Math.max(0, Number(data.staticBytes || 0) + Number(data.contentBytes || 0)),
-            missing: Math.max(0, Number(data.precacheMissing || 0)),
-          });
-        };
-        const finish = () => {
-          window.clearTimeout(timer);
-          navigator.serviceWorker.removeEventListener("message", receive);
-        };
-        navigator.serviceWorker.addEventListener("message", receive);
-        timer = window.setTimeout(() => {
-          finish();
-          reject(new Error("PWA status timed out"));
-        }, 9000);
-        try {
-          worker.postMessage({ type: "GET_CACHE_STATUS" });
-        } catch (error) {
-          finish();
-          reject(error);
-        }
-      });
-      setSnapshot(result);
-      setOutcome(updateFailed ? "failed" : "checked");
+      await registration.update();
+      setOutcome(registration.waiting || registration.installing
+        ? "pending" : "checked");
     } catch {
       setOutcome("failed");
     } finally {
@@ -94,23 +56,16 @@ function PwaMaintenanceSection(): React.JSX.Element {
             disabled={checking}
             onClick={() => void checkApplication()}
           >
-            {t(checking ? "common.loading" : "common.refresh")}
+            {t(checking ? "common.loading" : "pwa.update_now")}
           </button>
         </div>
-        {snapshot ? (
-          <div aria-live="polite">
-            <small>{t("pwa.build")}: {snapshot.buildId}</small>
-            <small style={{ display: "block" }}>
-              {t("pwa.cached_files")}: {snapshot.entries} · {(snapshot.bytes / (1024 * 1024)).toFixed(1)} MB
-            </small>
-            <small style={{ display: "block" }}>
-              {t("pwa.missing_files")}: {snapshot.missing}
-            </small>
-          </div>
-        ) : null}
+        <small>{t("pwa.native_cache_managed")}</small>
         {outcome ? (
           <small role="status">
-            {t(outcome === "checked" ? "pwa.checked" : outcome === "unavailable" ? "pwa.unavailable" : "pwa.check_failed")}
+            {t(outcome === "checked" ? "pwa.checked"
+              : outcome === "pending" ? "pwa.update_pending"
+              : outcome === "unavailable" ? "pwa.unavailable"
+              : "pwa.check_failed")}
           </small>
         ) : null}
       </div>
