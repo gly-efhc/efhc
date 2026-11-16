@@ -33,7 +33,12 @@ test('Energy active panel chip does not reveal an obsolete saved count before se
  assert.match(chip(render({confirmedActivePanels:0})),/>0<\/strong>/,
    'server confirmed zero overrides cached positive count');
  assert.match(chip(render({snapshotStatus:'success'})),/>—<\/strong>/,
-   'sync snapshot alone cannot claim to verify current active panel count');
+   'a synthetic snapshot without server timestamp cannot claim a panel count');
+ snapshot.meta.server_now_iso='2026-11-16T21:52:30Z';
+ assert.match(chip(render({})),/>9<\/strong>/,
+   'last validated owner snapshot remains visible if independent summary read is forbidden');
+ assert.match(chip(render({confirmedActivePanels:0})),/>0<\/strong>/,
+   'new independent server count must override older owner snapshot');
 });
 
 test('server correction is accepted immediately, even when lower than a local projection',()=>{
@@ -240,4 +245,15 @@ test('embedded locale dictionaries allow immediate shell while network locale re
  assert.match(app,/setDescDictLoaded\] = useState\(true\)/);
  assert.doesNotMatch(app,/setUiDictLoaded\(false\)|setRuDictLoaded\(false\)|setDescDictLoaded\(false\)/);
  assert.match(app,/setUiDict\(fallback\)/);
+});
+
+test('HTTP 403 is not misreported as an expired session in USER screens',()=>{
+ class ApiError extends Error { constructor(status){super('permission denied');this.status=status;} }
+ const h=sourceRuntime({overrides:{'./api':{ApiError}}});
+ const {mapErrorToUi,publicApiErrorMessage}=h.load('lib/publicError.ts');
+ const error=new ApiError(403);
+ const mapped=mapErrorToUi(error);
+ assert.equal(mapped.kind,'permission');
+ assert.equal(mapped.i18nKey,'common.action_not_available_now');
+ assert.equal(publicApiErrorMessage(error,key=>key),'Действие сейчас недоступно для этой учётной записи.');
 });

@@ -11,7 +11,7 @@ const key = /const KEY = "([^"]+)"/.exec(readFileSync(
   fileURLToPath(new URL("../../src/lib/userDataCache.ts", import.meta.url)), "utf8",
 ))?.[1];
 assert.ok(key, "Personal cache storage key must be present in owner source");
-const days = 7 * 24 * 60 * 60 * 1000;
+const oldAge = 400 * 24 * 60 * 60 * 1000;
 const dataKey = ["panels", owner, "list", "active"];
 const oldData = { pages: [{items: [{public_id: "PNL-00000001"}]}], pageParams: [null] };
 
@@ -22,7 +22,7 @@ function configured(runtime) {
   return {api,client};
 }
 
-test("Owner cache retention persists seven days from a genuine app visit, not network polling", () => {
+test("Owner display cache has no calendar expiry; polling cannot impersonate a real app visit", () => {
   const storage = new Map(), session = new Map();
   const runtime = sourceRuntime({storage, session});
   const {client} = configured(runtime);
@@ -30,7 +30,7 @@ test("Owner cache retention persists seven days from a genuine app visit, not ne
   const record = JSON.parse(storage.get(key + ":" + owner));
   assert.equal(record.owner,owner);
   assert.ok(Number.isSafeInteger(record.lastHumanVisitAt));
-  assert.equal(runtime.load("lib/userDataCache.ts").USER_CACHE_RETENTION_MS,days);
+  assert.equal(runtime.load("lib/userDataCache.ts").USER_CACHE_RETENTION_MS,undefined);
   const visit = record.lastHumanVisitAt;
   client.setQueryData(dataKey,{pages:[{items:[]}],pageParams:[null]});
   assert.equal(JSON.parse(storage.get(key + ":" + owner)).lastHumanVisitAt,visit,
@@ -38,12 +38,12 @@ test("Owner cache retention persists seven days from a genuine app visit, not ne
   client.clear();
 });
 
-test("Expired owner-scoped snapshots are removed from both tab and durable storage", () => {
+test("Age alone never removes a valid same-owner display snapshot", () => {
   const storage = new Map(), session = new Map();
   const runtime = sourceRuntime({storage,session});
   const {client} = configured(runtime);
   client.setQueryData(dataKey,oldData);
-  const stale = Date.now() - days - 1;
+  const stale = Date.now() - oldAge - 1;
   for (const storageTarget of [storage,session]) {
     for (const entryKey of [key, key + ":" + owner]) {
       if (!storageTarget.has(entryKey)) continue;
@@ -55,8 +55,8 @@ test("Expired owner-scoped snapshots are removed from both tab and durable stora
   client.clear();
   const next = sourceRuntime({storage,session});
   const {client: recovered} = configured(next);
-  assert.equal(recovered.getQueryData(dataKey),undefined);
-  assert.equal(storage.has(key+":"+owner),false);
+  assert.deepEqual(JSON.parse(JSON.stringify(recovered.getQueryData(dataKey))),oldData);
+  assert.equal(storage.has(key+":"+owner),true);
   recovered.clear();
 });
 

@@ -6,9 +6,8 @@ import { windowStateStorage } from "./windowState";
 
 const KEY = "EFHC_USER_DATA_CACHE_V1";
 const MAX_BYTES = 3_000_000;
-// Production owner display data expires after seven days without a human visit.
-// Network polling or successful query refetches never extend this clock.
-export const USER_CACHE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+// User-owned display snapshots have no custom calendar TTL.
+// Storage remains isolated by Global ID and schema; Serwist owns public PWA caches.
 const VISIT_WRITE_INTERVAL_MS = 15 * 60 * 1000;
 // Only display data. Never persist credentials, handoff tokens, permissions or mutations.
 const RESOURCES = new Set(["syncSnapshot", "panels", "referrals", "ranks", "exchangePreview", "tasksMy", "tasksEarnings", "profile", "withdrawals"]);
@@ -40,16 +39,11 @@ function decode(raw: string | null): Cache {
       // Legacy cache records have no visit marker. Preserve once and migrate
       // only when this owner actually opens the app, without faking activity
       // on background financial polls.
-      const present = Object.prototype.hasOwnProperty.call(value, "lastHumanVisitAt");
       const visit = value.lastHumanVisitAt;
-      const now = Date.now();
-      if (present && (
-        !Number.isSafeInteger(visit) || visit <= 0 || visit > now ||
-        now - visit >= USER_CACHE_RETENTION_MS
-      )) return emptyCache();
+      const safeVisit = Number.isSafeInteger(visit) && visit > 0 && visit <= Date.now();
       return {
       owner: value.owner,
-      lastHumanVisitAt: present ? visit : null,
+      lastHumanVisitAt: safeVisit ? visit : null,
       entries: value.entries.filter((e: Entry) => restorableEntry(e) && e.key[1] === value.owner && e.data !== undefined && Number.isFinite(e.updatedAt))
         .filter((e: Entry) => e.key[0] !== "syncSnapshot" || (syncSnapshotSchema.safeParse(e.data).success && (e.data as {profile: {global_id: string}}).profile.global_id === value.owner)),
       };
