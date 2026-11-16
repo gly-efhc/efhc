@@ -64,7 +64,7 @@ try{
   await check('every static route retains controls through auth and API failures',async()=>{
     const matrix=await verifyStaticPages({base,artifacts:dir,widths:[390,1440],modes:['offline','slow','401','403','500','malformed']});
     assert.ok(!staticRoutes.includes('dev/neon'),'retired TEST route must not be exported');
-    assert.equal(matrix.length,2*(staticRoutes.length+5*7),'full static route and failure-mode matrix');
+    assert.equal(matrix.length,2*(staticRoutes.length+5*8),'full static route and failure-mode matrix');
   });
   for(const route of userRoutes)await check('offline keeps USER page '+(route||'home'),async()=>{
     await visit(route);
