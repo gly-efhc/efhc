@@ -243,10 +243,20 @@ export function PwaRuntimeStatus(props: {
     let trackedWorker: ServiceWorker | null = null;
     let lastUpdateCheck = 0;
     let lastInteractionAt = Date.now();
+    let walletHandoffPending = false;
     let cleanupReloadTimer: number | null = null;
     let verifyInFlight = false;
     let autoReloadBuildId = "";
-    const markActivity = () => { lastInteractionAt = Date.now(); };
+    const markActivity = () => {
+      lastInteractionAt = Date.now();
+      // Revoke an earlier idle attestation immediately on new user activity.
+      trackedRegistration?.waiting?.postMessage({type: "CLIENT_ACTIVATION_BUSY"});
+    };
+    const markFocus = () => { walletHandoffPending = false; markActivity(); };
+    const markBlur = () => {
+      if (walletModalOpenRef.current) walletHandoffPending = true;
+      markActivity();
+    };
     const hasActiveEditor = () => Boolean(document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
     ));
@@ -343,7 +353,10 @@ export function PwaRuntimeStatus(props: {
       } catch { /* Keep the last usable offline shell. */ }
       finally { verifyInFlight = false; }
     };
-    const onControllerChange = () => { void verifyLoadedBuild(); };
+    const onControllerChange = () => {
+      if (!trackedRegistration?.waiting) setWaiting(null);
+      void verifyLoadedBuild();
+    };
     const activateStagedWorker = (registration: ServiceWorkerRegistration) => {
       const staged = registration.waiting;
       if (!staged) return;
@@ -353,13 +366,18 @@ export function PwaRuntimeStatus(props: {
       // background tab or recent activity. The pre-React cold-start gate can
       // independently activate a safe update under the existing splash.
       const safeIdle =
-        navigator.onLine && document.visibilityState === "visible" &&
-        queryClient.isMutating() === 0 && !hasActiveEditor() &&
-        !walletModalOpenRef.current &&
+        navigator.onLine && queryClient.isMutating() === 0 && !hasActiveEditor() &&
+        !walletModalOpenRef.current && !walletHandoffPending &&
         Date.now() - lastInteractionAt >= 6000 &&
         !(document.activeElement instanceof HTMLInputElement &&
           document.activeElement.type === "password");
-      if (!safeIdle) return;
+      if (!safeIdle) {
+        staged.postMessage({type: "CLIENT_ACTIVATION_BUSY"});
+        return;
+      }
+      // A background tab may approve its own idle state; a hidden wallet
+      // handoff or active edit never approves. The worker requires consent
+      // from all current scoped clients before skipWaiting().
       staged.postMessage({ type: "ACTIVATE_WHEN_SAFE", efhcSafeToActivate: true });
     };
     const checkForUpdate = () => {
@@ -441,8 +459,8 @@ export function PwaRuntimeStatus(props: {
     for (const name of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(name, markActivity, {passive: true});
     // A returned external wallet window is never treated as idle immediately.
-    window.addEventListener("focus", markActivity);
-    window.addEventListener("blur", markActivity);
+    window.addEventListener("focus", markFocus);
+    window.addEventListener("blur", markBlur);
     cleanupReloadTimer = window.setInterval(attemptIdleReload, 1000);
     const periodicUpdateTimer = window.setInterval(() => checkForUpdate(), 60_000);
     // An UPDATE_AVAILABLE message may arrive during install, before the
@@ -497,8 +515,8 @@ export function PwaRuntimeStatus(props: {
       if (cleanupReloadTimer !== null) window.clearInterval(cleanupReloadTimer);
       for (const name of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(name, markActivity);
-      window.removeEventListener("focus", markActivity);
-      window.removeEventListener("blur", markActivity);
+      window.removeEventListener("focus", markFocus);
+      window.removeEventListener("blur", markBlur);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("pageshow", onPageResumed);
       window.removeEventListener("online", onPageResumed);
@@ -567,9 +585,9 @@ export function PwaRuntimeStatus(props: {
     const activeEditor = document.querySelector(
       "input:focus, textarea:focus, select:focus, [contenteditable='true']:focus",
     );
-    if (queryClient.isMutating() > 0 || activeEditor) return;
+    if (queryClient.isMutating() > 0 || activeEditor || walletModalOpened) return;
     waiting?.postMessage({ type: "ACTIVATE_WHEN_SAFE", efhcSafeToActivate: true });
-    setWaiting(null);
+    // Do not claim success before the browser reports controllerchange.
   };
 
   const showPersistence =
