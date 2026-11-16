@@ -30,6 +30,7 @@ async function requestWorkerMessage(
   worker: ServiceWorker,
   type: string,
   expectedType: string,
+  extra: Record<string, unknown> = {},
 ): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const channel = new MessageChannel();
@@ -52,7 +53,7 @@ async function requestWorkerMessage(
       () => finish(undefined, new Error("PWA maintenance timed out")), 10000,
     );
     try {
-      worker.postMessage({type}, [channel.port2]);
+      worker.postMessage({type, ...extra}, [channel.port2]);
     } catch (error) {
       finish(undefined, error instanceof Error ? error : new Error("PWA message failed"));
     }
@@ -136,9 +137,13 @@ function PwaMaintenanceSection(): React.JSX.Element {
       }
       // A private MessageChannel response confirms this specific request,
       // rather than mistaking another tab's CACHE_STATUS broadcast for success.
+      const documentBuildId = document.querySelector<HTMLMetaElement>(
+        'meta[name="efhc-build-id"]',
+      )?.content || "";
       const result = await requestWorkerMessage(
         current.registration.active || current.worker,
         "CLEAN_STALE_PUBLIC_CACHE", "PUBLIC_CACHE_CLEAN_RESULT",
+        {documentBuildId},
       );
       const removedCount = Math.max(0, Number(result.removed || 0));
       setRemoved(removedCount);
