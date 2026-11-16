@@ -80,19 +80,38 @@ test("gear opens only source four toggles and avatar retains advanced services",
   assert.match(shared, /data-modal-reference-layout=\{props\.referenceLayout\}/);
 });
 
-test("OWNER Q2=A: the sole compact settings gear is inline in the Profile topbar", () => {
+test("OWNER I08: replace the duplicate hero Admin badge with one compact settings gear", () => {
   const profile = file("../../src/features/profile/WebProfilePage.tsx");
   const css = file("../../src/styles/globals.css");
   const start = profile.indexOf('className="efhc-profile-topbar source-profile-topbar"');
-  const end = profile.indexOf('className="efhc-profile-hero source-profile-hero"', start);
-  assert.ok(start >= 0 && end > start);
-  const header = profile.slice(start, end);
-  assert.match(header, /data-profile-settings-entry="profile-header" data-profile-settings-placement="header"/);
-  assert.match(header, /onClick=\{\(\) => setSettingsOpen\(true\)\}/);
+  const heroStart = profile.indexOf('className="efhc-profile-hero source-profile-hero"', start);
+  const tabsStart = profile.indexOf('className="efhc-profile-tabs source-profile-tabs"', heroStart);
+  assert.ok(start >= 0 && heroStart > start && tabsStart > heroStart);
+  const header = profile.slice(start, heroStart);
+  const hero = profile.slice(heroStart, tabsStart);
+  assert.doesNotMatch(header, /data-profile-settings-entry=/);
+  assert.match(header, /router\.push\("\/admin"\)/);
+  assert.match(hero, /data-profile-settings-entry="profile-hero-admin-slot" data-profile-settings-placement="hero-admin-slot"/);
+  assert.match(hero, /onClick=\{\(\) => setSettingsOpen\(true\)\}/);
+  assert.doesNotMatch(hero, /efhc-profile-admin-marker/);
   assert.equal((profile.match(/data-profile-settings-entry=/g) || []).length, 1);
-  const interfaceCard = profile.slice(profile.indexOf('className="source-card source-profile-settings-card'), profile.indexOf("<ProfileSettingsDialog"));
-  assert.doesNotMatch(interfaceCard, /data-profile-settings-entry=/);
-  assert.match(css, /#profilePage \.source-profile-topbar \.efhc-profile-topbar_actions > \.efhc-profile-settings-button \{[\s\S]*?position: static;/);
+  assert.match(css, /#profilePage \.source-profile-hero \.efhc-profile-settings-hero-entry \{[\s\S]*?position: absolute;/);
+  assert.doesNotMatch(css, /I07 OWNER Q2=A: Profile settings is one inline header action/);
+});
+
+test("OWNER I08 screenshots: omit only Wallet and Balance teal-to-gold decoration", () => {
+  const css = file("../../src/styles/globals.css");
+  const wallet = file("../../src/components/profile/ProfileWalletSection.tsx");
+  const history = file("../../src/components/profile/ProfileHistorySection.tsx");
+  assert.match(css, /#profilePage \[data-profile-content="wallet"\] \.efhc-wallet-trust-section::before/);
+  assert.match(css, /#profilePage \[data-profile-content="history"\] \.efhc-history-trust-section::before \{[\s\S]*?content: none !important;[\s\S]*?display: none !important;/);
+  assert.match(wallet, /data-public-surface="wallet"/);
+  assert.match(wallet, /data-wallet-connection-feedback="safe"/);
+  assert.match(wallet, /props\.connectionPhase === "error" \|\| props\.connectionPhase === "rejected"/);
+  assert.match(history, /data-public-surface="history"/);
+  assert.match(history, /data-history-balances="total-main-bonus"/);
+  assert.doesNotMatch(css, /#profilePage\s+\.efhc-energy-progress-track\s*\{\s*display:\s*none/);
+  assert.match(css, /#profilePage \.source-profile-third-row \.efhc-profile-status--level \{[\s\S]*?display: flex;[\s\S]*?white-space: nowrap;/);
 });
 
 test("all locale dictionaries have guest and verified account action labels", () => {
