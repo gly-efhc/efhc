@@ -106,6 +106,8 @@ test("OWNER I08 screenshots: omit only Wallet and Balance teal-to-gold decoratio
   assert.match(css, /#profilePage \[data-profile-content="wallet"\] \.efhc-wallet-trust-section::before/);
   assert.match(css, /#profilePage \[data-profile-content="history"\] \.efhc-history-trust-section::before \{[\s\S]*?content: none !important;[\s\S]*?display: none !important;/);
   assert.match(wallet, /data-public-surface="wallet"/);
+  assert.match(wallet, /data-wallet-connection-feedback="safe"/);
+  assert.match(wallet, /props\.connectionPhase === "error" \|\| props\.connectionPhase === "rejected"/);
   assert.match(history, /data-public-surface="history"/);
   assert.match(history, /data-history-balances="total-main-bonus"/);
   assert.doesNotMatch(css, /#profilePage\s+\.efhc-energy-progress-track\s*\{\s*display:\s*none/);
