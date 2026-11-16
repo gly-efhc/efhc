@@ -46,14 +46,14 @@ def main():
     # v868 owns the fixes in actual React source; no temporary TS/route hacks.
     # Pages basePath is independent of the API backend choice.
     # Static image paths still require the subpath prefix on project Pages.
-    splash = target / 'src/components/SplashScreen.tsx'
-    splash_text = splash.read_text(encoding='utf-8')
+    # _document owns the single cold-start splash, including on Pages.
+    doc = target / 'src/pages/_document.tsx'
+    content = doc.read_text(encoding='utf-8')
     logo_src = 'src="/assets/efhc/canon/efhc_logo_canon.svg"'
-    if splash_text.count(logo_src) != 1:
+    if content.count(logo_src) != 1:
         raise ValueError('Splash logo path changed: review basePath manually')
-    splash.write_text(
-        splash_text.replace(logo_src, f'src="{base}/assets/efhc/canon/efhc_logo_canon.svg"', 1),
-        encoding='utf-8',
+    content = content.replace(
+        logo_src, f'src="{base}/assets/efhc/canon/efhc_logo_canon.svg"', 1,
     )
     print('EFHC_PAGES_SPLASH_LOGO_BASEPATH=PASS')
     # All edits above apply exclusively to the ephemeral build-copy.
@@ -66,8 +66,6 @@ def main():
     custom_error = target / 'src/pages/_error.tsx'
     if custom_error.exists():
         custom_error.unlink()
-    doc = target / 'src/pages/_document.tsx'
-    content = doc.read_text(encoding='utf-8')
     if 'src="/public-runtime-config.js"' not in content:
         raise ValueError('Expected runtime-config script not found in actual _document.tsx')
     content = content.replace('src="/public-runtime-config.js"',
