@@ -41,6 +41,7 @@ import {
 import { Layout } from "../components/Layout";
 import { emptyOwnerSnapshot } from "../lib/browserFallback";
 import { ShopLayout } from "../components/ShopLayout";
+import { SplashScreen } from "../components/SplashScreen";
 import { useSnapshot } from "../hooks/useSnapshot";
 import { useExchangePreview } from "../queries/useExchange";
 import { usePanelsSummary } from "../queries/usePanels";
@@ -102,7 +103,9 @@ const AdminVisualProofRouter = dynamic(
 );
 
 const SHELL_BOOT_TIMEOUT_MS = 1800;
+const SPLASH_FADE_MS = 120;
 const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+const SPLASH_UNMOUNT_MS = 420;
 
 function browserSupportsServiceWorker(): boolean {
   return (
@@ -632,10 +635,12 @@ function AppInner(props: {
     }));
   }, [setSettings]);
 
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashMounted, setSplashMounted] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [shellTimeoutReady, setShellTimeoutReady] = useState(false);
-  // The static HTML splash owns the update gate before React can hydrate.
-  // This state only releases the existing React shell after that gate.
+  // React SplashScreen remains visible through shell initialization and the
+  // document's PWA update gate; no second HTML splash is mounted.
   const [pwaGateReady, setPwaGateReady] = useState(false);
   useEffect(() => {
     const state = (window as Window & {
@@ -751,12 +756,6 @@ function AppInner(props: {
     [uiDict, ruDict],
   );
 
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("efhc:shell-progress", {
-      detail: {progress: shellProgress, label: t("common.loading")},
-    }));
-  }, [shellProgress, t]);
-
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -774,10 +773,23 @@ function AppInner(props: {
   }, [visibleSnap.profile.total_generated_kwh]);
 
   useEffect(() => {
-    if (splashDone || !effectiveSplashReady) return;
-    // _document owns the only startup overlay; release it after shell and PWA are ready.
-    window.dispatchEvent(new Event("efhc:shell-ready"));
-    setSplashDone(true);
+    if (splashDone) return;
+    if (!effectiveSplashReady) {
+      setShowSplash(true);
+      setSplashMounted(true);
+      return;
+    }
+    const fadeId = window.setTimeout(() => {
+      setShowSplash(false);
+    }, SPLASH_FADE_MS);
+    const unmountId = window.setTimeout(() => {
+      setSplashMounted(false);
+      setSplashDone(true);
+    }, SPLASH_UNMOUNT_MS);
+    return () => {
+      window.clearTimeout(fadeId);
+      window.clearTimeout(unmountId);
+    };
   }, [effectiveSplashReady, splashDone]);
 
   if (isBrowserShop) {
@@ -816,6 +828,13 @@ function AppInner(props: {
 
   return (
     <>
+      {splashMounted ? (
+        <SplashScreen
+          visible={showSplash}
+          progress={shellProgress}
+          label={t("common.loading")}
+        />
+      ) : null}
       <BackgroundMusicController enabled={settingsHydrated && settings.music_enabled} />
       <PwaRuntimeStatus t={t} enabled={browserSupportsServiceWorker()} headless />
       {telegramProviderId && effectiveSplashReady ? (

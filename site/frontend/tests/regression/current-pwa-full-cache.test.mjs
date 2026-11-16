@@ -276,96 +276,72 @@ test("Profile PWA maintenance checks the registered worker without clearing acco
 
 test("Android native splash follows the approved EFHC loading surface", () => {
   const manifest = JSON.parse(read("public/manifest.webmanifest"));
-  const doc = read("src/pages/_document.tsx");
-  const app = read("src/pages/_app.tsx");
+  const splash = read("src/components/SplashScreen.tsx");
   const maskable = read("public/assets/efhc/efhc_maskable.svg");
   assert.equal(manifest.background_color, "#000000");
   assert.equal(manifest.theme_color, "#000000");
-  assert.match(doc, /id="efhc-bootstrap-splash"/);
-  assert.match(doc, /background:#000;color:#fff/);
-  assert.match(doc, /efhc_logo_canon\.svg/);
-  assert.match(doc, /efhc-splash-progress/);
-  assert.match(doc, /efhc:shell-ready/);
-  assert.match(app, /efhc:shell-ready/);
-  assert.doesNotMatch(app, /<SplashScreen\b/);
+  assert.match(splash, /bg-black transition-opacity/);
+  assert.match(splash, /efhc_logo_canon\.svg/);
+  assert.match(splash, /efhc-splash-progress/);
+  const documentSource = read("src/pages/_document.tsx");
+  const appSource = read("src/pages/_app.tsx");
+  const pagesPrep = readFileSync(path.join(pagesTools, "prepare_pages.py"), "utf8");
+  assert.doesNotMatch(documentSource, /efhc-bootstrap-splash/,
+    "React must be the only startup splash; the PWA gate stays headless");
+  assert.match(documentSource, /__EFHC_PWA_GATE__/);
+  assert.match(documentSource, /efhc:pwa-gate-ready/);
+  assert.match(appSource, /<SplashScreen\b/);
+  assert.match(appSource, /\(splashReady \|\| shellTimeoutReady\) && pwaGateReady/,
+    "The approved React splash must wait for both shell and PWA update gate");
+  assert.match(appSource, /if \(!effectiveSplashReady\)/);
+  assert.match(pagesPrep, /src\/components\/SplashScreen\.tsx/,
+    "Pages must correct the logo URL of the active React splash");
   assert.match(maskable, /id="mask-background"[^>]+fill="#000000"/);
 });
 
-test("Bootstrap splash waits for both update gate and React shell", async () => {
+test("PWA startup gate signals React without a second visible loading screen", async () => {
   const doc = read("src/pages/_document.tsx");
   const encoded = doc.match(/^const efhcBootstrapScript = (".*");$/m)?.[1];
-  assert.ok(encoded, "Bootstrap script must be present");
+  assert.ok(encoded, "The headless PWA gate script must exist");
   const script = JSON.parse(encoded);
-  function start() {
-    const listeners = new Map();
-    const on = (name, cb) => listeners.set(name, [...(listeners.get(name) || []), cb]);
-    const send = event => (listeners.get(event.type) || []).forEach(fn => fn(event));
-    const meter = {attrs: {}, setAttribute(key, value) {this.attrs[key] = value;}};
-    const bar = {style: {}};
-    const value = {textContent: "8%"};
-    const label = {textContent: "Loading"};
-    const splash = {
-      style: {}, removed: false,
-      remove() {this.removed = true;},
-      querySelector(selector) {
-        return ({
-          '[role="progressbar"]': meter,
-          '.efhc-splash-progress-track span': bar,
-          '.efhc-splash-progress-head strong': value,
-          '.efhc-splash-progress-head span': label,
-        })[selector] || null;
-      },
-    };
-    const timers = [];
-    const window = {addEventListener: on, dispatchEvent: send};
-    const document = {
-      getElementById: () => splash,
-      querySelector(selector) {
-        if (selector.includes("meta[name")) return {content: "same-build"};
-        if (selector.includes("public-runtime-config.js"))
-          return {getAttribute: () => "/efhc/public-runtime-config.js"};
-        return null;
-      },
-    };
-    vm.runInNewContext(script, {
-      window, document, navigator: {}, console,
-      setTimeout(cb, ms) {if (ms === 260) timers.push(cb); return 1;},
-      clearTimeout() {},
-      fetch: async () => ({ok: true, json: async () => ({build_id: "same-build"})}),
-      AbortController,
-      Event: class {constructor(type) {this.type = type;}},
-    });
-    return {window, send, splash, meter, bar, value, label, timers};
-  }
-  const gateFirst = start();
+  assert.doesNotMatch(script, /efhc-bootstrap-splash|node\.remove\(/);
+  assert.match(script, /ACTIVATE_WHEN_SAFE/);
+  assert.match(script, /efhc:pwa-gate-ready/);
+  const dispatched = [];
+  const listeners = {};
+  const window = {
+    addEventListener(name, handler) {listeners[name] = handler;},
+    dispatchEvent(event) {dispatched.push(event.type);},
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector.includes("meta[name")) return {content: "current-build"};
+      if (selector.includes("public-runtime-config.js"))
+        return {getAttribute: () => "/efhc/public-runtime-config.js"};
+      return null;
+    },
+  };
+  vm.runInNewContext(script, {
+    window, document, navigator: {}, console,
+    setTimeout() {return 1;}, clearTimeout() {},
+    fetch: async () => ({ok: true, json: async () => ({build_id: "current-build"})}),
+    AbortController,
+    Event: class {constructor(type) {this.type = type;}},
+  });
+  assert.equal(window.__EFHC_PWA_GATE__.ready, false);
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(gateFirst.window.__EFHC_PWA_GATE__.ready, true);
-  assert.notEqual(gateFirst.splash.style.opacity, "0", "PWA readiness alone must not hide the splash");
-  gateFirst.send({type: "efhc:shell-progress", detail: {progress: 56, label: "Загрузка"}});
-  assert.equal(gateFirst.bar.style.width, "56%");
-  assert.equal(gateFirst.value.textContent, "56%");
-  assert.equal(gateFirst.label.textContent, "Загрузка");
-  assert.equal(gateFirst.meter.attrs["aria-valuenow"], "56");
-  gateFirst.send({type: "efhc:shell-ready"});
-  assert.equal(gateFirst.splash.style.opacity, "0");
-  assert.equal(gateFirst.timers.length, 1);
-  gateFirst.timers[0]();
-  assert.equal(gateFirst.splash.removed, true);
-  const shellFirst = start();
-  shellFirst.send({type: "efhc:shell-ready"});
-  assert.notEqual(shellFirst.splash.style.opacity, "0", "Shell readiness alone must not bypass PWA gate");
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(shellFirst.window.__EFHC_PWA_GATE__.ready, true);
-  assert.equal(shellFirst.splash.style.opacity, "0");
+  assert.equal(window.__EFHC_PWA_GATE__.ready, true);
+  assert.deepEqual(dispatched, ["efhc:pwa-gate-ready"]);
 });
 
 test("Splash logo stays vector-sharp without GPU scale rasterization", () => {
-  const doc = read("src/pages/_document.tsx");
-  const start = doc.indexOf("@keyframes efhc-bootstrap-breathe{");
-  const end = doc.indexOf("#efhc-bootstrap-splash .efhc-entry-splash_logo", start);
-  assert.ok(start >= 0 && end > start, "The active splash animation is present");
-  const animation = doc.slice(start, end);
-  assert.match(animation, /opacity:\.94/);
+  const splash = read("src/components/SplashScreen.tsx");
+  const css = read("src/styles/globals.css");
+  const start = css.indexOf("@keyframes efhc-splash-breathe{");
+  const end = css.indexOf(".efhc-faq-shell{", start);
+  assert.ok(start >= 0 && end > start, "The canonical splash animation is present");
+  const animation = css.slice(start, end);
+  assert.match(animation, /opacity:0\.94/);
   assert.doesNotMatch(animation, /transform|will-change/);
-  assert.match(doc, /efhc_logo_canon\.svg/);
+  assert.match(splash, /efhc_logo_canon\.svg/);
 });
