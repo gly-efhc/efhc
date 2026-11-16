@@ -80,23 +80,26 @@ test("gear opens only source four toggles and avatar retains advanced services",
   assert.match(shared, /data-modal-reference-layout=\{props\.referenceLayout\}/);
 });
 
-test("OWNER I08: replace the duplicate hero Admin badge with one compact settings gear", () => {
+test("OWNER I09: one settings gear belongs to Interface card, not the hero", () => {
   const profile = file("../../src/features/profile/WebProfilePage.tsx");
   const css = file("../../src/styles/globals.css");
-  const start = profile.indexOf('className="efhc-profile-topbar source-profile-topbar"');
-  const heroStart = profile.indexOf('className="efhc-profile-hero source-profile-hero"', start);
+  const topbarStart = profile.indexOf('className="efhc-profile-topbar source-profile-topbar"');
+  const heroStart = profile.indexOf('className="efhc-profile-hero source-profile-hero"', topbarStart);
   const tabsStart = profile.indexOf('className="efhc-profile-tabs source-profile-tabs"', heroStart);
-  assert.ok(start >= 0 && heroStart > start && tabsStart > heroStart);
-  const header = profile.slice(start, heroStart);
+  const interfaceStart = profile.indexOf('className="source-card source-profile-settings-card efhc-profile-action-card"', tabsStart);
+  assert.ok(topbarStart >= 0 && heroStart > topbarStart && tabsStart > heroStart && interfaceStart > tabsStart);
+  const topbar = profile.slice(topbarStart, heroStart);
   const hero = profile.slice(heroStart, tabsStart);
-  assert.doesNotMatch(header, /data-profile-settings-entry=/);
-  assert.match(header, /router\.push\("\/admin"\)/);
-  assert.match(hero, /data-profile-settings-entry="profile-hero-admin-slot" data-profile-settings-placement="hero-admin-slot"/);
-  assert.match(hero, /onClick=\{\(\) => setSettingsOpen\(true\)\}/);
+  const interfaceCard = profile.slice(interfaceStart, profile.indexOf('className="source-profile-compact-controls"', interfaceStart));
+  assert.match(topbar, /router\.push\("\/admin"\)/);
+  assert.doesNotMatch(topbar, /data-profile-settings-entry=/);
+  assert.doesNotMatch(hero, /data-profile-settings-entry=/);
   assert.doesNotMatch(hero, /efhc-profile-admin-marker/);
+  assert.match(interfaceCard, /data-profile-settings-entry="interface-card" data-profile-settings-placement="interface-card"/);
+  assert.match(interfaceCard, /onClick=\{\(\) => setSettingsOpen\(true\)\}/);
   assert.equal((profile.match(/data-profile-settings-entry=/g) || []).length, 1);
-  assert.match(css, /#profilePage \.source-profile-hero \.efhc-profile-settings-hero-entry \{[\s\S]*?position: absolute;/);
-  assert.doesNotMatch(css, /I07 OWNER Q2=A: Profile settings is one inline header action/);
+  assert.match(css, /#profilePage \.source-profile-settings-card \.efhc-profile-settings-button \{/);
+  assert.doesNotMatch(css, /#profilePage \.source-profile-hero \.efhc-profile-settings-hero-entry/);
 });
 
 test("OWNER I08 screenshots: omit only Wallet and Balance teal-to-gold decoration", () => {
