@@ -109,6 +109,7 @@ test("OWNER I08 screenshots: omit only Wallet and Balance teal-to-gold decoratio
   assert.match(history, /data-public-surface="history"/);
   assert.match(history, /data-history-balances="total-main-bonus"/);
   assert.doesNotMatch(css, /#profilePage\s+\.efhc-energy-progress-track\s*\{\s*display:\s*none/);
+  assert.match(css, /#profilePage \.source-profile-third-row \.efhc-profile-status--level \{[\s\S]*?display: flex;[\s\S]*?white-space: nowrap;/);
 });
 
 test("all locale dictionaries have guest and verified account action labels", () => {
