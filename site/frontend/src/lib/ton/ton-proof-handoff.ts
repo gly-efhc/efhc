@@ -39,7 +39,7 @@ export function clearPendingTonProof(storage: HandoffStorage | null): void {
 }
 
 function validOwner(value: string): boolean {
-  return /^\\d{10}$/.test(value) && value !== "0000000000";
+  return /^\d{10}$/.test(value) && value !== "0000000000";
 }
 
 function isValidProof(value: unknown, hostname: string): value is PreparedWalletProof {
