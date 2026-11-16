@@ -639,8 +639,8 @@ function AppInner(props: {
   const [splashMounted, setSplashMounted] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [shellTimeoutReady, setShellTimeoutReady] = useState(false);
-  // The static HTML splash owns the update gate before React can hydrate.
-  // This state only releases the existing React shell after that gate.
+  // React SplashScreen remains visible through shell initialization and the
+  // document's PWA update gate; no second HTML splash is mounted.
   const [pwaGateReady, setPwaGateReady] = useState(false);
   useEffect(() => {
     const state = (window as Window & {

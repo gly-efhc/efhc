@@ -283,7 +283,55 @@ test("Android native splash follows the approved EFHC loading surface", () => {
   assert.match(splash, /bg-black transition-opacity/);
   assert.match(splash, /efhc_logo_canon\.svg/);
   assert.match(splash, /efhc-splash-progress/);
+  const documentSource = read("src/pages/_document.tsx");
+  const appSource = read("src/pages/_app.tsx");
+  const pagesPrep = readFileSync(path.join(pagesTools, "prepare_pages.py"), "utf8");
+  assert.doesNotMatch(documentSource, /efhc-bootstrap-splash/,
+    "React must be the only startup splash; the PWA gate stays headless");
+  assert.match(documentSource, /__EFHC_PWA_GATE__/);
+  assert.match(documentSource, /efhc:pwa-gate-ready/);
+  assert.match(appSource, /<SplashScreen\b/);
+  assert.match(appSource, /\(splashReady \|\| shellTimeoutReady\) && pwaGateReady/,
+    "The approved React splash must wait for both shell and PWA update gate");
+  assert.match(appSource, /if \(!effectiveSplashReady\)/);
+  assert.match(pagesPrep, /src\/components\/SplashScreen\.tsx/,
+    "Pages must correct the logo URL of the active React splash");
   assert.match(maskable, /id="mask-background"[^>]+fill="#000000"/);
+});
+
+test("PWA startup gate signals React without a second visible loading screen", async () => {
+  const doc = read("src/pages/_document.tsx");
+  const encoded = doc.match(/^const efhcBootstrapScript = (".*");$/m)?.[1];
+  assert.ok(encoded, "The headless PWA gate script must exist");
+  const script = JSON.parse(encoded);
+  assert.doesNotMatch(script, /efhc-bootstrap-splash|node\.remove\(/);
+  assert.match(script, /ACTIVATE_WHEN_SAFE/);
+  assert.match(script, /efhc:pwa-gate-ready/);
+  const dispatched = [];
+  const listeners = {};
+  const window = {
+    addEventListener(name, handler) {listeners[name] = handler;},
+    dispatchEvent(event) {dispatched.push(event.type);},
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector.includes("meta[name")) return {content: "current-build"};
+      if (selector.includes("public-runtime-config.js"))
+        return {getAttribute: () => "/efhc/public-runtime-config.js"};
+      return null;
+    },
+  };
+  vm.runInNewContext(script, {
+    window, document, navigator: {}, console,
+    setTimeout() {return 1;}, clearTimeout() {},
+    fetch: async () => ({ok: true, json: async () => ({build_id: "current-build"})}),
+    AbortController,
+    Event: class {constructor(type) {this.type = type;}},
+  });
+  assert.equal(window.__EFHC_PWA_GATE__.ready, false);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(window.__EFHC_PWA_GATE__.ready, true);
+  assert.deepEqual(dispatched, ["efhc:pwa-gate-ready"]);
 });
 
 test("Splash logo stays vector-sharp without GPU scale rasterization", () => {
