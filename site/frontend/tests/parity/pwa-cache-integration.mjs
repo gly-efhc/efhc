@@ -937,7 +937,7 @@ try {
       ]);
     }
   });
-  await check("Serwist refuses unsafe native activation while older scoped clients exist", async () => {
+  await check("Serwist waits for safe consent from every scoped client", async () => {
     const workerPath=path.join(root,"sw.js");
     const originalWorker=await readFile(workerPath,"utf8");
     const originalTimes=await stat(workerPath);
@@ -998,7 +998,6 @@ try {
       assert.equal(blocked.waiting,"installed",
         "Serwist native SKIP_WAITING bypassed the safe multi-client guard");
       assert.equal(blocked.active,"activated");
-      await second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
       await first.evaluate(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
         reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:false});
@@ -1007,15 +1006,20 @@ try {
       assert.equal(await first.evaluate(async scope=>
         (await navigator.serviceWorker.getRegistration(scope))?.waiting?.state,
         base),"installed","Legacy activation without EFHC approval must not promote a worker");
-      await first.evaluate(async scope=>{
+      // Previously this required closing the second tab. Now the new worker
+      // activates after BOTH already-open clients explicitly attest idleness.
+      await second.evaluate(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
+        if(!reg?.waiting)throw Error("Expected waiting Serwist successor");
         reg.waiting.postMessage({type:"ACTIVATE_WHEN_SAFE",efhcSafeToActivate:true});
       },base);
       await first.waitForFunction(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
         return Boolean(reg?.active?.state==="activated"&&!reg.waiting);
       },base,{timeout:18000});
-      console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify(blocked));
+      console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify({
+        blockedUntilAllReady:true,activatedWithTwoScopedClients:true,previous:blocked,
+      }));
     } finally {
       await writeFile(workerPath,originalWorker,"utf8");
       // Do not poison the next interrupted-update test: preserve this
