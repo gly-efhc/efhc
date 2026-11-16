@@ -3,7 +3,7 @@
  * prime financial data or grant Admin privileges.
  */
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdir, unlink, utimes } from "node:fs/promises";
+import { readFile, writeFile, mkdir, unlink, utimes, stat } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { localPagesBase } from "./pages-base.mjs";
@@ -935,6 +935,93 @@ try {
         unlink(path.join(root,thirdScript)).catch(()=>undefined),
         unlink(path.join(root,thirdCss)).catch(()=>undefined),
       ]);
+    }
+  });
+  await check("Serwist refuses unsafe native activation while older scoped clients exist", async () => {
+    const workerPath=path.join(root,"sw.js");
+    const originalWorker=await readFile(workerPath,"utf8");
+    const originalTimes=await stat(workerPath);
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    try {
+      const first=await isolated.newPage();
+      await first.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000});
+      await first.evaluate(async scope=>{
+        await navigator.serviceWorker.register(scope+"sw.js",{scope,updateViaCache:"none"});
+        await navigator.serviceWorker.ready;
+      },base);
+      await first.reload({waitUntil:"domcontentloaded",timeout:18000});
+      await first.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:12000});
+      const second=await isolated.newPage();
+      await second.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000});
+      await second.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:12000});
+      // A byte-level SW update with the same valid Serwist manifest isolates
+      // the native message protocol; no fake service worker replaces Serwist.
+      await writeFile(workerPath,originalWorker+"\n// guarded message protocol browser proof\n");
+      await utimes(workerPath,new Date(),new Date(Date.now()+5000));
+      await first.evaluate(async scope=>{
+        const reg=await navigator.serviceWorker.getRegistration(scope);
+        if(!reg)throw Error("Expected first Serwist registration");
+        await reg.update();
+      },base);
+      // State inspection and message delivery must be one browser-side
+      // operation. reg.update() can briefly expose a previous waiting worker
+      // while a successor is still installing; do not assert on that race.
+      const beforeMessage=await boundedSerwistPhase("message.guard.stable.waiting",()=>
+        first.evaluate(async scope=>{
+          const deadline=Date.now()+18000;
+          let state=null;
+          while(Date.now()<deadline){
+            const reg=await navigator.serviceWorker.getRegistration(scope);
+            state={
+              active:reg?.active?.state||null,
+              waiting:reg?.waiting?.state||null,
+              installing:reg?.installing?.state||null,
+              controller:navigator.serviceWorker.controller?.state||null,
+              controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
+            };
+            if(state.waiting==="installed" && !state.installing){
+              reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
+              return state;
+            }
+            await new Promise(resolve=>setTimeout(resolve,75));
+          }
+          return state;
+        },base),22000);
+      console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
+      assert.equal(beforeMessage.waiting,"installed",
+        "A fresh Serwist release must remain waiting while two scoped clients are open");
+      await first.waitForTimeout(700);
+      const blocked=await first.evaluate(async scope=>{
+        const reg=await navigator.serviceWorker.getRegistration(scope);
+        return {waiting:reg?.waiting?.state||null,active:reg?.active?.state||null};
+      },base);
+      assert.equal(blocked.waiting,"installed",
+        "Serwist native SKIP_WAITING bypassed the safe multi-client guard");
+      assert.equal(blocked.active,"activated");
+      await second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
+      await first.evaluate(async scope=>{
+        const reg=await navigator.serviceWorker.getRegistration(scope);
+        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:false});
+      },base);
+      await first.waitForTimeout(350);
+      assert.equal(await first.evaluate(async scope=>
+        (await navigator.serviceWorker.getRegistration(scope))?.waiting?.state,
+        base),"installed","Legacy activation without EFHC approval must not promote a worker");
+      await first.evaluate(async scope=>{
+        const reg=await navigator.serviceWorker.getRegistration(scope);
+        reg.waiting.postMessage({type:"ACTIVATE_WHEN_SAFE",efhcSafeToActivate:true});
+      },base);
+      await first.waitForFunction(async scope=>{
+        const reg=await navigator.serviceWorker.getRegistration(scope);
+        return Boolean(reg?.active?.state==="activated"&&!reg.waiting);
+      },base,{timeout:18000});
+      console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify(blocked));
+    } finally {
+      await writeFile(workerPath,originalWorker,"utf8");
+      // Do not poison the next interrupted-update test: preserve this
+      // fixture's original HTTP Last-Modified rather than a future timestamp.
+      await utimes(workerPath,originalTimes.atime,originalTimes.mtime);
+      await boundedSerwistPhase("message.guard.context.close",()=>isolated.close(),15000);
     }
   });
   await check("Serwist failed critical update retains the previously installed offline worker",async()=>{

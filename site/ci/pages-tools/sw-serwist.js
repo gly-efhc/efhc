@@ -118,6 +118,38 @@ async function legacyAssetFallback(request) {
 }
 
 const networkOnly = new NetworkOnly();
+
+// Serwist's standard SKIP_WAITING message bypasses an app-specific safety
+// condition, and CACHE_URLS uses a different native payload contract.
+// Intercept those legacy client messages before Serwist registers its own
+// listeners, then delegate only safe activation and public static prefetch.
+// All install/activate/fetch work stays with the single native Serwist engine.
+async function activateWhenSafe(data, event) {
+  if (data.buildId && data.buildId !== CONFIG.build_id) return;
+  if (data.efhcSafeToActivate !== true) return;
+  try {
+    if (!event.source?.url || !inScope(new URL(event.source.url))) return;
+  } catch { return; }
+  const windows = (await self.clients.matchAll({
+    type:"window",includeUncontrolled:true,
+  })).filter(client => {
+    try {return inScope(new URL(client.url));}
+    catch {return false;}
+  });
+  if (windows.length > 1) return;
+  await self.skipWaiting();
+}
+self.addEventListener("message", event => {
+  const data = event.data || {};
+  if (data.type === "SKIP_WAITING") {
+    event.stopImmediatePropagation();
+    event.waitUntil(activateWhenSafe(data,event));
+  } else if (data.type === "CACHE_URLS") {
+    event.stopImmediatePropagation();
+    event.waitUntil(prefetchDeferred(Array.isArray(data.urls) ? data.urls : [],event));
+  }
+});
+
 const sw = new Serwist({
   precacheEntries:self.__SW_MANIFEST,
   skipWaiting:false,
@@ -247,18 +279,11 @@ self.addEventListener("message",event => {
     event.ports?.[0]?.postMessage({type:"ACTIVE_BUILD",buildId:CONFIG.build_id});
     return;
   }
-  if(data.type==="SKIP_WAITING") {
-    wait(async () => {
-      if(data.buildId && data.buildId!==CONFIG.build_id) return;
-      if(data.efhcSafeToActivate!==true) return;
-      const windows=(await self.clients.matchAll({type:"window",includeUncontrolled:true}))
-        .filter(client => {try{return inScope(new URL(client.url));}catch{return false;}});
-      if(windows.length>1) return;
-      await self.skipWaiting();
-    });
+  if(data.type==="ACTIVATE_WHEN_SAFE") {
+    wait(() => activateWhenSafe(data,event));
     return;
   }
-  if(data.type==="CACHE_URLS"||data.type==="PREFETCH_PRIORITY") {
+  if(data.type==="PREFETCH_PRIORITY") {
     wait(() => prefetchDeferred(Array.isArray(data.urls)?data.urls:[],event));
     return;
   }
