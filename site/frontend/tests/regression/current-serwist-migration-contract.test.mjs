@@ -29,7 +29,7 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   assert.match(sw,/skipWaiting:false/);
   assert.match(runtime,/serviceWorker\.register/);
   assert.match(runtime,/registration\.update\(\)/);
-  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
+  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/navigator\.serviceWorker\.addEventListener\("controllerchange"/);
   assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|PREFETCH_PRIORITY|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|CACHE_STATUS/);
   assert.ok(!sw.includes('self.addEventListener("message"'), "No EFHC SW protocol listeners");
