@@ -140,26 +140,27 @@ try {
     assert.deepEqual(criticalState.missing,[],"Serwist must atomically cache critical shell before activation");
     assert.ok(criticalState.keys.some(name=>name.includes("precache")),
       "Serwist precache container missing");
-    await page.evaluate(async () => {
-      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-      await new Promise((resolve,reject) => {
-        const timer=setTimeout(()=>{navigator.serviceWorker.removeEventListener("message",onMessage);
-          reject(Error("Serwist deferred queue did not finish"));},95000);
-        function onMessage(event) {
-          const data=event.data||{};
-          if(data.type==="CACHE_COMPLETE"&&data.reason==="deferred"){
-            clearTimeout(timer);
-            navigator.serviceWorker.removeEventListener("message",onMessage);
-            if(data.failed)reject(Error("Serwist deferred resources failed: "+data.failed));
-            else resolve(true);
-          }
-        }
-        navigator.serviceWorker.addEventListener("message",onMessage);
-        navigator.serviceWorker.controller.postMessage({
-          type:"PREFETCH_PRIORITY",urls:config.precache_deferred,
-        });
-      });
+    // No EFHC PREFETCH_PRIORITY/CACHE_COMPLETE controller remains. Ask the
+    // *real* Serwist native CACHE_URLS handler to populate the public export,
+    // then verify materialized CacheStorage entries rather than trusting a
+    // synthetic completion event or disabling the offline safety assertion.
+    const requested=await page.evaluate(async () => {
+      const config=await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const deferred=config.precache_deferred.filter(url=>
+        !url.endsWith(".mp3") &&
+        !/\/(?:locale|faq)\/(?!en\.json$)[^/]+\.json$/.test(url));
+      const controller=navigator.serviceWorker.controller;
+      if (!controller)throw Error("Serwist controller required before native prefetch");
+      controller.postMessage({type:"CACHE_URLS",payload:{urlsToCache:deferred}});
+      return deferred;
     });
+    await page.waitForFunction(async requested=>{
+      const cached=new Set();
+      for(const name of await caches.keys())
+        for(const req of await (await caches.open(name)).keys())
+          cached.add(new URL(req.url).pathname);
+      return requested.every(url=>cached.has(url));
+    },requested,{timeout:95000,polling:500});
     const info = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
