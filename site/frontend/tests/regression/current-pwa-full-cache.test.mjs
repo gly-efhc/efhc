@@ -24,7 +24,7 @@ test("Pages has one Serwist worker with native update and prefetch APIs", () => 
   assert.doesNotMatch(prepare,/public\/manifest\.webmanifest'\)\.unlink/);
   assert.match(runtime,/serviceWorker\.register/);
   assert.match(runtime,/registration\.update\(\)/);
-  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
+  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/queryClient\.isMutating\(\) === 0/);
   assert.match(runtime,/!walletModalRef\.current && !handoffPending/);
   assert.match(runtime,/controllerchange/);
