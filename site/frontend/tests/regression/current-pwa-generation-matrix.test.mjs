@@ -153,7 +153,7 @@ test("Public background resource caching uses native Serwist CACHE_URLS only",()
   assert.match(worker,/sw\.addEventListeners\(\)/);
   assert.doesNotMatch(worker,/prefetchDeferred|PREFETCH_PRIORITY/);
   assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
-  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache:/);
+  assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/precache_deferred/); assert.match(runtime,/CACHE_URLS/);
 });
 
