@@ -36,15 +36,21 @@ export function PwaRuntimeStatus(props: {
     const activeEditor = () => Boolean(document.querySelector(
       "input:focus,textarea:focus,select:focus,[contenteditable='true']:focus",
     ));
-    const safeForUpgrade = () => !disposed &&
+    const safeForMaintenance = () => !disposed &&
       !walletModalRef.current && !handoffPending &&
-      queryClient.isMutating() === 0 &&
-      !activeEditor() && Date.now() - lastActivityAt >= 6000;
+      queryClient.isMutating() === 0 && !activeEditor();
+    // A click requests manual maintenance; it must not trigger the
+    // six-second delay reserved for automatic worker activation.
+    const safeForUpgrade = () =>
+      safeForMaintenance() && Date.now() - lastActivityAt >= 6000;
     const safeToReload = () => safeForUpgrade() && navigator.onLine &&
       document.visibilityState === "visible";
     const onSafetyCheck = (event: MessageEvent) => {
       if (event.data?.type !== "EFHC_PWA_CLIENT_SAFE") return;
-      event.ports?.[0]?.postMessage({safe:safeForUpgrade()});
+      event.ports?.[0]?.postMessage({
+        safe:event.data?.purpose === "maintenance"
+          ? safeForMaintenance() : safeForUpgrade(),
+      });
     };
     const reloadWhenSafe = () => {
       if (!refreshPending || !safeToReload()) return;

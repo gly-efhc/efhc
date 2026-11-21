@@ -6,7 +6,7 @@
  */
 import {
   Serwist, CacheFirst, NetworkFirst, NetworkOnly,
-  StaleWhileRevalidate, ExpirationPlugin,
+  StaleWhileRevalidate, ExpirationPlugin, CacheExpiration,
 } from "serwist";
 
 const CONFIG = __EFHC_BUILD_CONFIG__;
@@ -150,7 +150,7 @@ const scopedClient = client => {
   try {return inScope(new URL(client.url));}
   catch {return false;}
 };
-const clientIsIdle = client => new Promise(resolve => {
+const clientIsIdle = (client,purpose) => new Promise(resolve => {
   const channel = new MessageChannel();
   let finished = false;
   const finish = safe => {
@@ -162,16 +162,17 @@ const clientIsIdle = client => new Promise(resolve => {
   };
   const timeout = setTimeout(() => finish(false), 2500);
   channel.port1.onmessage = event => finish(event.data?.safe === true);
-  try {client.postMessage({type:"EFHC_PWA_CLIENT_SAFE"},[channel.port2]);}
+  try {client.postMessage({type:"EFHC_PWA_CLIENT_SAFE",purpose},[channel.port2]);}
   catch {finish(false);}
 });
-const allClientsIdle = async sourceId => {
+const allClientsIdle = async (sourceId,purpose) => {
   const clients = (await self.clients.matchAll({
     type:"window",includeUncontrolled:true,
   })).filter(scopedClient);
   // A legacy/unresponsive tab must never authorize a forced upgrade or purge.
   if (!clients.some(client => client.id === sourceId)) return false;
-  return (await Promise.all(clients.map(clientIsIdle))).every(Boolean);
+  return (await Promise.all(clients.map(client =>
+    clientIsIdle(client,purpose)))).every(Boolean);
 };
 
 self.addEventListener("message", event => {
@@ -182,7 +183,9 @@ self.addEventListener("message", event => {
   const reply = event.ports?.[0];
   if (!source?.id || !scopedClient(source) || !reply) return;
   event.waitUntil((async () => {
-    if (!(await allClientsIdle(source.id))) {
+    const purpose = type === "EFHC_PWA_CLEAR_PUBLIC_CACHE"
+      ? "maintenance" : "upgrade";
+    if (!(await allClientsIdle(source.id,purpose))) {
       reply.postMessage({safe:false,status:"busy"});
       return;
     }
@@ -194,7 +197,12 @@ self.addEventListener("message", event => {
     const names = await caches.keys();
     let cleared = 0;
     for (const name of publicRuntimeCaches) {
-      if (names.includes(name) && await caches.delete(name)) cleared++;
+      if (!names.includes(name)) continue;
+      // Serwist's native expiration class removes persistent cache metadata.
+      if (name !== "efhc-serwist-pages") {
+        await new CacheExpiration(name,{maxEntries:1}).delete();
+      }
+      if (await caches.delete(name)) cleared++;
     }
     reply.postMessage({status:cleared ? "cleared" : "empty",count:cleared});
   })().catch(() => reply.postMessage({safe:false,status:"failed"})));

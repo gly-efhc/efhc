@@ -682,8 +682,7 @@ try {
         const unrelated=await caches.open("another-application-cache");
         await unrelated.put("/outside-public-cache-proof",new Response("keep-me"));
       },keys);
-      // Wait for the same idle threshold used by the application controller.
-      await first.waitForTimeout(7000);
+      // The real button creates user activity, not a six-second idle window.
       await second.evaluate(()=>{
         const field=document.createElement("input");
         field.id="efhc-pwa-active-form-proof";
@@ -708,6 +707,9 @@ try {
         "Active editor in another scoped tab must block manual cleanup");
       await second.evaluate(
         ()=>document.getElementById("efhc-pwa-active-form-proof")?.remove());
+      // Immediate manual click must work without waiting for upgrade idleness.
+      await first.evaluate(()=>document.dispatchEvent(
+        new PointerEvent("pointerdown",{bubbles:true})));
       const cleared=await requestClear();
       assert.equal(cleared.status,"cleared");
       assert.equal(cleared.count,keys.length,

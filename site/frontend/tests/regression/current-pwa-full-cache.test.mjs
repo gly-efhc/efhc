@@ -37,6 +37,7 @@ test("Pages has one Serwist worker with native update and prefetch APIs", () => 
   assert.match(worker,/const retireLegacyOnce = async/);
   assert.match(worker,/self\.addEventListener\("activate"/);
   assert.match(worker,/const publicRuntimeCaches = Object\.freeze\(/);
+  assert.match(worker,/new CacheExpiration\(name/);
   assert.match(worker,/for \(const name of publicRuntimeCaches\)/);
   assert.match(worker,/caches\.delete\(name\)/);
   assert.match(app,/router\.basePath\}\/manifest\.webmanifest/);
@@ -233,6 +234,7 @@ test("Serwist owns public cache expiry without manual legacy GC or personal stor
   assert.match(worker,/const retireLegacyOnce = async/);
   assert.match(worker,/self\.addEventListener\("activate"/);
   assert.match(worker,/const publicRuntimeCaches = Object\.freeze\(/);
+  assert.match(worker,/new CacheExpiration\(name/);
   assert.match(worker,/for \(const name of publicRuntimeCaches\)/);
   assert.match(worker,/caches\.delete\(name\)/);
   assert.doesNotMatch(worker,/localStorage\.clear|indexedDB\.deleteDatabase/);

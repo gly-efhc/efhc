@@ -53,7 +53,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
     setClearOutcome(null);
     try {
       if (typeof navigator === "undefined" ||
-          !("serviceWorker" in navigator) || !navigator.onLine) {
+          !("serviceWorker" in navigator)) {
         setClearOutcome("unavailable");
         return;
       }

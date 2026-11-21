@@ -76,6 +76,9 @@ test("OWNER-requested manual clear reaches only Serwist public runtime storage",
   assert.match(settings,/clearOutcome/);
   assert.match(worker,/publicRuntimeCaches/);
   assert.match(worker,/allClientsIdle/);
+  assert.match(worker,/new CacheExpiration\(name/);
+  assert.match(worker,/purpose = type === "EFHC_PWA_CLEAR_PUBLIC_CACHE"/);
+  assert.match(read("frontend/src/components/PwaRuntimeStatus.tsx"),/safeForMaintenance/);
   assert.doesNotMatch(settings,/caches\.delete\(|localStorage\.clear\(|indexedDB\.deleteDatabase/);
   assert.doesNotMatch(worker,/localStorage|indexedDB|cache\.put\(/);
   assert.doesNotMatch(app,/pwaGateReady|efhc:pwa-gate-ready/);
