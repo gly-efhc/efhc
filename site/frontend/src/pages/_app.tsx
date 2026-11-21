@@ -639,23 +639,8 @@ function AppInner(props: {
   const [splashMounted, setSplashMounted] = useState(true);
   const [splashDone, setSplashDone] = useState(false);
   const [shellTimeoutReady, setShellTimeoutReady] = useState(false);
-  // React SplashScreen remains visible through shell initialization and the
-  // document's PWA update gate; no second HTML splash is mounted.
-  const [pwaGateReady, setPwaGateReady] = useState(false);
-  useEffect(() => {
-    const state = (window as Window & {
-      __EFHC_PWA_GATE__?: {ready: boolean};
-    }).__EFHC_PWA_GATE__;
-    if (!state || state.ready) setPwaGateReady(true);
-    const finish = () => setPwaGateReady(true);
-    window.addEventListener("efhc:pwa-gate-ready", finish);
-    const fallback = window.setTimeout(finish, 20500);
-    return () => {
-      window.removeEventListener("efhc:pwa-gate-ready", finish);
-      window.clearTimeout(fallback);
-    };
-  }, []);
-
+  // Serwist updates run independently of first paint; the React splash
+  // does not wait for a custom service worker/bootstrap cache gate.
   const splashReady = useMemo(() => {
     // Browser/PWA must never stay blank because Telegram data
     // or locale files are temporarily unavailable.  Missing
@@ -674,7 +659,7 @@ function AppInner(props: {
     uiDictLoaded,
   ]);
 
-  const effectiveSplashReady = (splashReady || shellTimeoutReady) && pwaGateReady;
+  const effectiveSplashReady = splashReady || shellTimeoutReady;
   const shellProgress = useMemo(() => {
     const steps = [
       uiDictLoaded,
