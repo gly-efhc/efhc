@@ -661,6 +661,88 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
+  await check("OWNER cache button purges only idle Serwist public runtime buckets", async () => {
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    try {
+      const first=await isolated.newPage();
+      await first.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await first.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+      const second=await isolated.newPage();
+      await second.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await second.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+      const keys=["efhc-serwist-pages","efhc-serwist-assets",
+        "efhc-serwist-locale","efhc-serwist-media"];
+      await first.evaluate(async names=>{
+        localStorage.setItem("efhc-public-cache-clear-proof","preserved");
+        for(const [index,name] of names.entries()){
+          const cache=await caches.open(name);
+          await cache.put("/efhc/public-cache-clear-proof-"+index+".txt",
+            new Response("remove-me"));
+        }
+        const unrelated=await caches.open("another-application-cache");
+        await unrelated.put("/outside-public-cache-proof",new Response("keep-me"));
+      },keys);
+      // Wait for the same idle threshold used by the application controller.
+      await first.waitForTimeout(7000);
+      await second.evaluate(()=>{
+        const field=document.createElement("input");
+        field.id="efhc-pwa-active-form-proof";
+        document.body.appendChild(field);
+        field.focus();
+      });
+      const requestClear=async()=>first.evaluate(async()=>{
+        const active=navigator.serviceWorker.controller;
+        if(!active)throw Error("Missing active Serwist worker");
+        const channel=new MessageChannel();
+        const message=new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(Error("Runtime purge reply timeout")),9000);
+          channel.port1.onmessage=event=>{
+            clearTimeout(timeout);channel.port1.close();resolve(event.data);
+          };
+        });
+        active.postMessage({type:"EFHC_PWA_CLEAR_PUBLIC_CACHE"},[channel.port2]);
+        return await message;
+      });
+      const blocked=await requestClear();
+      assert.equal(blocked.status,"busy",
+        "Active editor in another scoped tab must block manual cleanup");
+      await second.evaluate(
+        ()=>document.getElementById("efhc-pwa-active-form-proof")?.remove());
+      const cleared=await requestClear();
+      assert.equal(cleared.status,"cleared");
+      assert.equal(cleared.count,keys.length,
+        "Only the four Serwist runtime buckets should be removed");
+      const retention=await first.evaluate(async names=>{
+        const remaining=[];
+        for(const [index,name] of names.entries()){
+          const cache=await caches.open(name);
+          remaining.push(Boolean(await cache.match(
+            "/efhc/public-cache-clear-proof-"+index+".txt")));
+        }
+        const foreign=await caches.open("another-application-cache");
+        let offlineShell=false;
+        for(const name of await caches.keys()){
+          if(names.includes(name))continue;
+          const cache=await caches.open(name);
+          const requests=await cache.keys();
+          if(requests.some(request=>
+            new URL(request.url).pathname==="/efhc/offline.html"))
+            offlineShell=true;
+        }
+        return {
+          remaining,
+          foreign:Boolean(await foreign.match("/outside-public-cache-proof")),
+          owner:localStorage.getItem("efhc-public-cache-clear-proof"),
+          offlineShell,
+        };
+      },keys);
+      assert.deepEqual(retention.remaining,[false,false,false,false]);
+      assert.equal(retention.foreign,true,"Other application caches must survive");
+      assert.equal(retention.owner,"preserved","Owner data must survive manual purge");
+      assert.equal(retention.offlineShell,true,"Serwist offline precache must survive");
+      console.log("PWA_SERWIST_PUBLIC_CLEAR_PASS",JSON.stringify({blocked,cleared,retention}));
+    } finally { await isolated.close(); }
+  });
   await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile=path.join(root,"sw.js");
