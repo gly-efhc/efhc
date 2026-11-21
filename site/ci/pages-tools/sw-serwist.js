@@ -1,7 +1,8 @@
 /* EFHC GitHub Pages: single Serwist Service Worker.
  * Serwist alone owns install, precache revision cleanup, runtime cache writes,
  * expiration, CACHE_URLS prefetch and waiting/activation lifecycle.
- * No EFHC CacheStorage deletion, manual GC, LRU, cache index or second engine.
+ * Explicit OWNER-requested public runtime purge is one-shot and scoped.
+ * No EFHC periodic GC, LRU, cache index, or second engine.
  */
 import {
   Serwist, CacheFirst, NetworkFirst, NetworkOnly,
@@ -108,3 +109,67 @@ const sw = new Serwist({
 // Native Serwist handles SKIP_WAITING, CACHE_URLS, precache revisions, and
 // activation; all old EFHC-specific message handlers/legacy GC are retired.
 sw.addEventListeners();
+
+// NO_SERWIST_NATIVE_EQUIVALENT: Serwist has no command for an explicit
+// user-requested purge of just its runtime buckets. Keep precache and all
+// owner-scoped storage untouched; never add periodic EFHC garbage collection.
+const publicRuntimeCaches = Object.freeze([
+  "efhc-serwist-pages",
+  "efhc-serwist-assets",
+  "efhc-serwist-locale",
+  "efhc-serwist-media",
+]);
+const scopedClient = client => {
+  try {return inScope(new URL(client.url));}
+  catch {return false;}
+};
+const clientIsIdle = client => new Promise(resolve => {
+  const channel = new MessageChannel();
+  let finished = false;
+  const finish = safe => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timeout);
+    channel.port1.close();
+    resolve(safe);
+  };
+  const timeout = setTimeout(() => finish(false), 2500);
+  channel.port1.onmessage = event => finish(event.data?.safe === true);
+  try {client.postMessage({type:"EFHC_PWA_CLIENT_SAFE"},[channel.port2]);}
+  catch {finish(false);}
+});
+const allClientsIdle = async sourceId => {
+  const clients = (await self.clients.matchAll({
+    type:"window",includeUncontrolled:true,
+  })).filter(scopedClient);
+  // A legacy/unresponsive tab must never authorize a forced upgrade or purge.
+  if (!clients.some(client => client.id === sourceId)) return false;
+  return (await Promise.all(clients.map(clientIsIdle))).every(Boolean);
+};
+
+self.addEventListener("message", event => {
+  const type = event.data?.type;
+  if (type !== "EFHC_PWA_CHECK_CLIENTS" &&
+      type !== "EFHC_PWA_CLEAR_PUBLIC_CACHE") return;
+  const source = event.source;
+  const reply = event.ports?.[0];
+  if (!source?.id || !scopedClient(source) || !reply) return;
+  event.waitUntil((async () => {
+    if (!(await allClientsIdle(source.id))) {
+      reply.postMessage({safe:false,status:"busy"});
+      return;
+    }
+    if (type === "EFHC_PWA_CHECK_CLIENTS") {
+      reply.postMessage({safe:true});
+      return;
+    }
+    // Never touch the Serwist precache or another application's cache.
+    const names = await caches.keys();
+    let cleared = 0;
+    for (const name of publicRuntimeCaches) {
+      if (names.includes(name) && await caches.delete(name)) cleared++;
+    }
+    reply.postMessage({status:cleared ? "cleared" : "empty",count:cleared});
+  })().catch(() => reply.postMessage({safe:false,status:"failed"})));
+});
+

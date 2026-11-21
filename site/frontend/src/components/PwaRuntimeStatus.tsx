@@ -30,15 +30,22 @@ export function PwaRuntimeStatus(props: {
     let refreshPending = false;
     let oldController = navigator.serviceWorker.controller;
     let handoffPending = false;
+    let checkingActivation = false;
+    let lastActivationCheck = 0;
 
     const activeEditor = () => Boolean(document.querySelector(
       "input:focus,textarea:focus,select:focus,[contenteditable='true']:focus",
     ));
-    const safeToReload = () => !disposed && navigator.onLine &&
-      document.visibilityState === "visible" &&
+    const safeForUpgrade = () => !disposed &&
       !walletModalRef.current && !handoffPending &&
       queryClient.isMutating() === 0 &&
       !activeEditor() && Date.now() - lastActivityAt >= 6000;
+    const safeToReload = () => safeForUpgrade() && navigator.onLine &&
+      document.visibilityState === "visible";
+    const onSafetyCheck = (event: MessageEvent) => {
+      if (event.data?.type !== "EFHC_PWA_CLIENT_SAFE") return;
+      event.ports?.[0]?.postMessage({safe:safeForUpgrade()});
+    };
     const reloadWhenSafe = () => {
       if (!refreshPending || !safeToReload()) return;
       refreshPending = false;
@@ -55,9 +62,35 @@ export function PwaRuntimeStatus(props: {
     };
     const checkForUpdate = () => {
       if (disposed || !registration || !navigator.onLine) return;
-      // Browser/Serwist controls install -> waiting -> activate. No custom
-      // skipWaiting request can interrupt another tab's ongoing operation.
+      // Serwist checks installation and native lifecycle; activation below
+      // requires an affirmative idle response from every scoped client.
       void registration.update().catch(() => undefined);
+    };
+    const activateWhenSafe = () => {
+      const waiting = registration?.waiting;
+      if (!waiting || !safeToReload() || checkingActivation ||
+          Date.now() - lastActivationCheck < 5000) return;
+      checkingActivation = true;
+      lastActivationCheck = Date.now();
+      const channel = new MessageChannel();
+      let finished = false;
+      const finish = (safe: boolean) => {
+        if (finished) return;
+        finished = true;
+        window.clearTimeout(timeout);
+        channel.port1.close();
+        checkingActivation = false;
+        if (safe && !disposed && registration?.waiting === waiting &&
+            safeToReload()) {
+          // Serwist owns activation through its native SKIP_WAITING handler.
+          waiting.postMessage({type:"SKIP_WAITING"});
+        }
+      };
+      const timeout = window.setTimeout(() => finish(false), 4500);
+      channel.port1.onmessage = event => finish(event.data?.safe === true);
+      try {
+        waiting.postMessage({type:"EFHC_PWA_CHECK_CLIENTS"},[channel.port2]);
+      } catch { finish(false); }
     };
     const onControllerChange = () => {
       const controller = navigator.serviceWorker.controller;
@@ -91,16 +124,20 @@ export function PwaRuntimeStatus(props: {
     };
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    navigator.serviceWorker.addEventListener("message", onSafetyCheck);
     for (const event of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(event,markActivity,{passive:true});
     window.addEventListener("blur",markBlur);
     window.addEventListener("focus",markFocus);
-    const onResume = () => {checkForUpdate(); reloadWhenSafe();};
+    const onResume = () => {checkForUpdate(); activateWhenSafe(); reloadWhenSafe();};
     window.addEventListener("pageshow",onResume);
     window.addEventListener("online",onResume);
     document.addEventListener("visibilitychange",onResume);
     const updateInterval = window.setInterval(checkForUpdate,15*60*1000);
-    const idleInterval = window.setInterval(reloadWhenSafe,1000);
+    const idleInterval = window.setInterval(() => {
+      activateWhenSafe();
+      reloadWhenSafe();
+    },1000);
 
     void navigator.serviceWorker.register(`${base}/sw.js`,{
       scope,updateViaCache:"none",
@@ -118,6 +155,7 @@ export function PwaRuntimeStatus(props: {
       window.clearInterval(updateInterval);
       window.clearInterval(idleInterval);
       navigator.serviceWorker.removeEventListener("controllerchange",onControllerChange);
+      navigator.serviceWorker.removeEventListener("message",onSafetyCheck);
       for (const event of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(event,markActivity);
       window.removeEventListener("blur",markBlur);

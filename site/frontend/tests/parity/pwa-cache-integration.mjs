@@ -964,57 +964,43 @@ try {
         if(!reg)throw Error("Expected first Serwist registration");
         await reg.update();
       },base);
-      // State inspection and message delivery must be one browser-side
-      // operation. reg.update() can briefly expose a previous waiting worker
-      // while a successor is still installing; do not assert on that race.
-      const beforeMessage=await boundedSerwistPhase("message.guard.stable.waiting",()=>
+      // Unsupported offline/legacy pages cannot approve automatic activation.
+      const blocked = await boundedSerwistPhase("message.guard.waiting",()=>
         first.evaluate(async scope=>{
           const deadline=Date.now()+18000;
-          let state=null;
           while(Date.now()<deadline){
             const reg=await navigator.serviceWorker.getRegistration(scope);
-            state={
-              active:reg?.active?.state||null,
-              waiting:reg?.waiting?.state||null,
-              installing:reg?.installing?.state||null,
-              controller:navigator.serviceWorker.controller?.state||null,
-              controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
-            };
-            if(state.waiting==="installed" && !state.installing){
-              reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
-              return state;
+            if(reg?.waiting?.state==="installed" && !reg.installing){
+              const channel=new MessageChannel();
+              const answer=new Promise((resolve,reject)=>{
+                const timer=setTimeout(()=>reject(Error("Safety vote timeout")),7000);
+                channel.port1.onmessage=event=>{
+                  clearTimeout(timer);channel.port1.close();resolve(event.data);
+                };
+              });
+              reg.waiting.postMessage({type:"EFHC_PWA_CHECK_CLIENTS"},[channel.port2]);
+              return {waiting:reg.waiting.state,answer:await answer};
             }
             await new Promise(resolve=>setTimeout(resolve,75));
           }
-          return state;
-        },base),22000);
-      console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
-      assert.equal(beforeMessage.waiting,"installed",
-        "A fresh Serwist release must remain waiting while two scoped clients are open");
-      await first.waitForTimeout(700);
-      const blocked=await first.evaluate(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        return {waiting:reg?.waiting?.state||null,active:reg?.active?.state||null};
-      },base);
-      assert.equal(blocked.waiting,"installed",
-        "Serwist native SKIP_WAITING bypassed the safe multi-client guard");
-      assert.equal(blocked.active,"activated");
-      await second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
-      await first.evaluate(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:false});
-      },base);
-      await first.waitForTimeout(350);
+          throw Error("No waiting Serwist worker found");
+        },base),26000);
+      assert.equal(blocked.waiting,"installed");
+      assert.equal(blocked.answer.safe,false,
+        "An unsupported legacy tab must block forced activation");
+      await first.waitForTimeout(500);
       assert.equal(await first.evaluate(async scope=>
         (await navigator.serviceWorker.getRegistration(scope))?.waiting?.state,
-        base),"installed","Legacy activation without EFHC approval must not promote a worker");
-      await first.evaluate(async scope=>{
+        base),"installed","Unsafe old client was replaced unexpectedly");
+      await Promise.all([
+        first.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000}),
+        second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000}),
+      ]);
+      const successor=await isolated.newPage();
+      await successor.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000});
+      await successor.waitForFunction(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
-        reg.waiting.postMessage({type:"ACTIVATE_WHEN_SAFE",efhcSafeToActivate:true});
-      },base);
-      await first.waitForFunction(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        return Boolean(reg?.active?.state==="activated"&&!reg.waiting);
+        return Boolean(reg?.active?.state==="activated" && !reg.waiting);
       },base,{timeout:18000});
       console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify(blocked));
     } finally {

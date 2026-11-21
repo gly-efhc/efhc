@@ -18,7 +18,9 @@ test("Only Serwist owns HTTP caching, precache revisions and expiration", () => 
   assert.match(build,/EFHC_SERWIST_CONFIGURATOR_PASS/);
   assert.match(config,/from "@serwist\/next\/config"/);
   assert.match(config,/globPatterns:\[\]/);
-  assert.doesNotMatch(sw,/\bcache\.put\s*\(|\bcaches\.(?:keys|open|delete)\s*\(/);
+  assert.doesNotMatch(sw,/\bcache\.put\s*\(|\bcaches\.open\s*\(/);
+  assert.match(sw,/publicRuntimeCaches/);
+  assert.match(sw,/caches\.delete\(name\)/);
   assert.doesNotMatch(sw,/legacyAssetFallback|retireLegacyCachesOnce|CLIENT_BUILD_READY|GET_CACHE_STATUS/);
 });
 
@@ -32,8 +34,11 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/navigator\.serviceWorker\.addEventListener\("controllerchange"/);
   assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|PREFETCH_PRIORITY|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|CACHE_STATUS/);
-  assert.ok(!sw.includes('self.addEventListener("message"'), "No EFHC SW protocol listeners");
-  assert.ok(!sw.includes("self.skipWaiting("), "No EFHC activation override");
+  assert.match(runtime,/EFHC_PWA_CHECK_CLIENTS/);
+  assert.match(runtime,/type:"SKIP_WAITING"/);
+  assert.match(sw,/self\.addEventListener\("message"/);
+  assert.match(sw,/allClientsIdle/);
+  assert.ok(!sw.includes("self.skipWaiting("), "Serwist alone activates waiting workers");
   assert.doesNotMatch(doc,/__EFHC_PWA_GATE__|efhcBootstrapScript|ACTIVATE_WHEN_SAFE|repairOnce/);
 });
 
@@ -54,14 +59,22 @@ test("Active transactions, wallet modal and editing block reload only", () => {
   assert.match(runtime,/!activeEditor\(\)/);
   assert.match(runtime,/Date\.now\(\) - lastActivityAt >= 6000/);
   assert.match(runtime,/if \(!refreshPending \|\| !safeToReload\(\)\) return/);
-  assert.doesNotMatch(runtime,/messageSkipWaiting|type:"SKIP_WAITING"|waiting\?\.postMessage/);
+  assert.match(runtime,/safeForUpgrade/);
+  assert.match(runtime,/EFHC_PWA_CLIENT_SAFE/);
+  assert.match(runtime,/EFHC_PWA_CHECK_CLIENTS/);
+  assert.match(runtime,/type:"SKIP_WAITING"/);
 });
 
-test("Manual cache controls no longer impersonate Serwist deletion", () => {
+test("OWNER-requested manual clear reaches only Serwist public runtime storage", () => {
   const settings=read("frontend/src/components/profile/ProfileSettingsDialog.tsx");
+  const worker=read("ci/pages-tools/sw-serwist.js");
   const app=read("frontend/src/pages/_app.tsx");
   assert.match(settings,/registration\.update\(\)/);
-  assert.match(settings,/pwa\.native_cache_managed/);
-  assert.doesNotMatch(settings,/GET_CACHE_STATUS|CLEAN_STALE_PUBLIC_CACHE|caches\.delete\(|localStorage\.clear\(/);
+  assert.match(settings,/EFHC_PWA_CLEAR_PUBLIC_CACHE/);
+  assert.match(settings,/clearOutcome/);
+  assert.match(worker,/publicRuntimeCaches/);
+  assert.match(worker,/allClientsIdle/);
+  assert.doesNotMatch(settings,/caches\.delete\(|localStorage\.clear\(|indexedDB\.deleteDatabase/);
+  assert.doesNotMatch(worker,/localStorage|indexedDB|cache\.put\(/);
   assert.doesNotMatch(app,/pwaGateReady|efhc:pwa-gate-ready/);
 });

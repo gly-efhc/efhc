@@ -81,7 +81,8 @@ test("T3: unrelated applications are untouched by Serwist scope",()=>{
   assert.match(worker,/const inScope/);
   assert.match(worker,/url\.origin === self\.location\.origin/);
   assert.match(worker,/url\.pathname\.startsWith\(BASE \+ "\/"\)/);
-  assert.doesNotMatch(worker,/\bcaches\.(?:delete|open|keys)\(/);
+  assert.match(worker,/publicRuntimeCaches/);
+  assert.match(worker,/caches\.delete\(name\)/);
 });
 
 test("T4: no EFHC custom client-generation cache handshake remains",()=>{
@@ -93,13 +94,14 @@ test("T4: no EFHC custom client-generation cache handshake remains",()=>{
 test("T5: Serwist lifecycle supersedes EFHC manual legacy retirement",()=>{
   assert.match(worker,/sw\.addEventListeners\(\)/);
   assert.doesNotMatch(worker,/retireLegacyCachesOnce|legacyAssetFallback/);
-  assert.doesNotMatch(worker,/caches\.delete\(/);
+  assert.match(worker,/caches\.delete\(name\)/);
 });
 
 test("T6: old tabs are not overridden by a custom forced activation",()=>{
   assert.match(worker,/skipWaiting:false/);
   assert.doesNotMatch(worker,/self\.skipWaiting\(|ACTIVATE_WHEN_SAFE/);
-  assert.doesNotMatch(runtime,/SKIP_WAITING|ACTIVATE_WHEN_SAFE/);
+  assert.match(runtime,/type:"SKIP_WAITING"/);
+  assert.match(runtime,/EFHC_PWA_CHECK_CLIENTS/);
 });
 
 test("T7: A→B→C worker revisions use native Serwist precache lifecycle",()=>{
@@ -146,6 +148,7 @@ test("T12: idle reload protects active financial operations",()=>{
   assert.match(runtime,/!walletModalRef\.current && !handoffPending/);
   assert.match(runtime,/!activeEditor\(\)/);
   assert.match(runtime,/refreshPending = false/);
+  assert.match(runtime,/safeForUpgrade/);
   assert.doesNotMatch(runtime,/efhc:pwa-upgrade-stalled|ACTIVATE_WHEN_SAFE/);
 });
 

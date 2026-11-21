@@ -6,13 +6,16 @@ import { appBasePath } from "../../lib/appBasePath";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
 
-/** Native SW update check; all HTTP cache eviction stays with Serwist.
- * Serwist has no standard API to manually erase only its runtime caches.
- * Do not pretend that register.update() is a cache-clearing operation.
+/** Serwist update checks and explicit public-only runtime maintenance.
+ * Checking for updates never pretends to clear caches.
  */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
   const [checking, setChecking] = React.useState(false);
+  const [clearing, setClearing] = React.useState(false);
+  const [clearOutcome, setClearOutcome] = React.useState<
+    "cleared" | "empty" | "busy" | "unavailable" | "failed" | null
+  >(null);
   const [outcome, setOutcome] = React.useState<
     "checked" | "pending" | "unavailable" | "failed" | null
   >(null);
@@ -44,6 +47,49 @@ function PwaMaintenanceSection(): React.JSX.Element {
     }
   }
 
+  async function clearPublicCache(): Promise<void> {
+    if (clearing || checking) return;
+    setClearing(true);
+    setClearOutcome(null);
+    try {
+      if (typeof navigator === "undefined" ||
+          !("serviceWorker" in navigator) || !navigator.onLine) {
+        setClearOutcome("unavailable");
+        return;
+      }
+      const active = navigator.serviceWorker.controller;
+      if (!active) {
+        setClearOutcome("unavailable");
+        return;
+      }
+      // Only the active scoped Serwist worker may remove its own runtime
+      // buckets. It checks the state of every open tab before doing so.
+      const reply = await new Promise<{status?: string}>((resolve,reject) => {
+        const channel = new MessageChannel();
+        let finished = false;
+        const finish = (result: {status?: string} | null) => {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeout);
+          channel.port1.close();
+          if (result) resolve(result);
+          else reject(new Error("EFHC_PUBLIC_CACHE_TIMEOUT"));
+        };
+        const timeout = window.setTimeout(() => finish(null),8000);
+        channel.port1.onmessage = event => finish(event.data);
+        try {
+          active.postMessage({type:"EFHC_PWA_CLEAR_PUBLIC_CACHE"},[channel.port2]);
+        } catch { finish(null); }
+      });
+      setClearOutcome(reply.status === "cleared" || reply.status === "empty" ||
+        reply.status === "busy" ? reply.status : "failed");
+    } catch {
+      setClearOutcome("failed");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   return (
     <details className="efhc-profile-pwa-maintenance">
       <summary>{t("pwa.maintenance_title")}</summary>
@@ -59,7 +105,29 @@ function PwaMaintenanceSection(): React.JSX.Element {
             {t(checking ? "common.loading" : "pwa.update_now")}
           </button>
         </div>
+        <div className="standalone-settings-row">
+          <span>{t("pwa.clear_public_label")}</span>
+          <button
+            type="button"
+            className="source-button secondary standalone-setting-toggle"
+            data-pwa-clear-public-cache="true"
+            disabled={clearing || checking}
+            onClick={() => void clearPublicCache()}
+          >
+            {t(clearing ? "common.loading" : "pwa.clear_public_button")}
+          </button>
+        </div>
+        <small>{t("pwa.clear_public_scope")}</small>
         <small>{t("pwa.native_cache_managed")}</small>
+        {clearOutcome ? (
+          <small role="status">
+            {t(clearOutcome === "cleared" ? "pwa.clear_public_done"
+              : clearOutcome === "empty" ? "pwa.clear_public_empty"
+              : clearOutcome === "busy" ? "pwa.clear_public_busy"
+              : clearOutcome === "unavailable" ? "pwa.unavailable"
+              : "pwa.clear_public_failed")}
+          </small>
+        ) : null}
         {outcome ? (
           <small role="status">
             {t(outcome === "checked" ? "pwa.checked"
