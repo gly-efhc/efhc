@@ -743,6 +743,30 @@ try {
       assert.equal(retention.owner,"preserved","Owner data must survive manual purge");
       assert.equal(retention.offlineShell,true,"Serwist offline precache must survive");
       console.log("PWA_SERWIST_PUBLIC_CLEAR_PASS",JSON.stringify({blocked,cleared,retention}));
+      // E2E acceptance must click the actual Settings button, not just send
+      // a synthetic worker message. The pointer event must not produce busy.
+      await first.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      await first.locator('[data-profile-settings-entry="interface-card"]')
+        .waitFor({state:"visible",timeout:20000});
+      await first.locator('[data-profile-settings-entry="interface-card"]').click();
+      await first.locator(".efhc-profile-pwa-maintenance summary").click();
+      await first.evaluate(async()=>{
+        const cache=await caches.open("efhc-serwist-pages");
+        await cache.put("/efhc/pwa-button-clear-proof.txt",
+          new Response("remove-me"));
+      });
+      await first.locator('[data-pwa-clear-public-cache="true"]').click();
+      await first.waitForFunction(()=>{
+        const text=document.querySelector(
+          ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
+        return /Serwist public runtime cache cleared|Публичный runtime-кеш Serwist очищен/i.test(text);
+      },null,{timeout:12000});
+      const buttonCleared=await first.evaluate(async()=>!(
+        await (await caches.open("efhc-serwist-pages"))
+          .match("/efhc/pwa-button-clear-proof.txt")));
+      assert.equal(buttonCleared,true,"Actual Settings cache button did not clear runtime data");
+      console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
+
     } finally { await isolated.close(); }
   });
   await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
