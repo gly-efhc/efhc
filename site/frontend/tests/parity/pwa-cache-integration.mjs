@@ -898,9 +898,10 @@ try {
         await thirdTab.close();
       }
 
-      // Native Serwist owns new generations. A one-time scoped migration
-      // retires only old EFHC/Serwist public caches after ALL old clients
-      // leave or verify this generation; never delete any other app cache.
+      // A genuine pre-Serwist cache may exist in an old installed browser.
+      // Do not serve a removed JS file from that cache after HTTP 404:
+      // only the predecessor may use its own resources before handoff.
+      // Serwist retires proven EFHC legacy buckets ONCE on native activation.
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
       const oldStatic="efhc-static-assets-test-prior";
@@ -909,105 +910,80 @@ try {
       const unrelated="efhc-unrelated-app-test";
       const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
       const stale=await context.newPage();
+      const workerBeforeMigration=await readFile(workerFile,"utf8");
+      const workerTimes=await stat(workerFile);
       try {
         await boundedSerwistPhase("legacy.stale.goto",()=>
           stale.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
-      await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
-        const store=async (name,url,value)=>{
-          const cache=await caches.open(name);
-          await cache.put(url,new Response(value,{status:200}));
-        };
-        await store(oldLegacy,oldUrl,"legacy-old");
-        await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
-        await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
-        await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
-        await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
-        await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
-        await boundedSerwistPhase("legacy.status.request",()=>page.evaluate(()=>
-          navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"})));
-        await page.waitForTimeout(350);
-        const guarded=await boundedSerwistPhase("legacy.guarded.inventory",()=>page.evaluate(async names=>({
-          keys:await caches.keys(),
-          staleCached:Boolean(await (await caches.open(names.oldLegacy))
-            .match(names.oldUrl)),
-        }),{oldLegacy,oldUrl}),15000);
-        assert.ok(guarded.keys.includes(oldLegacy) &&
-          guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
-          guarded.keys.includes(oldMedia) && guarded.keys.includes(oldLocale) &&
-          guarded.staleCached,"An unverified old tab must retain all legacy assets");
-        // The previous worker's immutable assets remain obtainable while
-        // the new Serwist worker controls network requests.
-        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.http404",()=>
-          stale.evaluate(async url=>Promise.race([
-            fetch(url).then(response=>response.text()).catch(()=>null),
-            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy 404 fetch timeout")),8500)),
-          ]),oldUrl),12000);
-        assert.equal(onlineLegacy,"legacy-old",
-          "A successor HTTP 404 must fall back to verified legacy immutable JS");
-        await context.setOffline(true);
-        const legacyResponse=await boundedSerwistPhase("legacy.fetch.offline",()=>
-          stale.evaluate(async url=>Promise.race([
-            fetch(url).then(response=>response.text()).catch(()=>null),
-            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy offline fetch timeout")),8500)),
-          ]),oldUrl),12000);
-        assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
-      }finally {
-        // Leave the old worker's scope while the network is STILL OFFLINE.
-        // Bringing the connection online first triggers offline.html's own
-        // online event reload, which races a navigation to about:blank.
-        // This navigation is local and cannot require a network response.
-        await boundedSerwistPhase("legacy.stale.leave.scope",()=>
-          stale.goto("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
-        // goto() can resolve while Chromium is still committing the new
-        // document; neither stale.url() nor page.evaluate() is reliable
-        // until the out-of-scope navigation is explicitly confirmed.
-        await boundedSerwistPhase("legacy.stale.scope.committed",()=>
-          stale.waitForURL("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
-        assert.equal(stale.url(),"about:blank",
-          "The old EFHC client must be replaced by an out-of-scope document");
-        assert.equal(stale.isClosed(),false,
-          "Scope exit must succeed even while the Chromium tab remains open");
-        // The worker filters live clients by URL, not by CDP target status.
-        // The ensuing native legacy-retirement checks still prove that
-        // only EFHC-owned old caches may disappear.
-        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify({
-          url:stale.url(),tabOpen:!stale.isClosed(),
+        await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl})=>{
+          const store=async (name,url,value)=>{
+            const cache=await caches.open(name);
+            await cache.put(url,new Response(value,{status:200}));
+          };
+          await store(oldLegacy,oldUrl,"legacy-old");
+          await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
+          await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
+          await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
+          await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
+          await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
+        },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
+        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.no-fallback",()=>
+          stale.evaluate(async url=>{
+            const response=await fetch(url);
+            return {status:response.status,content:await response.text()};
+          },oldUrl),15000);
+        assert.notEqual(onlineLegacy.content,"legacy-old",
+          "A new Serwist worker must not serve obsolete JS from retired EFHC cache");
+        const seeded=await page.evaluate(async names=>{
+          const list=await caches.keys();
+          return names.every(name=>list.includes(name));
+        },[oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale]);
+        assert.equal(seeded,true,"Legacy evidence must exist before native activation");
+        // Change only the worker bytes: the same complete Serwist build stays
+        // valid and a real waiting successor observes the old scoped tab.
+        await writeFile(workerFile,
+          workerBeforeMigration+"\n// native legacy retirement fixture\n","utf8");
+        await utimes(workerFile,new Date(),new Date(Date.now()+5000));
+        await page.evaluate(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          if(!reg)throw Error("Missing active Serwist before legacy retirement");
+          await reg.update();
+        });
+        await page.waitForFunction(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          return Boolean(reg?.waiting?.state==="installed");
+        },null,{timeout:18000});
+        await page.waitForTimeout(1200);
+        const stillWaiting=await page.evaluate(async()=>
+          (await navigator.serviceWorker.getRegistration())?.waiting?.state);
+        assert.equal(stillWaiting,"installed",
+          "Unresponsive old tab must block a premature generation handoff");
+        await stale.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
+        await stale.waitForURL("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
+        await page.waitForFunction(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          return Boolean(reg?.active?.state==="activated" && !reg.waiting);
+        },null,{timeout:30000});
+        await page.waitForFunction(async names=>{
+          const list=await caches.keys();
+          return names.every(name=>!list.includes(name));
+        },[oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale],{timeout:18000});
+        const kept=await page.evaluate(async name=>({
+          names:await caches.keys(),
+          unrelated:Boolean(await (await caches.open(name))
+            .match(new URL("/other-app/data.txt",location.origin).href)),
+        }),unrelated);
+        assert.ok(kept.names.includes(unrelated) && kept.unrelated,
+          "Native legacy migration must not delete unrelated caches");
+        console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
+          removed:5,unsafeTabBlocked:true,otherScopePreserved:true,
         }));
-        await context.setOffline(false);
+        await page.evaluate(name=>caches.delete(name),unrelated);
+      }finally {
+        await writeFile(workerFile,workerBeforeMigration,"utf8");
+        await utimes(workerFile,workerTimes.atime,workerTimes.mtime);
+        await stale.close().catch(()=>undefined);
       }
-      await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
-        const assets=[...document.querySelectorAll("script[src]")]
-          .map(el=>new URL(el.src).pathname)
-          .filter(path=>path.includes("/_next/static/"));
-        navigator.serviceWorker.controller?.postMessage({
-          type:"CLIENT_BUILD_READY",buildId,assets,
-        });
-        navigator.serviceWorker.controller?.postMessage({
-          type:"GET_CACHE_STATUS",
-        });
-      },thirdBuildId),15000);
-      await boundedSerwistPhase("legacy.retirement.wait",()=>page.waitForFunction(async names=>{
-        const keys=await caches.keys();
-        return !keys.includes(names.oldLegacy) &&
-          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic) &&
-          !keys.includes(names.oldMedia) && !keys.includes(names.oldLocale);
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000}),19000);
-      const kept=await boundedSerwistPhase("legacy.other.scope.verify",()=>page.evaluate(async name=>({
-        names:await caches.keys(),
-        unrelated:Boolean(await (await caches.open(name))
-          .match(new URL("/other-app/data.txt",location.origin).href)),
-      }),unrelated),15000);
-      assert.ok(kept.names.includes(unrelated)&&kept.unrelated,
-        "Migration must not delete other scope caches");
-      console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
-        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
-      }));
-      await page.evaluate(name=>caches.delete(name),unrelated);
     }finally{
       await writeFile(workerFile,originalWorker,"utf8");
       await writeFile(configFile,originalConfig,"utf8");

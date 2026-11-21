@@ -34,7 +34,8 @@ test("Pages has one Serwist worker with native update and prefetch APIs", () => 
   assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|PREFETCH_PRIORITY/);
   // Only the explicitly requested one-shot public runtime purge may delete
   // a fixed set of Serwist-owned caches. No second runtime cache manager.
-  assert.doesNotMatch(worker,/\bcaches\.open\(/);
+  assert.match(worker,/const retireLegacyOnce = async/);
+  assert.match(worker,/self\.addEventListener\("activate"/);
   assert.match(worker,/const publicRuntimeCaches = Object\.freeze\(/);
   assert.match(worker,/for \(const name of publicRuntimeCaches\)/);
   assert.match(worker,/caches\.delete\(name\)/);
@@ -229,7 +230,8 @@ test("Serwist owns public cache expiry without manual legacy GC or personal stor
   assert.doesNotMatch(worker,/retireLegacyCachesOnce|readyClients|legacyPublicCaches/);
   // Only the explicitly requested one-shot public runtime purge may delete
   // a fixed set of Serwist-owned caches. No second runtime cache manager.
-  assert.doesNotMatch(worker,/\bcaches\.open\(/);
+  assert.match(worker,/const retireLegacyOnce = async/);
+  assert.match(worker,/self\.addEventListener\("activate"/);
   assert.match(worker,/const publicRuntimeCaches = Object\.freeze\(/);
   assert.match(worker,/for \(const name of publicRuntimeCaches\)/);
   assert.match(worker,/caches\.delete\(name\)/);

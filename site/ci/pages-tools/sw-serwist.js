@@ -110,6 +110,33 @@ const sw = new Serwist({
 // activation; all old EFHC-specific message handlers/legacy GC are retired.
 sw.addEventListeners();
 
+// One-time migration from the retired, pre-Serwist EFHC cache names.
+// Serwist cannot cleanup arbitrary old names through precache revisioning.
+// This runs only at native worker activation, after the predecessor has
+// released control. Never fetch/replay/serve old assets from these caches.
+const legacyCacheName = name =>
+  /^efhc-pwa-/.test(name) ||
+  /^efhc-public-pages(?:-|$)/.test(name) ||
+  /^efhc-static-assets(?:-|$)/.test(name) ||
+  /^efhc-public-media(?:-|$)/.test(name) ||
+  /^efhc-public-translations(?:-|$)/.test(name);
+const retireLegacyOnce = async () => {
+  for (const name of await caches.keys()) {
+    if (!legacyCacheName(name)) continue;
+    const cache = await caches.open(name);
+    const entries = await cache.keys();
+    // A cache containing foreign or unproven URLs is not ours to delete.
+    if (!entries.length || !entries.every(req => {
+      try {return inScope(new URL(req.url));}
+      catch {return false;}
+    })) continue;
+    await caches.delete(name);
+  }
+};
+self.addEventListener("activate", event => {
+  event.waitUntil(retireLegacyOnce());
+});
+
 // NO_SERWIST_NATIVE_EQUIVALENT: Serwist has no command for an explicit
 // user-requested purge of just its runtime buckets. Keep precache and all
 // owner-scoped storage untouched; never add periodic EFHC garbage collection.

@@ -18,7 +18,9 @@ test("Only Serwist owns HTTP caching, precache revisions and expiration", () => 
   assert.match(build,/EFHC_SERWIST_CONFIGURATOR_PASS/);
   assert.match(config,/from "@serwist\/next\/config"/);
   assert.match(config,/globPatterns:\[\]/);
-  assert.doesNotMatch(sw,/\bcache\.put\s*\(|\bcaches\.open\s*\(/);
+  assert.doesNotMatch(sw,/\bcache\.put\s*\(/);
+  assert.match(sw,/const retireLegacyOnce = async/);
+  assert.match(sw,/entries\.every\(req/);
   assert.match(sw,/publicRuntimeCaches/);
   assert.match(sw,/caches\.delete\(name\)/);
   assert.doesNotMatch(sw,/legacyAssetFallback|retireLegacyCachesOnce|CLIENT_BUILD_READY|GET_CACHE_STATUS/);
