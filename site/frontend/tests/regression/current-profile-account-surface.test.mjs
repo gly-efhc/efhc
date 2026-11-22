@@ -32,7 +32,7 @@ test("Account exposes Telegram and official TON proof without adding auth paths"
   assert.match(page, /ctx.openWalletConnect\("binding"\)/);
 });
 
-test("only the four primary Profile navigation buttons receive compact v866 geometry", () => {
+test("only the four primary Profile navigation buttons receive compact reference geometry", () => {
   const css = readSource("profile-navigation.module.css");
   assert.match(page, /styles\.primaryTabs/);
   assert.match(page, /styles\.primaryTab/);

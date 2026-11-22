@@ -1,4 +1,4 @@
-/* The compact v866 geometry applies only to Profile's four primary tabs. */
+/* The compact reference geometry applies only to Profile's four primary tabs. */
 .primaryTabs[data-profile-primary-navigation] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .28rem;
