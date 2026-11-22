@@ -28,9 +28,9 @@ test("Settings keeps an accessible close icon without the source-row title plate
   assert.match(dialog, /\.efhc-settings-header\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent/);
   assert.match(modal, /props\.referenceLayout === "deposit" \? "efhc-modal-header source-row" : "efhc-modal-header"/);
   assert.match(modal, /aria-label=\{t\("common\.close"\)\}[\s\S]*?>\s*×\s*<\/button>/);
-  assert.match(dialog, /\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem/);
+  assert.match(dialog, /\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*var\(--efhc-settings-close-size\)/);
 });
 
 test("only the Settings close control has a circular 2.3 rem footprint", () => {
-  assert.match(dialog, /\[data-modal-reference-layout="settings"\]\s*\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem;[^}]*height:\s*2\.3rem;[^}]*border-radius:\s*50%/);
+  assert.match(dialog, /\[data-modal-reference-layout="settings"\]\s*\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*var\(--efhc-settings-close-size\);[^}]*height:\s*var\(--efhc-settings-close-size\);[^}]*border-radius:\s*50%/);
 });

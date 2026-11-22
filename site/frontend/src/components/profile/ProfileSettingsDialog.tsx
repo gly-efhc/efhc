@@ -246,8 +246,12 @@ export function ProfileSettingsDialog(props: {
         .efhc-reference-settings-dialog .efhc-modal-close {
           display: grid;
           place-items: center;
-          width: 2.3rem;
-          height: 2.3rem;
+          --efhc-settings-close-size: max(2.3rem, 44px);
+          width: var(--efhc-settings-close-size);
+          height: var(--efhc-settings-close-size);
+          min-width: var(--efhc-settings-close-size);
+          min-height: var(--efhc-settings-close-size);
+          flex: 0 0 var(--efhc-settings-close-size);
           border-radius: 50%;
           padding: 0;
           font-size: 1.25rem;
