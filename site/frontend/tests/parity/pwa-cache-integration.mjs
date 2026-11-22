@@ -835,7 +835,7 @@ try {
       await first.waitForFunction(()=>{
         const text=document.querySelector(
           ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
-        return /Serwist public runtime cache cleared|Публичный runtime-кеш Serwist очищен/i.test(text);
+        return /Serwist public runtime cache cleared|^кеш очищен$/i.test(text);
       },null,{timeout:12000});
       const buttonCleared=await first.evaluate(async()=>!(
         await (await caches.open("efhc-serwist-pages"))

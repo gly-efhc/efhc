@@ -1341,7 +1341,7 @@
   "pwa.clear_public_button": "Очистить кеш",
   "pwa.clear_public_label": "Публичный кеш приложения",
   "pwa.clear_public_scope": "Удаляются только временные публичные ресурсы Serwist. Офлайн-оболочка, Global ID, настройки, сессия и личные данные сохраняются.",
-  "pwa.clear_public_done": "Публичный runtime-кеш Serwist очищен.",
+  "pwa.clear_public_done": "кеш очищен",
   "pwa.clear_public_empty": "Публичный runtime-кеш уже пуст.",
   "pwa.clear_public_busy": "Очистка отложена: другая вкладка или операция ещё активна.",
   "pwa.clear_public_failed": "Не удалось подтвердить очистку публичного кеша.",

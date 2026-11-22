@@ -34,3 +34,8 @@ test("Settings keeps an accessible close icon without the source-row title plate
 test("only the Settings close control has a circular 2.3 rem footprint", () => {
   assert.match(dialog, /\[data-modal-reference-layout="settings"\]\s*\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*var\(--efhc-settings-close-size\);[^}]*height:\s*var\(--efhc-settings-close-size\);[^}]*border-radius:\s*50%/);
 });
+
+test("successful cache cleanup uses the exact approved Russian wording", () => {
+  const ru = JSON.parse(readFileSync(new URL("../../public/locale/ru.json", import.meta.url), "utf8"));
+  assert.equal(ru["pwa.clear_public_done"], "кеш очищен");
+});
