@@ -71,7 +71,7 @@ test("OWNER-requested manual clear reaches only Serwist public runtime storage",
   const settings=read("frontend/src/components/profile/ProfileSettingsDialog.tsx");
   const worker=read("ci/pages-tools/sw-serwist.js");
   const app=read("frontend/src/pages/_app.tsx");
-  assert.match(settings,/registration\.update\(\)/);
+  assert.doesNotMatch(settings,/registration\.update\(\)|pwa\.(?:checked|update_pending|check_failed)/);
   assert.match(settings,/EFHC_PWA_CLEAR_PUBLIC_CACHE/);
   assert.match(settings,/clearOutcome/);
   assert.match(worker,/publicRuntimeCaches/);
