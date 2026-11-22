@@ -1,3 +1,11 @@
+/* Structural provider rows do not inherit the generic v866 inset material. */
+.providerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
 /* Reset only account copy surfaces, not the card frames or buttons. */
 :global(#profilePage) .panelTitle,
 :global(#profilePage) .providerCopy,

@@ -75,9 +75,15 @@ test("provider connection copy uses one localized word in every supported langua
   assert.match(providers, /useContext\(LayoutContext\)/);
 });
 
-test("provider text surfaces are flat without changing the provider card frame", () => {
+test("provider rows and text are flat without changing the provider card frames", () => {
   const css = readSource("account-providers.module.css");
   assert.match(providers, /styles\.panelTitle/);
+  assert.equal((providers.match(/className=\{styles\.providerRow\}/g) || []).length, 2);
+  assert.match(providers, /data-provider-row="telegram"/);
+  assert.match(providers, /data-provider-row="ton-connect"/);
+  assert.equal((providers.match(/className="efhc-profile-action-card efhc-account-provider-card p-3"/g) || []).length, 2);
+  assert.doesNotMatch(providers, /className="source-row"/, "Provider rows must not inherit the broad inset material");
+  assert.match(css, /\.providerRow\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between/);
   assert.equal((providers.match(/styles\.providerCopy/g) || []).length, 2);
   assert.match(css, /background: none !important/);
   assert.match(css, /box-shadow: none !important/);

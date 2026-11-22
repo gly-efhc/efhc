@@ -46,7 +46,7 @@ export function AccountProviders(props: Props): React.JSX.Element {
     <div className="grid gap-3 efhc-account-providers" data-provider-state-source="server-session" data-provider-auth-state={isLinked ? "verified" : "guest"}>
       <h2 className={`source-card-title ${styles.panelTitle}`}>{t(isLinked ? "profile.linked_accounts_action" : "profile.sign_in_action")}</h2>
       <Card className="efhc-profile-action-card efhc-account-provider-card p-3">
-        <div className="source-row">
+        <div className={styles.providerRow} data-provider-row="telegram">
           <div className={`min-w-0 ${styles.providerCopy}`}>
             <div className="font-semibold">Telegram</div>
             <p className="text-xs efhc-text-muted2" data-provider="telegram" data-provider-state={telegramVerified ? "verified" : "unverified"}>
@@ -67,7 +67,7 @@ export function AccountProviders(props: Props): React.JSX.Element {
       </Card>
 
       <Card className="efhc-profile-action-card efhc-account-provider-card p-3">
-        <div className="source-row">
+        <div className={styles.providerRow} data-provider-row="ton-connect">
           <div className={`min-w-0 ${styles.providerCopy}`}>
             <div className="font-semibold">TON Connect</div>
             <p className="text-xs efhc-text-muted2" data-provider="ton-connect" data-provider-state={props.hasVerifiedWallet ? "verified" : "unverified"}>

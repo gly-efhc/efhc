@@ -889,6 +889,13 @@ try {
         nodes.map(node=>getComputedStyle(node).backgroundColor));
       assert.ok(statusFills.length===2 && statusFills.every(fill=>fill==="rgba(0, 0, 0, 0)"),
         "Provider status text has no separate fill");
+      const plates = await providers.locator("[data-provider-row]").evaluateAll(rows =>
+        rows.map(row => {
+          const style = getComputedStyle(row);
+          return [style.backgroundColor, style.backgroundImage, style.boxShadow, style.borderTopWidth];
+        }));
+      assert.deepEqual(plates, Array(2).fill(["rgba(0, 0, 0, 0)", "none", "none", "0px"]),
+        "Provider rows must have no inner plates while the outer cards retain their frames");
       console.log("PROFILE_LANGUAGE_AND_ACCOUNT_VISUAL_PASS");
     } finally { await isolated.close(); }
   });
