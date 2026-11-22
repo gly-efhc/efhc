@@ -33,7 +33,7 @@ const OFFLINE_RE = new RegExp(
 
 const FALLBACKS = {
   auth: "Сессию нужно обновить. Перезапустите приложение.",
-  permission: "Доступ требует подтверждения. Перезапустите приложение.",
+  permission: "Действие сейчас недоступно для этой учётной записи.",
   notFound: "Раздел не найден.",
   conflict: [
     "Действие сейчас недоступно.",
@@ -103,7 +103,7 @@ export function mapErrorToUi(
       return apiUi(
         error,
         "permission",
-        "common.session_expired",
+        "common.action_not_available_now",
         FALLBACKS.permission,
         true,
         "page",

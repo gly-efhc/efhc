@@ -437,8 +437,16 @@ export default function EnergyPage(props: {
 
   // The shell owns signed server reads; this protected page must still render
   // without an auth provider or network in standalone/offline contexts.
+  // A server-dated owner snapshot remains usable if the independent panels summary fails.
+  // A newer confirmed summary, including zero, always takes precedence.
+  const snapshotPanels = s.meta.server_now_iso
+    && Number.isSafeInteger(s.panels.active_count)
+    && s.panels.active_count >= 0
+    ? s.panels.active_count
+    : null;
   const activePanels = props.confirmedActivePanels != null
     ? String(props.confirmedActivePanels)
+    : snapshotPanels != null ? String(snapshotPanels)
     : props.snapshotMode === "browser-preview" ? "0" : "—";
 
   return (
