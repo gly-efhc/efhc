@@ -416,7 +416,7 @@ export default function WebProfilePage(props: Props) {
       </section>
 
       <div
-        className={`efhc-profile-tabs source-profile-tabs ${styles.primaryTabs}`}
+        className={`efhc-profile-tabs ${styles.primaryTabs}`}
         data-profile-primary-navigation="profile-wallet-history-faq"
       >
         <TabButton

@@ -58,3 +58,7 @@ test("Profile tabs have separate identical one-pixel frames and a border-only se
   assert.doesNotMatch(css, /outline\s*:\s*(none|0)/);
   assert.match(css, /:global\(#profilePage\)/);
 });
+
+test("React Profile tabs are independent of the old reference strip paint", () => {
+  assert.doesNotMatch(page, /efhc-profile-tabs source-profile-tabs/);
+});
