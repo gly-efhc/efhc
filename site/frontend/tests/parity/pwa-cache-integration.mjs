@@ -140,6 +140,39 @@ try {
     assert.deepEqual(criticalState.missing,[],"Serwist must atomically cache critical shell before activation");
     assert.ok(criticalState.keys.some(name=>name.includes("precache")),
       "Serwist precache container missing");
+    const requiredRouteAssets = config.precache.filter(url =>
+      /\.(?:html|js|css)$/.test(url));
+    assert.deepEqual(requiredRouteAssets.filter(url =>
+      !config.precache_critical.includes(url)),[],
+      "Route HTML, JS, and CSS must be installed before the new SW activates");
+    // Ensure Energy is hydrated before making the old release's backend
+    // unavailable. Offline route testing must not race initial React mount.
+    await page.locator('[data-nav-key="nav.panels"]').waitFor({
+      state:"visible",timeout:20000,
+    });
+    // Simulate a previous release's hashed files disappearing from Pages
+    // before any optional background prefetch has completed.
+    await context.setOffline(true);
+    try {
+      await page.locator('[data-nav-key="nav.panels"]').click();
+      await page.getByRole("heading",{name:"Panels"}).waitFor({
+        state:"visible",timeout:15000,
+      });
+      assert.equal(await page.locator(".efhc-entry-splash").count(),0,
+        "An offline Energy-to-Panels transition must not strand the 8% splash");
+      await page.locator('[data-nav-key="nav.exchange"]').click();
+      await page.getByRole("heading",{name:"Exchange"}).waitFor({
+        state:"visible",timeout:15000,
+      });
+      assert.equal(await page.locator(".efhc-entry-splash").count(),0,
+        "An offline Panels-to-Exchange transition must retain React");
+      console.log("PWA_SERWIST_CRITICAL_ROUTE_NAV_PASS",JSON.stringify({
+        routeAssets:requiredRouteAssets.length,online:false,
+      }));
+    } finally {
+      await context.setOffline(false);
+      await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+    }
     // No EFHC PREFETCH_PRIORITY/CACHE_COMPLETE controller remains. Ask the
     // *real* Serwist native CACHE_URLS handler to populate the public export,
     // then verify materialized CacheStorage entries rather than trusting a

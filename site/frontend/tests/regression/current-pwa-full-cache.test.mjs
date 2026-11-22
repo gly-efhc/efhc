@@ -81,8 +81,12 @@ test("Complete compiled export is precached, stable on repeated builds and verif
   assert.equal(config.static_export, true);
   assert.ok(config.precache_critical.includes("/efhc/index.html"));
   assert.ok(config.precache_critical.includes("/efhc/_next/static/main.js"));
-  assert.ok(config.precache_deferred.includes("/efhc/panels/index.html"));
-  assert.ok(config.precache_deferred.includes("/efhc/admin/users/index.html"));
+  assert.ok(config.precache_critical.includes("/efhc/panels/index.html"));
+  assert.ok(config.precache_critical.includes("/efhc/admin/users/index.html"));
+  assert.ok(config.precache_critical.includes("/efhc/browser-shop/index.html"));
+  assert.deepEqual(config.precache.filter(url => /\.(?:html|js|css)$/.test(url)
+    && !config.precache_critical.includes(url)), [],
+    "Every route HTML/JS/CSS must be atomic, not deferred after activation");
   const critical = new Set(config.precache_critical);
   const deferred = new Set(config.precache_deferred);
   assert.equal(critical.size + deferred.size, config.precache.length);

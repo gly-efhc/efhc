@@ -61,6 +61,11 @@ test("T1: release-specific CSS fingerprints are included before Serwist generate
   assert.ok(meta.precache.includes("/efhc/"+cssB));
   assert.ok(meta.precache_critical.includes("/efhc/index.html"));
   assert.ok(meta.precache_critical.includes("/efhc/_next/static/main.js"));
+  assert.ok(meta.precache_critical.includes("/efhc/"+cssA));
+  assert.ok(meta.precache_critical.includes("/efhc/"+cssB));
+  assert.deepEqual(meta.precache.filter(url => /\.(?:html|js|css)$/.test(url)
+    && !meta.precache_critical.includes(url)), [],
+    "All code and HTML must be installed before old release URLs disappear");
   assert.ok(!meta.cache_limits,"Serwist owns native cache limits, not EFHC's old cache-policy engine");
   const first=readFileSync(path.join(folder,"pwa-build.json"),"utf8");
   assert.equal(invoke("fix_pages_assets.py").status,0,"Export must be reproducible");
@@ -158,6 +163,8 @@ test("Public background resource caching uses native Serwist CACHE_URLS only",()
   assert.doesNotMatch(worker,/\bcache\.put\s*\(/);
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/precache_deferred/); assert.match(runtime,/CACHE_URLS/);
+  assert.match(runtime,/manifest\.build_id !== documentBuild/);
+  assert.match(runtime,/registration\?\.waiting/);
 });
 
 test("A single scoped Service Worker is emitted by Serwist Configurator",()=>{

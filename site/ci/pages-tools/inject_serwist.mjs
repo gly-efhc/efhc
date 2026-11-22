@@ -21,7 +21,9 @@ const config=JSON.parse(await readFile(path.join(root,"pwa-build.json"),"utf8"))
 const critical=config.precache_critical||[];
 const deferred=config.precache_deferred||[];
 const all=new Set(config.precache||[]);
-if(!critical.length || !deferred.length ||
+// A complete source-only test export can consist entirely of critical
+// HTML/JS/CSS. The deferred partition is optional, not an install failure.
+if(!critical.length ||
    critical.length+deferred.length!==all.size ||
    critical.some(p=>!all.has(p) || !p.startsWith(base+"/")) ||
    deferred.some(p=>!all.has(p) || !p.startsWith(base+"/"))) {
