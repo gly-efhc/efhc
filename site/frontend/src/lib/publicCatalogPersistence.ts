@@ -1,7 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
 const STORAGE_KEY = "efhc_public_catalog_queries_v1";
-const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_BYTES = 3_000_000;
 const SAFE_PREFIX = "public-static";
 
@@ -25,14 +24,12 @@ function readEntries(): StoredEntry[] {
     const raw = window.localStorage.getItem(STORAGE_KEY) || "[]";
     const value = JSON.parse(raw) as unknown;
     if (!Array.isArray(value)) return [];
-    const now = Date.now();
     return value.filter((entry): entry is StoredEntry => {
       if (!entry || typeof entry !== "object") return false;
       const item = entry as StoredEntry;
       return (
         isSafeKey(item.key) &&
-        Number.isFinite(item.updatedAt) &&
-        now - item.updatedAt <= MAX_AGE_MS
+        Number.isFinite(item.updatedAt)
       );
     });
   } catch {
