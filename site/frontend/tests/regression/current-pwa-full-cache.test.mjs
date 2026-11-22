@@ -281,7 +281,7 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
 test("Profile update checks Serwist without claiming a manual cache purge", () => {
   const settings=read("src/components/profile/ProfileSettingsDialog.tsx");
   assert.match(settings,/registration\.update\(\)/);
-  assert.match(settings,/pwa\.maintenance_title/);
+  assert.doesNotMatch(settings,/pwa\.maintenance_title/);
   assert.match(settings,/pwa\.clear_public_button/);
   assert.match(settings,/data-profile-settings-maintenance="visible"/);
   assert.doesNotMatch(settings,/pwa\.(?:native_cache_managed|clear_public_scope)/);

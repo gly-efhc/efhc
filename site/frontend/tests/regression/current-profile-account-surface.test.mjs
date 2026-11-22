@@ -41,3 +41,20 @@ test("only the four primary Profile navigation buttons receive compact reference
   assert.match(css, /min-height: 2\.15rem/);
   assert.doesNotMatch(css, /footer|settings|header/i);
 });
+
+test("Profile tabs have separate identical one-pixel frames and a border-only selected state", () => {
+  const css = readSource("profile-navigation.module.css");
+  const strip = css.match(/\.primaryTabs\[data-profile-primary-navigation\] \{([^}]+)\}/)?.[1] ?? "";
+  const frame = css.match(/\.primaryTab\[data-profile-tab\] \{([^}]+)\}/)?.[1] ?? "";
+  const selected = css.match(/\.primaryTab\[data-profile-tab\]\[data-active="true"\] \{([^}]+)\}/)?.[1] ?? "";
+  assert.match(strip, /border: 0 !important/);
+  assert.match(strip, /background: none !important/);
+  assert.match(strip, /box-shadow: none !important/);
+  assert.match(frame, /border: 1px solid[^;]+!important/);
+  assert.match(frame, /box-shadow: none !important/);
+  assert.match(frame, /background: transparent !important/);
+  assert.match(frame, /color: var\(--tg-text,/);
+  assert.match(selected, /^\s*border-color: [^;]+!important;\s*$/);
+  assert.doesNotMatch(css, /outline\s*:\s*(none|0)/);
+  assert.match(css, /:global\(#profilePage\)/);
+});

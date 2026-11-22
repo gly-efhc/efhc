@@ -781,7 +781,36 @@ try {
       await first.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
       await first.locator('[data-profile-settings-entry="interface-card"]')
         .waitFor({state:"visible",timeout:20000});
+      const tabs = first.locator("[data-profile-primary-navigation]");
+      const tabPaint = await tabs.evaluate((element) => {
+        const group = getComputedStyle(element);
+        return {
+          groupBorder: group.borderTopWidth,
+          buttons: Array.from(element.querySelectorAll("button"), (button) => {
+            const style = getComputedStyle(button);
+            return {border: style.borderTopWidth, color: style.borderTopColor, shadow: style.boxShadow};
+          }),
+        };
+      });
+      assert.equal(tabPaint.groupBorder, "0px", "Profile tabs must not have a group frame");
+      assert.equal(tabPaint.buttons.length, 4);
+      assert.ok(tabPaint.buttons.every(({border}) => border === "1px"),
+        "Active and inactive Profile tabs must have the same border thickness");
+      assert.equal(tabPaint.buttons[0].shadow, "none", "Active tab must not add an inset stroke");
+      assert.notEqual(tabPaint.buttons[0].color, tabPaint.buttons[1].color,
+        "Brightness must distinguish the active Profile tab");
       await first.locator('[data-profile-settings-entry="interface-card"]').click();
+      const settings = first.locator('[data-modal-reference-layout="settings"]');
+      const dismiss = settings.locator(".efhc-modal-close");
+      assert.equal((await dismiss.textContent()).trim(), "×");
+      assert.ok(await dismiss.getAttribute("aria-label"), "The close icon needs an accessible name");
+      const settingsHeader = settings.locator(".efhc-modal-header");
+      const headerPaint = await settingsHeader.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return [style.backgroundColor, style.backgroundImage, style.borderBottomWidth];
+      });
+      assert.deepEqual(headerPaint, ["rgba(0, 0, 0, 0)", "none", "0px"],
+        "The Settings heading must have no separate plate or divider");
       const maintenance = first.locator('[data-profile-settings-maintenance="visible"]');
       const updateButton = maintenance.locator("button").first();
       const clearButton = maintenance.locator('[data-pwa-clear-public-cache="true"]');
@@ -789,6 +818,8 @@ try {
         "Maintenance must no longer require opening a disclosure");
       await updateButton.waitFor({state:"visible"});
       await clearButton.waitFor({state:"visible"});
+      assert.equal(await maintenance.getByRole("heading").count(), 0,
+        "Do not show an extra maintenance heading");
       await first.evaluate(async()=>{
         const cache=await caches.open("efhc-serwist-pages");
         await cache.put("/efhc/pwa-button-clear-proof.txt",
@@ -804,6 +835,8 @@ try {
         await (await caches.open("efhc-serwist-pages"))
           .match("/efhc/pwa-button-clear-proof.txt")));
       assert.equal(buttonCleared,true,"Actual Settings cache button did not clear runtime data");
+      await dismiss.click();
+      await settings.waitFor({state:"hidden"});
       console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
 
     } finally { await isolated.close(); }

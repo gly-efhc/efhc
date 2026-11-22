@@ -4,10 +4,11 @@ import test from "node:test";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const dialog = read("../../src/components/profile/ProfileSettingsDialog.tsx");
+const modal = read("../../src/components/ui/Modal.tsx");
 
-test("settings keeps the two maintenance buttons visible without technical paragraphs", () => {
-  assert.match(dialog, /<section[^>]*data-profile-settings-maintenance/);
-  assert.doesNotMatch(dialog, /<details\b|<summary\b|pwa\.clear_public_scope|pwa\.native_cache_managed/);
+test("settings keeps the two maintenance buttons visible without a heading or technical paragraphs", () => {
+  assert.match(dialog, /<div[^>]*data-profile-settings-maintenance/);
+  assert.doesNotMatch(dialog, /<details\b|<summary\b|pwa\.clear_public_scope|pwa\.native_cache_managed|pwa\.maintenance_title/);
   assert.match(dialog, /onClick=\{\(\) => void checkApplication\(\)\}/);
   assert.match(dialog, /onClick=\{\(\) => void clearPublicCache\(\)\}/);
   assert.match(dialog, /await registration\.update\(\)/);
@@ -20,4 +21,10 @@ test("settings portal centers and uses the same CT accent token at every setting
   assert.match(dialog, /\.standalone-setting-toggle\[data-active="true"\][^}]*var\(--efhc-ct-accent-rgb\)/);
   assert.match(dialog, /portalColorThemeId=\{colorThemeId\}/);
   assert.match(dialog, /aria-pressed=\{active\}/);
+});
+
+test("Settings keeps an accessible close icon without the source-row title plate", () => {
+  assert.match(modal, /props\.referenceLayout === "deposit" \? "efhc-modal-header source-row" : "efhc-modal-header"/);
+  assert.match(modal, /aria-label=\{t\("common\.close"\)\}[\s\S]*?>\s*×\s*<\/button>/);
+  assert.match(dialog, /\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem/);
 });

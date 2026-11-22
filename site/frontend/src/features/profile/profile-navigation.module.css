@@ -1,11 +1,25 @@
 /* The compact reference geometry applies only to Profile's four primary tabs. */
-.primaryTabs[data-profile-primary-navigation] {
+:global(#profilePage) .primaryTabs[data-profile-primary-navigation] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: .28rem;
+  padding: 0;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
 }
 
-.primaryTabs[data-profile-primary-navigation] .primaryTab[data-profile-tab] {
+/* Override the legacy active inset and tinted fill only in this tab strip. */
+:global(#profilePage) .primaryTabs[data-profile-primary-navigation] .primaryTab[data-profile-tab] {
   min-height: 2.15rem;
   padding: .38rem .28rem;
   border-radius: .68rem;
+  border: 1px solid rgba(var(--efhc-ct-accent-rgb, 148, 163, 184), .30) !important;
+  background: transparent !important;
+  color: var(--tg-text, #f8fafc) !important;
+  box-shadow: none !important;
+}
+
+:global(#profilePage) .primaryTabs[data-profile-primary-navigation] .primaryTab[data-profile-tab][data-active="true"] {
+  border-color: rgba(var(--efhc-ct-accent-rgb, 148, 163, 184), .68) !important;
 }

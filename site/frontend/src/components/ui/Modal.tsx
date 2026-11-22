@@ -330,7 +330,7 @@ export function Modal(
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className={props.referenceLayout ? "efhc-modal-header source-row" : "efhc-modal-header"}
+          className={props.referenceLayout === "deposit" ? "efhc-modal-header source-row" : "efhc-modal-header"}
           data-modal-drag-handle="true"
           onPointerDown={onDragStart}
           onPointerMove={onDragMove}
@@ -341,12 +341,12 @@ export function Modal(
           <button
             ref={closeButtonRef}
             type="button"
-            className={props.referenceLayout ? "efhc-modal-close source-button secondary" : "efhc-modal-close"}
+            className={props.referenceLayout === "deposit" ? "efhc-modal-close source-button secondary" : "efhc-modal-close"}
             aria-label={t("common.close")}
             disabled={props.closeDisabled}
             onClick={props.onClose}
           >
-            {props.referenceLayout === "settings" ? t("common.close") : "×"}
+            ×
           </button>
         </div>
         <div className="efhc-modal-body">{props.children}</div>

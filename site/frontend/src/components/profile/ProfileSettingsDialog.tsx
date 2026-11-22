@@ -11,7 +11,6 @@ import { Modal } from "../ui/Modal";
  */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
-  const titleId = React.useId();
   const [checking, setChecking] = React.useState(false);
   const [clearing, setClearing] = React.useState(false);
   const [clearOutcome, setClearOutcome] = React.useState<
@@ -92,14 +91,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
   }
 
   return (
-    <section
-      className="efhc-profile-pwa-maintenance"
-      data-profile-settings-maintenance="visible"
-      aria-labelledby={titleId}
-    >
-      <h3 id={titleId} className="efhc-profile-pwa-maintenance-title">
-        {t("pwa.maintenance_title")}
-      </h3>
+    <div className="efhc-profile-pwa-maintenance" data-profile-settings-maintenance="visible">
       <div className="efhc-profile-source-settings">
         <div className="standalone-settings-row">
           <span>{t("pwa.check_now")}</span>
@@ -142,7 +134,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
           </small>
         ) : null}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -240,11 +232,15 @@ export function ProfileSettingsDialog(props: {
           padding-top: .65rem;
           border-top: 1px solid rgba(var(--efhc-ct-accent-rgb), .19);
         }
-        [data-modal-reference-layout="settings"] .efhc-profile-pwa-maintenance-title {
-          margin: 0;
-          color: inherit;
-          font-size: .75rem;
-          font-weight: 800;
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog .efhc-modal-close {
+          display: grid;
+          place-items: center;
+          width: 2.3rem;
+          height: 2.3rem;
+          padding: 0;
+          font-size: 1.25rem;
+          line-height: 1;
         }
         [data-modal-reference-layout="settings"] [data-profile-settings-maintenance] small {
           display: block;
