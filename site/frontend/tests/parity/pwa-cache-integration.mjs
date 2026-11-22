@@ -147,20 +147,20 @@ try {
       "Route HTML, JS, and CSS must be installed before the new SW activates");
     // Ensure Energy is hydrated before making the old release's backend
     // unavailable. Offline route testing must not race initial React mount.
-    await page.locator('[data-nav-key="panels"]').waitFor({
+    await page.locator('[data-nav-key="nav.panels"]').waitFor({
       state:"visible",timeout:20000,
     });
     // Simulate a previous release's hashed files disappearing from Pages
     // before any optional background prefetch has completed.
     await context.setOffline(true);
     try {
-      await page.locator('[data-nav-key="panels"]').click();
+      await page.locator('[data-nav-key="nav.panels"]').click();
       await page.getByRole("heading",{name:"Panels"}).waitFor({
         state:"visible",timeout:15000,
       });
       assert.equal(await page.locator(".efhc-entry-splash").count(),0,
         "An offline Energy-to-Panels transition must not strand the 8% splash");
-      await page.locator('[data-nav-key="exchange"]').click();
+      await page.locator('[data-nav-key="nav.exchange"]').click();
       await page.getByRole("heading",{name:"Exchange"}).waitFor({
         state:"visible",timeout:15000,
       });
