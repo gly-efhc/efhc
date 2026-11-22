@@ -12,7 +12,9 @@ test("settings keeps only the cache clear button visible without a heading or te
   assert.doesNotMatch(dialog, /checkApplication|pwa\.(?:check_now|update_now|checked|update_pending|check_failed)/);
   assert.match(dialog, /onClick=\{\(\) => void clearPublicCache\(\)\}/);
   assert.doesNotMatch(dialog, /registration\.update\(\)/);
-  assert.match(dialog, /EFHC_PWA_CLEAR_PUBLIC_CACHE/);
+  assert.match(dialog, /EFHC_PWA_EMERGENCY_CLEAR_CACHE/);
+  assert.doesNotMatch(dialog, /EFHC_PWA_CLEAR_PUBLIC_CACHE/);
+  assert.match(dialog, /await clearDownloadedDisplaySnapshots\(queryClient\);\s*setClearOutcome\("cleared"\)/);
   assert.doesNotMatch(dialog, /localStorage|sessionStorage|caches\.delete/);
 });
 
