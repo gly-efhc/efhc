@@ -781,6 +781,23 @@ try {
       // E2E acceptance must click the actual Settings button, not just send
       // a synthetic worker message. The pointer event must not produce busy.
       await first.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      const settingsOwner = "0000000042";
+      // Seed the same owner before reload and allow the real app to hydrate
+      // its normal preferences and a nonempty display snapshot together.
+      await first.evaluate(({owner,ownerCacheKey,settingsKey}) => {
+        const snapshot = JSON.stringify({owner,entries:[{
+          key:["ranks",owner,"emergency-cache-fixture"],
+          data:{fixture:"downloaded-display"},updatedAt:Date.now(),
+        }]});
+        const initialSettings = JSON.stringify({...JSON.parse(sessionStorage.getItem(settingsKey)||"{}"),
+          settings_owner:owner,interface_settings_version:4,reduce_motion:false});
+        sessionStorage.setItem("efhc:resolved-display-owner",JSON.stringify({global_id:owner,principal:"browser"}));
+        sessionStorage.setItem(ownerCacheKey,snapshot);
+        localStorage.setItem(ownerCacheKey+":"+owner,snapshot);
+        sessionStorage.setItem(settingsKey,initialSettings);
+        localStorage.setItem(settingsKey+":"+owner,initialSettings);
+      },{owner:settingsOwner,ownerCacheKey,settingsKey});
+      await first.reload({waitUntil:"domcontentloaded",timeout:30000});
       await first.locator('[data-profile-settings-entry="interface-card"]')
         .waitFor({state:"visible",timeout:20000});
       const tabs = first.locator("[data-profile-primary-navigation]");
@@ -844,7 +861,18 @@ try {
         });
         await unresponsive.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
         await unresponsive.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
-        const proof = await first.evaluate(async ({authSessionKey,ownerCacheKey,settingsKey}) => {
+        const reduceMotion = settings.locator('[data-setting="reduce_motion"]');
+        await reduceMotion.click();
+        const expectedMotion = true;
+        await first.waitForFunction(({key,owner,expected}) => {
+          const correct = raw => {
+            const value=JSON.parse(raw||"null");
+            return value?.settings_owner===owner && value.reduce_motion===expected;
+          };
+          return correct(sessionStorage.getItem(key)) && correct(localStorage.getItem(key+":"+owner));
+        },{key:settingsKey,owner:settingsOwner,expected:expectedMotion},{timeout:12000});
+        assert.equal(await reduceMotion.getAttribute("aria-pressed"),String(expectedMotion));
+        const proof = await first.evaluate(async ({authSessionKey,ownerCacheKey,settingsKey,owner,expectedMotion}) => {
           const read = async () => {
             const runtime = await caches.match("/efhc/pwa-button-clear-proof.txt", {cacheName:"efhc-serwist-pages"});
             const foreign = await caches.match("/outside-public-cache-proof", {cacheName:"another-application-cache"});
@@ -856,7 +884,6 @@ try {
               offlinePage:ownedPageCopies.flat().includes("/efhc/web-profile/index.html")};
           };
           const initial = await read();
-          const owner = "0000000042";
           const resumeKey = "efhc.demo.guest.resume";
           const identityKey = "efhc:resolved-display-owner";
           const durableKey = ownerCacheKey + ":" + owner;
@@ -867,25 +894,28 @@ try {
             expires_at:new Date(Date.now()+600000).toISOString(),
           });
           const resumeMarker = "local_efhc_test_marker_not_a_real_resume";
-          const settingsBefore = sessionStorage.getItem(settingsKey);
-          const identityMarker = JSON.stringify({global_id:owner,principal:"browser"});
-          const snapshot = JSON.stringify({owner,entries:[]});
+          const identityMarker = sessionStorage.getItem(identityKey);
+          const settingsKept = raw => {
+            const value=JSON.parse(raw||"null");
+            return value?.settings_owner===owner && value.reduce_motion===expectedMotion;
+          };
+          initial.downloadedSnapshot=JSON.parse(localStorage.getItem(durableKey)||"null")?.entries?.length>0;
           sessionStorage.setItem(authSessionKey,credentialMarker);
           localStorage.setItem(resumeKey,resumeMarker);
-          sessionStorage.setItem(identityKey,identityMarker);
-          sessionStorage.setItem(ownerCacheKey,snapshot);
-          localStorage.setItem(durableKey,snapshot);
           window.__efhcInspectEmergencyPurge = async () => {
             return {...await read(),samePage:true,
               login:sessionStorage.getItem(authSessionKey)===credentialMarker,
               resume:localStorage.getItem(resumeKey)===resumeMarker,
-              identity:sessionStorage.getItem(identityKey)===identityMarker,
-              settings:sessionStorage.getItem(settingsKey)===settingsBefore,
-              downloadedSnapshot:localStorage.getItem(durableKey)!==null};
+              identity:JSON.parse(identityMarker||"null")?.global_id===owner &&
+                sessionStorage.getItem(identityKey)===identityMarker,
+              settings:settingsKept(sessionStorage.getItem(settingsKey)) &&
+                settingsKept(localStorage.getItem(settingsKey+":"+owner)),
+              downloadedSnapshot:localStorage.getItem(durableKey)!==null ||
+                JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.entries?.length>0};
           };
           return initial;
-        },{authSessionKey,ownerCacheKey,settingsKey});
-        assert.deepEqual(proof,{runtime:true,foreign:true,offlinePage:true});
+        },{authSessionKey,ownerCacheKey,settingsKey,owner:settingsOwner,expectedMotion});
+        assert.deepEqual(proof,{runtime:true,foreign:true,offlinePage:true,downloadedSnapshot:true});
         const before = await first.evaluate(() => performance.timeOrigin);
         await clearButton.click();
         await first.waitForFunction(()=>{
@@ -901,6 +931,8 @@ try {
           {runtime:false,foreign:true,offlinePage:false,samePage:true,
             login:true,resume:true,identity:true,settings:true,downloadedSnapshot:false},
           "Emergency cleanup deletes only downloaded data and retains access/settings");
+        assert.equal(await reduceMotion.getAttribute("aria-pressed"),String(expectedMotion),
+          "Emergency purge must preserve the selected live preference");
       } finally { await unresponsive.close(); }
       const buttonCleared=await first.evaluate(async()=>!(
         await (await caches.open("efhc-serwist-pages"))
