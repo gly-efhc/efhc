@@ -66,6 +66,11 @@ test("PNL list and tab/owner-specific cards survive offline reload without retai
   c.clear();restored.clear();
 });
 
+test("Panel portfolio reads query results in WebViews without Array.prototype.at", () => {
+  const portfolio = source("pages/panels/portfolio.tsx");
+  assert.doesNotMatch(portfolio, /\.at\s*\(/);
+});
+
 test("Energy, indicator colors, PNL countdown and progress bars keep their accepted geometry and non-resetting values", () => {
   const energy = source("pages/index.tsx");
   assert.match(energy, /LIVE_TICK_MS = 333/);
