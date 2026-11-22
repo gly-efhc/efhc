@@ -1,4 +1,4 @@
-/* Structural provider rows do not inherit the generic v866 inset material. */
+/* Structural provider rows do not inherit the shared row background. */
 .providerRow {
   display: flex;
   align-items: center;
