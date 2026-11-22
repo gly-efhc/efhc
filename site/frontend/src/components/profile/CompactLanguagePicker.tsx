@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { SUPPORTED_LANGS, type Lang } from "../../lib/i18n";
 import { languageDisplayName, languageFlag } from "../../lib/languagePresentation";
+import styles from "./compact-language-picker.module.css";
 
 type Props = {
   value: Lang;
@@ -28,7 +29,9 @@ export function CompactLanguagePicker(props: Props) {
   }, [open, props.value]);
 
   return (
-    <div className="efhc-compact-language-picker">
+    <div className={props.profileSurface
+      ? `efhc-compact-language-picker ${styles.profileLanguageSurface}`
+      : "efhc-compact-language-picker"}>
       <button
         ref={triggerRef}
         type="button"

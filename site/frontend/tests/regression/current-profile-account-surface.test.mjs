@@ -23,8 +23,9 @@ test("Account exposes Telegram and official TON proof without adding auth paths"
   assert.match(providers, /auth.loginTelegram\(\)/);
   assert.match(providers, /getTelegramInitData\(\)/);
   assert.match(providers, /hasVerifiedWallet/);
-  assert.match(providers, /t\("wallet\.connect_button"\)/);
-  assert.match(providers, /t\("browser_login\.telegram_cta"\)/);
+  assert.doesNotMatch(providers, /wallet\.connect_button|browser_login\.telegram_cta/);
+  assert.match(providers, /\{connectLabel\}/);
+  assert.match(providers, /props.hasVerifiedWallet \? t\("wallet.title"\) : connectLabel/);
   assert.match(providers, /openTelegramApp\(\)/);
   assert.doesNotMatch(providers, /window\.open|NEXT_PUBLIC_TWA_RETURN_URL/);
   assert.doesNotMatch(providers, /loginDemo|error\.message|localStorage|\bfetch\(/);
@@ -61,4 +62,24 @@ test("Profile tabs have separate identical one-pixel frames and a border-only se
 
 test("React Profile tabs are independent of the old reference strip paint", () => {
   assert.doesNotMatch(page, /efhc-profile-tabs source-profile-tabs/);
+});
+
+test("provider connection copy uses one localized word in every supported language", () => {
+  const labels = readSource("account-provider-labels.ts");
+  const expected = ["ru", "en", "uk", "de", "fr", "es", "it", "tr", "pl", "da", "hi", "id", "sw", "pt", "ko", "ja"];
+  const pairs = [...labels.matchAll(/^\s*(\w+): "([^"]+)",$/gm)].map(match => [match[1], match[2]]);
+  assert.deepEqual(pairs.map(([lang]) => lang).sort(), expected.sort());
+  assert.equal(Object.fromEntries(pairs).ru, "Подключить");
+  for (const [, label] of pairs) assert.doesNotMatch(label.trim(), /\s/);
+  assert.match(providers, /"profile\.provider_connect_action"/);
+  assert.match(providers, /useContext\(LayoutContext\)/);
+});
+
+test("provider text surfaces are flat without changing the provider card frame", () => {
+  const css = readSource("account-providers.module.css");
+  assert.match(providers, /styles\.panelTitle/);
+  assert.equal((providers.match(/styles\.providerCopy/g) || []).length, 2);
+  assert.match(css, /background: none !important/);
+  assert.match(css, /box-shadow: none !important/);
+  assert.doesNotMatch(css, /border:|efhc-account-provider-card/);
 });

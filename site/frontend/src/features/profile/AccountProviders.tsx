@@ -1,12 +1,14 @@
 /** Provider state comes from the auth session and verified server wallet list. */
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { useAuthSessionController } from "../../auth/AuthSessionProvider";
 import { isDemoGuestSession } from "../../demo/session";
-import { useT } from "../../hooks/useT";
+import { LayoutContext } from "../../components/Layout";
 import { openTelegramApp } from "../../components/BrowserTelegramLogin";
 import { getTelegramInitData } from "../../lib/telegram";
+import { accountProviderLabels } from "./account-provider-labels";
+import styles from "./account-providers.module.css";
 
 type Props = {
   hasVerifiedWallet: boolean;
@@ -18,7 +20,8 @@ type Props = {
 };
 
 export function AccountProviders(props: Props): React.JSX.Element {
-  const t = useT();
+  const { lang, t } = useContext(LayoutContext);
+  const connectLabel = accountProviderLabels["profile.provider_connect_action"][lang];
   const auth = useAuthSessionController();
   const [message, setMessage] = useState("");
 
@@ -41,10 +44,10 @@ export function AccountProviders(props: Props): React.JSX.Element {
 
   return (
     <div className="grid gap-3 efhc-account-providers" data-provider-state-source="server-session" data-provider-auth-state={isLinked ? "verified" : "guest"}>
-      <h2 className="source-card-title">{t(isLinked ? "profile.linked_accounts_action" : "profile.sign_in_action")}</h2>
+      <h2 className={`source-card-title ${styles.panelTitle}`}>{t(isLinked ? "profile.linked_accounts_action" : "profile.sign_in_action")}</h2>
       <Card className="efhc-profile-action-card efhc-account-provider-card p-3">
         <div className="source-row">
-          <div className="min-w-0">
+          <div className={`min-w-0 ${styles.providerCopy}`}>
             <div className="font-semibold">Telegram</div>
             <p className="text-xs efhc-text-muted2" data-provider="telegram" data-provider-state={telegramVerified ? "verified" : "unverified"}>
               {telegramVerified
@@ -57,7 +60,7 @@ export function AccountProviders(props: Props): React.JSX.Element {
           {!isLinked ? (
             <Button type="button" variant="secondary" className={providerActionClass}
               data-provider-action="connect" disabled={providersPending} onClick={connectTelegram}>
-              {t("browser_login.telegram_cta")}
+              {connectLabel}
             </Button>
           ) : null}
         </div>
@@ -65,7 +68,7 @@ export function AccountProviders(props: Props): React.JSX.Element {
 
       <Card className="efhc-profile-action-card efhc-account-provider-card p-3">
         <div className="source-row">
-          <div className="min-w-0">
+          <div className={`min-w-0 ${styles.providerCopy}`}>
             <div className="font-semibold">TON Connect</div>
             <p className="text-xs efhc-text-muted2" data-provider="ton-connect" data-provider-state={props.hasVerifiedWallet ? "verified" : "unverified"}>
               {props.hasVerifiedWallet ? t("wallet.state_bound") : props.walletStatusPending
@@ -78,7 +81,7 @@ export function AccountProviders(props: Props): React.JSX.Element {
             data-provider-action={props.hasVerifiedWallet ? "view" : isLinked ? "bind" : "connect"}
             disabled={providersPending || props.walletActionPending}
             onClick={props.hasVerifiedWallet ? props.onOpenWallet : props.onConnectWallet}>
-            {props.hasVerifiedWallet ? t("wallet.title") : t("wallet.connect_button")}
+            {props.hasVerifiedWallet ? t("wallet.title") : connectLabel}
           </Button>
         </div>
       </Card>

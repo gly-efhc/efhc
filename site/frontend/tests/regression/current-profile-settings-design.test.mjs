@@ -30,3 +30,7 @@ test("Settings keeps an accessible close icon without the source-row title plate
   assert.match(modal, /aria-label=\{t\("common\.close"\)\}[\s\S]*?>\s*×\s*<\/button>/);
   assert.match(dialog, /\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem/);
 });
+
+test("only the Settings close control has a circular 2.3 rem footprint", () => {
+  assert.match(dialog, /\[data-modal-reference-layout="settings"\]\s*\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem;[^}]*height:\s*2\.3rem;[^}]*border-radius:\s*50%/);
+});

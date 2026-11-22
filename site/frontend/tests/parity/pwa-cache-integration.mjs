@@ -804,6 +804,12 @@ try {
       const dismiss = settings.locator(".efhc-modal-close");
       assert.equal((await dismiss.textContent()).trim(), "×");
       assert.ok(await dismiss.getAttribute("aria-label"), "The close icon needs an accessible name");
+      const closePaint = await dismiss.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {width: style.width, height: style.height, radius: style.borderTopLeftRadius};
+      });
+      assert.equal(closePaint.width, closePaint.height);
+      assert.equal(closePaint.radius, "50%", "Settings close button must be round");
       const settingsHeader = settings.locator('[data-modal-drag-handle="true"]');
       const headerPaint = await settingsHeader.evaluate((element) => {
         const style = getComputedStyle(element);
@@ -839,6 +845,51 @@ try {
       await settings.waitFor({state:"hidden"});
       console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
 
+    } finally { await isolated.close(); }
+  });
+  await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
+    const isolated = await browser.newContext({serviceWorkers:"allow", viewport:{width:390,height:900}});
+    try {
+      const profile = await isolated.newPage();
+      await profile.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      for (let i=1;i<=10;i++){
+        const ct = "CT-"+String(i).padStart(2,"0");
+        await profile.evaluate(({key,ct}) => {
+          const current = JSON.parse(sessionStorage.getItem(key)||"null") || {};
+          Object.assign(current, {interface_settings_version:4,lang:"ru",color_theme_id:ct,global_theme_id:ct.slice(3)});
+          sessionStorage.setItem(key,JSON.stringify(current));
+        },{key:settingsKey,ct});
+        await profile.reload({waitUntil:"domcontentloaded",timeout:20000});
+        await profile.locator('#profilePage').waitFor({state:"visible",timeout:12000});
+        await profile.locator(`[data-theme-page-surface="true"][data-color-theme-id="${ct}"]`).first().waitFor({state:"attached",timeout:10000});
+        const trigger = profile.locator('#profilePage .source-profile-language-button');
+        const menu = profile.locator('#profilePage .source-profile-language-menu');
+        const paint = (locator) => locator.evaluate(el => {
+          const css = getComputedStyle(el); return [css.backgroundColor, css.backgroundImage];
+        });
+        const closed = await paint(trigger);
+        await trigger.click();
+        await menu.waitFor({state:"visible"});
+        assert.deepEqual(await paint(menu), closed, ct+" closed and expanded Profile language surfaces");
+        assert.notEqual(closed[0], "rgba(0, 0, 0, 0)", ct+" language surface must have a fill");
+        assert.equal(await menu.getByRole("option").count(),16);
+      }
+      const trigger = profile.locator('#profilePage .source-profile-language-button');
+      await trigger.click();
+      await profile.locator('[data-provider-entry="profile-footer"]').click();
+      const providers = profile.locator('[data-provider-route="account-providers"]');
+      await providers.waitFor({state:"visible"});
+      assert.equal(await providers.locator(".efhc-account-provider-card").count(),2);
+      assert.equal(await providers.getByRole("button",{name:"Подключить",exact:true}).count(),2);
+      assert.equal(await providers.getByText("Открыть вход через Telegram",{exact:true}).count(),0);
+      const frames = await providers.locator(".efhc-account-provider-card").evaluateAll(cards =>
+        cards.map(card=>getComputedStyle(card).borderTopWidth));
+      assert.deepEqual(frames, ["1px","1px"], "Provider card frames must be preserved");
+      const statusFills = await providers.locator("[data-provider-state]").evaluateAll(nodes =>
+        nodes.map(node=>getComputedStyle(node).backgroundColor));
+      assert.ok(statusFills.length===2 && statusFills.every(fill=>fill==="rgba(0, 0, 0, 0)"),
+        "Provider status text has no separate fill");
+      console.log("PROFILE_LANGUAGE_AND_ACCOUNT_VISUAL_PASS");
     } finally { await isolated.close(); }
   });
   await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {

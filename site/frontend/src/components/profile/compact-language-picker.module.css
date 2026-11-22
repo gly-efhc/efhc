@@ -1,0 +1,18 @@
+/* Match the approved open Profile menu material in the closed trigger too. */
+.profileLanguageSurface {
+  --efhc-profile-language-surface: #050508;
+}
+
+@supports (background: color-mix(in srgb, black 95%, blue 5%)) {
+  .profileLanguageSurface {
+    --efhc-profile-language-surface: color-mix(in srgb, var(--efhc-ct-accent) 5%, #050508);
+  }
+}
+
+/* Both reference rules use !important; this selector wins only inside the main Profile. */
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #profilePage[data-wg])
+.profileLanguageSurface > :global(.source-profile-language-button),
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #profilePage[data-wg])
+.profileLanguageSurface > :global(.source-profile-language-menu) {
+  background-color: var(--efhc-profile-language-surface) !important;
+}

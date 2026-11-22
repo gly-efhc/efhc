@@ -248,6 +248,7 @@ export function ProfileSettingsDialog(props: {
           place-items: center;
           width: 2.3rem;
           height: 2.3rem;
+          border-radius: 50%;
           padding: 0;
           font-size: 1.25rem;
           line-height: 1;
