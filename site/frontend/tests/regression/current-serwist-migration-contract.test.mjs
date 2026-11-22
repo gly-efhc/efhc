@@ -40,7 +40,9 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   assert.match(runtime,/type:"SKIP_WAITING"/);
   assert.match(sw,/self\.addEventListener\("message"/);
   assert.match(sw,/allClientsIdle/);
-  assert.ok(!sw.includes("self.skipWaiting("), "Serwist alone activates waiting workers");
+  assert.match(sw,/const historicalBootstrap =/);
+  assert.equal((sw.match(/self\.skipWaiting\(/g) || []).length, 1,
+    "only the guarded historical bootstrap bridge explicitly activates a worker");
   assert.doesNotMatch(doc,/__EFHC_PWA_GATE__|efhcBootstrapScript|ACTIVATE_WHEN_SAFE|repairOnce/);
 });
 

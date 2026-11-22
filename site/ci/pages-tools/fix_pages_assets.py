@@ -138,6 +138,10 @@ def configure_pwa(root: Path, base: str) -> tuple[int, int]:
 
     included = []
     digest = hashlib.sha256()
+    # Source changes affect the published generation even with unchanged HTML
+    # and assets. The generated worker includes build_id, so never hash it here.
+    worker_source = Path(__file__).with_name('sw-serwist.js')
+    digest.update(b'sw-serwist.js\x00' + hashlib.sha256(worker_source.read_bytes()).digest())
     total_bytes = 0
     for file in sorted(root.rglob('*')):
         if not file.is_file() or file.suffix.lower() not in PWA_SUFFIXES:

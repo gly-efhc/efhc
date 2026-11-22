@@ -107,7 +107,7 @@ const sw = new Serwist({
 });
 
 // Native Serwist handles SKIP_WAITING, CACHE_URLS, precache revisions, and
-// activation; all old EFHC-specific message handlers/legacy GC are retired.
+// activation; the historical bootstrap bridge below is the sole exception.
 sw.addEventListeners();
 
 // One-time migration from the retired, pre-Serwist EFHC cache names.
@@ -169,14 +169,40 @@ const allClientsIdle = async (sourceId,purpose) => {
   const clients = (await self.clients.matchAll({
     type:"window",includeUncontrolled:true,
   })).filter(scopedClient);
-  // A legacy/unresponsive tab must never authorize a forced upgrade or purge.
+  // A legacy/unresponsive tab never authorizes a modern upgrade or purge.
   if (!clients.some(client => client.id === sourceId)) return false;
   return (await Promise.all(clients.map(client =>
     clientIsIdle(client,purpose)))).every(Boolean);
 };
 
+// Transitional bridge for the historical bootstrap. It cannot initiate a cache
+// purge or override a concurrent scope client. The current protocol is below.
+const historicalBootstrap = (event, type) => {
+  const source = event.source;
+  if (source?.type !== "window" || !source.id || !scopedClient(source)) return;
+  if (type === "GET_ACTIVE_BUILD") {
+    event.ports?.[0]?.postMessage({type:"ACTIVE_BUILD",buildId:CONFIG.build_id});
+    return;
+  }
+  if (event.data.buildId !== CONFIG.build_id ||
+      event.data.efhcSafeToActivate !== true) return;
+  event.waitUntil((async () => {
+    const clients = (await self.clients.matchAll({
+      type:"window",includeUncontrolled:true,
+    })).filter(scopedClient);
+    if (clients.length !== 1 || clients[0].id !== source.id ||
+        clients[0].visibilityState !== "visible" ||
+        self.registration.waiting?.state !== "installed") return;
+    await self.skipWaiting();
+  })());
+};
+
 self.addEventListener("message", event => {
   const type = event.data?.type;
+  if (type === "GET_ACTIVE_BUILD" || type === "ACTIVATE_WHEN_SAFE") {
+    historicalBootstrap(event,type);
+    return;
+  }
   if (type !== "EFHC_PWA_CHECK_CLIENTS" &&
       type !== "EFHC_PWA_CLEAR_PUBLIC_CACHE") return;
   const source = event.source;
