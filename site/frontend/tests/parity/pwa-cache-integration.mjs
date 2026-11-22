@@ -957,6 +957,55 @@ try {
 
     } finally { await isolated.close(); }
   });
+  await check("TEST HUB direct Shop is separate from the canonical signed action", async () => {
+    const isolated = await browser.newContext({serviceWorkers:"block"});
+    const hub = await isolated.newPage();
+    let slotActive = true;
+    let signedCalls = 0;
+    const basePath = new URL(base).pathname.replace(/\/$/,"");
+    const headers = {
+      "access-control-allow-origin":origin,
+      "access-control-allow-credentials":"true",
+      "access-control-allow-methods":"GET,POST,OPTIONS",
+      "access-control-allow-headers":"Content-Type,Authorization",
+    };
+    await isolated.route("**/*", async route => {
+      const request=route.request();
+      const url=new URL(request.url());
+      if (url.origin===origin) return route.continue();
+      if (["/api/hub/efhc-handoff","/api/shopfront/access-key"].includes(url.pathname)) {
+        signedCalls++;
+        return route.abort();
+      }
+      if (url.pathname!=="/api/hub/links") return route.abort();
+      if (request.method()==="OPTIONS") return route.fulfill({status:204,headers});
+      return route.fulfill({status:200,headers,json:[
+        {id:1,code:"efhc_buy",title:"Shop",url:"/hub/efhc-handoff",is_active:slotActive,sort_order:1},
+        {id:2,code:"vip_getgems",title:"EFHC VIP NFT",url:"https://getgems.io/efhc-nft",is_active:true,sort_order:2},
+      ]});
+    });
+    try {
+      await hub.goto(base+"hub/",{waitUntil:"domcontentloaded",timeout:30000});
+      const canonical = hub.locator('[data-hub-link-slot-grid] button[data-hub-link-code="efhc_buy"]');
+      const direct = hub.locator('a[data-hub-direct-test-shop="true"]');
+      await canonical.waitFor({state:"visible"});
+      await direct.waitFor({state:"visible"});
+      assert.equal(await canonical.getAttribute("data-hub-link-url"),"/hub/efhc-handoff");
+      assert.deepEqual(await hub.locator('[data-hub-link-slot-grid] button').evaluateAll(nodes =>
+        nodes.map(node => node.getAttribute("data-hub-link-code"))),["efhc_buy","vip_getgems"]);
+      assert.equal(await direct.getAttribute("href"),basePath+"/browser-shop/");
+      await direct.click();
+      await hub.waitForURL(new URL(base+"browser-shop/").href);
+      await hub.locator('[data-public-surface="browser-shop"]').waitFor({state:"visible"});
+      assert.equal(signedCalls,0,"A direct TEST catalogue link does not issue a signed handoff");
+      slotActive=false;
+      await hub.goto(base+"hub/",{waitUntil:"domcontentloaded",timeout:30000});
+      await hub.locator('[data-hub-link-code="vip_getgems"]').waitFor({state:"visible"});
+      assert.equal(await direct.count(),0,"A disabled Shop slot must not resurrect through the TEST link");
+      assert.equal(await canonical.count(),0);
+      console.log("HUB_DIRECT_TEST_SHOP_PASS");
+    } finally { await isolated.close(); }
+  });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
     const isolated = await browser.newContext({serviceWorkers:"allow", viewport:{width:390,height:900}});
     try {

@@ -2,7 +2,9 @@ import React, { useMemo } from "react";
 import { useRouter } from "next/router";
 
 import { useT } from "../../hooks/useT";
-import { hapticMedium, hapticSoft, openTelegramLink } from "../../lib/telegram";
+import { appBasePath } from "../../lib/appBasePath";
+import { getTelegramWebApp, hapticMedium, hapticSoft, openTelegramLink } from "../../lib/telegram";
+import { isDemoBackendMode } from "../../demo/session";
 import { useShopLauncher } from "../../queries/useShopLauncher";
 import { usePublicHubLinks } from "../../queries/useHub";
 import type { HubPublicLink } from "../../services/hub.service";
@@ -37,6 +39,15 @@ export default function HubPage() {
       return a.sort_order - b.sort_order;
     });
   }, [publicLinks.data]);
+
+  // TEST-only additional destination. It does not change the configured
+  // canonical button, mint a handoff, or grant access to private Shop actions.
+  const previewBase = process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW === "1" && isDemoBackendMode()
+    ? appBasePath()
+    : "";
+  const directTestShop = previewBase && links.some(isShopLink)
+    ? `${previewBase}/browser-shop/`
+    : null;
 
   async function openHubLink(link: HubPublicLink) {
     hapticMedium(true);
@@ -97,6 +108,29 @@ export default function HubPage() {
           );
         })}
       </section>
+      {directTestShop ? (
+        <div className="efhc-hub-choice-grid">
+          <a
+            className="efhc-hub-choice"
+            data-hub-direct-test-shop="true"
+            href={directTestShop}
+            onClick={(event) => {
+              const tg = getTelegramWebApp();
+              const platform = tg?.platform;
+              if (!tg?.initData && (!platform || platform === "unknown")) return;
+              if (typeof tg?.openLink !== "function") return;
+              try {
+                tg.openLink(new URL(event.currentTarget.href).href);
+                event.preventDefault();
+              } catch {
+                // A native browser link remains available if the adapter fails.
+              }
+            }}
+          >
+            <strong>{t("hub.action_shop")}</strong>
+          </a>
+        </div>
+      ) : null}
     </GamePageShell>
   );
 }
