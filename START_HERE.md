@@ -1,39 +1,45 @@
-# START_HERE.md — начало работы с EFHC efhc
+# START_HERE.md — начало работы с EFHC
 
-**ID:** `EFHC_TEST3_START` · **Статус:** ACTIVE / PUBLIC-SAFE ENTRY · **Область:** исходники и CI efhc · **OWNER:** владелец проекта · **Редакция маршрутов:** 04.11.2026
+**Репозиторий:** [`gly-efhc/efhc`](https://github.com/gly-efhc/efhc) · **Область:** публичный исходный frontend, тесты, CI и публично безопасная документация.
 
-> Это публичный стартовый файл **репозитория кода**, не копия приватного Архива, не разрешение на изменение кода и не инструкция для иных проектов. Актуальность содержимого всегда проверяется по фактическому Git SHA, а не по дате этого файла.
+## 1. Вход агента
 
-## 1. Обязательный вход — один раз на новый операционный контекст
+1. Прочитать [AGENTS.md](AGENTS.md), этот документ, [KERNEL.md](KERNEL.md) **один раз за операционный контекст**, затем [INDEX.md](INDEX.md). `KERNEL.md` — текстовый диспетчер, не исполняемый скрипт.
+2. Определить реальный `main`/ref и `CODE_HEAD`. Установить последнее прямое поручение OWNER, режим и точный перечень разрешённых путей. Не приписывать текущему `main` статус опубликованного релиза.
+3. Если задание опирается на правила EFHC, получить действующие документы из приватного [`gly-efhc/efhc_archive`](https://github.com/gly-efhc/efhc_archive) посредством **авторизованного GitHub-коннектора**. Прочитать приватные `AGENTS → START_HERE → KERNEL` (однократно) `→ INDEX → 01_CANON/TERMS.md`, затем README на нужном маршруте и только предметные CANON/`05_SSOT`/`06_NORM`. Для документационных норм: `06_NORM/DOCUMENTATION/DOCUMENT_MANAGEMENT_RULES.md`.
+4. Если OWNER передал локальный `Archive_vNNN.zip`, проверить имя, SHA-256, CRC, безопасность путей и нужные файлы. Не отождествлять локальный ZIP с `ARCHIVE_HEAD` без проверки; не загружать ZIP в GitHub автоматически.
+5. Выбрать точный исходник, контракт или процедуру по [INDEX.md](INDEX.md). Фиксировать доказательства чтения, а не восстанавливать требования по памяти.
 
-1. Сначала прочитать [AGENTS.md](AGENTS.md), затем этот `START_HERE.md`, [KERNEL.md](KERNEL.md) **один раз за контекст** и [INDEX.md](INDEX.md). Не запускать KERNEL как программу.
-2. Определить точный `gly-efhc/efhc/main` commit SHA и кратко зафиксировать распоряжение OWNER, допустимые пути, режим `AUDIT_READ_ONLY`, `CODE_WRITE_APPROVED` либо `RELEASE_DEPLOY_APPROVED`.
-3. Если задача зависит от требований приложения, получить **фактический авторизованный** доступ к приватному [efhc_archive](https://github.com/gly-efhc/efhc_archive) **исключительно через GitHub-коннектор**, прочитать его `AGENTS.md → START_HERE.md → KERNEL.md` (один раз) `→ INDEX.md → 01_CANON/TERMS.md → 17_CONTROL/DOCUMENT_MANAGEMENT_RULES.md`, а затем только тематически необходимые CANON/SSOT/NORM. Зафиксировать `ARCHIVE_HEAD` независимо от `CODE_HEAD`.
-4. Без доступа к необходимому приватному канону не вносить зависящие от него изменения. Нельзя выдавать память, устаревший ZIP или публичную ссылку за проверенное содержимое private репозитория. Если OWNER предоставил утверждённый локальный ZIP, учитывать его как самостоятельный физический источник и отдельно устанавливать его связь с remote.
-5. Выбрать точный маршрут в [INDEX.md](INDEX.md); проверить реальный существующий файл, а не предполагать путь.
+## 2. Разделение источников
 
-## 2. Три независимых контура
+| Источник | Что он подтверждает |
+| --- | --- |
+| `gly-efhc/efhc` | Проверенный на конкретном Git ref код frontend, тесты, workflows и публичные инструкции |
+| Приватный `gly-efhc/efhc_archive` / утверждённый ZIP | Решения OWNER, CANON, SSOT, NORM, архитектуру, ТЗ и зарегистрированную документальную историю |
+| CI, браузер, backend, on-chain, release artifact | Отдельно доказанный результат исполнения; их нельзя подменять документом или успешным локальным DEMO |
 
-- **Публичный код и проверки:** `gly-efhc/efhc`, `site/frontend/`, `site/ci/`, `.github/workflows/`; здесь хранится исполняемый source, нужные тесты, публично безопасные инструкции.
-- **Документальная власть OWNER:** приватный `gly-efhc/efhc_archive` и утверждённый OWNER физический локальный архив. CANON/SSOT/NORM, решения, подробные отчёты, приватные данные и исторические доказательства не зеркалируются в efhc.
-- **Релизное доказательство:** отдельный проверенный архив/артефакт сборки с checksum, manifest и фактическим результатом CI. Наличие `site/RELEASE.json`, Pages или демонстрационного интерфейса само по себе не подтверждает production backend.
+Приоритет нормативных решений: последнее распоряжение OWNER → приватный CANON → `05_SSOT` → `06_NORM` → архитектура/ТЗ; код — свидетельство реализации. `03_REPORTS` и `04_CYCLES` хранят подтверждённую историю, а не текущие альтернативные нормы.
 
-## 3. Маршрут выполнения задачи
+## 3. Что читать по задаче
 
-**Документация:** определить `private/public` границу → менять только разрешённые публичные стартовые/технические файлы efhc; содержательные CANON/REPORTS/CYCLES обновлять в приватном контуре только по отдельному поручению.
+- **Frontend и UI:** [`site/frontend/src/`](site/frontend/src/), [`site/RECOVERY.md`](site/RECOVERY.md), [`site/frontend/tests/`](site/frontend/tests/); приватные `05_SSOT/FRONTEND/APPLICATION_RULES.md` и `10_FRONTEND/README.md`. React Admin требует восстановления по внешнему HTML v866; его общий визуальный freeze отменён, но новое изменение кода требует scope OWNER.
+- **PWA и обновления:** исходники Serwist в frontend; приватные `05_SSOT/FRONTEND/EFHC_SERWIST_PWA_CACHE_STANDARD.md` и `05_SSOT/FRONTEND/EFHC_UNIFIED_CACHE_OWNER_SSOT.md`. Различать PWA CacheStorage, пользовательское состояние, сессии и чувствительные сетевые операции.
+- **Wallet, TON, Identity, Admin, финансы:** только применимые `01_CANON`, `05_SSOT/CONTRACTS`, `06_NORM` и реальный frontend/backend код. Нельзя принимать клик или HTTP-ответ за подтверждение on-chain settlement.
+- **ТЗ и эксплуатация:** приватные `13_PLANS/TECHNICAL_TASKS/README.md`, `12_RUNBOOKS/README.md`; не искать действующие нормы в старых разделах.
+- **Отчёты и вопросы:** приватные `03_REPORTS/README.md`, `04_CYCLES/README.md`, `04_CYCLES/QUESTIONS_AND_ANSWERS_REGISTER.md`, `06_NORM/DOCUMENTATION/REPORTS_CYCLES_FORMAT_CONTROL.md`. Новый номер/цикл не открывается автоматически от изменения кода.
 
-**React/UI:** сверить [RECOVERY](site/RECOVERY.md), `site/frontend/src/`, `site/frontend/tests/`, `site/ci/`, защищённые OWNER-решения в private Архиве. Действующие визуальные приёмки, CT/PT/PH, темы, локализация, FAQ, Bottom Nav, Header, Wallet, TON и Admin не менять за пределами явного scope.
+## 4. Исполнение и проверка
 
-**Backend / DEMO:** фиксировать отдельный backend-репозиторий и подтверждённый deployment. `Pages` — статический хостинг фронтенда; нельзя объявлять локальный DEMO настоящим серверным начислением/ledger.
+Сначала `SCOPE → PIN HEAD → targeted READ → EDIT`, затем релевантные `VERIFY → COMMIT → remote READBACK`. Не затрагивать неназванные файлы, публиковать приватные документы, менять secrets, backend, pipelines или production без разрешения. Для frontend команды из [`site/frontend/package.json`](site/frontend/package.json):
 
-**CI/релиз:** проверить конкретные `.github/workflows/`, package scripts, CI verdict, physical artifact, точный SHA и условия публикации; deploy только с разрешением OWNER. Для браузерной проверки публичного UI применимы уполномоченные инструменты; для private Архива браузер запрещён.
+```bash
+cd site/frontend
+npm ci
+npm run typecheck
+npm run test:frontend-regression
+npm run build
+```
 
-## 4. Минимальный контракт записи
+Выбирать проверки по фактическому изменению; `NOT_RUN` — не `PASS`. Результат передавать как `scope | CODE_HEAD | ARCHIVE_HEAD/ZIP (если применимо) | changed paths | checks | нерешённые зависимости`.
 
-- Перед изменением: `CODE_HEAD`, `ARCHIVE_HEAD` (если необходим), существующий путь, действие OWNER, оценка конфликтов с параллельными агентами.
-- Изменять только согласованные файлы; не переписывать принятое ради «упрощения», не переносить private текст в public, не создавать фиктивные REPORTS/CYCLES.
-- Выполнить реально доступные тесты; `NOT_RUN` не приравнивать к PASS; не отключать failing gates ради зелёного статуса.
-- После записи: `git diff`/commit, перечитать удалённые файлы через GitHub-коннектор, сверить HEAD и доказательства. Если HEAD изменился в ходе операции — согласовать новый baseline, не делать force-push.
-- Краткий handoff: `scope | CODE_HEAD | ARCHIVE_HEAD | changed paths | tests PASS/FAIL/NOT_RUN | OWNER acceptance | open work`.
-
-**Куда далее:** [KERNEL.md](KERNEL.md) (при первом входе), затем [INDEX.md](INDEX.md). Внутренний Архив не заменяется этими публичными инструкциями.
+**Далее:** [KERNEL.md](KERNEL.md) (если ещё не прочитан) и [INDEX.md](INDEX.md).

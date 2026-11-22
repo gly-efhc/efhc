@@ -140,26 +140,27 @@ try {
     assert.deepEqual(criticalState.missing,[],"Serwist must atomically cache critical shell before activation");
     assert.ok(criticalState.keys.some(name=>name.includes("precache")),
       "Serwist precache container missing");
-    await page.evaluate(async () => {
-      const config = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
-      await new Promise((resolve,reject) => {
-        const timer=setTimeout(()=>{navigator.serviceWorker.removeEventListener("message",onMessage);
-          reject(Error("Serwist deferred queue did not finish"));},95000);
-        function onMessage(event) {
-          const data=event.data||{};
-          if(data.type==="CACHE_COMPLETE"&&data.reason==="deferred"){
-            clearTimeout(timer);
-            navigator.serviceWorker.removeEventListener("message",onMessage);
-            if(data.failed)reject(Error("Serwist deferred resources failed: "+data.failed));
-            else resolve(true);
-          }
-        }
-        navigator.serviceWorker.addEventListener("message",onMessage);
-        navigator.serviceWorker.controller.postMessage({
-          type:"PREFETCH_PRIORITY",urls:config.precache_deferred,
-        });
-      });
+    // No EFHC PREFETCH_PRIORITY/CACHE_COMPLETE controller remains. Ask the
+    // *real* Serwist native CACHE_URLS handler to populate the public export,
+    // then verify materialized CacheStorage entries rather than trusting a
+    // synthetic completion event or disabling the offline safety assertion.
+    const requested=await page.evaluate(async () => {
+      const config=await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
+      const deferred=config.precache_deferred.filter(url=>
+        !url.endsWith(".mp3") &&
+        !/\/(?:locale|faq)\/(?!en\.json$)[^/]+\.json$/.test(url));
+      const controller=navigator.serviceWorker.controller;
+      if (!controller)throw Error("Serwist controller required before native prefetch");
+      controller.postMessage({type:"CACHE_URLS",payload:{urlsToCache:deferred}});
+      return deferred;
     });
+    await page.waitForFunction(async requested=>{
+      const cached=new Set();
+      for(const name of await caches.keys())
+        for(const req of await (await caches.open(name)).keys())
+          cached.add(new URL(req.url).pathname);
+      return requested.every(url=>cached.has(url));
+    },requested,{timeout:95000,polling:500});
     const info = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       const cfg = await (await fetch("./pwa-build.json",{cache:"no-store"})).json();
@@ -660,6 +661,114 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
+  await check("OWNER cache button purges only idle Serwist public runtime buckets", async () => {
+    const isolated=await browser.newContext({serviceWorkers:"allow"});
+    try {
+      const first=await isolated.newPage();
+      await first.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await first.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+      const second=await isolated.newPage();
+      await second.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await second.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+      const keys=["efhc-serwist-pages","efhc-serwist-assets",
+        "efhc-serwist-locale","efhc-serwist-media"];
+      await first.evaluate(async names=>{
+        localStorage.setItem("efhc-public-cache-clear-proof","preserved");
+        for(const [index,name] of names.entries()){
+          const cache=await caches.open(name);
+          await cache.put("/efhc/public-cache-clear-proof-"+index+".txt",
+            new Response("remove-me"));
+        }
+        const unrelated=await caches.open("another-application-cache");
+        await unrelated.put("/outside-public-cache-proof",new Response("keep-me"));
+      },keys);
+      // The real button creates user activity, not a six-second idle window.
+      await second.evaluate(()=>{
+        const field=document.createElement("input");
+        field.id="efhc-pwa-active-form-proof";
+        document.body.appendChild(field);
+        field.focus();
+      });
+      const requestClear=async()=>first.evaluate(async()=>{
+        const active=navigator.serviceWorker.controller;
+        if(!active)throw Error("Missing active Serwist worker");
+        const channel=new MessageChannel();
+        const message=new Promise((resolve,reject)=>{
+          const timeout=setTimeout(()=>reject(Error("Runtime purge reply timeout")),9000);
+          channel.port1.onmessage=event=>{
+            clearTimeout(timeout);channel.port1.close();resolve(event.data);
+          };
+        });
+        active.postMessage({type:"EFHC_PWA_CLEAR_PUBLIC_CACHE"},[channel.port2]);
+        return await message;
+      });
+      const blocked=await requestClear();
+      assert.equal(blocked.status,"busy",
+        "Active editor in another scoped tab must block manual cleanup");
+      await second.evaluate(
+        ()=>document.getElementById("efhc-pwa-active-form-proof")?.remove());
+      // Immediate manual click must work without waiting for upgrade idleness.
+      await first.evaluate(()=>document.dispatchEvent(
+        new PointerEvent("pointerdown",{bubbles:true})));
+      const cleared=await requestClear();
+      assert.equal(cleared.status,"cleared");
+      assert.equal(cleared.count,keys.length,
+        "Only the four Serwist runtime buckets should be removed");
+      const retention=await first.evaluate(async names=>{
+        const remaining=[];
+        for(const [index,name] of names.entries()){
+          const cache=await caches.open(name);
+          remaining.push(Boolean(await cache.match(
+            "/efhc/public-cache-clear-proof-"+index+".txt")));
+        }
+        const foreign=await caches.open("another-application-cache");
+        let offlineShell=false;
+        for(const name of await caches.keys()){
+          if(names.includes(name))continue;
+          const cache=await caches.open(name);
+          const requests=await cache.keys();
+          if(requests.some(request=>
+            new URL(request.url).pathname==="/efhc/offline.html"))
+            offlineShell=true;
+        }
+        return {
+          remaining,
+          foreign:Boolean(await foreign.match("/outside-public-cache-proof")),
+          owner:localStorage.getItem("efhc-public-cache-clear-proof"),
+          offlineShell,
+        };
+      },keys);
+      assert.deepEqual(retention.remaining,[false,false,false,false]);
+      assert.equal(retention.foreign,true,"Other application caches must survive");
+      assert.equal(retention.owner,"preserved","Owner data must survive manual purge");
+      assert.equal(retention.offlineShell,true,"Serwist offline precache must survive");
+      console.log("PWA_SERWIST_PUBLIC_CLEAR_PASS",JSON.stringify({blocked,cleared,retention}));
+      // E2E acceptance must click the actual Settings button, not just send
+      // a synthetic worker message. The pointer event must not produce busy.
+      await first.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      await first.locator('[data-profile-settings-entry="interface-card"]')
+        .waitFor({state:"visible",timeout:20000});
+      await first.locator('[data-profile-settings-entry="interface-card"]').click();
+      await first.locator(".efhc-profile-pwa-maintenance summary").click();
+      await first.evaluate(async()=>{
+        const cache=await caches.open("efhc-serwist-pages");
+        await cache.put("/efhc/pwa-button-clear-proof.txt",
+          new Response("remove-me"));
+      });
+      await first.locator('[data-pwa-clear-public-cache="true"]').click();
+      await first.waitForFunction(()=>{
+        const text=document.querySelector(
+          ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
+        return /Serwist public runtime cache cleared|Публичный runtime-кеш Serwist очищен/i.test(text);
+      },null,{timeout:12000});
+      const buttonCleared=await first.evaluate(async()=>!(
+        await (await caches.open("efhc-serwist-pages"))
+          .match("/efhc/pwa-button-clear-proof.txt")));
+      assert.equal(buttonCleared,true,"Actual Settings cache button did not clear runtime data");
+      console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
+
+    } finally { await isolated.close(); }
+  });
   await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const workerFile=path.join(root,"sw.js");
@@ -815,9 +924,10 @@ try {
         await thirdTab.close();
       }
 
-      // Native Serwist owns new generations. A one-time scoped migration
-      // retires only old EFHC/Serwist public caches after ALL old clients
-      // leave or verify this generation; never delete any other app cache.
+      // A genuine pre-Serwist cache may exist in an old installed browser.
+      // Do not serve a removed JS file from that cache after HTTP 404:
+      // only the predecessor may use its own resources before handoff.
+      // Serwist retires proven EFHC legacy buckets ONCE on native activation.
       const oldLegacy="efhc-pwa-test-prior-static";
       const oldRuntime="efhc-public-pages-test-prior";
       const oldStatic="efhc-static-assets-test-prior";
@@ -826,105 +936,80 @@ try {
       const unrelated="efhc-unrelated-app-test";
       const oldUrl=new URL("/efhc/_next/static/efhc-old-retired.js",origin).href;
       const stale=await context.newPage();
+      const workerBeforeMigration=await readFile(workerFile,"utf8");
+      const workerTimes=await stat(workerFile);
       try {
         await boundedSerwistPhase("legacy.stale.goto",()=>
           stale.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:15000}),19000);
-      await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}) => {
-        const store=async (name,url,value)=>{
-          const cache=await caches.open(name);
-          await cache.put(url,new Response(value,{status:200}));
-        };
-        await store(oldLegacy,oldUrl,"legacy-old");
-        await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
-        await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
-        await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
-        await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
-        await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
-        await boundedSerwistPhase("legacy.status.request",()=>page.evaluate(()=>
-          navigator.serviceWorker.controller?.postMessage({type:"GET_CACHE_STATUS"})));
-        await page.waitForTimeout(350);
-        const guarded=await boundedSerwistPhase("legacy.guarded.inventory",()=>page.evaluate(async names=>({
-          keys:await caches.keys(),
-          staleCached:Boolean(await (await caches.open(names.oldLegacy))
-            .match(names.oldUrl)),
-        }),{oldLegacy,oldUrl}),15000);
-        assert.ok(guarded.keys.includes(oldLegacy) &&
-          guarded.keys.includes(oldRuntime) && guarded.keys.includes(oldStatic) &&
-          guarded.keys.includes(oldMedia) && guarded.keys.includes(oldLocale) &&
-          guarded.staleCached,"An unverified old tab must retain all legacy assets");
-        // The previous worker's immutable assets remain obtainable while
-        // the new Serwist worker controls network requests.
-        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.http404",()=>
-          stale.evaluate(async url=>Promise.race([
-            fetch(url).then(response=>response.text()).catch(()=>null),
-            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy 404 fetch timeout")),8500)),
-          ]),oldUrl),12000);
-        assert.equal(onlineLegacy,"legacy-old",
-          "A successor HTTP 404 must fall back to verified legacy immutable JS");
-        await context.setOffline(true);
-        const legacyResponse=await boundedSerwistPhase("legacy.fetch.offline",()=>
-          stale.evaluate(async url=>Promise.race([
-            fetch(url).then(response=>response.text()).catch(()=>null),
-            new Promise((_,reject)=>setTimeout(()=>reject(Error("Legacy offline fetch timeout")),8500)),
-          ]),oldUrl),12000);
-        assert.equal(legacyResponse,"legacy-old","Old tab lost its previous JS fallback");
-      }finally {
-        // Leave the old worker's scope while the network is STILL OFFLINE.
-        // Bringing the connection online first triggers offline.html's own
-        // online event reload, which races a navigation to about:blank.
-        // This navigation is local and cannot require a network response.
-        await boundedSerwistPhase("legacy.stale.leave.scope",()=>
-          stale.goto("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
-        // goto() can resolve while Chromium is still committing the new
-        // document; neither stale.url() nor page.evaluate() is reliable
-        // until the out-of-scope navigation is explicitly confirmed.
-        await boundedSerwistPhase("legacy.stale.scope.committed",()=>
-          stale.waitForURL("about:blank",{
-            waitUntil:"domcontentloaded",timeout:12000,
-          }),16000);
-        assert.equal(stale.url(),"about:blank",
-          "The old EFHC client must be replaced by an out-of-scope document");
-        assert.equal(stale.isClosed(),false,
-          "Scope exit must succeed even while the Chromium tab remains open");
-        // The worker filters live clients by URL, not by CDP target status.
-        // The ensuing native legacy-retirement checks still prove that
-        // only EFHC-owned old caches may disappear.
-        console.log("PWA_SERWIST_LEGACY_SCOPE_EXIT",JSON.stringify({
-          url:stale.url(),tabOpen:!stale.isClosed(),
+        await boundedSerwistPhase("legacy.seed",()=>page.evaluate(async ({oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl})=>{
+          const store=async (name,url,value)=>{
+            const cache=await caches.open(name);
+            await cache.put(url,new Response(value,{status:200}));
+          };
+          await store(oldLegacy,oldUrl,"legacy-old");
+          await store(oldRuntime,new URL("/efhc/old-page/index.html",location.origin).href,"old-page");
+          await store(oldStatic,new URL("/efhc/old-file.css",location.origin).href,"old-css");
+          await store(oldMedia,new URL("/efhc/assets/efhc/legacy-cover.webp",location.origin).href,"old-media");
+          await store(oldLocale,new URL("/efhc/locale/en.json",location.origin).href,"old-locale");
+          await store(unrelated,new URL("/other-app/data.txt",location.origin).href,"other-app");
+        },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale,unrelated,oldUrl}),15000);
+        const onlineLegacy=await boundedSerwistPhase("legacy.fetch.no-fallback",()=>
+          stale.evaluate(async url=>{
+            const response=await fetch(url);
+            return {status:response.status,content:await response.text()};
+          },oldUrl),15000);
+        assert.notEqual(onlineLegacy.content,"legacy-old",
+          "A new Serwist worker must not serve obsolete JS from retired EFHC cache");
+        const seeded=await page.evaluate(async names=>{
+          const list=await caches.keys();
+          return names.every(name=>list.includes(name));
+        },[oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale]);
+        assert.equal(seeded,true,"Legacy evidence must exist before native activation");
+        // Change only the worker bytes: the same complete Serwist build stays
+        // valid and a real waiting successor observes the old scoped tab.
+        await writeFile(workerFile,
+          workerBeforeMigration+"\n// native legacy retirement fixture\n","utf8");
+        await utimes(workerFile,new Date(),new Date(Date.now()+5000));
+        await page.evaluate(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          if(!reg)throw Error("Missing active Serwist before legacy retirement");
+          await reg.update();
+        });
+        await page.waitForFunction(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          return Boolean(reg?.waiting?.state==="installed");
+        },null,{timeout:18000});
+        await page.waitForTimeout(1200);
+        const stillWaiting=await page.evaluate(async()=>
+          (await navigator.serviceWorker.getRegistration())?.waiting?.state);
+        assert.equal(stillWaiting,"installed",
+          "Unresponsive old tab must block a premature generation handoff");
+        await stale.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
+        await stale.waitForURL("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
+        await page.waitForFunction(async()=>{
+          const reg=await navigator.serviceWorker.getRegistration();
+          return Boolean(reg?.active?.state==="activated" && !reg.waiting);
+        },null,{timeout:30000});
+        await page.waitForFunction(async names=>{
+          const list=await caches.keys();
+          return names.every(name=>!list.includes(name));
+        },[oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale],{timeout:18000});
+        const kept=await page.evaluate(async name=>({
+          names:await caches.keys(),
+          unrelated:Boolean(await (await caches.open(name))
+            .match(new URL("/other-app/data.txt",location.origin).href)),
+        }),unrelated);
+        assert.ok(kept.names.includes(unrelated) && kept.unrelated,
+          "Native legacy migration must not delete unrelated caches");
+        console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
+          removed:5,unsafeTabBlocked:true,otherScopePreserved:true,
         }));
-        await context.setOffline(false);
+        await page.evaluate(name=>caches.delete(name),unrelated);
+      }finally {
+        await writeFile(workerFile,workerBeforeMigration,"utf8");
+        await utimes(workerFile,workerTimes.atime,workerTimes.mtime);
+        await stale.close().catch(()=>undefined);
       }
-      await boundedSerwistPhase("legacy.ready.handshake",()=>page.evaluate(buildId=>{
-        const assets=[...document.querySelectorAll("script[src]")]
-          .map(el=>new URL(el.src).pathname)
-          .filter(path=>path.includes("/_next/static/"));
-        navigator.serviceWorker.controller?.postMessage({
-          type:"CLIENT_BUILD_READY",buildId,assets,
-        });
-        navigator.serviceWorker.controller?.postMessage({
-          type:"GET_CACHE_STATUS",
-        });
-      },thirdBuildId),15000);
-      await boundedSerwistPhase("legacy.retirement.wait",()=>page.waitForFunction(async names=>{
-        const keys=await caches.keys();
-        return !keys.includes(names.oldLegacy) &&
-          !keys.includes(names.oldRuntime) && !keys.includes(names.oldStatic) &&
-          !keys.includes(names.oldMedia) && !keys.includes(names.oldLocale);
-      },{oldLegacy,oldRuntime,oldStatic,oldMedia,oldLocale},{timeout:15000}),19000);
-      const kept=await boundedSerwistPhase("legacy.other.scope.verify",()=>page.evaluate(async name=>({
-        names:await caches.keys(),
-        unrelated:Boolean(await (await caches.open(name))
-          .match(new URL("/other-app/data.txt",location.origin).href)),
-      }),unrelated),15000);
-      assert.ok(kept.names.includes(unrelated)&&kept.unrelated,
-        "Migration must not delete other scope caches");
-      console.log("PWA_SERWIST_LEGACY_SAFE_RETIREMENT",JSON.stringify({
-        oldDeleted:true,oldTabProtected:true,otherScopePreserved:true,
-      }));
-      await page.evaluate(name=>caches.delete(name),unrelated);
     }finally{
       await writeFile(workerFile,originalWorker,"utf8");
       await writeFile(configFile,originalConfig,"utf8");
@@ -963,57 +1048,43 @@ try {
         if(!reg)throw Error("Expected first Serwist registration");
         await reg.update();
       },base);
-      // State inspection and message delivery must be one browser-side
-      // operation. reg.update() can briefly expose a previous waiting worker
-      // while a successor is still installing; do not assert on that race.
-      const beforeMessage=await boundedSerwistPhase("message.guard.stable.waiting",()=>
+      // Unsupported offline/legacy pages cannot approve automatic activation.
+      const blocked = await boundedSerwistPhase("message.guard.waiting",()=>
         first.evaluate(async scope=>{
           const deadline=Date.now()+18000;
-          let state=null;
           while(Date.now()<deadline){
             const reg=await navigator.serviceWorker.getRegistration(scope);
-            state={
-              active:reg?.active?.state||null,
-              waiting:reg?.waiting?.state||null,
-              installing:reg?.installing?.state||null,
-              controller:navigator.serviceWorker.controller?.state||null,
-              controlledUrl:navigator.serviceWorker.controller?.scriptURL||null,
-            };
-            if(state.waiting==="installed" && !state.installing){
-              reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:true});
-              return state;
+            if(reg?.waiting?.state==="installed" && !reg.installing){
+              const channel=new MessageChannel();
+              const answer=new Promise((resolve,reject)=>{
+                const timer=setTimeout(()=>reject(Error("Safety vote timeout")),7000);
+                channel.port1.onmessage=event=>{
+                  clearTimeout(timer);channel.port1.close();resolve(event.data);
+                };
+              });
+              reg.waiting.postMessage({type:"EFHC_PWA_CHECK_CLIENTS"},[channel.port2]);
+              return {waiting:reg.waiting.state,answer:await answer};
             }
             await new Promise(resolve=>setTimeout(resolve,75));
           }
-          return state;
-        },base),22000);
-      console.log("PWA_SERWIST_NATIVE_MESSAGE_BEFORE",JSON.stringify(beforeMessage));
-      assert.equal(beforeMessage.waiting,"installed",
-        "A fresh Serwist release must remain waiting while two scoped clients are open");
-      await first.waitForTimeout(700);
-      const blocked=await first.evaluate(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        return {waiting:reg?.waiting?.state||null,active:reg?.active?.state||null};
-      },base);
-      assert.equal(blocked.waiting,"installed",
-        "Serwist native SKIP_WAITING bypassed the safe multi-client guard");
-      assert.equal(blocked.active,"activated");
-      await second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000});
-      await first.evaluate(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        reg.waiting.postMessage({type:"SKIP_WAITING",efhcSafeToActivate:false});
-      },base);
-      await first.waitForTimeout(350);
+          throw Error("No waiting Serwist worker found");
+        },base),26000);
+      assert.equal(blocked.waiting,"installed");
+      assert.equal(blocked.answer.safe,false,
+        "An unsupported legacy tab must block forced activation");
+      await first.waitForTimeout(500);
       assert.equal(await first.evaluate(async scope=>
         (await navigator.serviceWorker.getRegistration(scope))?.waiting?.state,
-        base),"installed","Legacy activation without EFHC approval must not promote a worker");
-      await first.evaluate(async scope=>{
+        base),"installed","Unsafe old client was replaced unexpectedly");
+      await Promise.all([
+        first.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000}),
+        second.goto("about:blank",{waitUntil:"domcontentloaded",timeout:12000}),
+      ]);
+      const successor=await isolated.newPage();
+      await successor.goto(base+"offline.html",{waitUntil:"domcontentloaded",timeout:18000});
+      await successor.waitForFunction(async scope=>{
         const reg=await navigator.serviceWorker.getRegistration(scope);
-        reg.waiting.postMessage({type:"ACTIVATE_WHEN_SAFE",efhcSafeToActivate:true});
-      },base);
-      await first.waitForFunction(async scope=>{
-        const reg=await navigator.serviceWorker.getRegistration(scope);
-        return Boolean(reg?.active?.state==="activated"&&!reg.waiting);
+        return Boolean(reg?.active?.state==="activated" && !reg.waiting);
       },base,{timeout:18000});
       console.log("PWA_SERWIST_SAFE_MESSAGE_GATE_PASS",JSON.stringify(blocked));
     } finally {

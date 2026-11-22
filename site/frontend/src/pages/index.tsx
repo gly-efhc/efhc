@@ -437,8 +437,8 @@ export default function EnergyPage(props: {
 
   // The shell owns signed server reads; this protected page must still render
   // without an auth provider or network in standalone/offline contexts.
-  // Preserve the current owner's last server-confirmed panel count when
-  // the independent summary endpoint fails; an unconfirmed blank fixture stays zero/unknown.
+  // A server-dated owner snapshot remains usable if the independent panels summary fails.
+  // A newer confirmed summary, including zero, always takes precedence.
   const snapshotPanels = s.meta.server_now_iso
     && Number.isSafeInteger(s.panels.active_count)
     && s.panels.active_count >= 0

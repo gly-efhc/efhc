@@ -36,9 +36,9 @@ test('Energy active panel chip does not reveal an obsolete saved count before se
    'a synthetic snapshot without server timestamp cannot claim a panel count');
  snapshot.meta.server_now_iso='2026-11-16T21:52:30Z';
  assert.match(chip(render({})),/>9<\/strong>/,
-   'last validated owner snapshot remains visible if independent summary read is forbidden');
+   'previously confirmed owner snapshot remains visible when summary route fails');
  assert.match(chip(render({confirmedActivePanels:0})),/>0<\/strong>/,
-   'new independent server count must override older owner snapshot');
+   'new independent server zero overrides older owner snapshot');
 });
 
 test('server correction is accepted immediately, even when lower than a local projection',()=>{

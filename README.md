@@ -1,61 +1,80 @@
-# EFHC efhc — публичный репозиторий приложения
+# EFHC — публичный репозиторий приложения
 
-**Репозиторий кода:** [gly-efhc/efhc](https://github.com/gly-efhc/efhc) · **Тип:** публичный исходный frontend, тесты и CI · **Документальная власть:** приватный [efhc_archive](https://github.com/gly-efhc/efhc_archive)
+**Проект:** Energy for Humanity Coin (EFHC) · **Исходный код:** [gly-efhc/efhc](https://github.com/gly-efhc/efhc) · **Документальный Архив:** приватный [gly-efhc/efhc_archive](https://github.com/gly-efhc/efhc_archive).
 
-> Здесь находится рабочий код и публично безопасные технические инструкции. Это **не** приватный документальный Архив, не производственный backend и не гарантия подключения серверных/финансовых операций. Для приватных норм требуется авторизованный доступ к отдельному репозиторию EFHC.
-
-## Назначение и границы
-
-efhc содержит исходный frontend на React/Next.js, необходимые статические ресурсы, regression/parity tests, инструменты Pages и GitHub Actions. Сохранённый физический ZIP фронтенда может служить резервным источником восстановления только после сверки с актуальным Git HEAD, manifest и контрольными суммами. Оригиналы private CANON, SSOT, REPORTS, CYCLES, HISTORY, персональные данные и secrets здесь не публикуются.
-
-Нормативные решения принимает OWNER. Актуальные приватные документы хранятся в `gly-efhc/efhc_archive`; утверждённый владельцем локальный архив и удалённый документальный HEAD сверяются как разные физические состояния. Публичный код efhc — фактический источник реализации, но не замена private правовых, экономических и инженерных контрактов.
+Этот репозиторий содержит исходные файлы React/Next.js frontend, тесты, инструменты CI/Pages и публично безопасные инструкции. Он **не** является копией приватного документального Архива, production backend, базой данных или доказательством исполнения финансовой операции. Наличие приложения в GitHub Pages либо успешного frontend build не подтверждает состояние production, реальность выплат и on-chain settlement.
 
 ## Начало работы
 
-Маршрут агента: [AGENTS.md](AGENTS.md) → [START_HERE.md](START_HERE.md) → [KERNEL.md](KERNEL.md) (**один раз**) → [INDEX.md](INDEX.md). Далее установить реальный efhc HEAD, task scope, требуемый private canon и применимые проверки. Только авторизованный GitHub-коннектор допускается для удалённого доступа к private Архиву; публичная ссылка не раскрывает его содержимое.
+Для разработчика и AI-агента предусмотрен единый порядок:
 
-**Основные файлы и каталоги:**
+[AGENTS.md](AGENTS.md) → [START_HERE.md](START_HERE.md) → [KERNEL.md](KERNEL.md) (**однократно за операционный контекст**) → [INDEX.md](INDEX.md) → фактический исходный ref/HEAD → конкретная задача.
+
+- **AGENTS** — полномочия, защита, приоритет источников и правила изменения кода.
+- **START_HERE** — последовательность входа и выбор документальной зависимости.
+- **KERNEL** — операционный диспетчер, не исполняемая программа.
+- **INDEX** — пути frontend, CI и предметные маршруты к действующей структуре приватного Архива.
+
+Текущий `main` следует проверять по реальному commit SHA. Архив `Archive_vNNN.zip` (локальная полная копия), удалённый `efhc_archive/main`, public `efhc/main` и развернутый release — **разные состояния**; совпадение одного не подтверждает другие.
+
+## Состав репозитория
 
 | Путь | Назначение |
 | --- | --- |
-| [site/frontend/](site/frontend/) | React/Next.js исходники, lockfile и frontend scripts |
-| [site/frontend/src/](site/frontend/src/) | Код интерфейса и компонентов |
+| [site/frontend/](site/frontend/) | React/Next.js приложение и зависимости |
+| [site/frontend/src/](site/frontend/src/) | Реальные компоненты, состояния и маршруты |
 | [site/frontend/tests/](site/frontend/tests/) | Регрессионные и parity-проверки |
-| [site/ci/parity/](site/ci/parity/) | Инструменты сопоставления с эталоном |
-| [site/ci/pages-tools/](site/ci/pages-tools/) | Экспорт Pages и browser smoke |
-| [.github/workflows/](.github/workflows/) | GitHub Actions, проверки и публикация |
-| [site/RECOVERY.md](site/RECOVERY.md) | Восстановление source и проверка границ |
-| [site/RELEASE.json](site/RELEASE.json) | Маркер физической редакции приложения |
-| [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) | OWNER-подтверждённый публичный маршрут B |
-| [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) | Вторичная редакция, не равноправный SSOT |
-| [import/README.md](import/README.md) | Локальный public code-import; **не** private документальный импорт |
+| [site/ci/parity/](site/ci/parity/) | Сопоставление frontend с исходными эталонами |
+| [site/ci/pages-tools/](site/ci/pages-tools/) | Проверки публикации и browser smoke |
+| [.github/workflows/](.github/workflows/) | GitHub Actions и процедуры CI/Pages |
+| [site/RECOVERY.md](site/RECOVERY.md) | Техническая инструкция восстановления frontend; исторические утверждения сверять с текущими решениями OWNER |
+| [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) | Утверждённый публичный маршрут правил приложения (редакция B) |
+| [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) | Вторичный публичный документ, не независимый SSOT |
+| [site/RELEASE.json](site/RELEASE.json) | Локальный marker редакции; не замена release/CI-доказательствам |
+| [import/README.md](import/README.md) | Вход для предусмотренного репозиторием импорта frontend, не документального ZIP |
 
-## Локальная разработка и проверки
+Действительность инструкций по импорту, release и восстановлению проверяется по соответствующему действующему workflow, manifest и источнику на конкретном HEAD. Приватный `Archive_vNNN.zip` не загружается в публичный `efhc/import/`.
 
-Рабочий каталог — `site/frontend/`. Команды, реально объявленные в `package.json`:
+## Локальная разработка
+
+Рабочий каталог frontend — `site/frontend/`. Команды объявлены в [package.json](site/frontend/package.json):
 
 ```bash
 cd site/frontend
 npm ci
+npm run dev
+```
+
+Для проверки изменений в исходниках, когда это соответствует scope:
+
+```bash
 npm run typecheck
 npm run test:frontend-regression
 npm run build
 ```
 
-`npm run dev` запускает локальный интерфейс; `npm run start` — собранный Next.js (если окружение поддерживает соответствующий режим). Точный список скриптов и их зависимости читать в [package.json](site/frontend/package.json); часть отдельных проверок может требовать CI/browser или дополнительные файлы, не включённые в конкретный резервный ZIP. Выполнять только релевантные тесты; отсутствие запуска отмечать `NOT_RUN`.
+Точное поведение скриптов и доступность зависимостей проверяются по текущему `package.json` и окружению. Не объявлять команды выполненными без фактического запуска; `NOT_RUN` не означает `PASS`.
 
-Public Pages может публиковать пользовательский frontend. Демонстрационные fixtures не означают действующий внешний Python backend, production DB, реальные EFHC-кредиты, выплату, TON transfer или авторизованный Admin transport. Для них необходимы независимые серверные и end-to-end доказательства.
+## Актуальные документальные правила EFHC
 
-## Документальная синхронизация с приватным Архивом
+**Нормативный источник — приватный Архив**, доступный только авторизованным участникам. Установленный порядок: последнее прямое решение OWNER → `01_CANON/` → `05_SSOT/` → `06_NORM/` → архитектура и ТЗ в `13_PLANS/TECHNICAL_TASKS/` → конкретный source как факт реализации. `03_REPORTS/` и `04_CYCLES/` фиксируют историю исполнения и решения, не создавая альтернативную действующую норму.
 
-Только через авторизованный GitHub-коннектор получить реальный private HEAD, прочитать `AGENTS → START_HERE → KERNEL (once) → INDEX → TERMS → 17_CONTROL/DOCUMENT_MANAGEMENT_RULES`, затем применимый тематический CANON/SSOT и OWNER decisions. Записать отдельно `CODE_HEAD`, `ARCHIVE_HEAD`, доказательства и ограничения. Отсутствует private доступ — не начинать зависимый code change и не заменять его данными из памяти.
+Применимые читателю маршруты внутри приватного Архива:
 
-Содержательные документы Архива нельзя дублировать в открытый efhc. Из private Архива допустимы только публично безопасные пути/названия, без private bytes. Протокол загрузки полного документального ZIP — отдельный `efhc_archive/_import/`; это **не** public `efhc/import/`.
+- `AGENTS.md`, `START_HERE.md`, `KERNEL.md` (один раз), `INDEX.md`, `01_CANON/TERMS.md` — точка входа.
+- `05_SSOT/FRONTEND/APPLICATION_RULES.md`, `10_FRONTEND/README.md` — frontend и визуальные контракты.
+- `05_SSOT/FRONTEND/EFHC_SERWIST_PWA_CACHE_STANDARD.md` — PWA-кеш Serwist; `05_SSOT/FRONTEND/EFHC_UNIFIED_CACHE_OWNER_SSOT.md` — связанные ограничения пользовательского состояния.
+- `05_SSOT/CONTRACTS/` и `01_CANON/ADMIN/` — Identity, Wallet, TON, Admin и финансовые интерфейсы.
+- `06_NORM/DOCUMENTATION/DOCUMENT_MANAGEMENT_RULES.md`, `08_AI/AI_CROSS_REPO_ROUTING.md`, `12_RUNBOOKS/README.md` — управление документами, маршрутизация и эксплуатационные процедуры.
 
-## Инженерная дисциплина и приёмка
+Авторизованный GitHub-коннектор необходим для чтения закрытых файлов; публичная ссылка не отменяет ограничения доступа. Оригиналы приватных CANON/SSOT/NORM, номерных свидетельств, ключей, персональной информации, коммерческих данных и непубличных HTML-эталонов **не размещаются** здесь.
 
-Работать по прямому OWNER scope. До изменения проверить source HEAD, совместимость с принятым UI, защищёнными Header/Bottom Nav/FAQ/themes/локализацией/Wallet/TON/Admin и применимыми контрактами. Не «чинить» регрессию выключением тестов, не скрывать FAIL под SKIP, не выдавать локальный DEMO за backend. После записи — commit, remote readback, CI/Pages proof, отдельная OWNER visual acceptance. Для разрушительных/спорных изменений требуется предметное согласование.
+## Текущие инженерные границы
 
-Нумерованные REPORTS/CYCLES, исторический provenance и принятие решения о закрытии блока живут в **private Архиве** по `17_CONTROL/REPORTS_CYCLES_FORMAT_CONTROL.md`. Удалённая по распоряжению OWNER публичная папка `reports/` не является действующим реестром; актуальный учёт ведётся в приватном Архиве. Этот README не создаёт новый канон или закрытый номер. При передаче следующему агенту указать проверенные SHA, scope, changed paths, test results и открытые зависимости без публикации приватных сведений.
+Frontend восстанавливается и проверяется относительно принятого внешнего визуального HTML-эталона v866 и применимых решений OWNER. Общий запрет на визуальные изменения React Admin **не действует**: исправление допустимо при отдельном прямом разрешении и реальном сравнении с эталоном. Уже принятые отдельные интерфейсные механизмы остаются защищёнными в точных пределах своих решений.
 
-**Маршрут следующего шага:** [START_HERE.md](START_HERE.md) · [INDEX.md](INDEX.md) · [AGENTS.md](AGENTS.md).
+Serwist является владельцем PWA/CacheStorage; приложение не должно создавать конкурирующий собственный PWA cache engine. При этом Global ID, owner-scoped пользовательское состояние, сессии, финансовые операции и соединения с кошельком проверяются по их самостоятельным контрактам. Demo/fixtures не выдаются за реальные проводки, а изменения кода не доказывают восстановление backend/TON без предметной проверки.
+
+Для изменения исходников, тестов, workflows, архитектурных и финансовых механизмов требуется конкретное распоряжение OWNER. Документационное поручение не разрешает побочные миграции, deploy, работу с secrets или изменения приватного Архива. Итог подтверждается `commit → remote readback`; тесты, CI, browser и приёмка OWNER фиксируются отдельно.
+
+**Полная навигация:** [INDEX.md](INDEX.md). **Правила для AI:** [AGENTS.md](AGENTS.md).

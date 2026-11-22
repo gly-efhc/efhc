@@ -11,7 +11,6 @@ const key = /const KEY = "([^"]+)"/.exec(readFileSync(
   fileURLToPath(new URL("../../src/lib/userDataCache.ts", import.meta.url)), "utf8",
 ))?.[1];
 assert.ok(key, "Personal cache storage key must be present in owner source");
-const oldAge = 400 * 24 * 60 * 60 * 1000;
 const dataKey = ["panels", owner, "list", "active"];
 const oldData = { pages: [{items: [{public_id: "PNL-00000001"}]}], pageParams: [null] };
 
@@ -22,59 +21,39 @@ function configured(runtime) {
   return {api,client};
 }
 
-test("Owner display cache has no calendar expiry; polling cannot impersonate a real app visit", () => {
+test("Personal snapshots remain owner-scoped and never expire by calendar age", () => {
   const storage = new Map(), session = new Map();
   const runtime = sourceRuntime({storage, session});
   const {client} = configured(runtime);
-  client.setQueryData(dataKey,oldData);
-  const record = JSON.parse(storage.get(key + ":" + owner));
-  assert.equal(record.owner,owner);
-  assert.ok(Number.isSafeInteger(record.lastHumanVisitAt));
-  assert.equal(runtime.load("lib/userDataCache.ts").USER_CACHE_RETENTION_MS,undefined);
-  const visit = record.lastHumanVisitAt;
-  client.setQueryData(dataKey,{pages:[{items:[]}],pageParams:[null]});
-  assert.equal(JSON.parse(storage.get(key + ":" + owner)).lastHumanVisitAt,visit,
-    "automatic successful query cannot extend last-human-visit clock");
+  client.setQueryData(dataKey, oldData);
+  const durable = JSON.parse(storage.get(key + ":" + owner));
+  assert.equal(durable.owner, owner);
+  assert.equal("lastHumanVisitAt" in durable, false,
+    "Revoked calendar retention marker must not be written");
   client.clear();
+  const ancient = Date.now() - 1000 * 60 * 60 * 24 * 365;
+  for (const [target, entryKey] of [[storage,key + ":" + owner], [session,key]]) {
+    const record = JSON.parse(target.get(entryKey));
+    record.lastHumanVisitAt = ancient;
+    target.set(entryKey, JSON.stringify(record));
+  }
+  const reopened = sourceRuntime({storage, session});
+  const {client: restored} = configured(reopened);
+  assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(dataKey))),oldData,
+    "Legacy seven-day marker must not delete the user's confirmed offline data");
+  assert.equal("lastHumanVisitAt" in JSON.parse(storage.get(key + ":" + owner)),false);
+  restored.clear();
 });
 
-test("Age alone never removes a valid same-owner display snapshot", () => {
+test("Legacy owner cache with no visit marker restores without deletion", () => {
   const storage = new Map(), session = new Map();
   const runtime = sourceRuntime({storage,session});
   const {client} = configured(runtime);
   client.setQueryData(dataKey,oldData);
-  const stale = Date.now() - oldAge - 1;
-  for (const storageTarget of [storage,session]) {
-    for (const entryKey of [key, key + ":" + owner]) {
-      if (!storageTarget.has(entryKey)) continue;
-      const entry = JSON.parse(storageTarget.get(entryKey));
-      entry.lastHumanVisitAt = stale;
-      storageTarget.set(entryKey,JSON.stringify(entry));
-    }
-  }
-  client.clear();
-  const next = sourceRuntime({storage,session});
-  const {client: recovered} = configured(next);
-  assert.deepEqual(JSON.parse(JSON.stringify(recovered.getQueryData(dataKey))),oldData);
-  assert.equal(storage.has(key+":"+owner),true);
-  recovered.clear();
-});
-
-test("Same owner may migrate legacy cache on actual open without losing valid offline data", () => {
-  const storage = new Map(), session = new Map();
-  const runtime = sourceRuntime({storage,session});
-  const {client} = configured(runtime);
-  client.setQueryData(dataKey,oldData);
-  for (const [storageTarget, entryKey] of [[storage,key+":"+owner],[session,key]]) {
-    const record = JSON.parse(storageTarget.get(entryKey));
-    delete record.lastHumanVisitAt;
-    storageTarget.set(entryKey,JSON.stringify(record));
-  }
   client.clear();
   const reopened = sourceRuntime({storage,session});
   const {client: restored} = configured(reopened);
   assert.deepEqual(JSON.parse(JSON.stringify(restored.getQueryData(dataKey))),oldData);
-  assert.ok(JSON.parse(storage.get(key+":"+owner)).lastHumanVisitAt>0);
   restored.clear();
 });
 

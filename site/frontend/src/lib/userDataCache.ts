@@ -6,13 +6,12 @@ import { windowStateStorage } from "./windowState";
 
 const KEY = "EFHC_USER_DATA_CACHE_V1";
 const MAX_BYTES = 3_000_000;
-// User-owned display snapshots have no custom calendar TTL.
-// Storage remains isolated by Global ID and schema; Serwist owns public PWA caches.
-const VISIT_WRITE_INTERVAL_MS = 15 * 60 * 1000;
+// Owner-scoped display snapshots have no calendar TTL; Serwist manages
+// only public HTTP resources, not private validated local display snapshots.
 // Only display data. Never persist credentials, handoff tokens, permissions or mutations.
 const RESOURCES = new Set(["syncSnapshot", "panels", "referrals", "ranks", "exchangePreview", "tasksMy", "tasksEarnings", "profile", "withdrawals"]);
 type Entry = {key: QueryKey; data: unknown; updatedAt: number};
-type Cache = {owner: string | null; entries: Entry[]; lastHumanVisitAt: number | null};
+type Cache = {owner: string | null; entries: Entry[]};
 const controllers = new WeakMap<QueryClient, Cache>();
 let settingsOwner: string | null = null;
 const validId = (value: unknown): value is string => typeof value === "string" && /^\d{10}$/.test(value) && value !== "0000000000";
@@ -30,20 +29,16 @@ function restorableEntry(entry: Entry): boolean {
     pages.length > 0 && pages.length === pageParams.length &&
     pages.every(page => WithdrawPageResponseSchema.safeParse(page).success);
 }
-const emptyCache = (): Cache => ({owner: null, entries: [], lastHumanVisitAt: null});
+const emptyCache = (): Cache => ({owner: null, entries: []});
 
 function decode(raw: string | null): Cache {
   try {
     const value = JSON.parse(raw || "null");
     if (validId(value?.owner) && Array.isArray(value.entries)) {
-      // Legacy cache records have no visit marker. Preserve once and migrate
-      // only when this owner actually opens the app, without faking activity
-      // on background financial polls.
-      const visit = value.lastHumanVisitAt;
-      const safeVisit = Number.isSafeInteger(visit) && visit > 0 && visit <= Date.now();
+      // Historical records may contain lastHumanVisitAt. Ignore that field:
+      // age-based eviction of personal data was explicitly withdrawn.
       return {
       owner: value.owner,
-      lastHumanVisitAt: safeVisit ? visit : null,
       entries: value.entries.filter((e: Entry) => restorableEntry(e) && e.key[1] === value.owner && e.data !== undefined && Number.isFinite(e.updatedAt))
         .filter((e: Entry) => e.key[0] !== "syncSnapshot" || (syncSnapshotSchema.safeParse(e.data).success && (e.data as {profile: {global_id: string}}).profile.global_id === value.owner)),
       };
@@ -66,7 +61,7 @@ function durable(owner: string): Cache {
     if (cache.owner === owner) return cache;
     if (raw) window.localStorage.removeItem(key);
   } catch { /* Optional device persistence may be unavailable. */ }
-  return {owner, entries: [], lastHumanVisitAt: null};
+  return {owner, entries: []};
 }
 function persist(cache: Cache, publish = true) {
   try {
@@ -74,7 +69,7 @@ function persist(cache: Cache, publish = true) {
     for (const entry of cache.entries) {
       if (new Blob([JSON.stringify([...entries, entry])]).size <= MAX_BYTES) entries.push(entry);
     }
-    const raw = JSON.stringify({owner: cache.owner, entries, lastHumanVisitAt: cache.lastHumanVisitAt});
+    const raw = JSON.stringify({owner: cache.owner, entries});
     windowStateStorage().setItem(KEY, raw);
     if (publish && cache.owner && entries.length) window.localStorage.setItem(`${KEY}:${cache.owner}`, raw);
   } catch { /* Keep the current in-memory model if disk storage is unavailable. */ }
@@ -83,15 +78,6 @@ export function currentUserDataOwner(): string | null {
   return settingsOwner ?? (typeof window === "undefined" ? null : read().owner);
 }
 
-/** Human interaction extends the retention period; server polling does not. */
-export function recordUserCacheVisit(client: QueryClient, atMs = Date.now()): void {
-  const cache = controllers.get(client);
-  if (!cache || !validId(cache.owner) || !Number.isSafeInteger(atMs)) return;
-  if (cache.lastHumanVisitAt !== null &&
-      atMs - cache.lastHumanVisitAt < VISIT_WRITE_INTERVAL_MS) return;
-  cache.lastHumanVisitAt = atMs;
-  persist(cache);
-}
 export function startUserDataPersistence(client: QueryClient) {
   const cache = read();
   controllers.set(client, cache);
@@ -117,7 +103,6 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
     // Returning to a previous owner requires a new authoritative read.
     cache.entries = [];
     cache.owner = owner;
-    cache.lastHumanVisitAt = null;
     settingsOwner = owner;
     persist(cache, false);
     // Removing cancels the old queries, including their fetch AbortSignal.
@@ -128,15 +113,10 @@ export function activateUserCache(client: QueryClient, owner: string | null, adm
     if (cache.owner === null || (cache.owner === owner && cache.entries.length === 0)) {
       const restored = durable(owner);
       cache.entries = restored.entries;
-      cache.lastHumanVisitAt = restored.lastHumanVisitAt;
     }
     cache.owner = owner;
     settingsOwner = owner;
   }
-  // Actual app entry counts as a human visit; network-only updates do not.
-  // Refresh the owner-scoped local timestamp while keeping persisted snapshot
-  // values untouched until the next authoritative read.
-  cache.lastHumanVisitAt = Date.now();
   // Hydrate after removing any foreign-owner queries and before first paint.
   for (const entry of [...cache.entries]) {
     if (client.getQueryData(entry.key) === undefined) client.setQueryData(entry.key, entry.data, {updatedAt: entry.updatedAt});
@@ -153,7 +133,6 @@ export function forgetUserDataOnLogout(client: QueryClient): void {
   const owner = cache.owner;
   cache.owner = null;
   cache.entries = [];
-  cache.lastHumanVisitAt = null;
   settingsOwner = null;
   windowStateStorage().removeItem(KEY);
   if (owner) {
