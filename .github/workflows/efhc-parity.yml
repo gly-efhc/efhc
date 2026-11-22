@@ -34,6 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref == 'frontend/profile-settings' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
@@ -98,9 +99,10 @@ jobs:
           NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_E2E_TONCONNECT_MOCK: '0'
+          NEXT_PUBLIC_EFHC_WALLET_NETWORK: 'mainnet'
           NEXT_PUBLIC_EFHC_E2E_DISABLE_TONCONNECT_RESTORE: '1'
-          NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
-          NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
+          NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: ${{ github.head_ref == 'frontend/profile-settings' && '0' || '1' }}
+          NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: ${{ github.head_ref == 'frontend/profile-settings' && '0' || '1' }}
         run: |
           cd "$RUNNER_TEMP/efhc-parity-build"
           ./node_modules/.bin/next build --webpack
@@ -124,6 +126,24 @@ jobs:
           export EFHC_PWA_EXPORT_DIR="$RUNNER_TEMP/efhc-parity-build/out"
           node site/frontend/tests/parity/pwa-cache-integration.mjs
           node site/frontend/tests/parity/persistent-pages.mjs
+      - name: Package verified TEST preview without deployment
+        if: ${{ github.event_name == 'pull_request' && github.head_ref == 'frontend/profile-settings' && github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          export_dir="$RUNNER_TEMP/efhc-parity-build/out"
+          python3 site/ci/pages-tools/verify_export.py --directory "$export_dir" --base-path "${EFHC_DEMO_BASEPATH}"
+          test -s "$export_dir/admin/index.html"
+          tar -C "$export_dir" -cf "$RUNNER_TEMP/efhc-test-preview.tar" .
+      - name: Retain verified TEST preview
+        if: ${{ github.event_name == 'pull_request' && github.head_ref == 'frontend/profile-settings' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: efhc-test-preview-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/efhc-test-preview.tar
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Retain mandatory persistence verification
         if: always()
         uses: actions/upload-artifact@v4

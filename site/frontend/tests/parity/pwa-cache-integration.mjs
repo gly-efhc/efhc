@@ -782,13 +782,19 @@ try {
       await first.locator('[data-profile-settings-entry="interface-card"]')
         .waitFor({state:"visible",timeout:20000});
       await first.locator('[data-profile-settings-entry="interface-card"]').click();
-      await first.locator(".efhc-profile-pwa-maintenance summary").click();
+      const maintenance = first.locator('[data-profile-settings-maintenance="visible"]');
+      const updateButton = maintenance.locator("button").first();
+      const clearButton = maintenance.locator('[data-pwa-clear-public-cache="true"]');
+      assert.equal(await maintenance.locator("summary").count(), 0,
+        "Maintenance must no longer require opening a disclosure");
+      await updateButton.waitFor({state:"visible"});
+      await clearButton.waitFor({state:"visible"});
       await first.evaluate(async()=>{
         const cache=await caches.open("efhc-serwist-pages");
         await cache.put("/efhc/pwa-button-clear-proof.txt",
           new Response("remove-me"));
       });
-      await first.locator('[data-pwa-clear-public-cache="true"]').click();
+      await clearButton.click();
       await first.waitForFunction(()=>{
         const text=document.querySelector(
           ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
