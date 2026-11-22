@@ -694,8 +694,10 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("OWNER cache button purges only idle Serwist public runtime buckets", async () => {
+  await check("Legacy maintenance stays guarded and emergency Settings purges only downloaded data", async () => {
     const isolated=await browser.newContext({serviceWorkers:"allow"});
+    await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
+      ? route.continue() : route.abort());
     try {
       const first=await isolated.newPage();
       await first.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
@@ -831,18 +833,94 @@ try {
         await cache.put("/efhc/pwa-button-clear-proof.txt",
           new Response("remove-me"));
       });
-      await clearButton.click();
-      await first.waitForFunction(()=>{
-        const text=document.querySelector(
-          ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
-        return /Serwist public runtime cache cleared|^кеш очищен$/i.test(text);
-      },null,{timeout:12000});
+      // Preserve real SW scope/control while simulating a loaded copy unable
+      // to acknowledge the automatic lifecycle safety query.
+      const unresponsive = await isolated.newPage();
+      try {
+        await unresponsive.addInitScript(() => {
+          navigator.serviceWorker?.addEventListener("message", event => {
+            if (event.data?.type === "EFHC_PWA_CLIENT_SAFE") event.stopImmediatePropagation();
+          }, {capture:true});
+        });
+        await unresponsive.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+        await unresponsive.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+        const proof = await first.evaluate(async ({authSessionKey,ownerCacheKey,settingsKey}) => {
+          const read = async () => {
+            const runtime = await caches.match("/efhc/pwa-button-clear-proof.txt", {cacheName:"efhc-serwist-pages"});
+            const foreign = await caches.match("/outside-public-cache-proof", {cacheName:"another-application-cache"});
+            const ownedPageCopies = await Promise.all((await caches.keys()).map(async name => {
+              if (!name.includes("precache")) return [];
+              return (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname);
+            }));
+            return {runtime:Boolean(runtime),foreign:Boolean(foreign),
+              offlinePage:ownedPageCopies.flat().includes("/efhc/web-profile/index.html")};
+          };
+          const initial = await read();
+          const owner = "0000000042";
+          const resumeKey = "efhc.demo.guest.resume";
+          const identityKey = "efhc:resolved-display-owner";
+          const durableKey = ownerCacheKey + ":" + owner;
+          // Syntactically valid synthetic markers, never issued by any server.
+          // Requests to external origins are blocked for this isolated context.
+          const credentialMarker = JSON.stringify({
+            token_type:"Bearer", access_token:"local_efhc_test_marker_not_a_real_credential",
+            expires_at:new Date(Date.now()+600000).toISOString(),
+          });
+          const resumeMarker = "local_efhc_test_marker_not_a_real_resume";
+          const settingsBefore = sessionStorage.getItem(settingsKey);
+          const identityMarker = JSON.stringify({global_id:owner,principal:"browser"});
+          const snapshot = JSON.stringify({owner,entries:[]});
+          sessionStorage.setItem(authSessionKey,credentialMarker);
+          localStorage.setItem(resumeKey,resumeMarker);
+          sessionStorage.setItem(identityKey,identityMarker);
+          sessionStorage.setItem(ownerCacheKey,snapshot);
+          localStorage.setItem(durableKey,snapshot);
+          window.__efhcInspectEmergencyPurge = async () => {
+            return {...await read(),samePage:true,
+              login:sessionStorage.getItem(authSessionKey)===credentialMarker,
+              resume:localStorage.getItem(resumeKey)===resumeMarker,
+              identity:sessionStorage.getItem(identityKey)===identityMarker,
+              settings:sessionStorage.getItem(settingsKey)===settingsBefore,
+              downloadedSnapshot:localStorage.getItem(durableKey)!==null};
+          };
+          return initial;
+        },{authSessionKey,ownerCacheKey,settingsKey});
+        assert.deepEqual(proof,{runtime:true,foreign:true,offlinePage:true});
+        const before = await first.evaluate(() => performance.timeOrigin);
+        await clearButton.click();
+        await first.waitForFunction(()=>{
+          const text=document.querySelector(
+            ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
+          return /Serwist public runtime cache cleared|^кеш очищен$/i.test(text);
+        },null,{timeout:12000});
+        assert.equal(await first.evaluate(() => performance.timeOrigin),before,
+          "Emergency purge must not reload the app");
+        assert.equal(unresponsive.isClosed(),false,
+          "Emergency purge must not require closing other app copies");
+        assert.deepEqual(await first.evaluate(() => window.__efhcInspectEmergencyPurge()),
+          {runtime:false,foreign:true,offlinePage:false,samePage:true,
+            login:true,resume:true,identity:true,settings:true,downloadedSnapshot:false},
+          "Emergency cleanup deletes only downloaded data and retains access/settings");
+      } finally { await unresponsive.close(); }
       const buttonCleared=await first.evaluate(async()=>!(
         await (await caches.open("efhc-serwist-pages"))
           .match("/efhc/pwa-button-clear-proof.txt")));
       assert.equal(buttonCleared,true,"Actual Settings cache button did not clear runtime data");
       await dismiss.click();
       await settings.waitFor({state:"hidden"});
+      await first.close();
+      await second.close();
+      const reopened = await isolated.newPage();
+      await reopened.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await reopened.waitForFunction(async build => {
+        if (document.querySelector('meta[name="efhc-build-id"]')?.content !== build) return false;
+        for (const name of await caches.keys()) {
+          if (!name.includes("precache")) continue;
+          const entries = await (await caches.open(name)).keys();
+          if (entries.some(request => new URL(request.url).pathname === "/efhc/web-profile/index.html")) return true;
+        }
+        return false;
+      },exportConfig.build_id,{timeout:30000});
       console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
 
     } finally { await isolated.close(); }

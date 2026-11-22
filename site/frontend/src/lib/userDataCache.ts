@@ -141,3 +141,17 @@ export function forgetUserDataOnLogout(client: QueryClient): void {
   }
   client.removeQueries({predicate: query => userKey(query.queryKey)});
 }
+
+/** Clear display data without ending the current owner or changing settings. */
+export function clearUserDisplaySnapshots(client: QueryClient): Promise<void> {
+  const cache = controllers.get(client);
+  const owner = cache?.owner ?? currentUserDataOwner();
+  if (!owner) return Promise.resolve();
+  const filters = {predicate: (query: {queryKey: QueryKey}) => userKey(query.queryKey) && query.queryKey[1] === owner};
+  const canceled = client.cancelQueries(filters, {silent: true, revert: false});
+  if (cache?.owner === owner) cache.entries = [];
+  client.removeQueries(filters);
+  windowStateStorage().setItem(KEY, JSON.stringify({owner, entries: []}));
+  if (typeof window !== "undefined") window.localStorage.removeItem(`${KEY}:${owner}`);
+  return canceled;
+}

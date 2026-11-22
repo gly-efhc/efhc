@@ -203,15 +203,16 @@ self.addEventListener("message", event => {
     historicalBootstrap(event,type);
     return;
   }
-  if (type !== "EFHC_PWA_CHECK_CLIENTS" &&
+  const emergency = type === "EFHC_PWA_EMERGENCY_CLEAR_CACHE";
+  if (!emergency && type !== "EFHC_PWA_CHECK_CLIENTS" &&
       type !== "EFHC_PWA_CLEAR_PUBLIC_CACHE") return;
   const source = event.source;
   const reply = event.ports?.[0];
-  if (!source?.id || !scopedClient(source) || !reply) return;
+  if (!source?.id || source.type !== "window" || !scopedClient(source) || !reply) return;
   event.waitUntil((async () => {
     const purpose = type === "EFHC_PWA_CLEAR_PUBLIC_CACHE"
       ? "maintenance" : "upgrade";
-    if (!(await allClientsIdle(source.id,purpose))) {
+    if (!emergency && !(await allClientsIdle(source.id,purpose))) {
       reply.postMessage({safe:false,status:"busy"});
       return;
     }
@@ -229,6 +230,30 @@ self.addEventListener("message", event => {
         await new CacheExpiration(name,{maxEntries:1}).delete();
       }
       if (await caches.delete(name)) cleared++;
+    }
+    // Only the active generation's canonical offline page entries. Leave
+    // successor revision keys, critical shared JS/CSS, and a neutral offline
+    // fallback intact so open app copies can keep rendering safely.
+    const precacheName = sw.precacheStrategy.cacheName;
+    const offlinePageKeys = emergency
+      ? (CONFIG.precache_critical || [])
+          .filter(path => isHtml(path) && path !== scoped("offline.html") &&
+            inScope(new URL(path,self.location.origin)))
+          .map(path => sw.getPrecacheKeyForUrl(path))
+          .filter(Boolean)
+      : [];
+    if (offlinePageKeys.length && names.includes(precacheName)) {
+      const nativeCache = await caches.open(precacheName);
+      for (const key of offlinePageKeys) {
+        if (await nativeCache.delete(key)) cleared++;
+      }
+    }
+    const remaining = await caches.keys();
+    const offlinePagesRemain = offlinePageKeys.length > 0 && remaining.includes(precacheName) &&
+      (await Promise.all(offlinePageKeys.map(key => caches.match(key,{cacheName:precacheName})))).some(Boolean);
+    if (offlinePagesRemain || publicRuntimeCaches.some(name => remaining.includes(name))) {
+      reply.postMessage({status:"failed"});
+      return;
     }
     reply.postMessage({status:cleared ? "cleared" : "empty",count:cleared});
   })().catch(() => reply.postMessage({safe:false,status:"failed"})));

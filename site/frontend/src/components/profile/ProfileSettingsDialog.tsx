@@ -1,16 +1,19 @@
 import React, { useContext } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useT } from "../../hooks/useT";
+import { clearDownloadedDisplaySnapshots } from "../../lib/clearDownloadedDisplaySnapshots";
 import type { UserSettings } from "../../lib/settings";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
 
-/** Explicit maintenance of the public runtime cache only. */
+/** Emergency removal of downloaded pages and cached display data. */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
+  const queryClient = useQueryClient();
   const [clearing, setClearing] = React.useState(false);
   const [clearOutcome, setClearOutcome] = React.useState<
-    "cleared" | "empty" | "busy" | "unavailable" | "failed" | null
+    "cleared" | "unavailable" | "failed" | null
   >(null);
   async function clearPublicCache(): Promise<void> {
     if (clearing) return;
@@ -27,8 +30,8 @@ function PwaMaintenanceSection(): React.JSX.Element {
         setClearOutcome("unavailable");
         return;
       }
-      // Only the active scoped Serwist worker may remove its own runtime
-      // buckets. It checks the state of every open tab before doing so.
+      // Explicit emergency maintenance. The active scoped Serwist worker
+      // owns its public caches; this request does not reload or change auth.
       const reply = await new Promise<{status?: string}>((resolve,reject) => {
         const channel = new MessageChannel();
         let finished = false;
@@ -43,11 +46,15 @@ function PwaMaintenanceSection(): React.JSX.Element {
         const timeout = window.setTimeout(() => finish(null),8000);
         channel.port1.onmessage = event => finish(event.data);
         try {
-          active.postMessage({type:"EFHC_PWA_CLEAR_PUBLIC_CACHE"},[channel.port2]);
+          active.postMessage({type:"EFHC_PWA_EMERGENCY_CLEAR_CACHE"},[channel.port2]);
         } catch { finish(null); }
       });
-      setClearOutcome(reply.status === "cleared" || reply.status === "empty" ||
-        reply.status === "busy" ? reply.status : "failed");
+      if (reply.status !== "cleared" && reply.status !== "empty") {
+        setClearOutcome("failed");
+        return;
+      }
+      await clearDownloadedDisplaySnapshots(queryClient);
+      setClearOutcome("cleared");
     } catch {
       setClearOutcome("failed");
     } finally {
@@ -73,8 +80,6 @@ function PwaMaintenanceSection(): React.JSX.Element {
         {clearOutcome ? (
           <small role="status">
             {t(clearOutcome === "cleared" ? "pwa.clear_public_done"
-              : clearOutcome === "empty" ? "pwa.clear_public_empty"
-              : clearOutcome === "busy" ? "pwa.clear_public_busy"
               : clearOutcome === "unavailable" ? "pwa.unavailable"
               : "pwa.clear_public_failed")}
           </small>
