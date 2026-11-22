@@ -6,12 +6,12 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const dialog = read("../../src/components/profile/ProfileSettingsDialog.tsx");
 const modal = read("../../src/components/ui/Modal.tsx");
 
-test("settings keeps the two maintenance buttons visible without a heading or technical paragraphs", () => {
+test("settings keeps only the cache clear button visible without a heading or technical paragraphs", () => {
   assert.match(dialog, /<div[^>]*data-profile-settings-maintenance/);
   assert.doesNotMatch(dialog, /<details\b|<summary\b|pwa\.clear_public_scope|pwa\.native_cache_managed|pwa\.maintenance_title/);
-  assert.match(dialog, /onClick=\{\(\) => void checkApplication\(\)\}/);
+  assert.doesNotMatch(dialog, /checkApplication|pwa\.(?:check_now|update_now|checked|update_pending|check_failed)/);
   assert.match(dialog, /onClick=\{\(\) => void clearPublicCache\(\)\}/);
-  assert.match(dialog, /await registration\.update\(\)/);
+  assert.doesNotMatch(dialog, /registration\.update\(\)/);
   assert.match(dialog, /EFHC_PWA_CLEAR_PUBLIC_CACHE/);
   assert.doesNotMatch(dialog, /localStorage|sessionStorage|caches\.delete/);
 });

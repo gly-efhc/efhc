@@ -278,14 +278,19 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
   assert.ok(4163 < 0.4 * 12288, "EFHC outer ring must fit entirely inside the Android safe zone");
 });
 
-test("Profile update checks Serwist without claiming a manual cache purge", () => {
+test("Automatic update checks stay in the PWA runtime, not the Settings panel", () => {
   const settings=read("src/components/profile/ProfileSettingsDialog.tsx");
-  assert.match(settings,/registration\.update\(\)/);
+  const runtime=read("src/components/PwaRuntimeStatus.tsx");
+  assert.match(runtime,/registration\.update\(\)/);
+  assert.match(runtime,/window\.addEventListener\("pageshow",onResume\)/);
+  assert.match(runtime,/window\.addEventListener\("online",onResume\)/);
+  assert.match(runtime,/document\.addEventListener\("visibilitychange",onResume\)/);
+  assert.match(runtime,/setInterval\(checkForUpdate,15\*60\*1000\)/);
+  assert.doesNotMatch(settings,/registration\.update\(\)|pwa\.(?:check_now|update_now|checked|update_pending|check_failed)/);
   assert.doesNotMatch(settings,/pwa\.maintenance_title/);
   assert.match(settings,/pwa\.clear_public_button/);
   assert.match(settings,/data-profile-settings-maintenance="visible"/);
   assert.doesNotMatch(settings,/pwa\.(?:native_cache_managed|clear_public_scope)/);
-  assert.match(settings,/pwa\.update_pending/);
   assert.doesNotMatch(settings,/GET_CACHE_STATUS|CLEAN_STALE_PUBLIC_CACHE/);
   assert.doesNotMatch(settings,/localStorage\.clear\(|caches\.delete\(|indexedDB\.deleteDatabase\(/);
 });

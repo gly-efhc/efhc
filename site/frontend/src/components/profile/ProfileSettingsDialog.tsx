@@ -2,53 +2,18 @@ import React, { useContext } from "react";
 
 import { useT } from "../../hooks/useT";
 import type { UserSettings } from "../../lib/settings";
-import { appBasePath } from "../../lib/appBasePath";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
 
-/** Serwist update checks and explicit public-only runtime maintenance.
- * Checking for updates never pretends to clear caches.
- */
+/** Explicit maintenance of the public runtime cache only. */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
-  const [checking, setChecking] = React.useState(false);
   const [clearing, setClearing] = React.useState(false);
   const [clearOutcome, setClearOutcome] = React.useState<
     "cleared" | "empty" | "busy" | "unavailable" | "failed" | null
   >(null);
-  const [outcome, setOutcome] = React.useState<
-    "checked" | "pending" | "unavailable" | "failed" | null
-  >(null);
-
-  async function checkApplication(): Promise<void> {
-    if (checking || clearing) return;
-    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
-      setOutcome("unavailable");
-      return;
-    }
-    setChecking(true);
-    setOutcome(null);
-    try {
-      if (!navigator.onLine) throw new Error("offline");
-      const registration = await navigator.serviceWorker.getRegistration(
-        `${appBasePath() || ""}/`,
-      );
-      if (!registration) {
-        setOutcome("unavailable");
-        return;
-      }
-      await registration.update();
-      setOutcome(registration.waiting || registration.installing
-        ? "pending" : "checked");
-    } catch {
-      setOutcome("failed");
-    } finally {
-      setChecking(false);
-    }
-  }
-
   async function clearPublicCache(): Promise<void> {
-    if (clearing || checking) return;
+    if (clearing) return;
     setClearing(true);
     setClearOutcome(null);
     try {
@@ -94,23 +59,12 @@ function PwaMaintenanceSection(): React.JSX.Element {
     <div className="efhc-profile-pwa-maintenance" data-profile-settings-maintenance="visible">
       <div className="efhc-profile-source-settings">
         <div className="standalone-settings-row">
-          <span>{t("pwa.check_now")}</span>
-          <button
-            type="button"
-            className="source-button secondary standalone-setting-toggle"
-            disabled={checking || clearing}
-            onClick={() => void checkApplication()}
-          >
-            {t(checking ? "common.loading" : "pwa.update_now")}
-          </button>
-        </div>
-        <div className="standalone-settings-row">
           <span>{t("pwa.clear_public_label")}</span>
           <button
             type="button"
             className="source-button secondary standalone-setting-toggle"
             data-pwa-clear-public-cache="true"
-            disabled={clearing || checking}
+            disabled={clearing}
             onClick={() => void clearPublicCache()}
           >
             {t(clearing ? "common.loading" : "pwa.clear_public_button")}
@@ -123,14 +77,6 @@ function PwaMaintenanceSection(): React.JSX.Element {
               : clearOutcome === "busy" ? "pwa.clear_public_busy"
               : clearOutcome === "unavailable" ? "pwa.unavailable"
               : "pwa.clear_public_failed")}
-          </small>
-        ) : null}
-        {outcome ? (
-          <small role="status">
-            {t(outcome === "checked" ? "pwa.checked"
-              : outcome === "pending" ? "pwa.update_pending"
-              : outcome === "unavailable" ? "pwa.unavailable"
-              : "pwa.check_failed")}
           </small>
         ) : null}
       </div>

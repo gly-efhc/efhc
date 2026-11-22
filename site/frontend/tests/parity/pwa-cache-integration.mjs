@@ -818,11 +818,11 @@ try {
       assert.deepEqual(headerPaint, ["rgba(0, 0, 0, 0)", "none", "0px"],
         "The Settings heading must have no separate plate or divider");
       const maintenance = first.locator('[data-profile-settings-maintenance="visible"]');
-      const updateButton = maintenance.locator("button").first();
       const clearButton = maintenance.locator('[data-pwa-clear-public-cache="true"]');
       assert.equal(await maintenance.locator("summary").count(), 0,
         "Maintenance must no longer require opening a disclosure");
-      await updateButton.waitFor({state:"visible"});
+      assert.equal(await maintenance.getByRole("button").count(), 1,
+        "Settings must expose the clear button as its only maintenance control");
       await clearButton.waitFor({state:"visible"});
       assert.equal(await maintenance.getByRole("heading").count(), 0,
         "Do not show an extra maintenance heading");
@@ -935,11 +935,7 @@ try {
       assert.notEqual(newBuildId,oldBuildId,"second actual export did not change build");
       assert.ok(nextConfig.precache_critical.includes(scriptUrl));
       assert.ok(nextConfig.precache_critical.includes(cssUrl));
-      await page.evaluate(async () => {
-        const registration=await navigator.serviceWorker.getRegistration();
-        if(!registration)throw Error("No PWA registration");
-        await registration.update();
-      });
+      await page.evaluate(() => window.dispatchEvent(new Event("online")));
       await page.waitForFunction(id=>
         document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
         window.__EFHC_NEW_PWA_ASSET__===true,
