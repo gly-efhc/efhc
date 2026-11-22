@@ -145,6 +145,11 @@ try {
     assert.deepEqual(requiredRouteAssets.filter(url =>
       !config.precache_critical.includes(url)),[],
       "Route HTML, JS, and CSS must be installed before the new SW activates");
+    // Ensure Energy is hydrated before making the old release's backend
+    // unavailable. Offline route testing must not race initial React mount.
+    await page.locator('[data-nav-key="panels"]').waitFor({
+      state:"visible",timeout:20000,
+    });
     // Simulate a previous release's hashed files disappearing from Pages
     // before any optional background prefetch has completed.
     await context.setOffline(true);
