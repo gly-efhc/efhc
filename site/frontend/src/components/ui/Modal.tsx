@@ -330,7 +330,9 @@ export function Modal(
         onClick={(event) => event.stopPropagation()}
       >
         <div
-          className={props.referenceLayout === "deposit" ? "efhc-modal-header source-row" : "efhc-modal-header"}
+          className={props.referenceLayout === "settings"
+            ? "efhc-settings-header"
+            : props.referenceLayout === "deposit" ? "efhc-modal-header source-row" : "efhc-modal-header"}
           data-modal-drag-handle="true"
           onPointerDown={onDragStart}
           onPointerMove={onDragMove}

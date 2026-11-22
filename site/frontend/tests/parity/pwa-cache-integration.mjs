@@ -804,7 +804,7 @@ try {
       const dismiss = settings.locator(".efhc-modal-close");
       assert.equal((await dismiss.textContent()).trim(), "×");
       assert.ok(await dismiss.getAttribute("aria-label"), "The close icon needs an accessible name");
-      const settingsHeader = settings.locator(".efhc-modal-header");
+      const settingsHeader = settings.locator('[data-modal-drag-handle="true"]');
       const headerPaint = await settingsHeader.evaluate((element) => {
         const style = getComputedStyle(element);
         return [style.backgroundColor, style.backgroundImage, style.borderBottomWidth];

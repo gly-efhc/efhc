@@ -24,6 +24,8 @@ test("settings portal centers and uses the same CT accent token at every setting
 });
 
 test("Settings keeps an accessible close icon without the source-row title plate", () => {
+  assert.match(modal, /props\.referenceLayout === "settings"\s*\? "efhc-settings-header"/);
+  assert.match(dialog, /\.efhc-settings-header\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent/);
   assert.match(modal, /props\.referenceLayout === "deposit" \? "efhc-modal-header source-row" : "efhc-modal-header"/);
   assert.match(modal, /aria-label=\{t\("common\.close"\)\}[\s\S]*?>\s*×\s*<\/button>/);
   assert.match(dialog, /\.efhc-reference-settings-dialog \.efhc-modal-close\s*\{[^}]*width:\s*2\.3rem/);

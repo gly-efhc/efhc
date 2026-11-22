@@ -227,6 +227,16 @@ export function ProfileSettingsDialog(props: {
           outline: 2px solid var(--efhc-ct-accent);
           outline-offset: 2px;
         }
+        [data-modal-reference-layout="settings"] .efhc-settings-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: .75rem;
+          margin: 0 0 .68rem;
+          padding: 0;
+          border: 0;
+          background: transparent;
+        }
         [data-modal-reference-layout="settings"] [data-profile-settings-maintenance] {
           margin-top: .65rem;
           padding-top: .65rem;
