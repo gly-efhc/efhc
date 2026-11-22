@@ -137,7 +137,7 @@ jobs:
           tar -C "$export_dir" -cf "$RUNNER_TEMP/efhc-test-preview.tar" .
       - name: Retain verified TEST preview
         if: ${{ github.event_name == 'pull_request' && github.head_ref == 'frontend/profile-settings' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: efhc-test-preview-${{ github.event.pull_request.head.sha }}
           path: ${{ runner.temp }}/efhc-test-preview.tar
