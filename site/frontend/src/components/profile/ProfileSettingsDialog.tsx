@@ -11,6 +11,7 @@ import { Modal } from "../ui/Modal";
  */
 function PwaMaintenanceSection(): React.JSX.Element {
   const t = useT();
+  const titleId = React.useId();
   const [checking, setChecking] = React.useState(false);
   const [clearing, setClearing] = React.useState(false);
   const [clearOutcome, setClearOutcome] = React.useState<
@@ -21,7 +22,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
   >(null);
 
   async function checkApplication(): Promise<void> {
-    if (checking) return;
+    if (checking || clearing) return;
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
       setOutcome("unavailable");
       return;
@@ -91,15 +92,21 @@ function PwaMaintenanceSection(): React.JSX.Element {
   }
 
   return (
-    <details className="efhc-profile-pwa-maintenance">
-      <summary>{t("pwa.maintenance_title")}</summary>
+    <section
+      className="efhc-profile-pwa-maintenance"
+      data-profile-settings-maintenance="visible"
+      aria-labelledby={titleId}
+    >
+      <h3 id={titleId} className="efhc-profile-pwa-maintenance-title">
+        {t("pwa.maintenance_title")}
+      </h3>
       <div className="efhc-profile-source-settings">
         <div className="standalone-settings-row">
           <span>{t("pwa.check_now")}</span>
           <button
             type="button"
             className="source-button secondary standalone-setting-toggle"
-            disabled={checking}
+            disabled={checking || clearing}
             onClick={() => void checkApplication()}
           >
             {t(checking ? "common.loading" : "pwa.update_now")}
@@ -117,8 +124,6 @@ function PwaMaintenanceSection(): React.JSX.Element {
             {t(clearing ? "common.loading" : "pwa.clear_public_button")}
           </button>
         </div>
-        <small>{t("pwa.clear_public_scope")}</small>
-        <small>{t("pwa.native_cache_managed")}</small>
         {clearOutcome ? (
           <small role="status">
             {t(clearOutcome === "cleared" ? "pwa.clear_public_done"
@@ -137,7 +142,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
           </small>
         ) : null}
       </div>
-    </details>
+    </section>
   );
 }
 
@@ -191,6 +196,61 @@ export function ProfileSettingsDialog(props: {
         })}
       </div>
       <PwaMaintenanceSection />
+      <style jsx global>{`
+        .efhc-modal-overlay[data-modal-reference-layout="settings"] {
+          align-items: center;
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog {
+          --tg-secondary-bg: #05070b;
+          box-shadow: none;
+        }
+        @supports (background: color-mix(in srgb, black 94%, blue 6%)) {
+          .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+          .efhc-reference-settings-dialog {
+            --tg-secondary-bg: color-mix(in srgb, #05070b 94%, var(--efhc-ct-accent) 6%);
+          }
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog .standalone-settings-row {
+          background: transparent;
+          box-shadow: none;
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog .standalone-settings-row:not(:last-child) {
+          border-bottom-color: rgba(var(--efhc-ct-accent-rgb), .19);
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog .standalone-setting-toggle {
+          background: rgba(var(--efhc-ct-accent-rgb), .06);
+          border-color: rgba(var(--efhc-ct-accent-rgb), .32);
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog .standalone-setting-toggle[data-active="true"] {
+          background: rgba(var(--efhc-ct-accent-rgb), .18);
+          border-color: rgba(var(--efhc-ct-accent-rgb), .60);
+        }
+        .efhc-user-direct-deposit-portal[data-color-theme-id][data-modal-reference-layout="settings"]
+        .efhc-reference-settings-dialog button:focus-visible {
+          outline: 2px solid var(--efhc-ct-accent);
+          outline-offset: 2px;
+        }
+        [data-modal-reference-layout="settings"] [data-profile-settings-maintenance] {
+          margin-top: .65rem;
+          padding-top: .65rem;
+          border-top: 1px solid rgba(var(--efhc-ct-accent-rgb), .19);
+        }
+        [data-modal-reference-layout="settings"] .efhc-profile-pwa-maintenance-title {
+          margin: 0;
+          color: inherit;
+          font-size: .75rem;
+          font-weight: 800;
+        }
+        [data-modal-reference-layout="settings"] [data-profile-settings-maintenance] small {
+          display: block;
+          margin-top: .35rem;
+        }
+      `}</style>
     </Modal>
   );
 }

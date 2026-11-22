@@ -1,0 +1,11 @@
+/* The compact v866 geometry applies only to Profile's four primary tabs. */
+.primaryTabs[data-profile-primary-navigation] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .28rem;
+}
+
+.primaryTabs[data-profile-primary-navigation] .primaryTab[data-profile-tab] {
+  min-height: 2.15rem;
+  padding: .38rem .28rem;
+  border-radius: .68rem;
+}

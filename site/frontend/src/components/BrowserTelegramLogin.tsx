@@ -1,16 +1,16 @@
 import { publicRuntimeValue } from "../lib/public-runtime";
 import React from "react";
 
+export function openTelegramApp(): void {
+  if (typeof window === "undefined") return;
+  const envUrl = publicRuntimeValue("NEXT_PUBLIC_TWA_RETURN_URL") || "";
+  const target = envUrl.trim() || "https://t.me/efhc_bot/app";
+  window.open(target, "_blank", "noopener,noreferrer");
+}
+
 export function BrowserTelegramLogin(props: {
   t: (key: string) => string;
 }) {
-  const openTelegram = () => {
-    if (typeof window === "undefined") return;
-    const envUrl = publicRuntimeValue("NEXT_PUBLIC_TWA_RETURN_URL") || "";
-    const target = envUrl.trim() || "https://t.me/efhc_bot/app";
-    window.open(target, "_blank", "noopener,noreferrer");
-  };
-
   return (
     <section
       className="efhc-browser-login"
@@ -29,7 +29,7 @@ export function BrowserTelegramLogin(props: {
       </div>
       <button
         type="button"
-        onClick={openTelegram}
+        onClick={openTelegramApp}
         className="efhc-browser-login_primary"
       >
         {props.t("browser_login.telegram_cta")}
