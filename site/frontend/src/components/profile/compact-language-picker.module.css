@@ -9,10 +9,10 @@
   }
 }
 
-/* Both reference rules use !important; this selector wins only inside the main Profile. */
-:global(html[data-interface-app-mode="user"][data-color-theme-id] #profilePage[data-wg])
+/* The frozen trigger rule uses both the profile and a button identifier. Match its specificity only within the React Profile. */
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #__next #profilePage[data-wg])
 .profileLanguageSurface > :global(.source-profile-language-button),
-:global(html[data-interface-app-mode="user"][data-color-theme-id] #profilePage[data-wg])
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #__next #profilePage[data-wg])
 .profileLanguageSurface > :global(.source-profile-language-menu) {
   background-color: var(--efhc-profile-language-surface) !important;
 }
