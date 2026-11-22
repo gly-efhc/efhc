@@ -876,6 +876,13 @@ try {
       }
       const trigger = profile.locator('#profilePage .source-profile-language-button');
       await trigger.click();
+      await profile.locator('[data-profile-settings-entry="interface-card"]').click();
+      const settings = profile.locator('[data-modal-reference-layout="settings"]');
+      const maintenance = settings.locator('[data-profile-settings-maintenance="visible"]');
+      await maintenance.getByText("Очистить кеш", {exact:true}).waitFor({state:"visible"});
+      await maintenance.getByRole("button", {name:"Очистить",exact:true}).waitFor({state:"visible"});
+      await settings.locator(".efhc-modal-close").click();
+      await settings.waitFor({state:"hidden"});
       await profile.locator('[data-provider-entry="profile-footer"]').click();
       const providers = profile.locator('[data-provider-route="account-providers"]');
       await providers.waitFor({state:"visible"});
