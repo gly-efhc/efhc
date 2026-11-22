@@ -141,7 +141,7 @@ try {
     assert.ok(criticalState.keys.some(name=>name.includes("precache")),
       "Serwist precache container missing");
     const requiredRouteAssets = config.precache.filter(url =>
-      /\\.(?:html|js|css)$/.test(url));
+      /\.(?:html|js|css)$/.test(url));
     assert.deepEqual(requiredRouteAssets.filter(url =>
       !config.precache_critical.includes(url)),[],
       "Route HTML, JS, and CSS must be installed before the new SW activates");
