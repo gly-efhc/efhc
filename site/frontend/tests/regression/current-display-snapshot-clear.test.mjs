@@ -4,6 +4,15 @@ import test from "node:test";
 import {readAdminDisplay, clearAdminDisplaySnapshots} from "../../src/lib/adminReadCache.ts";
 import {clearPublicCatalogSnapshots, startPublicCatalogPersistence} from "../../src/lib/publicCatalogPersistence.ts";
 
+function storageKeyFromOwner(file, constant) {
+  const source = readFileSync(new URL("../../src/lib/" + file, import.meta.url), "utf8");
+  const match = source.match(new RegExp('^const ' + constant + ' = "([^"]+)";$', "m"));
+  assert.ok(match, "Persistent storage key must come from its production owner");
+  return match[1];
+}
+const adminKey = storageKeyFromOwner("adminReadCache.ts", "KEY") + ":owner";
+const catalogKey = storageKeyFromOwner("publicCatalogPersistence.ts", "STORAGE_KEY");
+
 function storage() {
   const m = new Map();
   return { getItem: k => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: k => m.delete(k) };
@@ -20,16 +29,16 @@ test("Admin clears only display data and fences a pre-clear result", async () =>
   clearAdminDisplaySnapshots();
   resolve("must not persist");
   await rejection;
-  assert.equal(localStorage.getItem("EFHC_ADMIN_READ_CACHE_V1:owner"), null);
+  assert.equal(localStorage.getItem(adminKey), null);
   assert.equal(localStorage.getItem("admin-session"), "keep");
   await readAdminDisplay("owner", "/admin/ui", async () => "fresh read permitted");
-  assert.equal(JSON.parse(localStorage.getItem("EFHC_ADMIN_READ_CACHE_V1:owner")).values["/admin/ui"], "fresh read permitted");
+  assert.equal(JSON.parse(localStorage.getItem(adminKey)).values["/admin/ui"], "fresh read permitted");
 });
 
 test("public clear is allowlisted, and queued persistence cannot resurrect removed queries", async () => {
   const localStorage = storage(), timers = [];
   globalThis.window = {localStorage, setTimeout: f => timers.push(f)};
-  localStorage.setItem("efhc_public_catalog_queries_v1", "[]");
+  localStorage.setItem(catalogKey, "[]");
   localStorage.setItem("checkout-draft", "keep");
   const query = queryKey => ({queryKey, state: {status: "success", data: "snapshot", dataUpdatedAt: 1}});
   let qs = [["public-static", "x"], ["tasksCatalog"], ["browser-shop", "catalog"], ["browser-shop", "draft"], ["other"]].map(query);
@@ -43,7 +52,7 @@ test("public clear is allowlisted, and queued persistence cannot resurrect remov
   listener({query: qs[0]});
   await clearPublicCatalogSnapshots(client);
   timers.forEach(f => f());
-  assert.equal(localStorage.getItem("efhc_public_catalog_queries_v1"), null);
+  assert.equal(localStorage.getItem(catalogKey), null);
   assert.equal(localStorage.getItem("checkout-draft"), "keep");
   assert.deepEqual(qs.map(q => q.queryKey), [["browser-shop", "draft"], ["other"]]);
 });
