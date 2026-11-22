@@ -111,8 +111,11 @@ export default function PanelsPortfolioPage(props: {
     ? publicApiErrorMessage(listQuery.error, t, "panels.load_error")
     : null;
   const canLoadMore = Boolean(listQuery.hasNextPage);
-  const listServerNowIso =
-    listQuery.data?.pages.at(-1)?.server_now_utc ?? null;
+  const pages = listQuery.data?.pages;
+  const lastPage = Array.isArray(pages) && pages.length
+    ? pages[pages.length - 1]
+    : undefined;
+  const listServerNowIso = lastPage?.server_now_utc ?? null;
   const serverNowIso = listServerNowIso ?? props.snap?.meta?.server_now_iso ?? null;
   const countdownSource = "panel-list-server-now-plus-client-stopwatch";
   // A VIP owner may have a different effective rate for every active panel.
