@@ -89,6 +89,14 @@ def partition_pwa_resources(root: Path, base: str, included: list[str]) -> tuple
             if asset.startswith(base + '/') and asset.endswith(asset_suffixes):
                 if asset in available:
                     critical.add(asset)
+    # Every HTML route and every JavaScript/CSS module needed to hydrate or
+    # navigate Next.js belongs to the atomic installed generation. When
+    # GitHub Pages replaces the old export, its old hashed page chunks may
+    # no longer exist online. Deferring them made a successfully installed
+    # shell unable to open Panels/Exchange in a previously installed WebView.
+    # Images, audio and other optional resources can still load afterward.
+    critical.update(item for item in included
+                    if item.endswith(('.html', '.js', '.css')))
     priority = [item for item in included if item in critical]
     deferred = [item for item in included if item not in critical]
     if base + '/index.html' not in critical or not any(

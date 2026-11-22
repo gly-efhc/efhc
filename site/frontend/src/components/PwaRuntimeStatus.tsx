@@ -116,7 +116,17 @@ export function PwaRuntimeStatus(props: {
         // public exported resources. Serwist handles these URLs natively.
         const response = await fetch(`${base}/pwa-build.json`, {cache:"no-store"});
         if (!response.ok) return;
-        const manifest = await response.json() as {precache_deferred?: unknown};
+        const manifest = await response.json() as {
+          build_id?: unknown; precache_deferred?: unknown;
+        };
+        // A previously installed tab may still have an older active worker
+        // while Pages already serves a successor manifest. Never send the
+        // successor URL list into a predecessor's precache controller.
+        const documentBuild = document.querySelector<HTMLMetaElement>(
+          'meta[name="efhc-build-id"]',
+        )?.content;
+        if (!documentBuild || manifest.build_id !== documentBuild ||
+            registration?.waiting) return;
         if (!Array.isArray(manifest.precache_deferred)) return;
         const urlsToCache = manifest.precache_deferred
           .filter((value): value is string => typeof value === "string")
