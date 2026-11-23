@@ -6,6 +6,12 @@ const REGISTRATION_READY_WAIT = 2_000;
 let lastAutomaticCheck = Number.NEGATIVE_INFINITY;
 let inFlight: Promise<void> | null = null;
 let startedOffline = false;
+let trailingWake: ReturnType<typeof setTimeout> | undefined;
+
+function cancelTrailingWake() {
+  if (trailingWake !== undefined) clearTimeout(trailingWake);
+  trailingWake = undefined;
+}
 
 async function readyWithin(
   container: ServiceWorkerContainer,
@@ -41,12 +47,25 @@ export function requestPwaUpdate({ force = false } = {}): Promise<void> {
     }
     return inFlight;
   }
-  if (!force && Date.now() - lastAutomaticCheck < MIN_AUTOMATIC_CHECK_INTERVAL) {
+  const elapsed = Date.now() - lastAutomaticCheck;
+  if (!force && elapsed >= 0 && elapsed < MIN_AUTOMATIC_CHECK_INTERVAL) {
+    // Do not lose a genuine return immediately following an earlier check.
+    // Multiple signals share one bounded trailing update, still foreground-only.
+    if (trailingWake === undefined) {
+      trailingWake = setTimeout(() => {
+        trailingWake = undefined;
+        void requestPwaUpdate();
+      }, MIN_AUTOMATIC_CHECK_INTERVAL - elapsed);
+    }
     return Promise.resolve();
   }
 
+  if (!force) cancelTrailingWake();
   startedOffline = !online;
-  if (startedOffline) lastAutomaticCheck = Number.NEGATIVE_INFINITY;
+  if (startedOffline) {
+    lastAutomaticCheck = Number.NEGATIVE_INFINITY;
+    cancelTrailingWake();
+  }
   const operation: Promise<void> = (async () => {
     const container = navigator.serviceWorker;
     const scope = new URL(`${appBasePath() || ""}/`, window.location.origin).href;

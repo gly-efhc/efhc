@@ -300,6 +300,14 @@ try {
         await incremented(before);
         assert.equal(await calls(),before+1);
       }
+      const withinCooldown=await calls();
+      await profile.evaluate(() => {
+        window.__efhcDiscoveryProof.offset+=19_200;
+        document.dispatchEvent(new Event("resume"));
+        document.dispatchEvent(new Event("resume"));
+      });
+      assert.equal(await calls(),withinCooldown,"A burst within the interval is not sent immediately");
+      await incremented(withinCooldown);
       console.log("PWA_FOREGROUND_AND_EXPLICIT_DISCOVERY_PASS");
     } finally {await isolated.close();}
   });
