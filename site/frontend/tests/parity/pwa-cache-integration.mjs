@@ -217,6 +217,126 @@ try {
       "never cache API/private credentials");
     results.push({name:"serwist_offline_inventory",status:"INFO",count:info.cachedCount});
   });
+  await check("Cache click independently requests an update and foreground signals coalesce safely", async () => {
+    const isolated=await browser.newContext({serviceWorkers:"allow",viewport:{width:390,height:844}});
+    await isolated.route("**/*",route=>new URL(route.request().url()).origin===origin
+      ? route.continue() : route.abort());
+    const profile=await isolated.newPage();
+    await profile.addInitScript(() => {
+      const expected=new URL("/efhc/",location.origin).href;
+      const state={calls:0,offset:0,activated:null,clearMode:"failed"};
+      window.__efhcDiscoveryProof=state;
+      const originalNow=Date.now;
+      Date.now=()=>originalNow()+state.offset;
+      const originalUpdate=ServiceWorkerRegistration.prototype.update;
+      ServiceWorkerRegistration.prototype.update=function() {
+        if(this.scope!==expected)return originalUpdate.call(this);
+        state.calls++;
+        return navigator.onLine ? Promise.resolve(this) : Promise.reject(new Error("synthetic offline"));
+      };
+      const originalPost=ServiceWorker.prototype.postMessage;
+      ServiceWorker.prototype.postMessage=function(message,transfer) {
+        if(message?.type!=="EFHC_PWA_EMERGENCY_CLEAR_CACHE"||!transfer?.[0])
+          return originalPost.call(this,message,transfer);
+        if(state.clearMode==="pending"){state.clearReply=transfer[0];return;}
+        transfer[0].postMessage({status:state.clearMode});
+      };
+      window.Telegram={WebApp:{
+        isVersionAtLeast:()=>true,
+        onEvent:(name,handler)=>{if(name==="activated")state.activated=handler;},
+        offEvent:(name,handler)=>{if(name==="activated"&&state.activated===handler)state.activated=null;},
+      }};
+    });
+    try {
+      await profile.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      await profile.waitForFunction(()=>navigator.serviceWorker.controller&&window.__efhcDiscoveryProof.calls>=1&&window.__efhcDiscoveryProof.activated);
+      await profile.locator('[data-profile-settings-entry="interface-card"]').click();
+      const maintenance=profile.locator('[data-profile-settings-maintenance="visible"]');
+      const button=maintenance.locator('[data-pwa-clear-public-cache="true"]');
+      const calls=()=>profile.evaluate(()=>window.__efhcDiscoveryProof.calls);
+      const incremented=count=>profile.waitForFunction(n=>window.__efhcDiscoveryProof.calls===n+1,count);
+      for(const outcome of ["failed","empty","missing-controller","registering"]) {
+        const before=await calls();
+        await profile.evaluate(kind=>{
+          const proof=window.__efhcDiscoveryProof;
+          const sw=navigator.serviceWorker;
+          delete sw.controller;
+          delete sw.getRegistration;
+          proof.clearMode=kind;
+          if(kind==="missing-controller"||kind==="registering")
+            Object.defineProperty(sw,"controller",{configurable:true,get:()=>null});
+          if(kind==="registering")
+            Object.defineProperty(sw,"getRegistration",{configurable:true,value:async()=>undefined});
+        },outcome);
+        await button.click();
+        await incremented(before);
+        const wording=outcome==="failed" ? /could not be confirmed|не удалось подтвердить/i
+          : outcome==="empty" ? /public runtime cache cleared|кеш очищен/i
+          : /unavailable in this browser|недоступно в этом браузере/i;
+        await maintenance.getByRole("status").filter({hasText:wording}).waitFor({state:"visible"});
+        await button.waitFor({state:"visible"});
+        assert.equal(await button.isEnabled(),true);
+      }
+      await profile.evaluate(()=>{
+        const sw=navigator.serviceWorker;delete sw.controller;delete sw.getRegistration;
+        window.__efhcDiscoveryProof.clearMode="failed";
+      });
+      await isolated.setOffline(true);
+      await profile.waitForFunction(()=>!navigator.onLine);
+      const offlineBefore=await calls();
+      await button.click();
+      await incremented(offlineBefore);
+      await isolated.setOffline(false);
+      await incremented(offlineBefore+1);
+      // Keep the real button handler pending beyond the ordinary idle cutoff.
+      const pendingBefore=await calls();
+      await profile.evaluate(()=>{window.__efhcDiscoveryProof.clearMode="pending";});
+      await button.click();
+      await incremented(pendingBefore);
+      await profile.waitForFunction(()=>Boolean(window.__efhcDiscoveryProof.clearReply));
+      const reportsSafe=()=>profile.evaluate(()=>new Promise((resolve,reject)=>{
+        const channel=new MessageChannel();
+        const timeout=setTimeout(()=>reject(new Error("Missing page safety reply")),3000);
+        channel.port1.onmessage=event=>{
+          clearTimeout(timeout);channel.port1.close();resolve(event.data?.safe);
+        };
+        navigator.serviceWorker.dispatchEvent(new MessageEvent("message",{
+          data:{type:"EFHC_PWA_CLIENT_SAFE",purpose:"upgrade"},ports:[channel.port2],
+        }));
+      }));
+      await profile.evaluate(()=>{window.__efhcDiscoveryProof.offset+=7000;});
+      assert.equal(await reportsSafe(),false,"Discovery must not let reload overtake pending cleanup");
+      await profile.evaluate(()=>{
+        const proof=window.__efhcDiscoveryProof;
+        proof.clearReply.postMessage({status:"failed"});
+        proof.clearReply.close();
+      });
+      await maintenance.getByRole("status").filter({hasText:/could not be confirmed|не удалось подтвердить/i}).waitFor({state:"visible"});
+      assert.equal(await reportsSafe(),true,"A completed cleanup releases only its own hold");
+      // Test every public platform signal separately and a burst together.
+      for(const event of ["focus","resume","activated","burst"]) {
+        const before=await calls();
+        await profile.evaluate(name=>{
+          const proof=window.__efhcDiscoveryProof;
+          proof.offset+=21000;
+          if(name==="focus"||name==="burst")window.dispatchEvent(new Event("focus"));
+          if(name==="resume"||name==="burst")document.dispatchEvent(new Event("resume"));
+          if(name==="activated"||name==="burst")proof.activated?.();
+        },event);
+        await incremented(before);
+        assert.equal(await calls(),before+1);
+      }
+      const withinCooldown=await calls();
+      await profile.evaluate(() => {
+        window.__efhcDiscoveryProof.offset+=19_200;
+        document.dispatchEvent(new Event("resume"));
+        document.dispatchEvent(new Event("resume"));
+      });
+      assert.equal(await calls(),withinCooldown,"A burst within the interval is not sent immediately");
+      await incremented(withinCooldown);
+      console.log("PWA_FOREGROUND_AND_EXPLICIT_DISCOVERY_PASS");
+    } finally {await isolated.close();}
+  });
   await check("rendered public CSS links use content-addressed paths for every root stylesheet", async () => {
     await page.locator("#__next").waitFor({state:"attached"});
     const links = await page.evaluate(() => [...document.querySelectorAll("link[rel='stylesheet'][href]")]

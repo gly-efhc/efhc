@@ -32,7 +32,8 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   const doc=read("frontend/src/pages/_document.tsx");
   assert.match(sw,/skipWaiting:false/);
   assert.match(runtime,/serviceWorker\.register/);
-  assert.match(runtime,/registration\.update\(\)/);
+  assert.match(runtime,/requestPwaUpdate\(\)/);
+  assert.match(read("frontend/src/lib/pwaUpdateRequest.ts"),/registration\.update\(\)/);
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/navigator\.serviceWorker\.addEventListener\("controllerchange"/);
   assert.doesNotMatch(runtime,/ACTIVATE_WHEN_SAFE|PREFETCH_PRIORITY|GET_ACTIVE_BUILD|CLIENT_BUILD_READY|CACHE_STATUS/);
@@ -86,4 +87,27 @@ test("OWNER-requested manual clear reaches only Serwist public runtime storage",
   assert.doesNotMatch(settings,/caches\.delete\(|localStorage\.clear\(|indexedDB\.deleteDatabase/);
   assert.doesNotMatch(worker,/localStorage|indexedDB|cache\.put\(/);
   assert.doesNotMatch(app,/pwaGateReady|efhc:pwa-gate-ready/);
+});
+
+
+test("Cache action sends independent discovery, and page or Telegram wake only asks native registration", () => {
+  const settings=read("frontend/src/components/profile/ProfileSettingsDialog.tsx");
+  const runtime=read("frontend/src/components/PwaRuntimeStatus.tsx");
+  const updater=read("frontend/src/lib/pwaUpdateRequest.ts");
+  const handler=settings.split("async function clearPublicCache()",2)[1];
+  assert.match(handler,/requestPwaUpdate\(\{force:true\}\)[\s\S]*?navigator.serviceWorker.controller/);
+  assert.match(runtime,/document\.addEventListener\("resume",onResume\)/);
+  assert.match(runtime,/telegram\.onEvent\("activated",onResume\)/);
+  assert.match(runtime,/markFocus\(\);\s*onResume\(\);/);
+  assert.match(updater,/container\.getRegistration\(scope\)/);
+  assert.match(updater,/registration\?\.scope !== scope/);
+  assert.match(updater,/worker\?\.scriptURL !== script/);
+  assert.match(updater,/force \? await readyWithin\(container\)/);
+  assert.match(updater,/if \(inFlight\)/);
+  assert.match(updater,/!force && online && startedOffline/);
+  assert.match(handler,/const releaseActivation = holdPwaActivationDuringMaintenance\(\)/);
+  assert.match(handler,/await clearDownloadedDisplaySnapshots\(queryClient\)[\s\S]*?finally \{\s*releaseActivation\(\)/);
+  assert.match(runtime,/!isPwaMaintenancePending\(\) && safeForMaintenance\(\)/);
+  assert.match(updater,/MAINTENANCE_HOLD_LIMIT = 12_000/);
+  assert.doesNotMatch(updater,/skipWaiting|controller|register\(|reload\(|(?:local|session)Storage|indexedDB/);
 });
