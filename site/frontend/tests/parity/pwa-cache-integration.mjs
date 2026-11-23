@@ -814,6 +814,87 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
+  await check("An already-started locale response cannot rewrite public CacheStorage after an emergency purge", async () => {
+    const race=await browser.newContext({serviceWorkers:"allow"});
+    const release=Promise.withResolvers();
+    const intercepted=Promise.withResolvers();
+    const localeCache="efhc-serwist-locale";
+    const probe=base+"locale/efhc-purge-overlap-proof.json";
+    const stale=base+"locale/efhc-purge-old-proof.json";
+    const scopeMarker="efhc-purge-proof-retention";
+    let networkCalls=0;
+    await race.route("**/*", route=>new URL(route.request().url()).origin===origin
+      ? route.continue() : route.abort());
+    await race.route(probe,async route=>{
+      assert.ok(route.request().serviceWorker(),"The held network response must belong to Serwist");
+      if(++networkCalls===1){
+        intercepted.resolve();
+        await release.promise;
+      }
+      await route.fulfill({contentType:"application/json",status:200,
+        body:JSON.stringify({marker:networkCalls===1?"before-purge":"after-purge"})});
+    });
+    try {
+      const tab=await race.newPage();
+      await tab.goto(base,{waitUntil:"load",timeout:30000});
+      await tab.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+      await tab.evaluate(async ({localeCache,stale,scopeMarker})=>{
+        sessionStorage.setItem(scopeMarker,"keep");
+        await (await caches.open(localeCache)).put(stale,new Response("old-translation"));
+        await (await caches.open(scopeMarker)).put(stale,new Response("other-app"));
+      },{localeCache,stale,scopeMarker});
+      await tab.evaluate(probe=>{
+        window.efhcPurgeRace=fetch(probe).then(response=>response.json());
+      },probe);
+      let deadline;
+      try {
+        await Promise.race([intercepted.promise,new Promise((_,reject)=>{
+          deadline=setTimeout(()=>reject(Error("Serwist did not start the public locale request")),4000);
+        })]);
+      } finally {clearTimeout(deadline);}
+      const cleared=await tab.evaluate(async ()=>{
+        const channel=new MessageChannel();
+        const result=new Promise((resolve,reject)=>{
+          const timer=setTimeout(()=>{channel.port1.close();reject(Error("Emergency purge reply timeout"));},8000);
+          channel.port1.onmessage=event=>{
+            clearTimeout(timer);channel.port1.close();resolve(event.data);
+          };
+        });
+        navigator.serviceWorker.controller.postMessage(
+          {type:"EFHC_PWA_EMERGENCY_CLEAR_CACHE"},[channel.port2]);
+        return result;
+      });
+      assert.equal(cleared.status,"cleared",JSON.stringify(cleared));
+      release.resolve();
+      assert.deepEqual(await tab.evaluate(()=>window.efhcPurgeRace),
+        {marker:"before-purge"},"Purge must not cancel or block the page's legitimate network response");
+      // The real network response is now complete. A previously started Serwist
+      // write can settle independently of the client response; watch that full window.
+      await tab.evaluate(async ({localeCache,probe,stale,scopeMarker})=>{
+        const deadline=Date.now()+1250;
+        do {
+          if(await caches.match(probe,{cacheName:localeCache})){
+            throw Error("PWA_PURGE_LOCALE_COLLISION: pre-purge fetch repopulated the locale cache");
+          }
+          await new Promise(resolve=>setTimeout(resolve,20));
+        } while(Date.now()<deadline);
+        if(await caches.match(stale,{cacheName:localeCache}))throw Error("Stale cached locale survived");
+        if(!(await caches.match(stale,{cacheName:scopeMarker})))throw Error("Other cache lost");
+        if(sessionStorage.getItem(scopeMarker)!=="keep")throw Error("Session marker lost");
+      },{localeCache,probe,stale,scopeMarker});
+      assert.deepEqual(await tab.evaluate(probe=>fetch(probe).then(r=>r.json()),probe),
+        {marker:"after-purge"});
+      await tab.waitForFunction(async ({localeCache,probe})=>{
+        const entry=await caches.match(probe,{cacheName:localeCache});
+        return (await entry?.json())?.marker==="after-purge";
+      },{localeCache,probe});
+      assert.equal(networkCalls,2);
+      console.log("PWA_PURGE_LOCALE_COLLISION_PASS");
+    } finally {
+      release.resolve();
+      await race.close();
+    }
+  });
   await check("Legacy maintenance stays guarded and emergency Settings purges only downloaded data", async () => {
     const isolated=await browser.newContext({serviceWorkers:"allow"});
     await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
@@ -866,6 +947,19 @@ try {
       await first.evaluate(()=>document.dispatchEvent(
         new PointerEvent("pointerdown",{bubbles:true})));
       const cleared=await requestClear();
+      if(cleared.status!=="cleared"){
+        const remaining=await first.evaluate(async names=>{
+          const current=await caches.keys();
+          return await Promise.all(names.map(async (name,index)=>({
+            name,present:current.includes(name),
+            seeded:Boolean(await caches.match(
+              "/efhc/public-cache-clear-proof-"+index+".txt",{cacheName:name})),
+          })));
+        },keys);
+        console.log("PWA_LEGACY_CLEAR_DIAGNOSTIC",JSON.stringify({
+          status:cleared.status,safe:cleared.safe??null,count:cleared.count??null,remaining,
+        }));
+      }
       assert.equal(cleared.status,"cleared");
       assert.equal(cleared.count,keys.length,
         "Only the four Serwist runtime buckets should be removed");
