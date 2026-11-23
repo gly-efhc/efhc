@@ -117,7 +117,7 @@ export function PwaRuntimeStatus(props: {
         const response = await fetch(`${base}/pwa-build.json`, {cache:"no-store"});
         if (!response.ok) return;
         const manifest = await response.json() as {
-          build_id?: unknown; precache_deferred?: unknown;
+          build_id?: unknown; precache_deferred?: unknown; precache_critical?: unknown;
         };
         // A previously installed tab may still have an older active worker
         // while Pages already serves a successor manifest. Never send the
@@ -126,9 +126,15 @@ export function PwaRuntimeStatus(props: {
           'meta[name="efhc-build-id"]',
         )?.content;
         if (!documentBuild || manifest.build_id !== documentBuild ||
-            registration?.waiting) return;
-        if (!Array.isArray(manifest.precache_deferred)) return;
-        const urlsToCache = manifest.precache_deferred
+            registration?.waiting || registration?.installing) return;
+        const deferred = Array.isArray(manifest.precache_deferred) ? manifest.precache_deferred : [];
+        const offlinePages = Array.isArray(manifest.precache_critical)
+          ? manifest.precache_critical.filter((value: unknown) =>
+              typeof value === "string" && value.endsWith(".html"))
+          : [];
+        // Fresh online mounts may restore manually removed pages via
+        // Serwist's native precache strategy and build-pinned HTML integrity.
+        const urlsToCache = [...new Set([...deferred, ...offlinePages])]
           .filter((value): value is string => typeof value === "string")
           .filter(value => value.startsWith(scope) &&
             !/\/(?:api|auth|wallet|connect|tonconnect)(?:\/|$)/i.test(value));

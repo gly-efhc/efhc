@@ -40,7 +40,9 @@ test("Native Serwist handles waiting, CACHE_URLS and client update checks", () =
   assert.match(runtime,/type:"SKIP_WAITING"/);
   assert.match(sw,/self\.addEventListener\("message"/);
   assert.match(sw,/allClientsIdle/);
-  assert.ok(!sw.includes("self.skipWaiting("), "Serwist alone activates waiting workers");
+  assert.match(sw,/const historicalBootstrap =/);
+  assert.equal((sw.match(/self\.skipWaiting\(/g) || []).length, 1,
+    "only the guarded historical bootstrap bridge explicitly activates a worker");
   assert.doesNotMatch(doc,/__EFHC_PWA_GATE__|efhcBootstrapScript|ACTIVATE_WHEN_SAFE|repairOnce/);
 });
 
@@ -71,8 +73,10 @@ test("OWNER-requested manual clear reaches only Serwist public runtime storage",
   const settings=read("frontend/src/components/profile/ProfileSettingsDialog.tsx");
   const worker=read("ci/pages-tools/sw-serwist.js");
   const app=read("frontend/src/pages/_app.tsx");
-  assert.match(settings,/registration\.update\(\)/);
-  assert.match(settings,/EFHC_PWA_CLEAR_PUBLIC_CACHE/);
+  assert.doesNotMatch(settings,/registration\.update\(\)|pwa\.(?:checked|update_pending|check_failed)/);
+  assert.match(settings,/EFHC_PWA_EMERGENCY_CLEAR_CACHE/);
+  assert.match(settings,/await clearDownloadedDisplaySnapshots\(queryClient\)/);
+  assert.match(worker,/if \(!emergency && !\(await allClientsIdle/);
   assert.match(settings,/clearOutcome/);
   assert.match(worker,/publicRuntimeCaches/);
   assert.match(worker,/allClientsIdle/);

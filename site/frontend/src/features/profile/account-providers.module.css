@@ -1,0 +1,25 @@
+/* Structural provider rows do not inherit the shared row background. */
+.providerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+}
+
+/* Reset only account copy surfaces, not the card frames or buttons. */
+:global(#profilePage) .panelTitle,
+:global(#profilePage) .providerCopy,
+:global(#profilePage) .providerCopy > :is(div, p) {
+  background: none !important;
+  box-shadow: none !important;
+}
+
+:global(#profilePage) .panelTitle::before,
+:global(#profilePage) .panelTitle::after,
+:global(#profilePage) .providerCopy::before,
+:global(#profilePage) .providerCopy::after,
+:global(#profilePage) .providerCopy > :is(div, p)::before,
+:global(#profilePage) .providerCopy > :is(div, p)::after {
+  background: none !important;
+  box-shadow: none !important;
+}

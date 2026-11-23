@@ -107,7 +107,7 @@ const sw = new Serwist({
 });
 
 // Native Serwist handles SKIP_WAITING, CACHE_URLS, precache revisions, and
-// activation; all old EFHC-specific message handlers/legacy GC are retired.
+// activation; the historical bootstrap bridge below is the sole exception.
 sw.addEventListeners();
 
 // One-time migration from the retired, pre-Serwist EFHC cache names.
@@ -169,23 +169,50 @@ const allClientsIdle = async (sourceId,purpose) => {
   const clients = (await self.clients.matchAll({
     type:"window",includeUncontrolled:true,
   })).filter(scopedClient);
-  // A legacy/unresponsive tab must never authorize a forced upgrade or purge.
+  // A legacy/unresponsive tab never authorizes a modern upgrade or purge.
   if (!clients.some(client => client.id === sourceId)) return false;
   return (await Promise.all(clients.map(client =>
     clientIsIdle(client,purpose)))).every(Boolean);
 };
 
+// Transitional bridge for the historical bootstrap. It cannot initiate a cache
+// purge or override a concurrent scope client. The current protocol is below.
+const historicalBootstrap = (event, type) => {
+  const source = event.source;
+  if (source?.type !== "window" || !source.id || !scopedClient(source)) return;
+  if (type === "GET_ACTIVE_BUILD") {
+    event.ports?.[0]?.postMessage({type:"ACTIVE_BUILD",buildId:CONFIG.build_id});
+    return;
+  }
+  if (event.data.buildId !== CONFIG.build_id ||
+      event.data.efhcSafeToActivate !== true) return;
+  event.waitUntil((async () => {
+    const clients = (await self.clients.matchAll({
+      type:"window",includeUncontrolled:true,
+    })).filter(scopedClient);
+    if (clients.length !== 1 || clients[0].id !== source.id ||
+        clients[0].visibilityState !== "visible" ||
+        self.registration.waiting?.state !== "installed") return;
+    await self.skipWaiting();
+  })());
+};
+
 self.addEventListener("message", event => {
   const type = event.data?.type;
-  if (type !== "EFHC_PWA_CHECK_CLIENTS" &&
+  if (type === "GET_ACTIVE_BUILD" || type === "ACTIVATE_WHEN_SAFE") {
+    historicalBootstrap(event,type);
+    return;
+  }
+  const emergency = type === "EFHC_PWA_EMERGENCY_CLEAR_CACHE";
+  if (!emergency && type !== "EFHC_PWA_CHECK_CLIENTS" &&
       type !== "EFHC_PWA_CLEAR_PUBLIC_CACHE") return;
   const source = event.source;
   const reply = event.ports?.[0];
-  if (!source?.id || !scopedClient(source) || !reply) return;
+  if (!source?.id || source.type !== "window" || !scopedClient(source) || !reply) return;
   event.waitUntil((async () => {
     const purpose = type === "EFHC_PWA_CLEAR_PUBLIC_CACHE"
       ? "maintenance" : "upgrade";
-    if (!(await allClientsIdle(source.id,purpose))) {
+    if (!emergency && !(await allClientsIdle(source.id,purpose))) {
       reply.postMessage({safe:false,status:"busy"});
       return;
     }
@@ -203,6 +230,30 @@ self.addEventListener("message", event => {
         await new CacheExpiration(name,{maxEntries:1}).delete();
       }
       if (await caches.delete(name)) cleared++;
+    }
+    // Only the active generation's canonical offline page entries. Leave
+    // successor revision keys, critical shared JS/CSS, and a neutral offline
+    // fallback intact so open app copies can keep rendering safely.
+    const precacheName = sw.precacheStrategy.cacheName;
+    const offlinePageKeys = emergency
+      ? (CONFIG.precache_critical || [])
+          .filter(path => isHtml(path) && path !== scoped("offline.html") &&
+            inScope(new URL(path,self.location.origin)))
+          .map(path => sw.getPrecacheKeyForUrl(path))
+          .filter(Boolean)
+      : [];
+    if (offlinePageKeys.length && names.includes(precacheName)) {
+      const nativeCache = await caches.open(precacheName);
+      for (const key of offlinePageKeys) {
+        if (await nativeCache.delete(key)) cleared++;
+      }
+    }
+    const remaining = await caches.keys();
+    const offlinePagesRemain = offlinePageKeys.length > 0 && remaining.includes(precacheName) &&
+      (await Promise.all(offlinePageKeys.map(key => caches.match(key,{cacheName:precacheName})))).some(Boolean);
+    if (offlinePagesRemain || publicRuntimeCaches.some(name => remaining.includes(name))) {
+      reply.postMessage({status:"failed"});
+      return;
     }
     reply.postMessage({status:cleared ? "cleared" : "empty",count:cleared});
   })().catch(() => reply.postMessage({safe:false,status:"failed"})));

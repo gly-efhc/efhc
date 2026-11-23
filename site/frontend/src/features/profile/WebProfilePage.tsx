@@ -12,6 +12,7 @@ import { LayoutContext } from "../../components/Layout";
 import { ProfileModal } from "../../components/ProfileModal";
 import { ProfileSettingsDialog } from "../../components/profile/ProfileSettingsDialog";
 import { AccountProviders } from "./AccountProviders";
+import styles from "./profile-navigation.module.css";
 import type { Lang } from "../../lib/i18n";
 import { getUserLevel } from "../../lib/skins";
 import { formatD8ToHuman, sumScaledDown } from "../../lib/format";
@@ -152,7 +153,7 @@ function TabButton(props: {
     <button
       type="button"
       className={
-        "efhc-profile-tab " +
+        "efhc-profile-tab " + styles.primaryTab + " " +
         (props.active ? "efhc-profile-tab--active" : "")
       }
       data-profile-tab={props.trustSurface}
@@ -308,24 +309,6 @@ export default function WebProfilePage(props: Props) {
     );
   }
 
-  if (activeTab === "providers") {
-    return (
-      <div className="efhc-profile-page efhc-profile-modal-theme efhc-profile-provider-page"
-        data-profile-content="providers" data-provider-route="account-providers"
-        data-public-no-raw-payload="true"
-      >
-        <div className="source-profile-topbar efhc-profile-topbar">
-          <button className="source-button secondary" type="button"
-            onClick={() => setTab("profile")} data-app-navigation="back-to-profile">
-            {t("profile.back")}
-          </button>
-          <strong>{accountsEntryTitle}</strong>
-        </div>
-        <AccountProviders />
-      </div>
-    );
-  }
-
   return (
     <div
       className="efhc-profile-page source-profile-page efhc-profile-modal-theme"
@@ -341,7 +324,7 @@ export default function WebProfilePage(props: Props) {
       data-public-no-raw-payload="true"
     >
       <div className="efhc-profile-topbar source-profile-topbar">
-        <button type="button" className="source-button secondary" data-app-navigation="back" onClick={() => goBack(router)}>
+        <button type="button" className="source-button secondary" data-app-navigation="back" onClick={() => activeTab === "providers" ? setTab("profile") : goBack(router)}>
           ← {t("profile.back")}
         </button>
         <strong>{t("profile.page_title")}</strong>
@@ -433,11 +416,11 @@ export default function WebProfilePage(props: Props) {
       </section>
 
       <div
-        className="efhc-profile-tabs source-profile-tabs"
+        className={`efhc-profile-tabs ${styles.primaryTabs}`}
         data-profile-primary-navigation="profile-wallet-history-faq"
       >
         <TabButton
-          active={activeTab === "profile"}
+          active={activeTab === "profile" || activeTab === "providers"}
           label={t("profile.section_profile_tab")}
           trustSurface="profile"
           onClick={() => setTab("profile")}
@@ -461,6 +444,27 @@ export default function WebProfilePage(props: Props) {
           onClick={() => void router.push("/faq")}
         />
       </div>
+
+      {activeTab === "providers" ? (
+        <section
+          className="grid gap-3 efhc-profile-provider-page"
+          data-profile-content="providers"
+          data-provider-route="account-providers"
+        >
+          <AccountProviders
+            hasVerifiedWallet={wallets.some((wallet) => wallet.is_active && wallet.proof_verified === true)}
+            walletStatusPending={walletsQ.isLoading}
+            walletStatusUnavailable={Boolean(walletsError)}
+            walletActionPending={ctx.walletSessionRestoring
+              || ctx.walletConnectionPhase === "connecting" || ctx.walletConnectionPhase === "verifying"}
+            onOpenWallet={() => setTab("wallet")}
+            onConnectWallet={() => {
+              ctx.openWalletConnect("binding");
+              setTab("wallet");
+            }}
+          />
+        </section>
+      ) : null}
 
       {activeTab === "wallet" ? (
         <section

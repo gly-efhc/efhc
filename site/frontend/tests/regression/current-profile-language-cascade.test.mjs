@@ -28,3 +28,12 @@ test("profile language picker receives the historical theme exclusions without c
   assert.match(picker, /props\.profileSurface \? \(/, "Main profile must render the canonical three-column trigger");
   assert.match(picker, /className="efhc-compact-language-picker_current"/, "Shop and other surfaces retain their existing trigger");
 });
+
+test("Profile's closed and open language surfaces use one CT fill, without styling other pickers", () => {
+  assert.match(picker, /props\.profileSurface\s*\?[^?]*styles\.profileLanguageSurface/);
+  const surface = readFileSync(new URL("../../src/components/profile/compact-language-picker.module.css", import.meta.url), "utf8");
+  assert.match(surface, /--efhc-profile-language-surface:\s*#050508/);
+  assert.match(surface, /color-mix\(in srgb, var\(--efhc-ct-accent\) 5%, #050508\)/);
+  assert.match(surface, /\.profileLanguageSurface[^{}]*source-profile-language-button[^{}]*,\s*[^{}]*\.profileLanguageSurface[^{}]*source-profile-language-menu[^{}]*\{\s*background-color:\s*var\(--efhc-profile-language-surface\)/);
+  assert.doesNotMatch(surface, /source-profile-language-option/);
+});
