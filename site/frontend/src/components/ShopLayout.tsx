@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -35,6 +35,17 @@ export function ShopLayout(
   }>,
 ) {
   const router = useRouter();
+  const topRef = useRef<HTMLDivElement>(null);
+  const scrollShopToTop = () => {
+    const top = topRef.current;
+    if (!top) return;
+    top.focus({ preventScroll: true });
+    if (typeof top.scrollIntoView === "function") {
+      top.scrollIntoView({ block: "start", inline: "nearest", behavior: "instant" });
+    } else {
+      window.scrollTo(0, 0);
+    }
+  };
   const [shopTheme, setShopTheme] = useState<"dark" | "light">("dark");
   const [shopThemeReady, setShopThemeReady] = useState(false);
   useBeforePaintEffect(() => {
@@ -108,6 +119,7 @@ export function ShopLayout(
     >
       <div
         id="top"
+        ref={topRef}
         tabIndex={-1}
         className="efhc-shop-site"
         data-interface-app-mode="shop-landing"
@@ -173,7 +185,7 @@ export function ShopLayout(
           <div>
             <strong>EFHC · Energy For Humanity Coin</strong>
           </div>
-          <a className="efhc-shop-site_back-top" href="#top" aria-label={t("portal.browser_shop.back_to_top")}>↑</a>
+          <button type="button" className="efhc-shop-site_back-top" onClick={scrollShopToTop} aria-label={t("portal.browser_shop.back_to_top")}>↑</button>
         </footer>
 
         <style jsx>{`
@@ -192,6 +204,10 @@ export function ShopLayout(
             flex: none;
             border: 1px solid var(--shop-line);
             border-radius: .72rem;
+            background: transparent;
+            color: var(--shop-ink);
+            cursor: pointer;
+            padding: 0;
             line-height: 1;
             font-size: 1rem;
           }

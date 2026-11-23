@@ -1171,8 +1171,8 @@ try {
 
     } finally { await isolated.close(); }
   });
-  await check("Shop phone keeps Profile, omits redundant copy and returns to top from the footer", async () => {
-    const isolated=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:"block"});
+  await check("Shop phone keeps Profile and the footer arrow works by tap and keyboard without changing the URL", async () => {
+    const isolated=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:"block"});
     try {
       await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
         ? route.continue() : route.abort());
@@ -1190,17 +1190,23 @@ try {
       assert.equal(await page.locator("#vip img[alt='EFHC VIP NFT 0000']").count(),1);
       const footer=page.locator(".efhc-shop-site_footer");
       assert.match(await footer.innerText(),/^EFHC · Energy For Humanity Coin\s+↑$/);
-      const arrow=footer.getByRole("link",{name:"Наверх",exact:true});
+      const arrow=footer.getByRole("button",{name:"Наверх",exact:true});
       assert.equal((await arrow.innerText()).trim(),"↑");
       const padding=await footer.evaluate(el=>Number.parseFloat(getComputedStyle(el).paddingInlineStart));
       assert.ok(padding>=14,JSON.stringify(padding));
       await page.emulateMedia({reducedMotion:"reduce"});
       assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollBehavior),"auto");
-      await arrow.scrollIntoViewIfNeeded();
-      assert.ok(await page.evaluate(()=>scrollY>100),"Footer must begin below the phone fold");
-      await arrow.focus();
-      await arrow.press("Enter");
-      await page.waitForFunction(()=>location.hash==="#top" && scrollY<2);
+      const originalUrl=page.url();
+      for(const method of ["tap","keyboard"]){
+        await arrow.scrollIntoViewIfNeeded();
+        assert.ok(await page.evaluate(()=>scrollY>100),"Footer must begin below the phone fold");
+        if(method==="tap") await arrow.tap();
+        else { await arrow.focus(); await arrow.press("Enter"); }
+        await page.waitForFunction(()=>scrollY<2 &&
+          document.querySelector(".efhc-shop-site_header").getBoundingClientRect().top<2);
+        assert.equal(page.url(),originalUrl,"Scrolling cannot change checkout URL fragments");
+        assert.equal(await page.evaluate(()=>document.activeElement?.id),"top");
+      }
       assert.equal(await page.locator("#top.efhc-shop-site").count(),1);
       await page.getByRole("tab",{name:"Профиль",exact:true}).click();
       await page.waitForURL(/\/browser-shop\/profile\/?$/);
@@ -1212,6 +1218,77 @@ try {
       await page.waitForURL(/\/browser-shop\/profile\/?$/);
       await page.locator("#profileTitle").waitFor({state:"visible"});
       console.log("SHOP_CANONICAL_PROFILE_AND_FOOTER_ARROW_PASS",JSON.stringify({padding}));
+    } finally { await isolated.close(); }
+  });
+  await check("Shop checkout perimeters match in both themes with a borderless keyboard-accessible close",async()=>{
+    const isolated=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:"block"});
+    const observations=[];
+    try {
+      await isolated.route("**/*",route=>{
+        const request=route.request();
+        const u=new URL(request.url());
+        if(/\/(?:api\/)?shopfront\/catalog\/?$/.test(u.pathname)){
+          const headers={"access-control-allow-origin":origin,"access-control-allow-credentials":"true","access-control-allow-methods":"GET,OPTIONS",
+            "access-control-allow-headers":request.headers()["access-control-request-headers"]||"*"};
+          if(request.method()==="OPTIONS")return route.fulfill({status:204,headers});
+          assert.equal(request.method(),"GET","Fixture serves read-only product catalog");
+          return route.fulfill({status:200,headers,json:{items:[{
+            sku:"EFHC_PACKAGE_10",title:"10 EFHCm",description:null,item_type:"EFHC_PACKAGE",
+            ton_enabled:true,usdt_enabled:true,methods:{TON:{price:"2.00"},USDT:{price:"3.00"}},
+            status:"live",action_mode:"checkout",delivery_mode:"bank_credit",quantity_efhc:"10.00000000",sort_order:10,
+          }]}});
+        }
+        return u.origin===origin ? route.continue() : route.abort();
+      });
+      const page=await isolated.newPage();
+      await page.goto(base+"browser-shop/",{waitUntil:"domcontentloaded"});
+      const product=page.locator('button[data-browser-shop-package-slot="10"]');
+      const modal=page.locator(".efhc-shop-checkout-modal");
+      for(const theme of ["dark","light"]){
+        await page.locator('html[data-shop-theme="'+theme+'"]').waitFor({state:"attached"});
+        await product.locator(".efhc-shop-product-buy-action").tap();
+        await modal.waitFor({state:"visible"});
+        const measurements=await modal.evaluate(el=>{
+          const outer=getComputedStyle(el);
+          const summary=getComputedStyle(el.querySelector("#checkoutSummary"));
+          const inner=getComputedStyle(el.querySelector(":scope > .efhc-browser-shop-presign"));
+          const button=el.querySelector(":scope > .efhc-shop-modal-close");
+          const style=getComputedStyle(button), rect=button.getBoundingClientRect();
+          return {outer:outer.borderTopColor,outerWidth:outer.borderTopWidth,
+            summary:[summary.borderTopColor,summary.borderBottomColor],
+            inner:[inner.borderTopColor,inner.borderRightColor,inner.borderBottomColor,inner.borderLeftColor],
+            frame:[style.borderTopStyle,style.borderTopWidth,style.boxShadow,style.backgroundColor],
+            target:[rect.width,rect.height]};
+        });
+        assert.notEqual(measurements.outerWidth,"0px");
+        assert.ok(measurements.summary.concat(measurements.inner).every(color=>color===measurements.outer),JSON.stringify(measurements));
+        assert.deepEqual(measurements.frame,["none","0px","none","rgba(0, 0, 0, 0)"]);
+        assert.ok(measurements.target.every(size=>size>=44),JSON.stringify(measurements));
+        const close=modal.locator(".efhc-shop-modal-close");
+        await page.waitForFunction(()=>document.activeElement?.matches(".efhc-shop-checkout-modal > .efhc-shop-modal-close"));
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
+        const focus=await close.evaluate(el=>{
+          const css=getComputedStyle(el);
+          return {active:document.activeElement===el,focusVisible:el.matches(":focus-visible"),
+            width:parseFloat(css.outlineWidth),style:css.outlineStyle,
+            color:css.outlineColor,backdrop:getComputedStyle(el.closest(".efhc-shop-checkout-modal")).backgroundColor};
+        });
+        assert.equal(focus.active,true,JSON.stringify({theme,focus}));
+        assert.equal(focus.focusVisible,true,JSON.stringify({theme,focus}));
+        assert.equal(focus.width,1,"Shop obeys the canonical 1px focus stroke");
+        assert.equal(focus.style,"solid",JSON.stringify({theme,focus}));
+        const rgb=s=>s.match(/[\d.]+/g).slice(0,3).map(Number);
+        const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4)
+          .reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
+        const levels=[luminance(rgb(focus.color)),luminance(rgb(focus.backdrop))].sort((a,b)=>b-a);
+        assert.ok((levels[0]+.05)/(levels[1]+.05)>=3,JSON.stringify({theme,focus}));
+        await page.keyboard.press("Enter");
+        await modal.waitFor({state:"hidden"});
+        observations.push({theme,color:measurements.outer});
+        if(theme==="dark")await page.locator("[data-shop-theme-toggle]").tap();
+      }
+      console.log("SHOP_CHECKOUT_OUTLINE_CLOSE_PASS",JSON.stringify(observations));
     } finally { await isolated.close(); }
   });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
