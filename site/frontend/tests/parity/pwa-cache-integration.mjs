@@ -1171,7 +1171,7 @@ try {
 
     } finally { await isolated.close(); }
   });
-  await check("Shop on phone retains the real Profile tab and readable lower warnings without technical price copy", async () => {
+  await check("Shop phone keeps Profile, omits redundant copy and returns to top from the footer", async () => {
     const isolated=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:"block"});
     try {
       await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
@@ -1185,13 +1185,23 @@ try {
       assert.equal(await page.locator(".efhc-shop-site_header a:is([href$='/browser-shop/profile/'],[href$='/browser-shop/profile'])").count(),0);
       assert.match(await page.locator("#packages p").first().innerText(),/Выберите номинал\./);
       assert.doesNotMatch(await page.locator("#packages").innerText(),/Admin\s*→/);
-      const warning=page.getByText("Важно перед оплатой",{exact:true});
-      await warning.waitFor({state:"visible"});
-      const padding=await page.evaluate(()=>{
-        const get=selector=>Number.parseFloat(getComputedStyle(document.querySelector(selector)).paddingInlineStart);
-        return [get(".efhc-shop-landing_security"),get(".efhc-shop-site_footer")];
-      });
-      assert.ok(padding.every(value=>value>=14),JSON.stringify(padding));
+      assert.equal(await page.locator(".efhc-shop-landing_security").count(),0);
+      assert.equal(await page.locator("#vip .efhc-shop-catalog-heading-copy p").count(),0);
+      assert.equal(await page.locator("#vip img[alt='EFHC VIP NFT 0000']").count(),1);
+      const footer=page.locator(".efhc-shop-site_footer");
+      assert.match(await footer.innerText(),/^EFHC · Energy For Humanity Coin\s+↑$/);
+      const arrow=footer.getByRole("link",{name:"Наверх",exact:true});
+      assert.equal((await arrow.innerText()).trim(),"↑");
+      const padding=await footer.evaluate(el=>Number.parseFloat(getComputedStyle(el).paddingInlineStart));
+      assert.ok(padding>=14,JSON.stringify(padding));
+      await page.emulateMedia({reducedMotion:"reduce"});
+      assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).scrollBehavior),"auto");
+      await arrow.scrollIntoViewIfNeeded();
+      assert.ok(await page.evaluate(()=>scrollY>100),"Footer must begin below the phone fold");
+      await arrow.focus();
+      await arrow.press("Enter");
+      await page.waitForFunction(()=>location.hash==="#top" && scrollY<2);
+      assert.equal(await page.locator("#top.efhc-shop-site").count(),1);
       await page.getByRole("tab",{name:"Профиль",exact:true}).click();
       await page.waitForURL(/\/browser-shop\/profile\/?$/);
       await page.locator("#profileTitle").waitFor({state:"visible"});
@@ -1201,7 +1211,7 @@ try {
       await page.getByRole("tab",{name:"Профиль",exact:true}).click();
       await page.waitForURL(/\/browser-shop\/profile\/?$/);
       await page.locator("#profileTitle").waitFor({state:"visible"});
-      console.log("SHOP_CANONICAL_PROFILE_AND_LOWER_COPY_PASS",JSON.stringify({padding}));
+      console.log("SHOP_CANONICAL_PROFILE_AND_FOOTER_ARROW_PASS",JSON.stringify({padding}));
     } finally { await isolated.close(); }
   });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
