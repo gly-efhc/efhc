@@ -1265,10 +1265,18 @@ try {
         assert.deepEqual(measurements.frame,["none","0px","none","rgba(0, 0, 0, 0)"]);
         assert.ok(measurements.target.every(size=>size>=44),JSON.stringify(measurements));
         const close=modal.locator(".efhc-shop-modal-close");
+        await page.waitForFunction(()=>document.activeElement?.matches(".efhc-shop-checkout-modal > .efhc-shop-modal-close"));
         await page.keyboard.press("Tab");
-        await close.focus();
-        assert.ok(await close.evaluate(el=>el.matches(":focus-visible") && parseFloat(getComputedStyle(el).outlineWidth)>=2));
-        await close.press("Enter");
+        await page.keyboard.press("Shift+Tab");
+        const focus=await close.evaluate(el=>{
+          const css=getComputedStyle(el);
+          return {active:document.activeElement===el,focusVisible:el.matches(":focus-visible"),
+            width:parseFloat(css.outlineWidth),style:css.outlineStyle};
+        });
+        assert.equal(focus.active,true,JSON.stringify({theme,focus}));
+        assert.equal(focus.focusVisible,true,JSON.stringify({theme,focus}));
+        assert.ok(focus.width>=2 && focus.style!=="none",JSON.stringify({theme,focus}));
+        await page.keyboard.press("Enter");
         await modal.waitFor({state:"hidden"});
         observations.push({theme,color:measurements.outer});
         if(theme==="dark")await page.locator("[data-shop-theme-toggle]").tap();
