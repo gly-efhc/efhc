@@ -957,6 +957,129 @@ try {
 
     } finally { await isolated.close(); }
   });
+  await check("Admin HUB saves an ordinary fifth link through the real form at mobile and desktop", async () => {
+    const testOwner = "1000000001";
+    const shopUrl = "https://efhc-react-e7001b8.xonicsx.chatgpt.site/efhc/browser-shop/";
+    const initialRows = [
+      {id:"1",code:"efhc_buy",title:"Магазин",url:"/hub/efhc-handoff",target_kind:"backend_handoff",open_mode:"same_app"},
+      {id:"2",code:"vip_getgems",title:"EFHC VIP NFT",url:"https://getgems.io/efhc-nft",target_kind:"external_url",open_mode:"external_browser"},
+      {id:"3",code:"efhc_ceo",title:"CEO EFHC",url:"https://t.me/EFHC_Official",target_kind:"external_url",open_mode:"external_browser"},
+      {id:"4",code:"efhc_admin",title:"Админ",url:"/admin/",target_kind:"internal_route",open_mode:"same_app"},
+    ].map((row,index)=>({...row,sort_order:(index+1)*10,is_active:true,subtitle:null,icon_key:"link",
+      created_at:"2000-01-01T00:00:00Z",updated_at:"2000-01-01T00:00:00Z"}));
+    for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
+      const isolated = await browser.newContext({viewport,serviceWorkers:"block"});
+      const registry = structuredClone(initialRows);
+      const creates = [];
+      let readonlyDenied = 0;
+      let signedCalls = 0;
+      let postHasIdempotency = false;
+      let publicReadsAfterCreate = 0;
+      const headers = {
+        "access-control-allow-origin":origin,
+        "access-control-allow-credentials":"true",
+        "access-control-allow-methods":"GET,POST,OPTIONS",
+        "access-control-allow-headers":"Authorization,Content-Type,Idempotency-Key,X-EFHC-Test-CSRF,X-Request-ID",
+      };
+      try {
+        await isolated.route("**/*", async route => {
+          const request = route.request();
+          const url = new URL(request.url());
+          if (url.origin===origin) return route.continue();
+          const {pathname}=url;
+          const method=request.method();
+          const reply=(status,json)=>route.fulfill({status,headers,json});
+          if (method==="OPTIONS") return route.fulfill({status:204,headers});
+          if (["/api/shopfront/access-key","/api/hub/efhc-handoff"].includes(pathname)) {
+            signedCalls++;
+            return route.abort();
+          }
+          // Disposable local fixture only. Never dispatch backend network
+          // requests or read any real session/secret in the browser.
+          const presented = Boolean(request.headers().authorization);
+          if (method==="POST" && pathname==="/api/staging/guest") {
+            return reply(200,{ok:true,global_id:testOwner,scope:"guest",csrf:"loopback-only",
+              mode:"loopback-browser-fixture",demo_bearer_token:"not-a-real-bearer-browser-fixture",
+              guest_resume_token:"loopback_browser_fixture_not_a_real_lease",
+              expires_at_epoch:Math.floor(Date.now()/1000)+600});
+          }
+          if (method==="GET" && pathname==="/api/auth/session") {
+            return presented ? reply(200,{global_id:testOwner,provider:"mock",roles:[]}) :
+              reply(401,{detail:"Fixture session required"});
+          }
+          if (method==="GET" && pathname==="/api/admin/access") {
+            return presented ? reply(200,{global_id:testOwner,role:"SuperAdmin"}) :
+              reply(401,{detail:"Fixture session required"});
+          }
+          if (pathname==="/api/admin/hub/links") {
+            if (!presented) {
+              readonlyDenied++;
+              return reply(401,{detail:"Fixture session required"});
+            }
+            if (method==="GET") return reply(200,registry);
+            if (method==="POST") {
+              postHasIdempotency=Boolean(request.headers()["idempotency-key"]);
+              const payload=request.postDataJSON();
+              creates.push(payload);
+              const row={...payload,id:"5",created_at:"2000-01-01T00:00:00Z",updated_at:"2000-01-01T00:00:00Z"};
+              registry.push(row);
+              return reply(200,row);
+            }
+          }
+          if (method==="GET" && pathname==="/api/hub/links") {
+            if (creates.length) publicReadsAfterCreate++;
+            return reply(200,registry.filter(row=>row.is_active));
+          }
+          return route.abort();
+        });
+        const admin = await isolated.newPage();
+        await admin.goto(base+"admin/hub/",{waitUntil:"domcontentloaded",timeout:30000});
+        const list = admin.locator('[data-admin-hub-active-list]');
+        const rows = list.locator('button[aria-label^="Редактировать"]');
+        await rows.nth(3).waitFor({state:"visible"});
+        assert.equal(await rows.count(),4);
+        await admin.getByRole("button",{name:"+ Добавить ссылку",exact:true}).click();
+        const modal=admin.locator('[data-admin-hub-editor-modal]');
+        await modal.getByPlaceholder("Название кнопки").fill("Магазин");
+        const urlField=modal.getByPlaceholder("https://… или /раздел");
+        const save=modal.getByRole("button",{name:"Добавить",exact:true});
+        await urlField.fill("http://example.invalid/");
+        assert.equal(await save.isEnabled(),false);
+        await urlField.fill(shopUrl);
+        await save.click();
+        await rows.nth(4).waitFor({state:"visible"});
+        assert.equal(creates.length,1,"Real editor should submit once");
+        assert.equal(postHasIdempotency,true);
+        assert.match(creates[0].code,/^hub_[a-z0-9_]+$/);
+        assert.deepEqual(creates[0],{code:creates[0].code,title:"Магазин",subtitle:null,
+          url:shopUrl,target_kind:"external_url",open_mode:"external_browser",
+          sort_order:50,is_active:true,icon_key:"link"});
+        assert.deepEqual(registry.slice(0,4),initialRows);
+        assert.equal(readonlyDenied,0);
+        await admin.screenshot({path:path.join(artifactDir,`hub-admin-saved-${viewport.width}.png`)});
+        const hub=await isolated.newPage();
+        await hub.goto(base+"hub/",{waitUntil:"domcontentloaded",timeout:30000});
+        const grid=hub.locator('[data-hub-link-slot-grid]');
+        const card=grid.locator(`button[data-hub-link-code="${creates[0].code}"]`);
+        await card.waitFor({state:"visible"});
+        const cards=await grid.locator('button[data-hub-link-code]').evaluateAll(nodes=>nodes.map(node=>{
+          const b=node.getBoundingClientRect();
+          return {code:node.getAttribute("data-hub-link-code"),x:b.x,y:b.y,w:b.width,h:b.height};
+        }));
+        assert.deepEqual(cards.map(item=>item.code),[...initialRows.map(row=>row.code),creates[0].code]);
+        assert.equal(await card.getAttribute("data-hub-link-url"),shopUrl);
+        assert.equal((await card.innerText()).trim(),"Магазин");
+        const [first,second,third,,fifth] = cards;
+        const near=(a,b)=>Math.abs(a-b)<0.5;
+        assert.ok(near(first.x,fifth.x) && near(first.y,second.y) && near(first.w,fifth.w)
+          && near(first.h,fifth.h) && fifth.y>third.y,"Registry row renders as slot five in the standard two-column grid");
+        assert.ok(publicReadsAfterCreate>0);
+        assert.equal(signedCalls,0);
+        await hub.screenshot({path:path.join(artifactDir,`hub-public-saved-${viewport.width}.png`)});
+        console.log("HUB_ADMIN_FORM_REGISTRY_PASS",viewport.width);
+      } finally { await isolated.close(); }
+    }
+  });
   await check("HUB renders an Admin-configured fifth link inside the canonical grid", async () => {
     const isolated = await browser.newContext({serviceWorkers:"block"});
     const hub = await isolated.newPage();
