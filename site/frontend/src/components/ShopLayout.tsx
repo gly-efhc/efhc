@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -10,6 +10,9 @@ import { LayoutContext } from "./Layout";
 import { useBrowserShopProfile } from "../queries/useBrowserShop";
 import { useAvatarPreference } from "../queries/useAvatarPreference";
 import { UnifiedAvatar } from "./profile/UnifiedAvatar";
+
+const SHOP_THEME_KEY = "efhc.shop.theme.v1";
+const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 function ProfileIcon() {
   return (
@@ -50,6 +53,7 @@ export function ShopLayout(
   const router = useRouter();
   const [shopToken, setShopToken] = useState("");
   const [shopTheme, setShopTheme] = useState<"dark" | "light">("dark");
+  const [shopThemeReady, setShopThemeReady] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -62,18 +66,26 @@ export function ShopLayout(
       }
     }
     setShopToken(restored);
-    try {
-      const savedTheme = window.localStorage.getItem("efhc.shop.theme.v1");
-      setShopTheme(savedTheme === "light" ? "light" : "dark");
-    } catch {
-      setShopTheme("dark");
-    }
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try { window.localStorage.setItem("efhc.shop.theme.v1", shopTheme); } catch { /* no-op */ }
+  useBeforePaintEffect(() => {
+    try {
+      setShopTheme(window.localStorage.getItem(SHOP_THEME_KEY) === "light" ? "light" : "dark");
+    } catch { /* Dark is the existing default when storage is unavailable. */ }
+    setShopThemeReady(true);
+  }, []);
+
+  useBeforePaintEffect(() => {
+    // The frozen CSS themes both the external Shop document canvas and the
+    // React wrapper. Only this Shop layout owns the document attribute.
+    document.documentElement.dataset.shopTheme = shopTheme;
+    return () => { delete document.documentElement.dataset.shopTheme; };
   }, [shopTheme]);
+
+  useEffect(() => {
+    if (!shopThemeReady) return;
+    try { window.localStorage.setItem(SHOP_THEME_KEY, shopTheme); } catch { /* no-op */ }
+  }, [shopTheme, shopThemeReady]);
 
   const shopProfileQ = useBrowserShopProfile(shopToken);
   const shopLinkedGlobalId = shopProfileQ.data?.global_id || "";
@@ -139,7 +151,7 @@ export function ShopLayout(
         data-browser-shop-layout="standard-internet-landing"
         data-shop-theme={shopTheme}
         data-shop-theme-default="dark"
-        data-shop-theme-storage="efhc.shop.theme.v1"
+        data-shop-theme-storage={SHOP_THEME_KEY}
         data-browser-shop-canonical-route={canonicalPath}
       >
         <Head>
