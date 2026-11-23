@@ -1330,7 +1330,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
           background: transparent;
         }
         .efhc-shop-checkout-modal > .efhc-shop-modal-close:focus-visible {
-          outline: 2px solid currentColor;
+          outline: 1px solid currentColor;
           outline-offset: 2px;
         }
         .efhc-shop-checkout-modal > :is(h2,.efhc-shop-exchange-title) {

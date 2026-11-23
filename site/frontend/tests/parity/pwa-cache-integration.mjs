@@ -1271,11 +1271,18 @@ try {
         const focus=await close.evaluate(el=>{
           const css=getComputedStyle(el);
           return {active:document.activeElement===el,focusVisible:el.matches(":focus-visible"),
-            width:parseFloat(css.outlineWidth),style:css.outlineStyle};
+            width:parseFloat(css.outlineWidth),style:css.outlineStyle,
+            color:css.outlineColor,backdrop:getComputedStyle(el.closest(".efhc-shop-checkout-modal")).backgroundColor};
         });
         assert.equal(focus.active,true,JSON.stringify({theme,focus}));
         assert.equal(focus.focusVisible,true,JSON.stringify({theme,focus}));
-        assert.ok(focus.width>=2 && focus.style!=="none",JSON.stringify({theme,focus}));
+        assert.equal(focus.width,1,"Shop obeys the canonical 1px focus stroke");
+        assert.equal(focus.style,"solid",JSON.stringify({theme,focus}));
+        const rgb=s=>s.match(/[\d.]+/g).slice(0,3).map(Number);
+        const luminance=rgb=>rgb.map(c=>c/255).map(c=>c<=.04045?c/12.92:((c+.055)/1.055)**2.4)
+          .reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
+        const levels=[luminance(rgb(focus.color)),luminance(rgb(focus.backdrop))].sort((a,b)=>b-a);
+        assert.ok((levels[0]+.05)/(levels[1]+.05)>=3,JSON.stringify({theme,focus}));
         await page.keyboard.press("Enter");
         await modal.waitFor({state:"hidden"});
         observations.push({theme,color:measurements.outer});
