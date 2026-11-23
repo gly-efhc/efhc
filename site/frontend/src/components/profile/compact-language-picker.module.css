@@ -1,0 +1,18 @@
+/* Match the approved open Profile menu material in the closed trigger too. */
+.profileLanguageSurface {
+  --efhc-profile-language-surface: #050508;
+}
+
+@supports (background: color-mix(in srgb, black 95%, blue 5%)) {
+  .profileLanguageSurface {
+    --efhc-profile-language-surface: color-mix(in srgb, var(--efhc-ct-accent) 5%, #050508);
+  }
+}
+
+/* The frozen trigger rule uses both the profile and a button identifier. Match its specificity only within the React Profile. */
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #__next #profilePage[data-wg])
+.profileLanguageSurface > :global(.source-profile-language-button),
+:global(html[data-interface-app-mode="user"][data-color-theme-id] #__next #profilePage[data-wg])
+.profileLanguageSurface > :global(.source-profile-language-menu) {
+  background-color: var(--efhc-profile-language-surface) !important;
+}

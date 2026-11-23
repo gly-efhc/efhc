@@ -31,7 +31,13 @@ if(!critical.length ||
 }
 const entries=await Promise.all(critical.map(async url=>{
   const contents=await readFile(path.join(root,url.slice(base.length+1)));
-  return {url,revision:createHash("sha256").update(contents).digest("hex")};
+  const digest=createHash("sha256").update(contents).digest();
+  const revision=digest.toString("hex");
+  // Serwist only refills a precache miss outside install when integrity is set.
+  // HTML is hashed after the final Pages build marker and resource URLs exist.
+  return url.endsWith(".html")
+    ? {url,revision,integrity:"sha256-"+digest.toString("base64")}
+    : {url,revision};
 }));
 // The synthetic export used by regression tests may be outside the frontend
 // tree. Bundle imports must resolve against the installed frontend package.

@@ -694,8 +694,10 @@ try {
       await page.locator(".efhc-energy-stage").waitFor({state:"visible",timeout:12000});
     } finally { await context.setOffline(false); }
   });
-  await check("OWNER cache button purges only idle Serwist public runtime buckets", async () => {
+  await check("Legacy maintenance stays guarded and emergency Settings purges only downloaded data", async () => {
     const isolated=await browser.newContext({serviceWorkers:"allow"});
+    await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
+      ? route.continue() : route.abort());
     try {
       const first=await isolated.newPage();
       await first.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
@@ -779,27 +781,239 @@ try {
       // E2E acceptance must click the actual Settings button, not just send
       // a synthetic worker message. The pointer event must not produce busy.
       await first.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      const settingsOwner = "0000000042";
+      // Seed the same owner before reload and allow the real app to hydrate
+      // its normal preferences and a nonempty display snapshot together.
+      await first.evaluate(({owner,ownerCacheKey,settingsKey}) => {
+        const snapshot = JSON.stringify({owner,entries:[{
+          key:["ranks",owner,"emergency-cache-fixture"],
+          data:{fixture:"downloaded-display"},updatedAt:Date.now(),
+        }]});
+        const initialSettings = JSON.stringify({...JSON.parse(sessionStorage.getItem(settingsKey)||"{}"),
+          settings_owner:owner,interface_settings_version:4,reduce_motion:false});
+        sessionStorage.setItem("efhc:resolved-display-owner",JSON.stringify({global_id:owner,principal:"browser"}));
+        sessionStorage.setItem(ownerCacheKey,snapshot);
+        localStorage.setItem(ownerCacheKey+":"+owner,snapshot);
+        sessionStorage.setItem(settingsKey,initialSettings);
+        localStorage.setItem(settingsKey+":"+owner,initialSettings);
+      },{owner:settingsOwner,ownerCacheKey,settingsKey});
+      await first.reload({waitUntil:"domcontentloaded",timeout:30000});
       await first.locator('[data-profile-settings-entry="interface-card"]')
         .waitFor({state:"visible",timeout:20000});
+      const tabs = first.locator("[data-profile-primary-navigation]");
+      const tabPaint = await tabs.evaluate((element) => {
+        const group = getComputedStyle(element);
+        return {
+          groupBorder: group.borderTopWidth,
+          buttons: Array.from(element.querySelectorAll("button"), (button) => {
+            const style = getComputedStyle(button);
+            return {border: style.borderTopWidth, color: style.borderTopColor, shadow: style.boxShadow};
+          }),
+        };
+      });
+      assert.equal(tabPaint.groupBorder, "0px", "Profile tabs must not have a group frame");
+      assert.equal(tabPaint.buttons.length, 4);
+      assert.ok(tabPaint.buttons.every(({border}) => border === "1px"),
+        "Active and inactive Profile tabs must have the same border thickness");
+      assert.equal(tabPaint.buttons[0].shadow, "none", "Active tab must not add an inset stroke");
+      assert.notEqual(tabPaint.buttons[0].color, tabPaint.buttons[1].color,
+        "Brightness must distinguish the active Profile tab");
       await first.locator('[data-profile-settings-entry="interface-card"]').click();
-      await first.locator(".efhc-profile-pwa-maintenance summary").click();
+      const settings = first.locator('[data-modal-reference-layout="settings"]');
+      const dismiss = settings.locator(".efhc-modal-close");
+      assert.equal((await dismiss.textContent()).trim(), "×");
+      assert.ok(await dismiss.getAttribute("aria-label"), "The close icon needs an accessible name");
+      const closePaint = await dismiss.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {width: style.width, height: style.height, radius: style.borderTopLeftRadius};
+      });
+      assert.equal(closePaint.width, closePaint.height);
+      assert.equal(closePaint.radius, "50%", "Settings close button must be round");
+      const settingsHeader = settings.locator('[data-modal-drag-handle="true"]');
+      const headerPaint = await settingsHeader.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return [style.backgroundColor, style.backgroundImage, style.borderBottomWidth];
+      });
+      assert.deepEqual(headerPaint, ["rgba(0, 0, 0, 0)", "none", "0px"],
+        "The Settings heading must have no separate plate or divider");
+      const maintenance = first.locator('[data-profile-settings-maintenance="visible"]');
+      const clearButton = maintenance.locator('[data-pwa-clear-public-cache="true"]');
+      assert.equal(await maintenance.locator("summary").count(), 0,
+        "Maintenance must no longer require opening a disclosure");
+      assert.equal(await maintenance.getByRole("button").count(), 1,
+        "Settings must expose the clear button as its only maintenance control");
+      await clearButton.waitFor({state:"visible"});
+      assert.equal(await maintenance.getByRole("heading").count(), 0,
+        "Do not show an extra maintenance heading");
       await first.evaluate(async()=>{
         const cache=await caches.open("efhc-serwist-pages");
         await cache.put("/efhc/pwa-button-clear-proof.txt",
           new Response("remove-me"));
       });
-      await first.locator('[data-pwa-clear-public-cache="true"]').click();
-      await first.waitForFunction(()=>{
-        const text=document.querySelector(
-          ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
-        return /Serwist public runtime cache cleared|Публичный runtime-кеш Serwist очищен/i.test(text);
-      },null,{timeout:12000});
+      // Preserve real SW scope/control while simulating a loaded copy unable
+      // to acknowledge the automatic lifecycle safety query.
+      const unresponsive = await isolated.newPage();
+      try {
+        await unresponsive.addInitScript(() => {
+          navigator.serviceWorker?.addEventListener("message", event => {
+            if (event.data?.type === "EFHC_PWA_CLIENT_SAFE") event.stopImmediatePropagation();
+          }, {capture:true});
+        });
+        await unresponsive.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+        await unresponsive.waitForFunction(()=>Boolean(navigator.serviceWorker.controller),null,{timeout:20000});
+        const reduceMotion = settings.locator('[data-setting="reduce_motion"]');
+        await reduceMotion.click();
+        const expectedMotion = true;
+        await first.waitForFunction(({key,owner,expected}) => {
+          const correct = raw => {
+            const value=JSON.parse(raw||"null");
+            return value?.settings_owner===owner && value.reduce_motion===expected;
+          };
+          return correct(sessionStorage.getItem(key)) && correct(localStorage.getItem(key+":"+owner));
+        },{key:settingsKey,owner:settingsOwner,expected:expectedMotion},{timeout:12000});
+        assert.equal(await reduceMotion.getAttribute("aria-pressed"),String(expectedMotion));
+        const proof = await first.evaluate(async ({authSessionKey,ownerCacheKey,settingsKey,owner,expectedMotion}) => {
+          const read = async () => {
+            const runtime = await caches.match("/efhc/pwa-button-clear-proof.txt", {cacheName:"efhc-serwist-pages"});
+            const foreign = await caches.match("/outside-public-cache-proof", {cacheName:"another-application-cache"});
+            const ownedPageCopies = await Promise.all((await caches.keys()).map(async name => {
+              if (!name.includes("precache")) return [];
+              return (await (await caches.open(name)).keys()).map(request => new URL(request.url).pathname);
+            }));
+            return {runtime:Boolean(runtime),foreign:Boolean(foreign),
+              offlinePage:ownedPageCopies.flat().includes("/efhc/web-profile/index.html")};
+          };
+          const initial = await read();
+          const resumeKey = "efhc.demo.guest.resume";
+          const identityKey = "efhc:resolved-display-owner";
+          const durableKey = ownerCacheKey + ":" + owner;
+          // Syntactically valid synthetic markers, never issued by any server.
+          // Requests to external origins are blocked for this isolated context.
+          const credentialMarker = JSON.stringify({
+            token_type:"Bearer", access_token:"local_efhc_test_marker_not_a_real_credential",
+            expires_at:new Date(Date.now()+600000).toISOString(),
+          });
+          const resumeMarker = "local_efhc_test_marker_not_a_real_resume";
+          const identityMarker = sessionStorage.getItem(identityKey);
+          const settingsKept = raw => {
+            const value=JSON.parse(raw||"null");
+            return value?.settings_owner===owner && value.reduce_motion===expectedMotion;
+          };
+          initial.downloadedSnapshot=JSON.parse(localStorage.getItem(durableKey)||"null")?.entries?.length>0;
+          sessionStorage.setItem(authSessionKey,credentialMarker);
+          localStorage.setItem(resumeKey,resumeMarker);
+          window.__efhcInspectEmergencyPurge = async () => {
+            return {...await read(),samePage:true,
+              login:sessionStorage.getItem(authSessionKey)===credentialMarker,
+              resume:localStorage.getItem(resumeKey)===resumeMarker,
+              identity:JSON.parse(identityMarker||"null")?.global_id===owner &&
+                sessionStorage.getItem(identityKey)===identityMarker,
+              settings:settingsKept(sessionStorage.getItem(settingsKey)) &&
+                settingsKept(localStorage.getItem(settingsKey+":"+owner)),
+              downloadedSnapshot:localStorage.getItem(durableKey)!==null ||
+                JSON.parse(sessionStorage.getItem(ownerCacheKey)||"null")?.entries?.length>0};
+          };
+          return initial;
+        },{authSessionKey,ownerCacheKey,settingsKey,owner:settingsOwner,expectedMotion});
+        assert.deepEqual(proof,{runtime:true,foreign:true,offlinePage:true,downloadedSnapshot:true});
+        const before = await first.evaluate(() => performance.timeOrigin);
+        await clearButton.click();
+        await first.waitForFunction(()=>{
+          const text=document.querySelector(
+            ".efhc-profile-pwa-maintenance [role=status]")?.textContent || "";
+          return /Serwist public runtime cache cleared|^кеш очищен$/i.test(text);
+        },null,{timeout:12000});
+        assert.equal(await first.evaluate(() => performance.timeOrigin),before,
+          "Emergency purge must not reload the app");
+        assert.equal(unresponsive.isClosed(),false,
+          "Emergency purge must not require closing other app copies");
+        assert.deepEqual(await first.evaluate(() => window.__efhcInspectEmergencyPurge()),
+          {runtime:false,foreign:true,offlinePage:false,samePage:true,
+            login:true,resume:true,identity:true,settings:true,downloadedSnapshot:false},
+          "Emergency cleanup deletes only downloaded data and retains access/settings");
+        assert.equal(await reduceMotion.getAttribute("aria-pressed"),String(expectedMotion),
+          "Emergency purge must preserve the selected live preference");
+      } finally { await unresponsive.close(); }
       const buttonCleared=await first.evaluate(async()=>!(
         await (await caches.open("efhc-serwist-pages"))
           .match("/efhc/pwa-button-clear-proof.txt")));
       assert.equal(buttonCleared,true,"Actual Settings cache button did not clear runtime data");
+      await dismiss.click();
+      await settings.waitFor({state:"hidden"});
+      await first.close();
+      await second.close();
+      const reopened = await isolated.newPage();
+      await reopened.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
+      await reopened.waitForFunction(async build => {
+        if (document.querySelector('meta[name="efhc-build-id"]')?.content !== build) return false;
+        for (const name of await caches.keys()) {
+          if (!name.includes("precache")) continue;
+          const entries = await (await caches.open(name)).keys();
+          if (entries.some(request => new URL(request.url).pathname === "/efhc/web-profile/index.html")) return true;
+        }
+        return false;
+      },exportConfig.build_id,{timeout:30000});
       console.log("PWA_SERWIST_SETTINGS_BUTTON_PASS");
 
+    } finally { await isolated.close(); }
+  });
+  await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
+    const isolated = await browser.newContext({serviceWorkers:"allow", viewport:{width:390,height:900}});
+    try {
+      const profile = await isolated.newPage();
+      await profile.goto(base+"web-profile/",{waitUntil:"domcontentloaded",timeout:30000});
+      for (let i=1;i<=10;i++){
+        const ct = "CT-"+String(i).padStart(2,"0");
+        await profile.evaluate(({key,ct}) => {
+          const current = JSON.parse(sessionStorage.getItem(key)||"null") || {};
+          Object.assign(current, {interface_settings_version:4,lang:"ru",color_theme_id:ct,global_theme_id:ct.slice(3)});
+          sessionStorage.setItem(key,JSON.stringify(current));
+        },{key:settingsKey,ct});
+        await profile.reload({waitUntil:"domcontentloaded",timeout:20000});
+        await profile.locator('#profilePage').waitFor({state:"visible",timeout:12000});
+        await profile.locator(`[data-theme-page-surface="true"][data-color-theme-id="${ct}"]`).first().waitFor({state:"attached",timeout:10000});
+        const trigger = profile.locator('#profilePage .source-profile-language-button');
+        const menu = profile.locator('#profilePage .source-profile-language-menu');
+        const paint = (locator) => locator.evaluate(el => {
+          const css = getComputedStyle(el); return [css.backgroundColor, css.backgroundImage];
+        });
+        const closed = await paint(trigger);
+        await trigger.click();
+        await menu.waitFor({state:"visible"});
+        assert.deepEqual(await paint(menu), closed, ct+" closed and expanded Profile language surfaces");
+        assert.notEqual(closed[0], "rgba(0, 0, 0, 0)", ct+" language surface must have a fill");
+        assert.equal(await menu.getByRole("option").count(),16);
+      }
+      const trigger = profile.locator('#profilePage .source-profile-language-button');
+      await trigger.click();
+      await profile.locator('[data-profile-settings-entry="interface-card"]').click();
+      const settings = profile.locator('[data-modal-reference-layout="settings"]');
+      const maintenance = settings.locator('[data-profile-settings-maintenance="visible"]');
+      await maintenance.getByText("Очистить кеш", {exact:true}).waitFor({state:"visible"});
+      await maintenance.getByRole("button", {name:"Очистить",exact:true}).waitFor({state:"visible"});
+      await settings.locator(".efhc-modal-close").click();
+      await settings.waitFor({state:"hidden"});
+      await profile.locator('[data-provider-entry="profile-footer"]').click();
+      const providers = profile.locator('[data-provider-route="account-providers"]');
+      await providers.waitFor({state:"visible"});
+      assert.equal(await providers.locator(".efhc-account-provider-card").count(),2);
+      assert.equal(await providers.getByRole("button",{name:"Подключить",exact:true}).count(),2);
+      assert.equal(await providers.getByText("Открыть вход через Telegram",{exact:true}).count(),0);
+      const frames = await providers.locator(".efhc-account-provider-card").evaluateAll(cards =>
+        cards.map(card=>getComputedStyle(card).borderTopWidth));
+      assert.deepEqual(frames, ["1px","1px"], "Provider card frames must be preserved");
+      const statusFills = await providers.locator("[data-provider-state]").evaluateAll(nodes =>
+        nodes.map(node=>getComputedStyle(node).backgroundColor));
+      assert.ok(statusFills.length===2 && statusFills.every(fill=>fill==="rgba(0, 0, 0, 0)"),
+        "Provider status text has no separate fill");
+      const plates = await providers.locator("[data-provider-row]").evaluateAll(rows =>
+        rows.map(row => {
+          const style = getComputedStyle(row);
+          return [style.backgroundColor, style.backgroundImage, style.boxShadow, style.borderTopWidth];
+        }));
+      assert.deepEqual(plates, Array(2).fill(["rgba(0, 0, 0, 0)", "none", "none", "0px"]),
+        "Provider rows must have no inner plates while the outer cards retain their frames");
+      console.log("PROFILE_LANGUAGE_AND_ACCOUNT_VISUAL_PASS");
     } finally { await isolated.close(); }
   });
   await check("Serwist A to B atomically swaps critical HTML JS CSS at safe idle", async () => {
@@ -845,11 +1059,7 @@ try {
       assert.notEqual(newBuildId,oldBuildId,"second actual export did not change build");
       assert.ok(nextConfig.precache_critical.includes(scriptUrl));
       assert.ok(nextConfig.precache_critical.includes(cssUrl));
-      await page.evaluate(async () => {
-        const registration=await navigator.serviceWorker.getRegistration();
-        if(!registration)throw Error("No PWA registration");
-        await registration.update();
-      });
+      await page.evaluate(() => window.dispatchEvent(new Event("online")));
       await page.waitForFunction(id=>
         document.querySelector('meta[name="efhc-build-id"]')?.content===id &&
         window.__EFHC_NEW_PWA_ASSET__===true,

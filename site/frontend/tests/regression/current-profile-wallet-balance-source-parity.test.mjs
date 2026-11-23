@@ -85,7 +85,7 @@ test("OWNER I09: one settings gear belongs to Interface card, not the hero", () 
   const css = file("../../src/styles/globals.css");
   const topbarStart = profile.indexOf('className="efhc-profile-topbar source-profile-topbar"');
   const heroStart = profile.indexOf('className="efhc-profile-hero source-profile-hero"', topbarStart);
-  const tabsStart = profile.indexOf('className="efhc-profile-tabs source-profile-tabs"', heroStart);
+  const tabsStart = profile.indexOf('data-profile-primary-navigation="profile-wallet-history-faq"', heroStart);
   const interfaceStart = profile.indexOf('className="source-card source-profile-settings-card efhc-profile-action-card"', tabsStart);
   assert.ok(topbarStart >= 0 && heroStart > topbarStart && tabsStart > heroStart && interfaceStart > tabsStart);
   const topbar = profile.slice(topbarStart, heroStart);

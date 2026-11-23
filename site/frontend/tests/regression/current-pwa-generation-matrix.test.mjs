@@ -11,6 +11,7 @@ import {createHash} from "node:crypto";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
+import {runInNewContext} from "node:vm";
 
 const frontend=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../..");
 const toolsDir=path.resolve(frontend,"../ci/pages-tools");
@@ -92,7 +93,7 @@ test("T3: unrelated applications are untouched by Serwist scope",()=>{
 
 test("T4: no EFHC custom client-generation cache handshake remains",()=>{
   assert.match(worker,/cleanupOutdatedCaches:true/);
-  assert.doesNotMatch(worker,/CLIENT_BUILD_READY|readyClients|GET_ACTIVE_BUILD/);
+  assert.doesNotMatch(worker,/CLIENT_BUILD_READY|readyClients/);
   assert.match(runtime,/serviceWorker\.register/);
 });
 
@@ -104,7 +105,7 @@ test("T5: Serwist lifecycle supersedes EFHC manual legacy retirement",()=>{
 
 test("T6: old tabs are not overridden by a custom forced activation",()=>{
   assert.match(worker,/skipWaiting:false/);
-  assert.doesNotMatch(worker,/self\.skipWaiting\(|ACTIVATE_WHEN_SAFE/);
+  assert.equal((worker.match(/self\.skipWaiting\(/g) || []).length, 1, "the sole explicit activation call is the guarded historic bridge");
   assert.match(runtime,/type:"SKIP_WAITING"/);
   assert.match(runtime,/EFHC_PWA_CHECK_CLIENTS/);
 });
@@ -187,4 +188,82 @@ test("Background music stops on pagehide/freeze and cannot resume while hidden",
   assert.match(audio,/if \(!active \|\| !visible \|\| !buffer/);
   assert.match(audio,/if \(!enabled \|\| typeof window === "undefined"\) return/);
   assert.match(audio,/removeEventListener\("pagehide", stopForHiddenPage\)/);
+});
+
+test("Historic Telegram document handoff is scoped, visible and single-client only", async () => {
+  const build = "a".repeat(24);
+  const page = {id:"old",type:"window",url:"https://example.test/efhc/web-profile/",visibilityState:"visible"};
+  const source = worker.replace(/^import \{[\s\S]*?\} from "serwist";/m, "");
+  const messages = [];
+  let clients = [page], calls = 0, waiting = true;
+  let onMessage;
+  class Strategy {
+    addEventListeners() {}
+  }
+  const self = {
+    location:{origin:"https://example.test"},
+    get registration() { return {waiting:waiting ? {state:"installed"} : null}; },
+    clients:{matchAll:async opts=>{
+      assert.equal(opts.type,"window");
+      assert.equal(opts.includeUncontrolled,true);
+      return clients;
+    }},
+    addEventListener(type, listener) { if (type==="message") onMessage=listener; },
+    skipWaiting:async()=>{ calls++; },
+  };
+  runInNewContext(source,{self,URL,
+    __EFHC_BUILD_CONFIG__:{build_id:build,precache:[]},__EFHC_BASE_PATH__:"/efhc",
+    Serwist:Strategy,CacheFirst:Strategy,NetworkFirst:Strategy,NetworkOnly:Strategy,
+    StaleWhileRevalidate:Strategy,ExpirationPlugin:Strategy,CacheExpiration:Strategy});
+  const send=async (data, sender=page)=>{
+    let settled;
+    onMessage({data,source:sender,ports:[{postMessage:v=>messages.push(v)}],
+      waitUntil:p=>{settled=p;}});
+    await settled;
+  };
+  const exact={type:"ACTIVATE_WHEN_SAFE",buildId:build,efhcSafeToActivate:true};
+  await send({...exact,buildId:"b".repeat(24)});
+  await send({...exact,efhcSafeToActivate:false});
+  await send(exact,{...page,id:"different-window"});
+  await send(exact,{...page,url:"https://example.test/other/"});
+  await send(exact,{...page,type:"serviceworker"});
+  clients=[{...page,visibilityState:"hidden"}]; await send(exact);
+  clients=[page,{...page,id:"second"}]; await send(exact);
+  clients=[page,{...page,id:"hidden-second",visibilityState:"hidden"}]; await send(exact);
+  clients=[page]; waiting=false; await send(exact);
+  assert.equal(calls,0);
+  waiting=true; await send(exact);
+  assert.equal(calls,1);
+  await send({type:"GET_ACTIVE_BUILD"},{...page,url:"https://example.test/other/"});
+  assert.equal(messages.length,0);
+  await send({type:"GET_ACTIVE_BUILD"});
+  assert.equal(messages.length,1);
+  assert.equal(messages[0].type,"ACTIVE_BUILD");
+  assert.equal(messages[0].buildId,build);
+});
+
+test("A worker-source-only change creates a new build generation without hashing generated sw.js", t=>{
+  const folder=mkdtempSync(path.join(tmpdir(),"efhc-worker-generation-"));
+  t.after(()=>rmSync(folder,{recursive:true,force:true}));
+  const exportDir=path.join(folder,"out");
+  mkdirSync(path.join(exportDir,"_next/static"),{recursive:true});
+  writeFileSync(path.join(exportDir,"index.html"),'<html><head><script src="/efhc/_next/static/test.js"></script></head></html>');
+  writeFileSync(path.join(exportDir,"_next/static/test.js"),"void 0;");
+  writeFileSync(path.join(exportDir,"manifest.webmanifest"),"{}");
+  copyFileSync(path.join(toolsDir,"fix_pages_assets.py"),path.join(folder,"fix_pages_assets.py"));
+  const workerSource=path.join(folder,"sw-serwist.js");
+  writeFileSync(workerSource,"export default 1;");
+  const configure=()=>{
+    const script="import sys; from pathlib import Path; from fix_pages_assets import configure_pwa; configure_pwa(Path(sys.argv[1]), '/efhc')";
+    const result=spawnSync("python3",["-B","-c",script,exportDir],{cwd:folder,encoding:"utf8"});
+    assert.equal(result.status,0,result.stderr);
+    return JSON.parse(readFileSync(path.join(exportDir,"pwa-build.json"),"utf8")).build_id;
+  };
+  const first=configure();
+  writeFileSync(path.join(exportDir,"sw.js"),"generated output with a different hash");
+  assert.equal(configure(),first);
+  writeFileSync(workerSource,"export default 2;");
+  const next=configure();
+  assert.notEqual(next,first);
+  assert.equal(configure(),next);
 });

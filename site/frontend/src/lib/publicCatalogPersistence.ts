@@ -89,7 +89,7 @@ export function startPublicCatalogPersistence(
         data: query.state.data,
         updatedAt: query.state.dataUpdatedAt || Date.now(),
       }));
-    writeEntries(entries);
+    if (entries.length > 0 || readEntries().length > 0) writeEntries(entries);
   };
   return client.getQueryCache().subscribe((event) => {
     if (!event?.query || !isSafeKey(event.query.queryKey)) return;
@@ -97,4 +97,13 @@ export function startPublicCatalogPersistence(
     queued = true;
     window.setTimeout(flush, 120);
   });
+}
+
+/** Remove the public fallback without touching any other local storage. */
+export function clearPublicCatalogSnapshots(client: QueryClient): Promise<void> {
+  const filters = {predicate: (query: {queryKey: QueryKey}) => isSafeKey(query.queryKey)};
+  const canceled = client.cancelQueries(filters, {silent: true, revert: false});
+  client.removeQueries(filters);
+  if (typeof window !== "undefined") window.localStorage.removeItem(STORAGE_KEY);
+  return canceled;
 }
