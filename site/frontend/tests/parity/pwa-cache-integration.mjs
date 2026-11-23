@@ -1171,6 +1171,39 @@ try {
 
     } finally { await isolated.close(); }
   });
+  await check("Shop on phone retains the real Profile tab and readable lower warnings without technical price copy", async () => {
+    const isolated=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:"block"});
+    try {
+      await isolated.addInitScript(() => {
+        localStorage.setItem("EFHC_DEVICE_VIEW_PREFERENCES", JSON.stringify({lang:"ru"}));
+      });
+      await isolated.route("**/*", route => new URL(route.request().url()).origin === origin
+        ? route.continue() : route.abort());
+      const page=await isolated.newPage();
+      await page.goto(base+"browser-shop/",{waitUntil:"domcontentloaded"});
+      await page.getByRole("tab",{name:"Профиль",exact:true}).waitFor({state:"visible"});
+      assert.equal(await page.locator(".efhc-shop-site_header a[href$='/browser-shop/profile/']").count(),0);
+      assert.match(await page.locator("#packages p").first().innerText(),/Выберите номинал\./);
+      assert.doesNotMatch(await page.locator("#packages").innerText(),/Admin\s*→/);
+      const warning=page.getByText("Важно перед оплатой",{exact:true});
+      await warning.waitFor({state:"visible"});
+      const padding=await page.evaluate(()=>{
+        const get=selector=>Number.parseFloat(getComputedStyle(document.querySelector(selector)).paddingInlineStart);
+        return [get(".efhc-shop-landing_security"),get(".efhc-shop-site_footer")];
+      });
+      assert.ok(padding.every(value=>value>=14),JSON.stringify(padding));
+      await page.getByRole("tab",{name:"Профиль",exact:true}).click();
+      await page.waitForURL("**/browser-shop/profile/");
+      await page.locator("#profileTitle").waitFor({state:"visible"});
+      await page.getByRole("tab",{name:"Мои заказы",exact:true}).click();
+      await page.waitForURL("**/browser-shop/orders/");
+      await page.locator("#ordersTitle").waitFor({state:"visible"});
+      await page.getByRole("tab",{name:"Профиль",exact:true}).click();
+      await page.waitForURL("**/browser-shop/profile/");
+      await page.locator("#profileTitle").waitFor({state:"visible"});
+      console.log("SHOP_CANONICAL_PROFILE_AND_LOWER_COPY_PASS",JSON.stringify({padding}));
+    } finally { await isolated.close(); }
+  });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
     const isolated = await browser.newContext({serviceWorkers:"allow", viewport:{width:390,height:900}});
     try {

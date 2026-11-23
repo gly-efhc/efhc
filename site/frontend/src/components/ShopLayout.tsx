@@ -7,26 +7,10 @@ import { tFromDicts } from "../lib/i18n";
 import { CompactLanguagePicker } from "./profile/CompactLanguagePicker";
 import type { UserSettings } from "../lib/settings";
 import { LayoutContext } from "./Layout";
-import { useBrowserShopProfile } from "../queries/useBrowserShop";
 import { useAvatarPreference } from "../queries/useAvatarPreference";
-import { UnifiedAvatar } from "./profile/UnifiedAvatar";
 
 const SHOP_THEME_KEY = "efhc.shop.theme.v1";
 const useBeforePaintEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
-
-function ProfileIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M5.5 19c.7-4 2.85-5.9 6.5-5.9s5.8 1.9 6.5 5.9"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 export function ShopLayout(
   props: React.PropsWithChildren<{
@@ -51,23 +35,8 @@ export function ShopLayout(
   }>,
 ) {
   const router = useRouter();
-  const [shopToken, setShopToken] = useState("");
   const [shopTheme, setShopTheme] = useState<"dark" | "light">("dark");
   const [shopThemeReady, setShopThemeReady] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    let restored = fragment.get("token") || "";
-    if (!restored) {
-      try {
-        restored = window.sessionStorage.getItem("efhc.browserShop.token.v1") || "";
-      } catch {
-        restored = "";
-      }
-    }
-    setShopToken(restored);
-  }, []);
-
   useBeforePaintEffect(() => {
     try {
       setShopTheme(window.localStorage.getItem(SHOP_THEME_KEY) === "light" ? "light" : "dark");
@@ -87,8 +56,6 @@ export function ShopLayout(
     try { window.localStorage.setItem(SHOP_THEME_KEY, shopTheme); } catch { /* no-op */ }
   }, [shopTheme, shopThemeReady]);
 
-  const shopProfileQ = useBrowserShopProfile(shopToken);
-  const shopLinkedGlobalId = shopProfileQ.data?.global_id || "";
   const t = useMemo(
     () => (key: string) => tFromDicts(key, props.uiDict, props.ruDict),
     [props.uiDict, props.ruDict],
@@ -97,9 +64,6 @@ export function ShopLayout(
     () => (key: string) => props.descDict[key] || tFromDicts(key, props.uiDict, props.ruDict),
     [props.descDict, props.uiDict, props.ruDict],
   );
-  const username = props.snapshot?.profile?.username
-    || props.telegramName
-    || (shopLinkedGlobalId ? `ID ${shopLinkedGlobalId}` : "EFHC");
   const { avatar } = useAvatarPreference();
   const avatarUrl = avatar.kind === "image" ? avatar.src : null;
   const mainBalance = props.snapshot?.profile?.main_balance || "0";
@@ -189,16 +153,6 @@ export function ShopLayout(
                 <small>EFHC</small>
                 <strong>{mainBalance}</strong>
               </div>
-              <Link href="/browser-shop/profile" className="efhc-shop-site_profile" aria-label={t("portal.browser_shop.nav_profile")}>
-                <span className="efhc-shop-site_avatar">
-                  <UnifiedAvatar value={avatar} size={36} alt="" />
-                </span>
-                <span className="efhc-shop-site_profile-copy">
-                  <small>{shopLinkedGlobalId ? `Global ID ${shopLinkedGlobalId}` : t("profile.title")}</small>
-                  <strong>{username}</strong>
-                </span>
-                <ProfileIcon />
-              </Link>
               <div className="efhc-shop-site_language-picker" data-shop-language-picker="profile-style-flags-columns">
                 <CompactLanguagePicker
                   value={props.lang}
@@ -220,6 +174,15 @@ export function ShopLayout(
           </div>
           <a href="#top">↑ EFHC</a>
         </footer>
+
+        <style jsx>{`
+          .efhc-shop-site_footer {
+            padding-inline: clamp(.875rem, 3vw, 1.375rem);
+          }
+          .efhc-shop-site_footer > div {
+            min-inline-size: 0;
+          }
+        `}</style>
       </div>
     </LayoutContext.Provider>
   );
