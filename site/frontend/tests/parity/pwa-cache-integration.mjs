@@ -957,12 +957,12 @@ try {
 
     } finally { await isolated.close(); }
   });
-  await check("TEST HUB direct Shop is separate from the canonical signed action", async () => {
+  await check("HUB renders an Admin-configured fifth link inside the canonical grid", async () => {
     const isolated = await browser.newContext({serviceWorkers:"block"});
     const hub = await isolated.newPage();
-    let slotActive = true;
+    let extraActive = true;
     let signedCalls = 0;
-    const basePath = new URL(base).pathname.replace(/\/$/,"");
+    const shopUrl = "https://efhc-test.example.invalid/efhc/browser-shop/";
     const headers = {
       "access-control-allow-origin":origin,
       "access-control-allow-credentials":"true",
@@ -980,30 +980,58 @@ try {
       if (url.pathname!=="/api/hub/links") return route.abort();
       if (request.method()==="OPTIONS") return route.fulfill({status:204,headers});
       return route.fulfill({status:200,headers,json:[
-        {id:1,code:"efhc_buy",title:"Shop",url:"/hub/efhc-handoff",is_active:slotActive,sort_order:1},
+        {id:5,code:"test_shop_catalog",title:"Магазин",url:shopUrl,is_active:extraActive,sort_order:0},
+        {id:1,code:"efhc_buy",title:"Shop",url:"/hub/efhc-handoff",is_active:true,sort_order:1},
         {id:2,code:"vip_getgems",title:"EFHC VIP NFT",url:"https://getgems.io/efhc-nft",is_active:true,sort_order:2},
+        {id:3,code:"efhc_ceo",title:"EFHC CEO",url:"https://t.me/EFHC_Official",is_active:true,sort_order:3},
+        {id:4,code:"efhc_admin",title:"EFHC Admin",url:"/admin/",is_active:true,sort_order:4},
       ]});
     });
     try {
       await hub.goto(base+"hub/",{waitUntil:"domcontentloaded",timeout:30000});
-      const canonical = hub.locator('[data-hub-link-slot-grid] button[data-hub-link-code="efhc_buy"]');
-      const direct = hub.locator('a[data-hub-direct-test-shop="true"]');
-      await canonical.waitFor({state:"visible"});
-      await direct.waitFor({state:"visible"});
+      const grid = hub.locator('[data-hub-link-slot-grid]');
+      const canonical = grid.locator('button[data-hub-link-code="efhc_buy"]');
+      const extra = grid.locator('button[data-hub-link-code="test_shop_catalog"]');
+      await extra.waitFor({state:"visible"});
+      assert.equal(await hub.locator(".efhc-hub-choice-grid").count(),1,"One HUB grid owns every card");
       assert.equal(await canonical.getAttribute("data-hub-link-url"),"/hub/efhc-handoff");
-      assert.deepEqual(await hub.locator('[data-hub-link-slot-grid] button').evaluateAll(nodes =>
-        nodes.map(node => node.getAttribute("data-hub-link-code"))),["efhc_buy","vip_getgems"]);
-      assert.equal(await direct.getAttribute("href"),basePath+"/browser-shop/");
-      await direct.click();
-      await hub.waitForURL(new URL(base+"browser-shop/").href);
-      await hub.locator('[data-public-surface="browser-shop"]').waitFor({state:"visible"});
-      assert.equal(signedCalls,0,"A direct TEST catalogue link does not issue a signed handoff");
-      slotActive=false;
+      assert.equal(await extra.getAttribute("data-hub-link-url"),shopUrl);
+      const layout = await grid.evaluate(element => {
+        const nodes = [...element.children];
+        return {
+          order:nodes.map(node=>node.getAttribute("data-hub-link-code")),
+          boxes:nodes.map(node=>{const {x,y,bottom,width,height}=node.getBoundingClientRect();return {x,y,bottom,width,height};}),
+          gap:parseFloat(getComputedStyle(element).rowGap),
+        };
+      });
+      assert.deepEqual(layout.order,["efhc_buy","vip_getgems","efhc_ceo","efhc_admin","test_shop_catalog"]);
+      const [one,two,three,four,five]=layout.boxes;
+      const same=(a,b)=>Math.abs(a-b)<0.3;
+      assert.ok(one.x<two.x && same(one.y,two.y) && same(three.y,four.y),"Protected cards stay in two rows");
+      assert.ok(same(one.x,five.x) && same(one.width,five.width) && same(one.height,five.height) &&
+        same(three.y-one.bottom,layout.gap) && same(five.y-three.bottom,layout.gap),
+      "API row five uses the same card geometry and inter-row gap");
+      await hub.evaluate(() => {
+        const telegram=window.Telegram ||= {};
+        (telegram.WebApp ||= {}).openLink=url => {window.__efhcTestOpenLink=url;};
+      });
+      await extra.click();
+      assert.equal(await hub.evaluate(() => window.__efhcTestOpenLink),shopUrl,
+        "Telegram bridge opens the exact Admin-configured external address");
+      assert.equal(hub.url(),new URL(base+"hub/").href,"The Hub must not navigate inside Telegram");
+      assert.equal(signedCalls,0,"The separate configured destination does not request a signed handoff");
+      // Check the same exported path on the isolated test server, not by
+      // using or signing into the private live Site.
+      const shop=await isolated.newPage();
+      await shop.goto(new URL(new URL(shopUrl).pathname,origin).href,{waitUntil:"domcontentloaded",timeout:30000});
+      await shop.locator('[data-public-surface="browser-shop"]').waitFor({state:"visible"});
+      await shop.close();
+      extraActive=false;
       await hub.goto(base+"hub/",{waitUntil:"domcontentloaded",timeout:30000});
-      await hub.locator('[data-hub-link-code="vip_getgems"]').waitFor({state:"visible"});
-      assert.equal(await direct.count(),0,"A disabled Shop slot must not resurrect through the TEST link");
-      assert.equal(await canonical.count(),0);
-      console.log("HUB_DIRECT_TEST_SHOP_PASS");
+      await canonical.waitFor({state:"visible"});
+      assert.equal(await extra.count(),0,"A disabled API row must not become a hardcoded card");
+      assert.equal(await grid.locator("button").count(),4);
+      console.log("HUB_ADMIN_REGISTRY_FIFTH_LINK_PASS");
     } finally { await isolated.close(); }
   });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {
