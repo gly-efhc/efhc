@@ -1228,7 +1228,7 @@ try {
         const request=route.request();
         const u=new URL(request.url());
         if(/\/(?:api\/)?shopfront\/catalog\/?$/.test(u.pathname)){
-          const headers={"access-control-allow-origin":origin,"access-control-allow-methods":"GET,OPTIONS",
+          const headers={"access-control-allow-origin":origin,"access-control-allow-credentials":"true","access-control-allow-methods":"GET,OPTIONS",
             "access-control-allow-headers":request.headers()["access-control-request-headers"]||"*"};
           if(request.method()==="OPTIONS")return route.fulfill({status:204,headers});
           assert.equal(request.method(),"GET","Fixture serves read-only product catalog");
