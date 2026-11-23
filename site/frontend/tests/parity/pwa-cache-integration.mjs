@@ -115,6 +115,61 @@ const check = async (name,fn) => {
   console.log("PWA_INTEGRATION_PASS "+name);
 };
 try {
+  await check("available EFHC packages expose Buy and open checkout without a payment request", async () => {
+    const isolated=await browser.newContext({serviceWorkers:"block",viewport:{width:390,height:844}});
+    const shop=await isolated.newPage();
+    const headers={
+      "access-control-allow-origin":origin,
+      "access-control-allow-credentials":"true",
+      "access-control-allow-headers":"authorization, content-type",
+      "access-control-allow-methods":"GET, OPTIONS",
+    };
+    const purchaseAttempts=[];
+    let catalogReads=0;
+    await isolated.route("**/*", route => {
+      const request=route.request();
+      const url=new URL(request.url());
+      if (url.origin===origin && !url.pathname.startsWith("/api/")) return route.continue();
+      if (request.method()==="POST" && /^\/api\/(?:shopfront|payment|wallets)/.test(url.pathname)) {
+        purchaseAttempts.push(url.pathname);
+      }
+      if (url.pathname!=="/api/shopfront/catalog") return route.abort();
+      if (request.method()==="OPTIONS") return route.fulfill({status:204,headers});
+      if (request.method()!=="GET") return route.abort();
+      catalogReads++;
+      return route.fulfill({headers,json:{items:[{
+        sku:"EFHC_PACKAGE_10", title:"10 EFHCm", description:null, item_type:"EFHC_PACKAGE",
+        status:"live", ton_enabled:true, usdt_enabled:false, methods:{TON:{price:"1.25"}},
+      }]}});
+    });
+    try {
+      await shop.goto(base+"browser-shop/",{waitUntil:"load",timeout:30000});
+      const available=shop.locator('button[data-browser-shop-package-slot="10"]');
+      const unavailable=shop.locator('button[data-browser-shop-package-slot="50"]');
+      await shop.locator('button[data-browser-shop-package-slot="10"]:enabled').waitFor({state:"visible"});
+      assert.ok(catalogReads>0,"Read the real catalogue seam");
+      const buy=available.getByText("Buy",{exact:true});
+      await buy.waitFor({state:"visible",timeout:5000});
+      assert.equal(await unavailable.isDisabled(),true);
+      assert.equal(await unavailable.getByText("Buy",{exact:true}).count(),0);
+      assert.equal(await available.getByRole("button").count(),0,"No nested interactive button");
+      for (const width of [390,1280]) {
+        await shop.setViewportSize({width,height:844});
+        const c=await available.boundingBox(), b=await buy.boundingBox();
+        assert.ok(c && b && b.x>=c.x && b.x+b.width<=c.x+c.width && b.y>=c.y && b.y+b.height<=c.y+c.height,
+          "Buy label must fit inside its card at width "+width);
+      }
+      await shop.setViewportSize({width:390,height:844});
+      await buy.click();
+      const checkout=shop.getByRole("dialog",{name:"10 EFHCm",exact:true});
+      await checkout.waitFor({state:"visible"});
+      assert.ok(await checkout.getByRole("button",{name:"Pay",exact:true}).isVisible());
+      assert.deepEqual(purchaseAttempts,[],"Opening checkout must never send a payment or wallet request");
+      console.log("EFHC_SHOP_VISIBLE_BUY_CHECKOUT PASS");
+    } finally {
+      await isolated.close();
+    }
+  });
   await check("Serwist installs critical shell then resumes every required offline page in background", async () => {
     await page.goto(base,{waitUntil:"domcontentloaded",timeout:30000});
     const config = await (await page.request.get(base+"pwa-build.json")).json();
