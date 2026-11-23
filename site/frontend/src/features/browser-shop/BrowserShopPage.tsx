@@ -1322,7 +1322,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         .efhc-shop-checkout-modal > :global(.efhc-browser-shop-presign) {
           border-color: inherit;
         }
-        .efhc-shop-checkout-modal > .efhc-shop-modal-close {
+        section.efhc-shop-checkout-modal[role="dialog"] > .efhc-shop-modal-close {
           min-inline-size: 44px;
           min-block-size: 44px;
           border: 0;
