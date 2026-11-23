@@ -107,6 +107,8 @@ export function ShopLayout(
       }}
     >
       <div
+        id="top"
+        tabIndex={-1}
         className="efhc-shop-site"
         data-interface-app-mode="shop-landing"
         data-browser-shop-document="canonical-external-vps-page"
@@ -169,10 +171,9 @@ export function ShopLayout(
 
         <footer className="efhc-shop-site_footer">
           <div>
-            <strong>EFHC · Energy For Humanity</strong>
-            <span>{t("portal.browser_shop.payment_warning_detail")}</span>
+            <strong>EFHC · Energy For Humanity Coin</strong>
           </div>
-          <a href="#top">↑ EFHC</a>
+          <a className="efhc-shop-site_back-top" href="#top" aria-label={t("portal.browser_shop.back_to_top")}>↑</a>
         </footer>
 
         <style jsx>{`
@@ -181,6 +182,25 @@ export function ShopLayout(
           }
           .efhc-shop-site_footer > div {
             min-inline-size: 0;
+            overflow-wrap: anywhere;
+          }
+          .efhc-shop-site_footer .efhc-shop-site_back-top {
+            display: grid;
+            place-items: center;
+            inline-size: 2.75rem;
+            min-block-size: 2.75rem;
+            flex: none;
+            border: 1px solid var(--shop-line);
+            border-radius: .72rem;
+            line-height: 1;
+            font-size: 1rem;
+          }
+          .efhc-shop-site_back-top:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 3px;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            :global(html[data-shop-theme]) { scroll-behavior: auto; }
           }
         `}</style>
       </div>
