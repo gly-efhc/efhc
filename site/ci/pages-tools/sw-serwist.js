@@ -27,6 +27,66 @@ const correctHtml = async response => Boolean(response?.ok) &&
   (await response.clone().text()).includes(
     'name="efhc-build-id" content="' + CONFIG.build_id + '"'
   );
+// Explicit purge must not race writes scheduled by these native public
+// strategies. This state is per active worker and exists only in memory.
+let runtimeWriteEpoch = 0;
+let runtimePurgeActive = false;
+let runtimePurgeQueue = Promise.resolve();
+const admittedRuntimeWrites = new Set();
+
+function runtimeWriteGate(allowOpaque = false) {
+  return {
+    handlerWillStart({state}) {
+      state.epoch = runtimeWriteEpoch;
+      state.startedDuringPurge = runtimePurgeActive;
+    },
+    cacheWillUpdate({response,state}) {
+      if (runtimePurgeActive || state.startedDuringPurge ||
+          state.epoch !== runtimeWriteEpoch) return null;
+      // Retain each strategy's Serwist default cacheability criteria.
+      if (response.status !== 200 && !(allowOpaque && response.status === 0)) return null;
+      if (!state.write) {
+        let complete;
+        const done = new Promise(resolve => { complete = resolve; });
+        state.write = {done,complete};
+        admittedRuntimeWrites.add(done);
+      }
+      return response;
+    },
+    handlerDidComplete({state}) {
+      if (!state.write) return;
+      admittedRuntimeWrites.delete(state.write.done);
+      state.write.complete();
+    },
+  };
+}
+
+async function drainAdmittedRuntimeWrites() {
+  if (admittedRuntimeWrites.size === 0) return;
+  let timer;
+  try {
+    await Promise.race([
+      Promise.all(admittedRuntimeWrites),
+      new Promise((_,reject) => {
+        timer = setTimeout(() => reject(Error("EFHC_RUNTIME_PURGE_WRITE_DRAIN")),1500);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
+function withPublicRuntimePurge(action) {
+  const operation = runtimePurgeQueue.then(async () => {
+    runtimePurgeActive = true;
+    runtimeWriteEpoch += 1;
+    try {
+      await drainAdmittedRuntimeWrites();
+      return await action();
+    } finally { runtimePurgeActive = false; }
+  });
+  runtimePurgeQueue = operation.catch(() => {});
+  return operation;
+}
+
 const htmlGuard = {
   async fetchDidSucceed({response}) {
     if (!(await correctHtml(response))) throw Error("EFHC_HTML_GENERATION_MISMATCH");
@@ -40,19 +100,19 @@ const htmlGuard = {
 const publicPages = new NetworkFirst({
   cacheName:"efhc-serwist-pages",
   networkTimeoutSeconds:2,
-  plugins:[htmlGuard],
+  plugins:[htmlGuard,runtimeWriteGate(true)],
 });
 const publicAssets = new CacheFirst({
   cacheName:"efhc-serwist-assets",
-  plugins:[new ExpirationPlugin({maxEntries:900,purgeOnQuotaError:true})],
+  plugins:[new ExpirationPlugin({maxEntries:900,purgeOnQuotaError:true}),runtimeWriteGate()],
 });
 const publicLocale = new StaleWhileRevalidate({
   cacheName:"efhc-serwist-locale",
-  plugins:[new ExpirationPlugin({maxEntries:48,maxAgeSeconds:180*24*3600,purgeOnQuotaError:true})],
+  plugins:[new ExpirationPlugin({maxEntries:48,maxAgeSeconds:180*24*3600,purgeOnQuotaError:true}),runtimeWriteGate(true)],
 });
 const publicMedia = new CacheFirst({
   cacheName:"efhc-serwist-media",
-  plugins:[new ExpirationPlugin({maxEntries:120,maxAgeSeconds:30*24*3600,purgeOnQuotaError:true})],
+  plugins:[new ExpirationPlugin({maxEntries:120,maxAgeSeconds:30*24*3600,purgeOnQuotaError:true}),runtimeWriteGate()],
 });
 const networkOnly = new NetworkOnly();
 
@@ -220,42 +280,51 @@ self.addEventListener("message", event => {
       reply.postMessage({safe:true});
       return;
     }
-    // Never touch the Serwist precache or another application's cache.
-    const names = await caches.keys();
-    let cleared = 0;
-    for (const name of publicRuntimeCaches) {
-      if (!names.includes(name)) continue;
-      // Serwist's native expiration class removes persistent cache metadata.
-      if (name !== "efhc-serwist-pages") {
-        await new CacheExpiration(name,{maxEntries:1}).delete();
+    const result = await withPublicRuntimePurge(async () => {
+      // Never touch the Serwist precache or another application's cache.
+      const names = await caches.keys();
+      let cleared = 0;
+      for (const name of publicRuntimeCaches) {
+        if (!names.includes(name)) continue;
+        // Serwist's native expiration class removes persistent cache metadata.
+        if (name !== "efhc-serwist-pages") {
+          await new CacheExpiration(name,{maxEntries:1}).delete();
+        }
+        if (await caches.delete(name)) cleared++;
       }
-      if (await caches.delete(name)) cleared++;
-    }
-    // Only the active generation's canonical offline page entries. Leave
-    // successor revision keys, critical shared JS/CSS, and a neutral offline
-    // fallback intact so open app copies can keep rendering safely.
-    const precacheName = sw.precacheStrategy.cacheName;
-    const offlinePageKeys = emergency
-      ? (CONFIG.precache_critical || [])
-          .filter(path => isHtml(path) && path !== scoped("offline.html") &&
-            inScope(new URL(path,self.location.origin)))
-          .map(path => sw.getPrecacheKeyForUrl(path))
-          .filter(Boolean)
-      : [];
-    if (offlinePageKeys.length && names.includes(precacheName)) {
-      const nativeCache = await caches.open(precacheName);
-      for (const key of offlinePageKeys) {
-        if (await nativeCache.delete(key)) cleared++;
+      // Only the active generation's canonical offline page entries. Leave
+      // successor revision keys, critical shared JS/CSS, and a neutral offline
+      // fallback intact so open app copies can keep rendering safely.
+      const precacheName = sw.precacheStrategy.cacheName;
+      const offlinePageKeys = emergency
+        ? (CONFIG.precache_critical || [])
+            .filter(path => isHtml(path) && path !== scoped("offline.html") &&
+              inScope(new URL(path,self.location.origin)))
+            .map(path => sw.getPrecacheKeyForUrl(path))
+            .filter(Boolean)
+        : [];
+      if (offlinePageKeys.length && names.includes(precacheName)) {
+        const nativeCache = await caches.open(precacheName);
+        for (const key of offlinePageKeys) {
+          if (await nativeCache.delete(key)) cleared++;
+        }
       }
-    }
-    const remaining = await caches.keys();
-    const offlinePagesRemain = offlinePageKeys.length > 0 && remaining.includes(precacheName) &&
-      (await Promise.all(offlinePageKeys.map(key => caches.match(key,{cacheName:precacheName})))).some(Boolean);
-    if (offlinePagesRemain || publicRuntimeCaches.some(name => remaining.includes(name))) {
-      reply.postMessage({status:"failed"});
-      return;
-    }
-    reply.postMessage({status:cleared ? "cleared" : "empty",count:cleared});
+      // Native read/expiration may transiently open an empty named cache.
+      // Remove only such an empty shell once; do not erase unverified records
+      // that could belong to a newly activated worker.
+      for (const name of await caches.keys()) {
+        if (!publicRuntimeCaches.includes(name)) continue;
+        const cache = await caches.open(name);
+        if (!(await cache.keys()).length) await caches.delete(name);
+      }
+      const remaining = await caches.keys();
+      const offlinePagesRemain = offlinePageKeys.length > 0 && remaining.includes(precacheName) &&
+        (await Promise.all(offlinePageKeys.map(key => caches.match(key,{cacheName:precacheName})))).some(Boolean);
+      if (offlinePagesRemain || publicRuntimeCaches.some(name => remaining.includes(name))) {
+        return {status:"failed"};
+      }
+      return {status:cleared ? "cleared" : "empty",count:cleared};
+    });
+    reply.postMessage(result);
   })().catch(() => reply.postMessage({safe:false,status:"failed"})));
 });
-
