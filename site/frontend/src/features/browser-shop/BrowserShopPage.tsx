@@ -1316,6 +1316,26 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
             max-inline-size: 100%;
           }
         }
+        .efhc-shop-checkout-modal > .efhc-shop-checkout-summary {
+          border-block-color: inherit;
+        }
+        .efhc-shop-checkout-modal > :global(.efhc-browser-shop-presign) {
+          border-color: inherit;
+        }
+        .efhc-shop-checkout-modal > .efhc-shop-modal-close {
+          min-inline-size: 44px;
+          min-block-size: 44px;
+          border: 0;
+          box-shadow: none;
+          background: transparent;
+        }
+        .efhc-shop-checkout-modal > .efhc-shop-modal-close:focus-visible {
+          outline: 2px solid currentColor;
+          outline-offset: 2px;
+        }
+        .efhc-shop-checkout-modal > :is(h2,.efhc-shop-exchange-title) {
+          padding-inline-end: 2.75rem;
+        }
         .efhc-shop-product-buy-action {
           justify-self: end;
           border-radius: .38rem;
