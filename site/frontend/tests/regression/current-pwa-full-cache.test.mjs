@@ -23,7 +23,8 @@ test("Pages has one Serwist worker with native update and prefetch APIs", () => 
   assert.doesNotMatch(prepare,/public\/sw\.js'\)\.unlink/);
   assert.doesNotMatch(prepare,/public\/manifest\.webmanifest'\)\.unlink/);
   assert.match(runtime,/serviceWorker\.register/);
-  assert.match(runtime,/registration\.update\(\)/);
+  assert.match(runtime,/requestPwaUpdate\(\)/);
+  assert.match(read("src/lib/pwaUpdateRequest.ts"),/registration\.update\(\)/);
   assert.match(runtime,/type:"CACHE_URLS",payload:\{urlsToCache\}/);
   assert.match(runtime,/queryClient\.isMutating\(\) === 0/);
   assert.match(runtime,/!walletModalRef\.current && !handoffPending/);
@@ -281,7 +282,8 @@ test("Android maskable icon preserves the canonical EFHC logo and safe zone", ()
 test("Automatic update checks stay in the PWA runtime, not the Settings panel", () => {
   const settings=read("src/components/profile/ProfileSettingsDialog.tsx");
   const runtime=read("src/components/PwaRuntimeStatus.tsx");
-  assert.match(runtime,/registration\.update\(\)/);
+  assert.match(runtime,/requestPwaUpdate\(\)/);
+  assert.match(read("src/lib/pwaUpdateRequest.ts"),/registration\.update\(\)/);
   assert.match(runtime,/window\.addEventListener\("pageshow",onResume\)/);
   assert.match(runtime,/window\.addEventListener\("online",onResume\)/);
   assert.match(runtime,/document\.addEventListener\("visibilitychange",onResume\)/);

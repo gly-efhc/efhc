@@ -1,6 +1,8 @@
 import React, {useEffect, useRef} from "react";
 import {useQueryClient} from "@tanstack/react-query";
 import {appBasePath} from "../lib/appBasePath";
+import {requestPwaUpdate} from "../lib/pwaUpdateRequest";
+import {getTelegramWebApp} from "../lib/telegram";
 import {useWalletProvider} from "../lib/wallet-provider";
 
 /** Serwist is the only owner of the HTTP cache and service worker lifecycle.
@@ -67,10 +69,10 @@ export function PwaRuntimeStatus(props: {
       markActivity();
     };
     const checkForUpdate = () => {
-      if (disposed || !registration || !navigator.onLine) return;
-      // Serwist checks installation and native lifecycle; activation below
+      if (disposed || !registration) return;
+      // Discovery is coalesced; the existing native activation below still
       // requires an affirmative idle response from every scoped client.
-      void registration.update().catch(() => undefined);
+      void requestPwaUpdate();
     };
     const activateWhenSafe = () => {
       const waiting = registration?.waiting;
@@ -149,12 +151,37 @@ export function PwaRuntimeStatus(props: {
     navigator.serviceWorker.addEventListener("message", onSafetyCheck);
     for (const event of ["pointerdown", "keydown", "touchstart"])
       document.addEventListener(event,markActivity,{passive:true});
+    let telegramActivationSource: ReturnType<typeof getTelegramWebApp> = null;
+    const onResume = () => {
+      if (disposed) return;
+      bindTelegramActivation();
+      checkForUpdate();
+      activateWhenSafe();
+      reloadWhenSafe();
+    };
+    const bindTelegramActivation = () => {
+      const telegram = getTelegramWebApp();
+      if (typeof telegram?.onEvent !== "function" || telegramActivationSource === telegram) return;
+      try {
+        if (typeof telegram.isVersionAtLeast === "function" && !telegram.isVersionAtLeast("8.0")) return;
+        telegram.onEvent("activated",onResume);
+        telegramActivationSource?.offEvent?.("activated",onResume);
+        telegramActivationSource = telegram;
+      } catch { /* Browser and older Telegram versions retain normal events. */ }
+    };
+    const onFocus = () => {
+      markFocus();
+      onResume();
+    };
     window.addEventListener("blur",markBlur);
-    window.addEventListener("focus",markFocus);
-    const onResume = () => {checkForUpdate(); activateWhenSafe(); reloadWhenSafe();};
+    window.addEventListener("focus",onFocus);
     window.addEventListener("pageshow",onResume);
     window.addEventListener("online",onResume);
+    // Telegram's script is async and can become available after React mounts.
+    window.addEventListener("load",bindTelegramActivation);
+    document.addEventListener("resume",onResume);
     document.addEventListener("visibilitychange",onResume);
+    bindTelegramActivation();
     const updateInterval = window.setInterval(checkForUpdate,15*60*1000);
     const idleInterval = window.setInterval(() => {
       activateWhenSafe();
@@ -181,10 +208,13 @@ export function PwaRuntimeStatus(props: {
       for (const event of ["pointerdown", "keydown", "touchstart"])
         document.removeEventListener(event,markActivity);
       window.removeEventListener("blur",markBlur);
-      window.removeEventListener("focus",markFocus);
+      window.removeEventListener("focus",onFocus);
       window.removeEventListener("pageshow",onResume);
       window.removeEventListener("online",onResume);
+      window.removeEventListener("load",bindTelegramActivation);
+      document.removeEventListener("resume",onResume);
       document.removeEventListener("visibilitychange",onResume);
+      try { telegramActivationSource?.offEvent?.("activated",onResume); } catch { /* SDK optional. */ }
     };
   }, [props.enabled,queryClient]);
 
