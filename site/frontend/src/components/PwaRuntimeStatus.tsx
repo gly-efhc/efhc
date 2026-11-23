@@ -1,7 +1,7 @@
 import React, {useEffect, useRef} from "react";
 import {useQueryClient} from "@tanstack/react-query";
 import {appBasePath} from "../lib/appBasePath";
-import {requestPwaUpdate} from "../lib/pwaUpdateRequest";
+import {isPwaMaintenancePending, requestPwaUpdate} from "../lib/pwaUpdateRequest";
 import {getTelegramWebApp} from "../lib/telegram";
 import {useWalletProvider} from "../lib/wallet-provider";
 
@@ -44,7 +44,7 @@ export function PwaRuntimeStatus(props: {
     // A click requests manual maintenance; it must not trigger the
     // six-second delay reserved for automatic worker activation.
     const safeForUpgrade = () =>
-      safeForMaintenance() && Date.now() - lastActivityAt >= 6000;
+      !isPwaMaintenancePending() && safeForMaintenance() && Date.now() - lastActivityAt >= 6000;
     const safeToReload = () => safeForUpgrade() && navigator.onLine &&
       document.visibilityState === "visible";
     const onSafetyCheck = (event: MessageEvent) => {

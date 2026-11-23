@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useT } from "../../hooks/useT";
 import { clearDownloadedDisplaySnapshots } from "../../lib/clearDownloadedDisplaySnapshots";
-import { requestPwaUpdate } from "../../lib/pwaUpdateRequest";
+import { holdPwaActivationDuringMaintenance, requestPwaUpdate } from "../../lib/pwaUpdateRequest";
 import type { UserSettings } from "../../lib/settings";
 import { InterfaceCustomizationContext } from "../interface-settings/InterfaceCustomizationProvider";
 import { Modal } from "../ui/Modal";
@@ -18,6 +18,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
   >(null);
   async function clearPublicCache(): Promise<void> {
     if (clearing) return;
+    const releaseActivation = holdPwaActivationDuringMaintenance();
     // Discovery starts on the same user action, independent of cache outcome.
     void requestPwaUpdate({force:true});
     setClearing(true);
@@ -61,6 +62,7 @@ function PwaMaintenanceSection(): React.JSX.Element {
     } catch {
       setClearOutcome("failed");
     } finally {
+      releaseActivation();
       setClearing(false);
     }
   }

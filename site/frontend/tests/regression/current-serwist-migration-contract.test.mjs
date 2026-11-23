@@ -105,5 +105,9 @@ test("Cache action sends independent discovery, and page or Telegram wake only a
   assert.match(updater,/force \? await readyWithin\(container\)/);
   assert.match(updater,/if \(inFlight\)/);
   assert.match(updater,/!force && online && startedOffline/);
+  assert.match(handler,/const releaseActivation = holdPwaActivationDuringMaintenance\(\)/);
+  assert.match(handler,/await clearDownloadedDisplaySnapshots\(queryClient\)[\s\S]*?finally \{\s*releaseActivation\(\)/);
+  assert.match(runtime,/!isPwaMaintenancePending\(\) && safeForMaintenance\(\)/);
+  assert.match(updater,/MAINTENANCE_HOLD_LIMIT = 12_000/);
   assert.doesNotMatch(updater,/skipWaiting|controller|register\(|reload\(|(?:local|session)Storage|indexedDB/);
 });

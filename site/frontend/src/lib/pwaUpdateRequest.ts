@@ -2,11 +2,29 @@ import { appBasePath } from "./appBasePath";
 
 const MIN_AUTOMATIC_CHECK_INTERVAL = 20_000;
 const REGISTRATION_READY_WAIT = 2_000;
+const MAINTENANCE_HOLD_LIMIT = 12_000;
 
 let lastAutomaticCheck = Number.NEGATIVE_INFINITY;
 let inFlight: Promise<void> | null = null;
 let startedOffline = false;
 let trailingWake: ReturnType<typeof setTimeout> | undefined;
+const maintenanceHolds = new Set<symbol>();
+
+/** Same-document safety while emergency cleanup receives its reply and
+ * clears display snapshots. The deadline prevents an unbounded reload veto. */
+export function holdPwaActivationDuringMaintenance(): () => void {
+  const hold = Symbol();
+  maintenanceHolds.add(hold);
+  const timeout = setTimeout(() => {maintenanceHolds.delete(hold);}, MAINTENANCE_HOLD_LIMIT);
+  return () => {
+    clearTimeout(timeout);
+    maintenanceHolds.delete(hold);
+  };
+}
+
+export function isPwaMaintenancePending(): boolean {
+  return maintenanceHolds.size > 0;
+}
 
 function cancelTrailingWake() {
   if (trailingWake !== undefined) clearTimeout(trailingWake);

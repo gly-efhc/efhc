@@ -238,6 +238,7 @@ try {
       ServiceWorker.prototype.postMessage=function(message,transfer) {
         if(message?.type!=="EFHC_PWA_EMERGENCY_CLEAR_CACHE"||!transfer?.[0])
           return originalPost.call(this,message,transfer);
+        if(state.clearMode==="pending"){state.clearReply=transfer[0];return;}
         transfer[0].postMessage({status:state.clearMode});
       };
       window.Telegram={WebApp:{
@@ -287,6 +288,31 @@ try {
       await incremented(offlineBefore);
       await isolated.setOffline(false);
       await incremented(offlineBefore+1);
+      // Keep the real button handler pending beyond the ordinary idle cutoff.
+      const pendingBefore=await calls();
+      await profile.evaluate(()=>{window.__efhcDiscoveryProof.clearMode="pending";});
+      await button.click();
+      await incremented(pendingBefore);
+      await profile.waitForFunction(()=>Boolean(window.__efhcDiscoveryProof.clearReply));
+      const reportsSafe=()=>profile.evaluate(()=>new Promise((resolve,reject)=>{
+        const channel=new MessageChannel();
+        const timeout=setTimeout(()=>reject(new Error("Missing page safety reply")),3000);
+        channel.port1.onmessage=event=>{
+          clearTimeout(timeout);channel.port1.close();resolve(event.data?.safe);
+        };
+        navigator.serviceWorker.dispatchEvent(new MessageEvent("message",{
+          data:{type:"EFHC_PWA_CLIENT_SAFE",purpose:"upgrade"},ports:[channel.port2],
+        }));
+      }));
+      await profile.evaluate(()=>{window.__efhcDiscoveryProof.offset+=7000;});
+      assert.equal(await reportsSafe(),false,"Discovery must not let reload overtake pending cleanup");
+      await profile.evaluate(()=>{
+        const proof=window.__efhcDiscoveryProof;
+        proof.clearReply.postMessage({status:"failed"});
+        proof.clearReply.close();
+      });
+      await maintenance.getByRole("status").filter({hasText:/could not be confirmed|не удалось подтвердить/i}).waitFor({state:"visible"});
+      assert.equal(await reportsSafe(),true,"A completed cleanup releases only its own hold");
       // Test every public platform signal separately and a burst together.
       for(const event of ["focus","resume","activated","burst"]) {
         const before=await calls();
