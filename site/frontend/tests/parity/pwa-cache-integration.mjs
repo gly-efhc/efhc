@@ -1224,9 +1224,21 @@ try {
     const isolated=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:"block"});
     const observations=[];
     try {
+      const writes=[];
+      let blockedGuestBootstraps=0;
+      const vipItem=(sku,item_type,title,status="live",price="100.00")=>({
+        sku,item_type,title,status,description:null,ton_enabled:true,usdt_enabled:true,
+        methods:{TON:{price},USDT:{price:"150.00"}},action_mode:"checkout",delivery_mode:"manual",
+      });
       await isolated.route("**/*",route=>{
         const request=route.request();
         const u=new URL(request.url());
+        if(!["GET","HEAD","OPTIONS"].includes(request.method())){
+          // Public TEST guest bootstrap is unrelated to checkout. Still abort it.
+          if(request.method()==="POST" && u.pathname==="/api/staging/guest") blockedGuestBootstraps++;
+          else writes.push(`${request.method()} ${u.pathname}`);
+          return route.abort();
+        }
         if(/\/(?:api\/)?shopfront\/catalog\/?$/.test(u.pathname)){
           const headers={"access-control-allow-origin":origin,"access-control-allow-credentials":"true","access-control-allow-methods":"GET,OPTIONS",
             "access-control-allow-headers":request.headers()["access-control-request-headers"]||"*"};
@@ -1236,7 +1248,17 @@ try {
             sku:"EFHC_PACKAGE_10",title:"10 EFHCm",description:null,item_type:"EFHC_PACKAGE",
             ton_enabled:true,usdt_enabled:true,methods:{TON:{price:"2.00"},USDT:{price:"3.00"}},
             status:"live",action_mode:"checkout",delivery_mode:"bank_credit",quantity_efhc:"10.00000000",sort_order:10,
-          }]}});
+          },
+            {sku:"EFHC_PACKAGE_CUSTOM",title:"Custom",description:null,item_type:"EFHC_PACKAGE",status:"live",
+              ton_enabled:true,usdt_enabled:true,methods:{TON:{price:"0.01"},USDT:{price:"0.30"}},
+              action_mode:"checkout",delivery_mode:"bank_credit"},
+            vipItem("EFHC_VIP_NFT_ANY","NFT_VIP","VIP Any"),
+            vipItem("EFHC_VIP_NFT_SELECTED_PRICE","NFT_VIP_SELECTED_PRICE","VIP Selected"),
+            vipItem("EFHC_VIP_NFT_NUMBER_0004","NFT_VIP_NUMBER","VIP #0004"),
+            vipItem("EFHC_VIP_NFT_NUMBER_0012","NFT_VIP_NUMBER","VIP #0012"),
+            vipItem("EFHC_VIP_NFT_NUMBER_0020","NFT_VIP_NUMBER","VIP #0020","sold"),
+            vipItem("EFHC_VIP_NFT_NUMBER_0030","NFT_VIP_NUMBER","VIP #0030","live","0.00"),
+          ]}});
         }
         return u.origin===origin ? route.continue() : route.abort();
       });
@@ -1244,8 +1266,21 @@ try {
       await page.goto(base+"browser-shop/",{waitUntil:"domcontentloaded"});
       const product=page.locator('button[data-browser-shop-package-slot="10"]');
       const modal=page.locator(".efhc-shop-checkout-modal");
+      const anyVip=page.locator('[data-shop-vip-buy="any"]');
+      const selectedVip=page.locator('[data-shop-vip-buy="selected"]');
+      const indicator=selectedVip.locator("[data-shop-vip-selection]");
+      const buyAction=".efhc-shop-product-buy-action";
       for(const theme of ["dark","light"]){
         await page.locator('html[data-shop-theme="'+theme+'"]').waitFor({state:"attached"});
+        for(const card of [product,page.locator('[data-browser-shop-package-slot="exchange"]'),anyVip,selectedVip]){
+          const style=await card.locator(buyAction).evaluate(el=>{
+            const css=getComputedStyle(el);
+            return [css.borderTopStyle,css.borderTopColor,css.backgroundColor,css.color];
+          });
+          assert.deepEqual(style,theme==="dark"
+            ? ["solid","rgb(167, 139, 250)","rgba(0, 0, 0, 0)","rgb(255, 255, 255)"]
+            : ["solid","rgb(117, 87, 219)","rgba(0, 0, 0, 0)","rgb(18, 18, 18)"]);
+        }
         await product.locator(".efhc-shop-product-buy-action").tap();
         await modal.waitFor({state:"visible"});
         const measurements=await modal.evaluate(el=>{
@@ -1289,6 +1324,53 @@ try {
         if(theme==="dark")await page.locator("[data-shop-theme-toggle]").tap();
       }
       console.log("SHOP_CHECKOUT_OUTLINE_CLOSE_PASS",JSON.stringify(observations));
+      assert.equal(await selectedVip.isDisabled(),true);
+      assert.equal(await indicator.textContent(),"—");
+      assert.equal(await page.locator(".efhc-shop-number-actions").count(),0);
+      const option=number=>page.getByRole("option",{name:number,exact:true});
+      assert.equal(await option("0020").count(),0);
+      assert.equal(await option("0030").isDisabled(),true);
+      await anyVip.locator(buyAction).tap();
+      await modal.waitFor({state:"visible"});
+      assert.equal(await modal.locator("#checkoutTitle").textContent(),"VIP Any");
+      const close=async()=>{await modal.locator(".efhc-shop-modal-close").tap();await modal.waitFor({state:"hidden"});};
+      await close();
+      const beforePickerUrl=page.url();
+      const beforePickerSku=new URL(beforePickerUrl).searchParams.get("sku");
+      assert.equal(beforePickerSku,"EFHC_VIP_NFT_ANY");
+      const handoffStorageKey=await page.evaluate(sku=>Object.keys(sessionStorage)
+        .find(key=>sessionStorage.getItem(key)===sku),beforePickerSku);
+      assert.ok(handoffStorageKey,"The previous ordinary checkout stores its existing handoff SKU");
+      const readHandoffSku=()=>page.evaluate(key=>sessionStorage.getItem(key),handoffStorageKey);
+      const expectNumber=async number=>{
+        await modal.waitFor({state:"visible"});
+        assert.equal(await modal.locator("#checkoutTitle").textContent(),`EFHC VIP NFT #${number}`);
+        assert.match(await modal.locator("#checkoutSummary").textContent(),new RegExp(number));
+        assert.equal(page.url(),beforePickerUrl,"A pre-payment selection does not persist in the URL");
+        assert.equal(await readHandoffSku(),beforePickerSku,"A pre-payment selection does not persist the handoff SKU");
+      };
+      await option("0004").tap();
+      await expectNumber("0004");
+      await close();
+      assert.equal(await option("0004").getAttribute("aria-selected"),"true");
+      assert.equal(await indicator.textContent(),"#0004");
+      assert.equal(await selectedVip.isEnabled(),true);
+      await selectedVip.locator(buyAction).tap();
+      await expectNumber("0004");
+      await close();
+      await option("0012").tap();
+      await expectNumber("0012");
+      await close();
+      assert.equal(await indicator.textContent(),"#0012");
+      assert.equal(await option("0004").getAttribute("aria-selected"),"false");
+      assert.equal(await option("0012").getAttribute("aria-selected"),"true");
+      await page.reload({waitUntil:"domcontentloaded"});
+      await option("0012").waitFor({state:"visible"});
+      assert.equal(await indicator.textContent(),"—");
+      assert.equal(await selectedVip.isDisabled(),true);
+      assert.deepEqual(writes,[],"Shop selection must not issue payment or other writes");
+      console.log("SHOP_VIP_SELECTION_AND_BUY_PALETTE_PASS",JSON.stringify({blockedGuestBootstraps}));
+
     } finally { await isolated.close(); }
   });
   await check("Profile language surfaces match in ten themes and account actions use approved copy", async () => {

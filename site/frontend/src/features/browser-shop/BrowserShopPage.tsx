@@ -684,7 +684,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
   function chooseGlobalMethod(method: PayMethod) { setGlobalMethod(method); rememberCheckout(token, selectedSku, method); }
   function openCheckout(selection: CheckoutSelection) {
-    setSelectedSku(selection.item.sku); setGlobalMethod(selection.method); setCheckout(selection); setLocalError(""); setLocalNotice("");
+    // The numbered VIP picker is page-local until the existing payment/handoff action.
+    if (selection.vipMode !== "selected") setSelectedSku(selection.item.sku);
+    setGlobalMethod(selection.method); setCheckout(selection); setLocalError(""); setLocalNotice("");
   }
   function openOrderDetail(order: BrowserShopProfileOrder, initiator: HTMLElement | null) {
     orderDetailInitiatorRef.current = initiator;
@@ -706,10 +708,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       ? { ...current, customEfhcAmountD8: amountD8 || undefined }
       : current);
   }
-  function openVipNumberCheckout() {
-    const selected = vipNumberItems.find((entry) => entry.number === selectedVipNumber);
-    if (!selected) { setLocalError(t("portal.browser_shop.choose_vip_number_error")); return; }
-    if (!methodAllowed(selected.item, globalMethod)) { setLocalError(t("portal.browser_shop.selected_price_missing")); return; }
+  function openVipNumberCheckout(selected: { item: BrowserShopCatalogItem; number: string } | undefined) {
+    if (!canChooseVipNumber || !selected || !methodAllowed(selected.item, globalMethod)) return;
+    setSelectedVipNumber(selected.number);
     openCheckout({ item: selected.item, method: globalMethod, vipMode: "selected", vipNumber: selected.number });
   }
   function closeWalletChooser() {
@@ -909,6 +910,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
 
   const busy = createIntent.isPending || purchaseEfhc.isPending || walletTxPhase === "signing" || state === "checking" || state === "pending" || actionDenied || resumeIntent;
+  const selectedVipEntry = vipNumberItems.find(({ number }) => number === selectedVipNumber);
+  const canChooseVipNumber = Boolean(vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) && !busy);
+  const canBuySelectedVip = Boolean(canChooseVipNumber && selectedVipEntry && methodAllowed(selectedVipEntry.item, globalMethod));
   const checkoutOpen = Boolean(checkout);
 
   useEffect(() => {
@@ -1251,7 +1255,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
                 {(() => {
                   const item = packageCatalog.find(isCustomEfhcPackage) || null;
                   const enabled = Boolean(item && methodAllowed(item, globalMethod) && !busy);
-                  return <button type="button" className="efhc-shop-text-product" data-checkout-sku={CUSTOM_EFHC_PACKAGE_SKU} data-browser-shop-package-slot="exchange" disabled={!enabled} onClick={() => { if (item) openCustomExchange(item); }}><span className="efhc-shop-product-main"><img className="efhc-shop-package-thumb" src="/assets/efhc/efhc_coin_256.png" alt="" /><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.custom_exchange_title")}</strong><small>{t("portal.browser_shop.custom_exchange_detail")}</small></span></span><span className="efhc-shop-product-price"><small>{item ? customRateLabel(item, globalMethod) : t("portal.browser_shop.unavailable")}</small><b>{enabled ? "1+ EFHCm" : t("portal.browser_shop.unavailable")}</b></span></button>;
+                  return <button type="button" className="efhc-shop-text-product" data-checkout-sku={CUSTOM_EFHC_PACKAGE_SKU} data-browser-shop-package-slot="exchange" disabled={!enabled} onClick={() => { if (item) openCustomExchange(item); }}><span className="efhc-shop-product-main"><img className="efhc-shop-package-thumb" src="/assets/efhc/efhc_coin_256.png" alt="" /><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.custom_exchange_title")}</strong><small>{t("portal.browser_shop.custom_exchange_detail")}</small></span></span><span className="efhc-shop-product-price"><small>{item ? customRateLabel(item, globalMethod) : t("portal.browser_shop.unavailable")}</small><b>{enabled ? "1+ EFHCm" : t("portal.browser_shop.unavailable")}</b>{enabled ? <span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span> : null}</span></button>;
                 })()}
               </div>
             </div>
@@ -1261,14 +1265,13 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
             <div className="efhc-shop-catalog-heading"><figure className="efhc-shop-catalog-visual is-nft" data-vip-display-number="0000-unavailable"><img src={VIP_0000_IMAGE} alt="EFHC VIP NFT 0000" referrerPolicy="no-referrer" onError={(event) => { const image = event.currentTarget; if (image.dataset.fallback === "true") return; image.dataset.fallback = "true"; image.src = "/assets/efhc/efhc_coin_256.png"; }} /><figcaption>EFHC VIP NFT · 0000</figcaption></figure><header className="efhc-shop-catalog-heading-copy"><span>VIP NFT</span><h2 id="vipTitle">EFHC VIP NFT</h2></header></div>
             <div className="efhc-shop-catalog-copy">
               <div className="efhc-shop-vip-modes">
-                {vipAnyItem ? <button type="button" className="efhc-shop-text-product" disabled={!methodAllowed(vipAnyItem, globalMethod) || busy} onClick={() => openCheckout({ item: vipAnyItem, method: globalMethod, vipMode: "any" })}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_any_title")}</strong><small>{t("portal.browser_shop.vip_any_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{methodAllowed(vipAnyItem, globalMethod) ? priceAmountOnly(vipAnyItem, globalMethod) : t("portal.browser_shop.unavailable")}</b></span></button> : null}
-                <button type="button" className="efhc-shop-text-product" disabled={!vipSelectedPriceItem || !vipNumberItems.length || !methodAllowed(vipSelectedPriceItem, globalMethod) || busy} onClick={() => document.getElementById("vipNumberChooser")?.scrollIntoView({ behavior: "smooth", block: "center" })}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_select_title")}</strong><small>{t("portal.browser_shop.vip_select_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) ? priceAmountOnly(vipSelectedPriceItem, globalMethod) : t("portal.browser_shop.unavailable")}</b></span></button>
+                {vipAnyItem ? <button type="button" className="efhc-shop-text-product" data-shop-vip-buy="any" disabled={!methodAllowed(vipAnyItem, globalMethod) || busy} onClick={() => openCheckout({ item: vipAnyItem, method: globalMethod, vipMode: "any" })}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_any_title")}</strong><small>{t("portal.browser_shop.vip_any_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{methodAllowed(vipAnyItem, globalMethod) ? priceAmountOnly(vipAnyItem, globalMethod) : t("portal.browser_shop.unavailable")}</b><span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span></span></button> : null}
+                <button type="button" className="efhc-shop-text-product" data-shop-vip-buy="selected" disabled={!canBuySelectedVip} onClick={() => openVipNumberCheckout(selectedVipEntry)}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_select_title")}</strong><small>{t("portal.browser_shop.vip_select_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) ? priceAmountOnly(vipSelectedPriceItem, globalMethod) : t("portal.browser_shop.unavailable")}</b><small data-shop-vip-selection>{selectedVipEntry ? `#${selectedVipEntry.number}` : "—"}</small><span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span></span></button>
               </div>
               <div id="vipNumberChooser" className="efhc-shop-number-chooser" data-vip-inventory-count={vipNumberItems.length}>
                 <div className="efhc-shop-number-chooser-head"><div><strong>{t("portal.browser_shop.vip_numbers_title")}</strong><small>{Math.min(vipNumberItems.length, VIP_NUMBER_PAGE)} {t("portal.browser_shop.vip_numbers_shown_suffix")}</small></div><input value={vipSearch} onChange={(event) => setVipSearch(event.target.value)} inputMode="numeric" maxLength={4} placeholder={t("portal.browser_shop.vip_number_search")} aria-label={t("portal.browser_shop.vip_number_search_aria")} /></div>
-                <div className="efhc-shop-number-grid" role="listbox" aria-label={t("portal.browser_shop.vip_numbers_aria")}>{visibleVipNumbers.map(({ number }) => <button key={number} type="button" role="option" aria-selected={selectedVipNumber === number} onClick={() => setSelectedVipNumber(number)}>{number}</button>)}</div>
+                <div className="efhc-shop-number-grid" role="listbox" aria-label={t("portal.browser_shop.vip_numbers_aria")}>{visibleVipNumbers.map((entry) => <button key={entry.number} type="button" role="option" aria-selected={selectedVipNumber === entry.number} disabled={!canChooseVipNumber || !methodAllowed(entry.item, globalMethod)} onClick={() => openVipNumberCheckout(entry)}>{entry.number}</button>)}</div>
                 {!visibleVipNumbers.length ? <p className="efhc-shop-catalog-empty">{t("portal.browser_shop.vip_numbers_empty")}</p> : null}
-                <div className="efhc-shop-number-actions"><Button onClick={openVipNumberCheckout} disabled={!selectedVipNumber || busy || !vipSelectedPriceItem}>{t("portal.browser_shop.continue_with_number")} {selectedVipNumber || "—"}</Button></div>
               </div>
             </div>
           </section>
@@ -1339,13 +1342,17 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         .efhc-shop-product-buy-action {
           justify-self: end;
           border-radius: .38rem;
-          background: var(--shop-accent, #ffd328);
-          color: #141414;
+          border: 1px solid var(--shop-accent, #7557db);
+          background: transparent;
+          color: var(--shop-ink, #121212);
           padding: .14rem .42rem;
           font-size: .7rem;
           font-weight: 800;
           line-height: 1.25;
           white-space: nowrap;
+        }
+        :global(.efhc-shop-site[data-shop-theme="dark"]) .efhc-shop-product-buy-action {
+          color: #fff;
         }
       `}</style>
     </main>
