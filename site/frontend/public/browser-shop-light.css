@@ -1,0 +1,117 @@
+/* Shop's independent light palette; application and dark Shop are unchanged. */
+html[data-shop-theme="light"] {
+  --shop-paper:#fffdf7;
+  --shop-card:#ffffff;
+  --shop-ink:#121212;
+  --shop-muted:#625f58;
+  --shop-line:#d7cfc0;
+  --shop-soft:#f6f1e7;
+  --shop-light-selected:#f9edbe;
+  color-scheme:light;
+  background:var(--shop-paper);
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] body {
+  color-scheme:light;
+  background:var(--shop-paper);
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] {
+  --shop-bg:var(--shop-paper);
+  --shop-card:#ffffff;
+  --shop-ink:#121212;
+  --shop-muted:#625f58;
+  --shop-line:#d7cfc0;
+  --tg-text:var(--shop-ink);
+  --tg-hint:var(--shop-muted);
+  --tg-bg:var(--shop-paper);
+  --tg-secondary-bg:var(--shop-soft);
+  --tg-button:var(--shop-light-selected);
+  --tg-button-text:var(--shop-ink);
+  color-scheme:light;
+  background:var(--shop-paper);
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-shop-site_header,.efhc-shop-catalog-toolbar,.efhc-shop-landing_account,
+  .efhc-shop-catalog-section,.efhc-shop-account-panel,.efhc-shop-text-product,
+  .efhc-shop-number-chooser,.efhc-shop-checkout-modal,.efhc-shop-wallet-modal,
+  .efhc-shop-order-modal,.efhc-shop-profile-grid article,.efhc-shop-order-list article,
+  .efhc-shop-profile-wallets article,.efhc-shop-wallet-list > button:not(.efhc-btn),
+  .efhc-compact-language-picker_button,.efhc-compact-language-picker_menu
+) {
+  background:var(--shop-card);
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-shop-catalog-heading-copy :is(h1,h2),.efhc-shop-text-product .efhc-shop-product-copy strong,
+  .efhc-shop-product-price b,.efhc-shop-site_footer,.efhc-compact-language-picker_option,
+  .efhc-shop-theme-toggle,.efhc-shop-product-buy-action,.efhc-shop-number-grid button,
+  .efhc-shop-checkout-summary strong,.efhc-shop-number-chooser-head input
+) {
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-shop-product-copy small,.efhc-shop-product-price small,.efhc-shop-checkout-summary small,
+  .efhc-shop-account-panel header p,.efhc-browser-shop-presign small,.efhc-browser-shop-presign span
+) {
+  color:var(--shop-muted);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-browser-shop-presign,.efhc-browser-shop-presign li,.efhc-shop-number-chooser-head input
+) {
+  background:var(--shop-soft);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-shop-number-grid button[aria-selected="true"],.efhc-shop-currency-switch button[aria-pressed="true"],
+  .efhc-shop-catalog-tabs button[aria-selected="true"],.efhc-compact-language-picker_option[data-active="true"]
+) {
+  background:var(--shop-light-selected);
+  color:var(--shop-ink);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
+  .efhc-shop-text-product:not([data-shop-vip-empty="true"]):hover:not(:disabled),.efhc-shop-catalog-tabs button[aria-selected="false"]
+) {
+  background:var(--shop-soft);
+  color:var(--shop-ink);
+}
+
+/* The Shop's text follows its own theme, not the application or browser. */
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] {
+  --shop-interface-foreground:#000000;
+  --shop-ink:var(--shop-interface-foreground);
+  --shop-muted:var(--shop-interface-foreground);
+}
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"] {
+  --shop-interface-foreground:#ffffff;
+  --shop-ink:var(--shop-interface-foreground);
+  --shop-muted:var(--shop-interface-foreground);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"],
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] * {
+  color:var(--shop-interface-foreground) !important;
+}
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"],
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"] * {
+  color:var(--shop-interface-foreground) !important;
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(input,textarea)::placeholder,
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"] :is(input,textarea)::placeholder {
+  color:var(--shop-interface-foreground);
+  opacity:1;
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] .efhc-shop-number-grid button {
+  background:var(--shop-card);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] .efhc-shop-number-grid button[aria-selected="true"] {
+  background:var(--shop-light-selected);
+}
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"] .efhc-shop-number-grid button[aria-selected="true"] {
+  background:var(--efhc-color-active, #321f51);
+}
+html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] button:disabled,
+html[data-shop-theme="dark"] .efhc-shop-site[data-shop-theme="dark"] button:disabled {
+  opacity:1;
+  -webkit-text-fill-color:currentColor;
+  cursor:not-allowed;
+}

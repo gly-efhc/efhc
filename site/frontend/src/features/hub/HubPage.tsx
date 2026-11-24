@@ -12,6 +12,17 @@ function isShopLink(link: HubPublicLink): boolean {
   return link.code === "efhc_buy";
 }
 
+function directShopUrl(link: HubPublicLink): string | null {
+  if (isShopLink(link) || link.target_kind !== "external_url" || link.open_mode !== "external_browser") return null;
+  try {
+    const url = new URL(link.url);
+    return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash
+      && /^(?:\/efhc)?\/browser-shop\/?$/.test(url.pathname) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function isVipLink(link: HubPublicLink): boolean {
   return link.code === "vip_getgems";
 }
@@ -74,6 +85,26 @@ export default function HubPage() {
         {links.map((link) => {
           const shop = isShopLink(link);
           const vip = isVipLink(link);
+          const directShop = directShopUrl(link);
+          if (directShop) {
+            return (
+              <a
+                key={String(link.id)}
+                className="efhc-hub-choice"
+                data-hub-link-id={String(link.id)}
+                data-hub-link-code={link.code}
+                data-hub-link-url={link.url}
+                data-hub-link-active="true"
+                href={directShop}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none" }}
+                onClick={() => { hapticMedium(true); }}
+              >
+                <strong>{link.title}</strong>
+              </a>
+            );
+          }
           return (
             <button
               key={String(link.id)}

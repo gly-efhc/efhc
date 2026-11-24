@@ -1220,6 +1220,50 @@ try {
       console.log("SHOP_CANONICAL_PROFILE_AND_FOOTER_ARROW_PASS",JSON.stringify({padding}));
     } finally { await isolated.close(); }
   });
+  await check("Shop 2 uses its public link in a new tab without changing the signed Shop",async()=>{
+    const isolated=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:"block"});
+    const shopUrl="https://shop.example/efhc/browser-shop/";
+    const writes=[];
+    try {
+      await isolated.route("**/*",route=>{
+        const req=route.request(), u=new URL(req.url());
+        if(!["GET","HEAD","OPTIONS"].includes(req.method())){
+          if(u.pathname!=="/api/staging/guest") writes.push(req.method()+" "+u.pathname);
+          return route.abort();
+        }
+        if(u.href===shopUrl) return route.fulfill({status:200,contentType:"text/html",body:"<h1>Shop 2 storefront fixture</h1>"});
+        if(/\/(?:api\/)?hub\/links\/?$/.test(u.pathname)){
+          const headers={"access-control-allow-origin":origin,"access-control-allow-credentials":"true",
+            "access-control-allow-methods":"GET,OPTIONS","access-control-allow-headers":req.headers()["access-control-request-headers"]||"*"};
+          if(req.method()==="OPTIONS") return route.fulfill({status:204,headers});
+          return route.fulfill({status:200,headers,json:[
+            {id:1,code:"efhc_buy",title:"Shop",url:"/hub/efhc-handoff",target_kind:"external_url",open_mode:"external_browser",sort_order:10,is_active:true},
+            {id:5,code:"shop_2_fixture",title:"Shop 2",url:shopUrl,target_kind:"external_url",open_mode:"external_browser",sort_order:50,is_active:true},
+          ]});
+        }
+        return u.origin===origin ? route.continue() : route.abort();
+      });
+      const page=await isolated.newPage();
+      await page.goto(base+"hub/",{waitUntil:"domcontentloaded"});
+      const direct=page.getByRole("link",{name:"Shop 2",exact:true});
+      await direct.waitFor({state:"visible"});
+      assert.equal(await direct.getAttribute("href"),shopUrl);
+      assert.equal(await direct.getAttribute("target"),"_blank");
+      assert.equal(await page.locator('button[data-hub-link-code="efhc_buy"]').count(),1);
+      const before=page.url();
+      const opened=isolated.waitForEvent("page");
+      await direct.tap();
+      const tab=await opened;
+      await tab.getByRole("heading",{name:"Shop 2 storefront fixture"}).waitFor();
+      assert.equal(tab.url(),shopUrl);
+      await tab.close();
+      assert.equal(page.url(),before);
+      assert.equal(await direct.isVisible(),true);
+      assert.deepEqual(writes,[]);
+      console.log("HUB_SHOP2_NATIVE_NEW_TAB_PASS");
+    } finally { await isolated.close(); }
+  });
+
   await check("Shop checkout perimeters match in both themes with a borderless keyboard-accessible close",async()=>{
     const isolated=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,serviceWorkers:"block"});
     const observations=[];
@@ -1313,10 +1357,15 @@ try {
           assert.equal(style.style,"solid");
           assert.equal(style.background,"rgba(0, 0, 0, 0)");
           assert.equal(style.onlyCard,true);
-          assert.equal(style.color,card===selectedVip
-            ? (theme==="dark"?"rgb(203, 213, 225)":"rgb(102, 99, 93)")
-            : (theme==="dark"?"rgb(255, 255, 255)":"rgb(18, 18, 18)"));
+          assert.equal(style.color,theme==="dark"?"rgb(255, 255, 255)":"rgb(0, 0, 0)");
         }
+        const foreground=theme==="dark"?"rgb(255, 255, 255)":"rgb(0, 0, 0)";
+        const disabledNumber=page.getByRole("option",{name:"0030",exact:true});
+        assert.equal(await disabledNumber.isDisabled(),true);
+        assert.deepEqual(await disabledNumber.evaluate(el=>{
+          const style=getComputedStyle(el);
+          return [style.color,style.opacity];
+        }),[foreground,"1"]);
         await checkGeometry();
         assert.equal(await selectedVip.isEnabled(),true);
         await checkFrameOnly(()=>selectedVip.locator(".efhc-shop-product-copy strong").tap());
@@ -1326,6 +1375,12 @@ try {
         await page.setViewportSize({width:390,height:844});
         await product.locator(".efhc-shop-product-buy-action").tap();
         await modal.waitFor({state:"visible"});
+        const checkoutTextColors=await modal.evaluate(el=>[...el.querySelectorAll(
+          "#checkoutSummary :is(small,strong), .efhc-browser-shop-presign :is(small,span,strong,p)"
+        )].filter(node=>node.textContent?.trim() && node.getClientRects().length)
+          .map(node=>getComputedStyle(node).color));
+        assert.ok(checkoutTextColors.length>=4 && checkoutTextColors.every(color=>color===foreground),
+          JSON.stringify({theme,checkoutTextColors}));
         const measurements=await modal.evaluate(el=>{
           const outer=getComputedStyle(el);
           const summary=getComputedStyle(el.querySelector("#checkoutSummary"));
