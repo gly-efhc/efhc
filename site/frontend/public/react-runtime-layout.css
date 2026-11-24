@@ -137,7 +137,7 @@ html[data-customization-mode="editing"]
   height:4px;
 }
 
-/* Public Balance uses the v866 standalone header grammar. The frozen
+/* Public Balance uses the standalone reference header grammar. The frozen
    reference CSS intentionally styles the standalone title/action classes;
    adapt only the React wrapper, without changing the shared banking module. */
 .efhc-profile-page[data-profile-active-tab="history"]
