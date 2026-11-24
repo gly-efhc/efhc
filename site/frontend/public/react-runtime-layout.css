@@ -136,3 +136,58 @@ html[data-customization-mode="editing"]
   width:4px;
   height:4px;
 }
+
+/* Public Balance uses the v866 standalone header grammar. The frozen
+   reference CSS intentionally styles the standalone title/action classes;
+   adapt only the React wrapper, without changing the shared banking module. */
+.efhc-profile-page[data-profile-active-tab="history"]
+[data-profile-content="history"] .efhc-history-bank-module > .efhc-history-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .7rem;
+}
+
+.efhc-profile-page[data-profile-active-tab="history"]
+[data-profile-content="history"] .efhc-history-section-head > h2 {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  text-align: start;
+  justify-self: start;
+  overflow-wrap: anywhere;
+}
+
+.efhc-profile-page[data-profile-active-tab="history"]
+[data-profile-content="history"] .efhc-history-head-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(5.2rem, 1fr));
+  gap: .45rem;
+  margin-inline: 0;
+  justify-self: end;
+}
+
+.efhc-profile-page[data-profile-active-tab="history"]
+[data-profile-content="history"] .efhc-history-head-actions > :is(button, a) {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.45rem;
+  padding: .48rem .75rem;
+  font-size: 11px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .efhc-profile-page[data-profile-active-tab="history"]
+  [data-profile-content="history"] .efhc-history-bank-module > .efhc-history-section-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .efhc-profile-page[data-profile-active-tab="history"]
+  [data-profile-content="history"] .efhc-history-head-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    justify-self: stretch;
+  }
+}

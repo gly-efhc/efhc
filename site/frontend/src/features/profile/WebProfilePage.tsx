@@ -510,6 +510,7 @@ export default function WebProfilePage(props: Props) {
       {activeTab === "history" ? (
         <section className="grid gap-3" data-profile-content="history">
             <ProfileHistorySection
+              appearance="balance-page"
               totalBalance={totalBalance}
               mainBalance={main}
               bonusBalance={bonus}

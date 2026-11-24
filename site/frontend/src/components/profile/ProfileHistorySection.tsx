@@ -26,6 +26,7 @@ export type HistoryFilter =
   | "panels";
 
 type Props = {
+  appearance?: "balance-page";
   totalBalance: string;
   mainBalance: string;
   bonusBalance: string;
@@ -182,7 +183,9 @@ export function ProfileHistorySection(props: Props) {
     <div
       ref={historySurface.ref}
       {...historySurface.handlers}
-      className="efhc-history-financial-section efhc-history-bank-module efhc-history-trust-section space-y-4"
+      className={props.appearance === "balance-page"
+        ? "efhc-history-financial-section efhc-history-bank-module space-y-4"
+        : "efhc-history-financial-section efhc-history-bank-module efhc-history-trust-section space-y-4"}
       data-hi={variant}
       data-hi-family="global-theme"
       data-hi-ux="banking-operation-center"
