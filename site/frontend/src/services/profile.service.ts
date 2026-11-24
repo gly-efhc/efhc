@@ -340,6 +340,7 @@ export const profileHistoryItemSchema = z.object({
   kind: z.string().min(1),
   occurred_at: z.string().min(1),
   executed_at: z.string().min(1).nullable().optional(),
+  panel_public_id: z.string().nullable().optional(),
   status: z.string().nullable(),
   direction: z.string().nullable(),
   balance_type: z.string().nullable(),
