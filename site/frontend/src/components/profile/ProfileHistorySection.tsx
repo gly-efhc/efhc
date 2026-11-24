@@ -112,6 +112,17 @@ function dateTimeDetail(value: string, locale: string, includeSeconds: boolean):
   });
 }
 
+function executionDateForBalance(item: ProfileHistoryItem): string | null {
+  const isWithdrawal = item.source === "withdraw_request";
+  if (isWithdrawal && String(item.status ?? "").toLowerCase() !== "paid") return null;
+  // Existing ledger timestamps are set when the entry is posted, not when a
+  // request is created. Never use a request timestamp for a withdrawal.
+  const value = item.executed_at === undefined && item.source === "ledger"
+    ? item.occurred_at
+    : item.executed_at;
+  return value && Number.isFinite(new Date(value).getTime()) ? value : null;
+}
+
 function presentHistoryOperation(
   item: ProfileHistoryItem,
   lang: string,
@@ -130,9 +141,10 @@ function presentHistoryOperation(
   );
   const isLedger = item.source === "ledger" && item.kind === "balance_transfer" && !isExchange;
   const knownTemplate = isWithdrawal || isExchange || isLedger;
+  const executionAt = executionDateForBalance(item);
   const details: HistoryOperationModel["details"] = [
     { label: t("history.detail_operation_id"), value: `#${item.id}` },
-    { label: t("history.detail_date"), value: dateTimeDetail(item.occurred_at, lang, !knownTemplate) },
+    ...(executionAt ? [{ label: t("history.detail_date"), value: dateTimeDetail(executionAt, lang, !knownTemplate) }] : []),
     { label: t("history.detail_status"), value: status },
   ];
   const balance = item.balance_type ? balanceTypeLabel(item.balance_type, t) : null;
@@ -166,6 +178,7 @@ function presentHistoryOperation(
     title: isWithdrawal ? t("history.reason.withdraw") : reasonLabel(item.reason || item.kind),
     subtitle,
     createdAt: item.occurred_at,
+    executionAt,
     amount: actualAmount || "0",
     asset,
     tone: isWithdrawal ? "neutral" : direction,
