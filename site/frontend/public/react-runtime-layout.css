@@ -148,6 +148,18 @@ html[data-customization-mode="editing"]
   gap: .7rem;
 }
 
+/* The history selector belongs to its header, not a floating viewport layer. */
+.efhc-history-section-head > .efhc-interface-variant-dots[data-indicator-placement="balance-history"] {
+  position: static;
+  inset: auto;
+  transform: none;
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: max-content;
+  max-width: 100%;
+  min-height: 7px;
+}
+
 .efhc-profile-page[data-profile-active-tab="history"]
 [data-profile-content="history"] .efhc-history-section-head > h2 {
   min-width: 0;
