@@ -172,10 +172,6 @@ export default function WebProfilePage(props: Props) {
   const auth = useAuthSessionController();
   const router = useRouter();
   const ctx = useContext(LayoutContext);
-  const profileSurface = useInterfaceVariantSurface<HTMLDivElement>(
-    "PM",
-    { dotsPlacement: "below" },
-  );
   const t = ctx.t;
   const walletsQ = useWalletsMe();
   const hasSignedAccount = auth.status === "authenticated" && Boolean(auth.context)
@@ -192,6 +188,12 @@ export default function WebProfilePage(props: Props) {
     section === "providers"
       ? section as Tab
       : "profile";
+  const isBalanceTab = activeTab === "history";
+  const profileSurface = useInterfaceVariantSurface<HTMLDivElement>("PM", {
+    dotsPlacement: "below",
+    registerDots: !isBalanceTab,
+    interactive: !isBalanceTab,
+  });
   const legalParam = String(router.query.legal || "");
   const routedLegalKind: LegalPolicyKind | null =
     legalParam === "terms" || legalParam === "privacy"
@@ -510,6 +512,7 @@ export default function WebProfilePage(props: Props) {
       {activeTab === "history" ? (
         <section className="grid gap-3" data-profile-content="history">
             <ProfileHistorySection
+              appearance="balance-page"
               totalBalance={totalBalance}
               mainBalance={main}
               bonusBalance={bonus}

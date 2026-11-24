@@ -16,6 +16,7 @@ export type HistoryOperationModel = {
   title: string;
   subtitle: string;
   createdAt: string;
+  executionAt?: string | null;
   amount: string;
   asset: string;
   tone: HistoryOperationTone;
@@ -34,9 +35,18 @@ type Props = {
 
 type DateGroup = {
   key: string;
-  label: string;
+  label: string | null;
   items: HistoryOperationModel[];
 };
+
+function displayedTime(item: HistoryOperationModel): string | null {
+  return item.executionAt === undefined ? item.createdAt : item.executionAt;
+}
+
+function timeSortValue(item: HistoryOperationModel): number {
+  const value = displayedTime(item);
+  return value ? (parseDate(value)?.getTime() ?? Number.NEGATIVE_INFINITY) : Number.NEGATIVE_INFINITY;
+}
 
 function parseDate(value: string): Date | null {
   const parsed = new Date(value);
@@ -82,6 +92,7 @@ function amountPrefix(tone: HistoryOperationTone): string {
 
 function OperationCard({ item, locale }: { item: HistoryOperationModel; locale: string }) {
   const t = useT();
+  const time = displayedTime(item);
   return (
     <details
       className="efhc-history-bank-operation"
@@ -94,7 +105,7 @@ function OperationCard({ item, locale }: { item: HistoryOperationModel; locale: 
         </span>
         <span className="efhc-history-bank-operation-copy">
           <strong>{item.title}</strong>
-          <time dateTime={item.createdAt}>{dateTimeLabel(item.createdAt, locale)}</time>
+          {time ? <time dateTime={time}>{dateTimeLabel(time, locale)}</time> : null}
           <span>{item.subtitle}</span>
         </span>
         <span className="efhc-history-bank-operation-value">
@@ -125,9 +136,9 @@ export function HistoryOperationFeed(props: Props) {
   const { lang } = useContext(LayoutContext);
   const sorted = useMemo(
     () => [...props.items].sort((a, b) => {
-      const aTime = parseDate(a.createdAt)?.getTime() || 0;
-      const bTime = parseDate(b.createdAt)?.getTime() || 0;
-      return bTime - aTime;
+      const aTime = timeSortValue(a);
+      const bTime = timeSortValue(b);
+      return aTime === bTime ? 0 : bTime - aTime;
     }),
     [props.items],
   );
@@ -135,10 +146,11 @@ export function HistoryOperationFeed(props: Props) {
     const ordered: DateGroup[] = [];
     const index = new Map<string, DateGroup>();
     for (const item of sorted) {
-      const key = dateKey(item.createdAt);
+      const time = displayedTime(item);
+      const key = time ? dateKey(time) : "undated";
       let group = index.get(key);
       if (!group) {
-        group = { key, label: dateLabel(item.createdAt, lang), items: [] };
+        group = { key, label: time ? dateLabel(time, lang) : null, items: [] };
         index.set(key, group);
         ordered.push(group);
       }
@@ -172,8 +184,8 @@ export function HistoryOperationFeed(props: Props) {
           {sorted.map((item) => <OperationCard key={item.key} item={item} locale={lang} />)}
         </div>
       ) : groups.map((group) => (
-        <section className="efhc-history-bank-day" key={group.key} data-operation-date={group.key}>
-          <div className="efhc-history-bank-day-title">{group.label}</div>
+        <section className="efhc-history-bank-day" key={group.key} data-operation-date={group.label ? group.key : undefined}>
+          {group.label ? <div className="efhc-history-bank-day-title">{group.label}</div> : null}
           <div className="efhc-history-bank-operation-list" role="list">
             {group.items.map((item) => <OperationCard key={item.key} item={item} locale={lang} />)}
           </div>
