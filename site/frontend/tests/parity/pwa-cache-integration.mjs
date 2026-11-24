@@ -1336,8 +1336,12 @@ try {
       const close=async()=>{await modal.locator(".efhc-shop-modal-close").tap();await modal.waitFor({state:"hidden"});};
       await close();
       const beforePickerUrl=page.url();
-      const readHandoffSku=()=>page.evaluate(()=>sessionStorage.getItem("efhc.browserShop.sku.v1"));
-      const beforePickerSku=await readHandoffSku();
+      const beforePickerSku=new URL(beforePickerUrl).searchParams.get("sku");
+      assert.equal(beforePickerSku,"EFHC_VIP_NFT_ANY");
+      const handoffStorageKey=await page.evaluate(sku=>Object.keys(sessionStorage)
+        .find(key=>sessionStorage.getItem(key)===sku),beforePickerSku);
+      assert.ok(handoffStorageKey,"The previous ordinary checkout stores its existing handoff SKU");
+      const readHandoffSku=()=>page.evaluate(key=>sessionStorage.getItem(key),handoffStorageKey);
       const expectNumber=async number=>{
         await modal.waitFor({state:"visible"});
         assert.equal(await modal.locator("#checkoutTitle").textContent(),`EFHC VIP NFT #${number}`);
