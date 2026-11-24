@@ -1225,14 +1225,20 @@ try {
     const observations=[];
     try {
       const writes=[];
+      let blockedGuestBootstraps=0;
       const vipItem=(sku,item_type,title,status="live",price="100.00")=>({
         sku,item_type,title,status,description:null,ton_enabled:true,usdt_enabled:true,
         methods:{TON:{price},USDT:{price:"150.00"}},action_mode:"checkout",delivery_mode:"manual",
       });
       await isolated.route("**/*",route=>{
         const request=route.request();
-        if(!["GET","HEAD","OPTIONS"].includes(request.method())){writes.push(request.method());return route.abort();}
         const u=new URL(request.url());
+        if(!["GET","HEAD","OPTIONS"].includes(request.method())){
+          // Public TEST guest bootstrap is unrelated to checkout. Still abort it.
+          if(request.method()==="POST" && u.pathname==="/api/staging/guest") blockedGuestBootstraps++;
+          else writes.push(`${request.method()} ${u.pathname}`);
+          return route.abort();
+        }
         if(/\/(?:api\/)?shopfront\/catalog\/?$/.test(u.pathname)){
           const headers={"access-control-allow-origin":origin,"access-control-allow-credentials":"true","access-control-allow-methods":"GET,OPTIONS",
             "access-control-allow-headers":request.headers()["access-control-request-headers"]||"*"};
@@ -1330,11 +1336,14 @@ try {
       const close=async()=>{await modal.locator(".efhc-shop-modal-close").tap();await modal.waitFor({state:"hidden"});};
       await close();
       const beforePickerUrl=page.url();
+      const readHandoffSku=()=>page.evaluate(()=>sessionStorage.getItem("efhc.browserShop.sku.v1"));
+      const beforePickerSku=await readHandoffSku();
       const expectNumber=async number=>{
         await modal.waitFor({state:"visible"});
         assert.equal(await modal.locator("#checkoutTitle").textContent(),`EFHC VIP NFT #${number}`);
         assert.match(await modal.locator("#checkoutSummary").textContent(),new RegExp(number));
         assert.equal(page.url(),beforePickerUrl,"A pre-payment selection does not persist in the URL");
+        assert.equal(await readHandoffSku(),beforePickerSku,"A pre-payment selection does not persist the handoff SKU");
       };
       await option("0004").tap();
       await expectNumber("0004");
@@ -1356,7 +1365,7 @@ try {
       assert.equal(await indicator.textContent(),"—");
       assert.equal(await selectedVip.isDisabled(),true);
       assert.deepEqual(writes,[],"Shop selection must not issue payment or other writes");
-      console.log("SHOP_VIP_SELECTION_AND_BUY_PALETTE_PASS");
+      console.log("SHOP_VIP_SELECTION_AND_BUY_PALETTE_PASS",JSON.stringify({blockedGuestBootstraps}));
 
     } finally { await isolated.close(); }
   });
