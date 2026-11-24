@@ -99,7 +99,7 @@ function statusKind(status: string | null): HistoryOperationModel["statusKind"] 
   return "neutral";
 }
 
-function dateTimeDetail(value: string, locale: string): string {
+function dateTimeDetail(value: string, locale: string, includeSeconds: boolean): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleString(locale, {
@@ -108,15 +108,78 @@ function dateTimeDetail(value: string, locale: string): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
+    ...(includeSeconds ? { second: "2-digit" } : {}),
   });
+}
+
+function presentHistoryOperation(
+  item: ProfileHistoryItem,
+  lang: string,
+  t: ReturnType<typeof useT>,
+  reasonLabel: Props["reasonLabel"],
+): HistoryOperationModel {
+  const status = historyStatusLabel(item.status || "completed", t);
+  const actualAmount = item.amount_efhc || item.amount_asset;
+  const asset = item.asset || (item.balance_type === "bonus" ? "EFHCb" : "EFHCm");
+  const direction = item.direction === "credit" || item.direction === "debit"
+    ? item.direction
+    : "neutral";
+  const isWithdrawal = item.source === "withdraw_request";
+  const isExchange = item.source === "ledger" && (
+    item.kind === "exchange" || item.reason === "exchange_kwh_to_efhc"
+  );
+  const isLedger = item.source === "ledger" && item.kind === "balance_transfer" && !isExchange;
+  const knownTemplate = isWithdrawal || isExchange || isLedger;
+  const details: HistoryOperationModel["details"] = [
+    { label: t("history.detail_operation_id"), value: `#${item.id}` },
+    { label: t("history.detail_date"), value: dateTimeDetail(item.occurred_at, lang, !knownTemplate) },
+    { label: t("history.detail_status"), value: status },
+  ];
+  const balance = item.balance_type ? balanceTypeLabel(item.balance_type, t) : null;
+  const movement = direction === "neutral" ? null : t(`history.${direction}`);
+  const amountWithAsset = actualAmount && item.asset ? `${actualAmount} ${item.asset}` : null;
+  let subtitle = `${historySourceLabel(item.source, t)} · ${status}`;
+
+  if (isWithdrawal) {
+    subtitle = `#${item.id} · ${status}`;
+    if (amountWithAsset) details.push({ label: t("history.detail_amount"), value: amountWithAsset });
+  } else if (isExchange) {
+    // The unified feed only supplies the received EFHC for historical exchanges.
+    // Do not reconstruct the spent kWh or historical rate from this amount.
+    const received = item.amount_efhc && item.asset ? `${item.amount_efhc} ${item.asset}` : null;
+    if (received) {
+      subtitle = `${t("history.detail_received")}: ${received}`;
+      details.push({ label: t("history.detail_received"), value: received });
+    }
+  } else if (isLedger) {
+    if (balance && movement) subtitle = `${balance} · ${movement}`;
+    if (balance) details.push({ label: t("history.detail_balance"), value: balance });
+    if (movement) details.push({ label: t("history.detail_type"), value: movement });
+  } else {
+    details.push({ label: t("history.detail_type"), value: historyOperationKindLabel(item.kind, t) });
+    if (balance) details.push({ label: t("history.detail_balance"), value: balance });
+  }
+
+  return {
+    key: `${item.source}:${item.id}`,
+    title: isWithdrawal ? t("history.reason.withdraw") : reasonLabel(item.reason || item.kind),
+    subtitle,
+    createdAt: item.occurred_at,
+    amount: actualAmount || "0",
+    asset,
+    tone: isWithdrawal ? "neutral" : direction,
+    status,
+    statusKind: statusKind(item.status),
+    details,
+  };
 }
 
 export function ProfileHistorySection(props: Props) {
   const t = useT();
   const { lang } = useContext(LayoutContext);
+  const isReferenceBalance = props.appearance === "balance-page";
   const historySurface = useInterfaceVariantSurface<HTMLDivElement>("HI", {
-    dotsPlacement: "below",
+    dotsPlacement: isReferenceBalance ? "above" : "below",
   });
   const variant = historySurface.variant;
   const activeFilter = normalizeHistoryFilter(props.activeFilter);
@@ -125,6 +188,7 @@ export function ProfileHistorySection(props: Props) {
     props.items
       .filter((item) => activeFilter === "all" || categoryForItem(item) === activeFilter)
       .map((item) => {
+        if (isReferenceBalance) return presentHistoryOperation(item, lang, t, props.reasonLabel);
         const status = historyStatusLabel(item.status || "completed", t);
         const reason = item.reason || item.kind;
         const sourceLabel = historySourceLabel(item.source, t);
@@ -139,7 +203,7 @@ export function ProfileHistorySection(props: Props) {
           : "neutral";
         const details = [
           { label: t("history.detail_operation_id"), value: `#${item.id}` },
-          { label: t("history.detail_date"), value: dateTimeDetail(item.occurred_at, lang) },
+          { label: t("history.detail_date"), value: dateTimeDetail(item.occurred_at, lang, true) },
           { label: t("history.detail_status"), value: status },
           { label: t("history.detail_type"), value: kindLabel },
         ];
@@ -162,10 +226,12 @@ export function ProfileHistorySection(props: Props) {
           details,
         };
       })
-  ), [activeFilter, lang, props.items, props.reasonLabel, t]);
+  ), [activeFilter, isReferenceBalance, lang, props.items, props.reasonLabel, t]);
 
   const showReadError = Boolean(props.error) && !props.loading && props.items.length === 0;
   const showFilterEmpty = !props.error && !props.loading && props.items.length > 0 && operations.length === 0;
+  const showEmptyFeed = isReferenceBalance && !props.loading && operations.length === 0;
+  const layout = variant === "HI-04" || variant === "HI-07" ? "flat" : "grouped";
 
   const balances = (
     <div
@@ -259,6 +325,12 @@ export function ProfileHistorySection(props: Props) {
             onAction={props.onRefresh}
           />
         </div>
+      ) : showEmptyFeed ? (
+        <div
+          className="efhc-history-bank-feed"
+          data-history-state={props.items.length ? "filter-empty" : "true-empty"}
+          data-history-layout={layout === "flat" ? "flat-bank-feed" : "date-grouped-bank-feed"}
+        />
       ) : showFilterEmpty ? (
         <div data-history-state="filter-empty">
           <BalanceHistoryEmptyState
@@ -272,7 +344,7 @@ export function ProfileHistorySection(props: Props) {
           loading={props.loading}
           hasMore={Boolean(props.nextCursor)}
           onLoadMore={props.onLoadMore}
-          layout={variant === "HI-04" || variant === "HI-07" ? "flat" : "grouped"}
+          layout={layout}
         />
       )}
 
