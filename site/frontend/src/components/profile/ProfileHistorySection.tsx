@@ -145,12 +145,13 @@ function presentHistoryOperation(
     if (amountWithAsset) details.push({ label: t("history.detail_amount"), value: amountWithAsset });
   } else if (isExchange) {
     // The unified feed only supplies the received EFHC for historical exchanges.
-    // Do not reconstruct the spent kWh or historical rate from this amount.
+    // Show the fixed canonical rate; do not reconstruct the spent kWh.
     const received = item.amount_efhc && item.asset ? `${item.amount_efhc} ${item.asset}` : null;
     if (received) {
       subtitle = `${t("history.detail_received")}: ${received}`;
       details.push({ label: t("history.detail_received"), value: received });
     }
+    details.push({ label: t("history.detail_rate"), value: "1 kWh = 1 EFHCm" });
   } else if (isLedger) {
     if (balance && movement) subtitle = `${balance} · ${movement}`;
     if (balance) details.push({ label: t("history.detail_balance"), value: balance });
