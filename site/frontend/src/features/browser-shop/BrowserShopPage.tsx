@@ -372,6 +372,11 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const orderDetailInertSnapshotsRef = useRef(new Map<HTMLElement, ShopCheckoutInertSnapshot>());
   const [vipSearch, setVipSearch] = useState("");
   const [selectedVipNumber, setSelectedVipNumber] = useState("");
+  const [vipFrameHighlight, setVipFrameHighlight] = useState(false);
+  const vipFrameTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (vipFrameTimeout.current !== null) clearTimeout(vipFrameTimeout.current);
+  }, []);
   const [customEfhcAmount, setCustomEfhcAmount] = useState("");
   const [reservedVipNumber, setReservedVipNumber] = useState("");
   const [ordersVisibleCount, setOrdersVisibleCount] = useState(ORDERS_PAGE);
@@ -713,6 +718,19 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     setSelectedVipNumber(selected.number);
     openCheckout({ item: selected.item, method: globalMethod, vipMode: "selected", vipNumber: selected.number });
   }
+  function activateSelectedVipCard() {
+    if (canBuySelectedVip) {
+      openVipNumberCheckout(selectedVipEntry);
+      return;
+    }
+    if (!canPromptVipSelection) return;
+    if (vipFrameTimeout.current !== null) clearTimeout(vipFrameTimeout.current);
+    setVipFrameHighlight(true);
+    vipFrameTimeout.current = setTimeout(() => {
+      vipFrameTimeout.current = null;
+      setVipFrameHighlight(false);
+    }, 280);
+  }
   function closeWalletChooser() {
     setWalletChooserOpen(false);
     setPendingWalletPayment(null);
@@ -913,6 +931,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const selectedVipEntry = vipNumberItems.find(({ number }) => number === selectedVipNumber);
   const canChooseVipNumber = Boolean(vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) && !busy);
   const canBuySelectedVip = Boolean(canChooseVipNumber && selectedVipEntry && methodAllowed(selectedVipEntry.item, globalMethod));
+  const canPromptVipSelection = canChooseVipNumber && !canBuySelectedVip && vipNumberItems.some(({ item }) => methodAllowed(item, globalMethod));
   const checkoutOpen = Boolean(checkout);
 
   useEffect(() => {
@@ -1266,7 +1285,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
             <div className="efhc-shop-catalog-copy">
               <div className="efhc-shop-vip-modes">
                 {vipAnyItem ? <button type="button" className="efhc-shop-text-product" data-shop-vip-buy="any" disabled={!methodAllowed(vipAnyItem, globalMethod) || busy} onClick={() => openCheckout({ item: vipAnyItem, method: globalMethod, vipMode: "any" })}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_any_title")}</strong><small>{t("portal.browser_shop.vip_any_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{methodAllowed(vipAnyItem, globalMethod) ? priceAmountOnly(vipAnyItem, globalMethod) : t("portal.browser_shop.unavailable")}</b><span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span></span></button> : null}
-                <button type="button" className="efhc-shop-text-product" data-shop-vip-buy="selected" disabled={!canBuySelectedVip} onClick={() => openVipNumberCheckout(selectedVipEntry)}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_select_title")}</strong><small>{t("portal.browser_shop.vip_select_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) ? priceAmountOnly(vipSelectedPriceItem, globalMethod) : t("portal.browser_shop.unavailable")}</b><small data-shop-vip-selection>{selectedVipEntry ? `#${selectedVipEntry.number}` : "—"}</small><span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span></span></button>
+                <button type="button" className="efhc-shop-text-product" data-shop-vip-buy="selected" data-shop-vip-empty={!canBuySelectedVip} data-shop-vip-frame={vipFrameHighlight && canPromptVipSelection} disabled={!canBuySelectedVip && !canPromptVipSelection} onClick={activateSelectedVipCard}><span className="efhc-shop-product-copy"><strong>{t("portal.browser_shop.vip_select_title")}</strong><small>{t("portal.browser_shop.vip_select_detail")}</small></span><span className="efhc-shop-product-price"><small>{methodLabel(globalMethod)}</small><b>{vipSelectedPriceItem && methodAllowed(vipSelectedPriceItem, globalMethod) ? priceAmountOnly(vipSelectedPriceItem, globalMethod) : t("portal.browser_shop.unavailable")}</b><span className="efhc-shop-vip-buy-row"><small data-shop-vip-selection>{selectedVipEntry ? `#${selectedVipEntry.number}` : "—"}</small><span className="efhc-shop-product-buy-action">{t("shop_ui.buy")}</span></span></span></button>
               </div>
               <div id="vipNumberChooser" className="efhc-shop-number-chooser" data-vip-inventory-count={vipNumberItems.length}>
                 <div className="efhc-shop-number-chooser-head"><div><strong>{t("portal.browser_shop.vip_numbers_title")}</strong><small>{Math.min(vipNumberItems.length, VIP_NUMBER_PAGE)} {t("portal.browser_shop.vip_numbers_shown_suffix")}</small></div><input value={vipSearch} onChange={(event) => setVipSearch(event.target.value)} inputMode="numeric" maxLength={4} placeholder={t("portal.browser_shop.vip_number_search")} aria-label={t("portal.browser_shop.vip_number_search_aria")} /></div>
@@ -1339,10 +1358,38 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         .efhc-shop-checkout-modal > :is(h2,.efhc-shop-exchange-title) {
           padding-inline-end: 2.75rem;
         }
+        .efhc-shop-vip-modes {
+          grid-auto-rows: 1fr;
+        }
+        .efhc-shop-vip-buy-row {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: .45rem;
+          min-inline-size: 0;
+        }
+        .efhc-shop-text-product {
+          --shop-buy-card-frame: var(--shop-line);
+        }
+        .efhc-shop-text-product:not([data-shop-vip-empty="true"]):hover:not(:disabled) {
+          --shop-buy-card-frame: #d0ad00;
+        }
+        :global(.efhc-shop-site[data-shop-theme="dark"]) .efhc-shop-text-product:not([data-shop-vip-empty="true"]):hover:not(:disabled) {
+          --shop-buy-card-frame: var(--efhc-color-border-strong);
+        }
+        .efhc-shop-text-product[data-shop-vip-empty="true"]:hover:not(:disabled) {
+          background: var(--shop-card);
+          border-color: var(--shop-buy-card-frame);
+          transform: none;
+        }
+        :global(.efhc-shop-site[data-shop-theme="dark"]) .efhc-shop-text-product[data-shop-vip-empty="true"]:hover:not(:disabled) {
+          background: var(--efhc-color-inset);
+          border-color: var(--shop-buy-card-frame);
+        }
         .efhc-shop-product-buy-action {
           justify-self: end;
           border-radius: .38rem;
-          border: 1px solid var(--shop-accent, #7557db);
+          border: 1px solid var(--shop-buy-card-frame);
           background: transparent;
           color: var(--shop-ink, #121212);
           padding: .14rem .42rem;
@@ -1353,6 +1400,22 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         }
         :global(.efhc-shop-site[data-shop-theme="dark"]) .efhc-shop-product-buy-action {
           color: #fff;
+        }
+        .efhc-shop-text-product[data-shop-vip-empty="true"] .efhc-shop-product-buy-action,
+        :global(.efhc-shop-site[data-shop-theme="dark"]) .efhc-shop-text-product[data-shop-vip-empty="true"] .efhc-shop-product-buy-action {
+          color: var(--shop-muted);
+        }
+        .efhc-shop-text-product[data-shop-vip-frame="true"] {
+          animation: shop-vip-frame 280ms ease-out;
+        }
+        @keyframes shop-vip-frame {
+          from { box-shadow: inset 0 0 0 2px var(--efhc-color-border-strong, #d0ad00); }
+          to { box-shadow: inset 0 0 0 2px transparent; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .efhc-shop-text-product[data-shop-vip-frame="true"] {
+            animation-timing-function: steps(1, end);
+          }
         }
       `}</style>
     </main>
