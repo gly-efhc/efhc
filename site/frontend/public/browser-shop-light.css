@@ -70,7 +70,7 @@ html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
   color:var(--shop-ink);
 }
 html[data-shop-theme="light"] .efhc-shop-site[data-shop-theme="light"] :is(
-  .efhc-shop-text-product:hover:not(:disabled),.efhc-shop-catalog-tabs button[aria-selected="false"]
+  .efhc-shop-text-product:not([data-shop-vip-empty="true"]):hover:not(:disabled),.efhc-shop-catalog-tabs button[aria-selected="false"]
 ) {
   background:var(--shop-soft);
   color:var(--shop-ink);
