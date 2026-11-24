@@ -1270,17 +1270,60 @@ try {
       const selectedVip=page.locator('[data-shop-vip-buy="selected"]');
       const indicator=selectedVip.locator("[data-shop-vip-selection]");
       const buyAction=".efhc-shop-product-buy-action";
+      const dimensions=async()=>page.locator(".efhc-shop-vip-modes").evaluate(root=>{
+        const any=root.querySelector('[data-shop-vip-buy="any"]').getBoundingClientRect();
+        const selected=root.querySelector('[data-shop-vip-buy="selected"]').getBoundingClientRect();
+        const badge=root.querySelector('[data-shop-vip-buy="selected"] .efhc-shop-product-buy-action').getBoundingClientRect();
+        const number=root.querySelector("[data-shop-vip-selection]").getBoundingClientRect();
+        return {widthDelta:Math.abs(any.width-selected.width),heightDelta:Math.abs(any.height-selected.height),
+          rowDelta:Math.abs((badge.top+badge.bottom-number.top-number.bottom)/2),sameRow:number.right<badge.left};
+      });
+      const checkGeometry=async()=> {
+        const d=await dimensions();
+        assert.ok(d.widthDelta<1 && d.heightDelta<1 && d.rowDelta<1 && d.sameRow,JSON.stringify(d));
+      };
+      const checkFrameOnly=async activate=>{
+        await selectedVip.scrollIntoViewIfNeeded();
+        const before=await page.evaluate(()=>[scrollX,scrollY,location.href]);
+        const bg=await selectedVip.evaluate(el=>getComputedStyle(el).background);
+        await activate();
+        await page.locator('[data-shop-vip-frame="true"]').waitFor({state:"attached"});
+        const flash=await selectedVip.evaluate(el=>({background:getComputedStyle(el).background,
+          animation:getComputedStyle(el).animationName}));
+        assert.equal(flash.background,bg,"Before a number is selected, highlight only the frame");
+        assert.notEqual(flash.animation,"none");
+        await page.locator('[data-shop-vip-frame="false"]').waitFor({state:"attached"});
+        assert.deepEqual(await page.evaluate(()=>[scrollX,scrollY,location.href]),before);
+        assert.equal(await indicator.textContent(),"—");
+        assert.equal(await modal.count(),0);
+      };
       for(const theme of ["dark","light"]){
         await page.locator('html[data-shop-theme="'+theme+'"]').waitFor({state:"attached"});
         for(const card of [product,page.locator('[data-browser-shop-package-slot="exchange"]'),anyVip,selectedVip]){
           const style=await card.locator(buyAction).evaluate(el=>{
             const css=getComputedStyle(el);
-            return [css.borderTopStyle,css.borderTopColor,css.backgroundColor,css.color];
+            const card=el.closest("button");
+            const cardCss=getComputedStyle(card);
+            return {border:css.borderTopColor,card:cardCss.borderTopColor,style:css.borderTopStyle,
+              background:css.backgroundColor,color:css.color,muted:cardCss.getPropertyValue("--shop-muted").trim(),
+              onlyCard:el.tagName==="SPAN" && !el.hasAttribute("tabindex") && !el.hasAttribute("role") &&
+                !card.querySelector("button,a,[role=button],[tabindex]")};
           });
-          assert.deepEqual(style,theme==="dark"
-            ? ["solid","rgb(167, 139, 250)","rgba(0, 0, 0, 0)","rgb(255, 255, 255)"]
-            : ["solid","rgb(117, 87, 219)","rgba(0, 0, 0, 0)","rgb(18, 18, 18)"]);
+          assert.equal(style.border,style.card,JSON.stringify({theme,style}));
+          assert.equal(style.style,"solid");
+          assert.equal(style.background,"rgba(0, 0, 0, 0)");
+          assert.equal(style.onlyCard,true);
+          assert.equal(style.color,card===selectedVip
+            ? (theme==="dark"?"rgb(203, 213, 225)":"rgb(102, 99, 93)")
+            : (theme==="dark"?"rgb(255, 255, 255)":"rgb(18, 18, 18)"));
         }
+        await checkGeometry();
+        assert.equal(await selectedVip.isEnabled(),true);
+        await checkFrameOnly(()=>selectedVip.locator(".efhc-shop-product-copy strong").tap());
+        await checkFrameOnly(()=>selectedVip.press("Enter"));
+        await page.setViewportSize({width:1280,height:900});
+        await checkGeometry();
+        await page.setViewportSize({width:390,height:844});
         await product.locator(".efhc-shop-product-buy-action").tap();
         await modal.waitFor({state:"visible"});
         const measurements=await modal.evaluate(el=>{
@@ -1324,7 +1367,7 @@ try {
         if(theme==="dark")await page.locator("[data-shop-theme-toggle]").tap();
       }
       console.log("SHOP_CHECKOUT_OUTLINE_CLOSE_PASS",JSON.stringify(observations));
-      assert.equal(await selectedVip.isDisabled(),true);
+      assert.equal(await selectedVip.isEnabled(),true);
       assert.equal(await indicator.textContent(),"—");
       assert.equal(await page.locator(".efhc-shop-number-actions").count(),0);
       const option=number=>page.getByRole("option",{name:number,exact:true});
@@ -1355,7 +1398,10 @@ try {
       assert.equal(await option("0004").getAttribute("aria-selected"),"true");
       assert.equal(await indicator.textContent(),"#0004");
       assert.equal(await selectedVip.isEnabled(),true);
-      await selectedVip.locator(buyAction).tap();
+      await selectedVip.locator(".efhc-shop-product-copy strong").tap();
+      await expectNumber("0004");
+      await close();
+      await selectedVip.press("Space");
       await expectNumber("0004");
       await close();
       await option("0012").tap();
@@ -1367,9 +1413,10 @@ try {
       await page.reload({waitUntil:"domcontentloaded"});
       await option("0012").waitFor({state:"visible"});
       assert.equal(await indicator.textContent(),"—");
-      assert.equal(await selectedVip.isDisabled(),true);
+      assert.equal(await selectedVip.isEnabled(),true);
       assert.deepEqual(writes,[],"Shop selection must not issue payment or other writes");
       console.log("SHOP_VIP_SELECTION_AND_BUY_PALETTE_PASS",JSON.stringify({blockedGuestBootstraps}));
+      console.log("SHOP_VIP_CARD_GEOMETRY_FRAME_ONLY_PASS");
 
     } finally { await isolated.close(); }
   });
