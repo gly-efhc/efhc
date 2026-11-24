@@ -9,6 +9,8 @@ import {
   type HistoryOperationModel,
 } from "./history/HistoryOperationFeed";
 import { useInterfaceVariantSurface } from "../../hooks/useInterfaceVariantSurface";
+import { useInterfaceCustomization } from "../../hooks/useInterfaceCustomization";
+import { VariantIndicatorDots } from "../interface-settings/InterfaceIndicators";
 import {
   balanceTypeLabel,
   historyOperationKindLabel,
@@ -192,8 +194,10 @@ export function ProfileHistorySection(props: Props) {
   const t = useT();
   const { lang } = useContext(LayoutContext);
   const isReferenceBalance = props.appearance === "balance-page";
+  const { effective } = useInterfaceCustomization();
   const historySurface = useInterfaceVariantSurface<HTMLDivElement>("HI", {
-    dotsPlacement: isReferenceBalance ? "above" : "below",
+    dotsPlacement: "below",
+    registerDots: !isReferenceBalance,
   });
   const variant = historySurface.variant;
   const activeFilter = normalizeHistoryFilter(props.activeFilter);
@@ -280,6 +284,16 @@ export function ProfileHistorySection(props: Props) {
       </div>
 
       <div className="efhc-history-section-head" data-history-block="head">
+        {isReferenceBalance && historySurface.active ? (
+          <div
+            className="efhc-interface-variant-dots"
+            data-indicator-group="HI"
+            data-indicator-placement="balance-history"
+            aria-hidden="true"
+          >
+            <VariantIndicatorDots group="HI" effective={effective} />
+          </div>
+        ) : null}
         <h2>{t("history.operations_title")}</h2>
         <div className="efhc-history-head-actions">
           {props.onExportCsv ? (
