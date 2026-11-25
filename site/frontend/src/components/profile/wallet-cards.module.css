@@ -1,6 +1,7 @@
 /* Bound Wallet cards follow the compact My Panels tile without styling
  * the portfolio itself or changing Wallet actions and address identity. */
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-entry) {
+  --wallet-card-frame: rgba(var(--efhc-ct-accent-rgb),.22);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: .48rem;
@@ -34,14 +35,29 @@
   min-width: 0;
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.standalone-wallet-actions .source-button) {
-  min-height: 44px;
+  min-height: 36px;
+  min-width: 36px;
   max-width: 100%;
-  padding: .28rem .56rem;
-  border-color: rgba(var(--efhc-ct-accent-rgb), .22);
+  padding: .14rem .42rem;
+  border: 1px solid;
+  border-radius: .38rem;
   background: transparent;
+  box-shadow: none;
   color: var(--tg-text);
+  font-size: .7rem;
+  font-weight: 800;
+  line-height: 1.25;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+/* Reuse the card's active Color Theme edge, not the Shop's fixed palette.
+ * The longer selector also wins over the legacy profile button edge. */
+:global(.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id] .efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-entry .standalone-wallet-actions .source-button:not(:disabled)) {
+  border-color: var(--wallet-card-frame) !important;
+}
+:global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.standalone-wallet-actions .source-button:focus-visible) {
+  outline: 2px solid var(--efhc-ct-accent);
+  outline-offset: 2px;
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-primary-status) {
   grid-column: 2;
