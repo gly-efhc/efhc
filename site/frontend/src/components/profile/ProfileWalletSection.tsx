@@ -1,3 +1,4 @@
+import styles from "./wallet-cards.module.css";
 import React, { useMemo } from "react";
 import type {
   WalletConnectionPhase,
@@ -105,7 +106,7 @@ export function ProfileWalletSection(props: Props) {
         <span className="sr-only" role="status" aria-live="polite">
           {props.walletHint || ""}
         </span>
-        <div className="standalone-wallet-list">
+        <div className={`standalone-wallet-list ${styles.boundCards}`}>
         {props.walletsLoading ? (
           <div className="source-muted" role="status">
             {t("wallet.loading_wallets_body")}
