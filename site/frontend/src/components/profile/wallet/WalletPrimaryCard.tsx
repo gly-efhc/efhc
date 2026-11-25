@@ -1,7 +1,7 @@
 import React from "react";
 import { useT } from "../../../hooks/useT";
 import { TelegramStatusBadge } from "../../ui/telegram/TelegramStatusBadge";
-import { Button } from "../../ui/Button";
+import { WalletCardAction } from "./WalletCardAction";
 import { hapticSoft } from "../../../lib/telegram";
 import type { WalletListItemModel } from "./WalletListItem";
 import type { DbId } from "../../../types/db-id";
@@ -31,16 +31,15 @@ export function WalletPrimaryCard(props: Props) {
 
       {props.onRemove ? (
         <div className="efhc-wallet-primary-actions standalone-wallet-actions">
-          <Button
-            variant="secondary"
-            className="source-button secondary"
+          <WalletCardAction
+            sizeLabel={t("wallet.primary_badge")}
             onClick={() => {
               hapticSoft(Boolean(props.hapticsEnabled));
               props.onRemove?.(wallet.id);
             }}
           >
             {t("wallet.remove")}
-          </Button>
+          </WalletCardAction>
         </div>
       ) : null}
 

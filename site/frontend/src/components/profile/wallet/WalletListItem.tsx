@@ -1,6 +1,6 @@
 import React from "react";
 import { useT } from "../../../hooks/useT";
-import { Button } from "../../ui/Button";
+import { WalletCardAction } from "./WalletCardAction";
 import { hapticSelection, hapticSoft } from "../../../lib/telegram";
 import type { DbId } from "../../../types/db-id";
 import { WalletAddressVerification } from "./WalletAddressVerification";
@@ -37,9 +37,8 @@ export function WalletListItem(props: Props) {
       <WalletAddressVerification address={wallet.wallet_address} />
 
       <div className="efhc-wallet-item_actions standalone-wallet-actions">
-        <Button
-          variant="secondary"
-          className="source-button secondary"
+        <WalletCardAction
+          sizeLabel={t("wallet.primary_badge")}
           disabled={!wallet.is_active || wallet.is_primary}
           onClick={() => {
             hapticSelection(props.hapticsEnabled);
@@ -47,17 +46,16 @@ export function WalletListItem(props: Props) {
           }}
         >
           {t("wallet.make_primary")}
-        </Button>
-        <Button
-          variant="secondary"
-          className="source-button secondary"
+        </WalletCardAction>
+        <WalletCardAction
+          sizeLabel={t("wallet.primary_badge")}
           onClick={() => {
             hapticSoft(props.hapticsEnabled);
             props.onRemove(wallet.id);
           }}
         >
           {t("wallet.remove")}
-        </Button>
+        </WalletCardAction>
       </div>
     </div>
   );
