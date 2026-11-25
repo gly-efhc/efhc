@@ -1,7 +1,14 @@
 """Internal TonAPI URL naming must not change the external endpoint."""
 
 import unittest
-from app.integrations.ton_api_urls import ton_api_base_url
+from pathlib import Path
+from runpy import run_path
+
+# Load the actual pure helper without starting the FastAPI package.
+_backend = Path(__file__).resolve().parents[2] / "backend"
+ton_api_base_url = run_path(str(_backend / "app/integrations/ton_api_urls.py"))[
+    "ton_api_base_url"
+]
 
 
 class TonApiUrlContract(unittest.TestCase):
