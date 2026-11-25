@@ -65,7 +65,7 @@ def run(root, bundle, expected, apply):
             mode=entry.external_attr>>16
             check(not entry.is_dir() and stat.S_IFMT(mode) in (0,stat.S_IFREG) and not entry.flag_bits&1 and entry.file_size<=CAP, "unsafe ZIP member")
         m=json.loads(z.read("manifest.json"))
-        check(m["format"]=="efhc-full-import-v1" and m["target"]=="gly-efhc/efhc" and GIT.fullmatch(m["base"]), "wrong import contract")
+        check(m["format"]=="efhc-full-import" and m["schema"]==1 and m["target"]=="gly-efhc/efhc" and GIT.fullmatch(m["base"]), "wrong import contract")
         paths={}
         for row in m["files"]:
             p=row["path"]
