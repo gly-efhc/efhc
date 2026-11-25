@@ -1,10 +1,8 @@
 name: EFHC — live Genesis guest and protected Admin HTTP smoke
 on:
-  push:
-    branches: [main]
-    paths: [".github/workflows/efhc-preview-smoke.yml"]
   workflow_run:
     workflows: ["EFHC — React DEMO Pages"]
+    branches: [main]
     types: [completed]
   workflow_dispatch:
 permissions:
@@ -12,7 +10,7 @@ permissions:
 jobs:
   test-preview:
     name: Isolated TEST guest user data and protected Admin boundary
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.repository == 'gly-efhc/efhc' && (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request' || github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 7
     steps:

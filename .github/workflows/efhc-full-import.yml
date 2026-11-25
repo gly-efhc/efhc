@@ -1,0 +1,41 @@
+name: EFHC — Full ZIP validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'import/EFHC_FULL_IMPORT.zip'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/efhc-full-import.yml'
+      - '.github/scripts/efhc_import_full.py'
+      - '.github/scripts/check_full_import.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    name: Validate full import without publishing code
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Run isolated importer contract tests
+        run: python3 .github/scripts/check_full_import.py
+      - name: Verify archive bytes and scope without writing or executing payload
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="import/EFHC_FULL_IMPORT.zip"
+          if [[ ! -f "$bundle" ]]; then
+            echo 'EFHC_FULL_IMPORT_SKIP: no full archive'
+            exit 0
+          fi
+          sha="$(sha256sum "$bundle" | cut -d' ' -f1)"
+          python3 .github/scripts/efhc_import_full.py "$bundle" "$sha" --root .

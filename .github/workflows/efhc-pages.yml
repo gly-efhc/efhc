@@ -11,6 +11,10 @@ on:
         required: false
         type: boolean
         default: false
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/efhc-pages.yml"
   push:
     branches: [main]
     paths:
@@ -21,7 +25,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: efhc-test3-main
+  group: ${{ github.event_name == 'pull_request' && format('efhc-pages-review-{0}', github.event.pull_request.number) || 'efhc-test3-main' }}
   cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
@@ -76,7 +80,7 @@ jobs:
           expected = info.get('source_archive_sha256', '')
           if not re.fullmatch(r'[0-9a-f]{64}', expected):
               raise SystemExit('FAIL: invalid RELEASE source archive SHA256')
-          zips = sorted(pathlib.Path('import').glob('*.zip'))
+          zips = sorted(p for p in pathlib.Path('import').glob('*.zip') if p.name != 'EFHC_FULL_IMPORT.zip')
           if len(zips) > 1:
               raise SystemExit('FAIL: multiple ZIP files in import/; retain only the currently imported ZIP')
           if zips:
@@ -491,6 +495,7 @@ jobs:
           retention-days: 3
 
   publish:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     name: Publish the verified package to Pages
     runs-on: ubuntu-latest
@@ -610,7 +615,7 @@ jobs:
               raise SystemExit('FAIL: published source hash missing')
           if info.get('source_archive_sha256') != expected:
               raise SystemExit('FAIL: imported source changed since deployment; preserving ZIP')
-          zips = sorted(pathlib.Path('import').glob('*.zip'))
+          zips = sorted(p for p in pathlib.Path('import').glob('*.zip') if p.name != 'EFHC_FULL_IMPORT.zip')
           if len(zips) > 1:
               raise SystemExit('FAIL: unexpected multiple ZIP files; none removed')
           if zips:
