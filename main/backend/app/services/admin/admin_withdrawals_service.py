@@ -409,7 +409,7 @@ class BonusAwardProcessRequest(BaseModel):
 
 
 # ======================================================================
-# Admin payout pre-execution reservation (Cycle0199 / G-02)
+# Admin payout pre-execution reservation
 # ======================================================================
 
 _PAYOUT_RESERVATION_PREFIX = "wpr1"
@@ -909,7 +909,7 @@ class WithdrawalsService:
                     "already processing with another key"
                 )
             if not reserved_same_context:
-                # Legacy same-key replay without a Cycle0199 reservation.
+                # Legacy same-key replay without a pre-execution reservation.
                 logger.info(
                     "approve_withdrawal: legacy idem=%s wid=%s",
                     req.idempotency_key,

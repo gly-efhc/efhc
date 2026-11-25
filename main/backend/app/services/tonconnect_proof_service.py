@@ -27,7 +27,7 @@ from app.identity.ton_proof_verification import (
     parse_ton_public_key,
     verify_ton_signature,
 )
-from app.integrations.ton_api_urls import ton_api_v2
+from app.integrations.ton_api_urls import ton_api_base_url
 from app.lib.time import utcnow
 from app.lib.ton_address import ParsedAddress, TonAddressError
 from app.lib.ton_address import (
@@ -191,7 +191,7 @@ def _verify_signature(
 def _candidate_api_bases() -> list[str]:
     settings = get_settings()
     seq: list[str] = []
-    primary = ton_api_v2(settings.TON_API_BASE_URL)
+    primary = ton_api_base_url(settings.TON_API_BASE_URL)
     if primary:
         seq.append(primary)
     fb = str(getattr(settings, "TON_API_FALLBACK_URLS", "") or "")

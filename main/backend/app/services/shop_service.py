@@ -960,7 +960,7 @@ async def _hide_legacy_shop_item(db: AsyncSession, sku: str) -> None:
 
 
 async def seed_default_items(db: AsyncSession) -> dict[str, Any]:
-    """Idempotently reconcile Shop base rows with OWNER/CANON v234.
+    """Idempotently reconcile Shop base rows with the approved catalog contract.
 
     Existing owner prices/content are preserved whenever a legacy fixed package
     can be renamed to its stable SKU. Obsolete legacy rows are hidden rather
