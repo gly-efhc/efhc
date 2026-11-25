@@ -1,0 +1,27 @@
+{
+  "схема_контракта": "EFHC_CROSS_LANGUAGE_IDENTITY_SEPARATION_V1",
+  "global_id": {
+    "nominal_type": "GlobalId",
+    "wire_type": "string",
+    "pattern": "^[0-9]{10}$",
+    "digits": 10,
+    "minimum": 1,
+    "maximum": 9999999999,
+    "zero_forbidden": true
+  },
+  "tg_id": {
+    "nominal_type": "TelegramId",
+    "wire_type": "integer",
+    "provider": "telegram",
+    "minimum": 1,
+    "maximum": 9007199254740991
+  },
+  "запреты": [
+    "global_id_from_tg_id",
+    "tg_id_from_global_id",
+    "global_id_to_telegram_api",
+    "provider_id_as_domain_owner"
+  ],
+  "активные_routes_переключены": false,
+  "postgresql_read_switch": false
+}

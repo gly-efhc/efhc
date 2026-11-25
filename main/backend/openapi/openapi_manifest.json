@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-10-09T20:59:50.133597+00:00",
+  "mode": "backend-route-source-derived-snapshot",
+  "source": "backend/app/routes/*.py static route decorators",
+  "ssot": "docs/SSOT/ssot_pack/SSOT_ROUTES.csv",
+  "path_count": 174,
+  "operation_count": 181,
+  "schema_count": 184,
+  "runtime_live_export": "not_claimed_in_this_environment",
+  "note": "Dependency-free static rebuild. Live FastAPI app.openapi() proof requires runtime dependencies and remains a separate CI/live gate."
+}

@@ -1,0 +1,34 @@
+{
+  "схема_контракта": "EFHC_AUTH_RUNTIME_STORAGE_V1",
+  "цикл": 1613,
+  "таблицы": {
+    "auth_challenges": {
+      "one_time": true,
+      "raw_challenge_stored": false,
+      "hash": "sha256-hex",
+      "atomic_consume": true,
+      "expires_at_required": true
+    },
+    "auth_sessions": {
+      "server_side": true,
+      "raw_session_token_stored": false,
+      "hash": "sha256-hex",
+      "global_owner": "global_id",
+      "physical_fk_target": "efhc_core.users.global_id",
+      "identity_fk": "efhc_core.user_identities.id"
+    },
+    "user_roles": {
+      "owner": "global_id",
+      "physical_fk_target": "efhc_core.users.global_id",
+      "provider_specific_owner": false
+    }
+  },
+  "side_effects": {
+    "account_creation": false,
+    "identity_creation": false,
+    "auto_merge": false,
+    "telegram_switch": false,
+    "ton_proof": false,
+    "financial_update": false
+  }
+}

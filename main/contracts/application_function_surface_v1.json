@@ -1,0 +1,1287 @@
+{
+  "schema": "EFHC_APPLICATION_FUNCTION_SURFACE_V1",
+  "version": "v175.01",
+  "cycle": 1842,
+  "purpose": "Fail-closed контроль публичных, операционных, фоновых, Admin и compatibility capabilities; следующий GitHub CI должен выявлять их случайное удаление без исполнения production-модулей.",
+  "identity_canon": "provider + subject -> global_id -> business runtime",
+  "openapi_path_count": 170,
+  "required_openapi_paths": [
+    "/admin/access",
+    "/admin/ads/dashboard",
+    "/admin/ads/providers",
+    "/admin/ads/providers/{code}",
+    "/admin/ads/providers/{code}/reset-errors",
+    "/admin/ads/providers/{code}/secrets/delete",
+    "/admin/ads/providers/{code}/secrets/replace",
+    "/admin/ads/providers/{code}/test",
+    "/admin/ads/revenue-optimizer",
+    "/admin/ads/revenue-optimizer/apply",
+    "/admin/bank/balance",
+    "/admin/bank/burn",
+    "/admin/bank/mint",
+    "/admin/bank/transfers/{transfer_log_id}/rollback",
+    "/admin/bonuses",
+    "/admin/efhc-deposits/inbox",
+    "/admin/efhc-deposits/process",
+    "/admin/efhc-deposits/reprocess/{tx_hash}",
+    "/admin/efhc-deposits/runtime-summary",
+    "/admin/efhc-deposits/unmatched",
+    "/admin/hub/links",
+    "/admin/hub/links/reorder",
+    "/admin/hub/links/{link_id}",
+    "/admin/hub/links/{link_id}/toggle",
+    "/admin/hub/support-links",
+    "/admin/hub/support-links/reorder",
+    "/admin/hub/support-links/{link_id}",
+    "/admin/hub/support-links/{link_id}/toggle",
+    "/admin/logs/export.csv",
+    "/admin/logs/export.xlsx",
+    "/admin/logs/transfers",
+    "/admin/observability/events",
+    "/admin/observability/health",
+    "/admin/observability/summary",
+    "/admin/observability/timeseries",
+    "/admin/panels/",
+    "/admin/panels/{panel_id}",
+    "/admin/panels/{panel_id}/activate",
+    "/admin/panels/{panel_id}/deactivate",
+    "/admin/referrals/summary",
+    "/admin/reports/bank",
+    "/admin/reports/deposits",
+    "/admin/reports/overview",
+    "/admin/reports/panels",
+    "/admin/reports/users",
+    "/admin/reports/withdrawals",
+    "/admin/sale-packages/",
+    "/admin/sale-packages/{package_id}",
+    "/admin/sale-packages/{package_id}/toggle",
+    "/admin/shop/items",
+    "/admin/shop/items/delete",
+    "/admin/shop/items/set-price",
+    "/admin/shop/items/status",
+    "/admin/shop/items/upsert",
+    "/admin/shop/nft-requests",
+    "/admin/shop/nft-requests/{order_id}/decision",
+    "/admin/shop/order/{order_id}",
+    "/admin/shop/orders",
+    "/admin/shop/orders/status-counters",
+    "/admin/shop/orders/user/{global_id}",
+    "/admin/shop/orders/{order_id}/force-fulfill",
+    "/admin/tasks/",
+    "/admin/tasks/refresh-statuses",
+    "/admin/tasks/submissions/{submission_id}/moderate",
+    "/admin/tasks/{task_id}",
+    "/admin/tasks/{task_id}/subs",
+    "/admin/templates",
+    "/admin/templates/{key}",
+    "/admin/ton/reconcile",
+    "/admin/transfer",
+    "/admin/users/resolve-provider",
+    "/admin/users/search",
+    "/admin/users/vip/check-all",
+    "/admin/users/{global_id}",
+    "/admin/users/{global_id}/active",
+    "/admin/users/{global_id}/history",
+    "/admin/users/{global_id}/panels/activate",
+    "/admin/users/{global_id}/vip",
+    "/admin/users/{global_id}/vip/check",
+    "/admin/users/{global_id}/wallet/reset",
+    "/admin/withdrawals",
+    "/admin/withdrawals/repair-consistency",
+    "/admin/withdrawals/{request_id}/approve",
+    "/admin/withdrawals/{request_id}/mark-paid",
+    "/admin/withdrawals/{request_id}/outcome-preview",
+    "/admin/withdrawals/{request_id}/payout-evidence",
+    "/admin/withdrawals/{request_id}/reject",
+    "/ads/callback/{provider}",
+    "/ads/postback/admaven",
+    "/ads/postback/adsgram",
+    "/ads/postback/monetag",
+    "/ads/session",
+    "/ads/session/{session_id}",
+    "/ads/session/{session_id}/client-complete",
+    "/ads/session/{session_id}/event",
+    "/ads/session/{session_id}/fallback",
+    "/ads/session/{session_id}/shown",
+    "/ads/slot",
+    "/auth/logout",
+    "/auth/profile-photos",
+    "/auth/session",
+    "/auth/telegram/session",
+    "/auth/ton/challenge",
+    "/auth/ton/proof",
+    "/deposit/direct-open",
+    "/deposit/efhc",
+    "/deposit/packages",
+    "/exchange/convert",
+    "/exchange/history",
+    "/exchange/preview",
+    "/health",
+    "/health/db",
+    "/health/db-schema",
+    "/health/readiness",
+    "/health/runtime",
+    "/hub/efhc-handoff",
+    "/hub/shop-truth",
+    "/hub/support-links",
+    "/meta/health_db",
+    "/nft/has_vip",
+    "/panels/activate",
+    "/panels/active",
+    "/panels/archive",
+    "/payment-intents/{intent_id}",
+    "/profile/history",
+    "/profile/history/export.csv",
+    "/profile/history/export.xlsx",
+    "/ranks/my-plus-top/me",
+    "/ranks/top/me",
+    "/referrals/active/me",
+    "/referrals/counters/me",
+    "/referrals/inactive/me",
+    "/referrals/stats/me",
+    "/shop/catalog",
+    "/shop/order-external",
+    "/shop/orders",
+    "/shop/purchase-efhc",
+    "/shopfront/access-key",
+    "/shopfront/bootstrap",
+    "/shopfront/catalog",
+    "/shopfront/create-intent",
+    "/shopfront/intent-status",
+    "/shopfront/profile",
+    "/skins/activate/{skin_id}",
+    "/skins/buy/{skin_id}",
+    "/skins/catalog",
+    "/skins/my",
+    "/skins/switcher",
+    "/skins/switcher/activate/{skin_id}",
+    "/sync/me",
+    "/tasks/catalog",
+    "/tasks/claim",
+    "/tasks/earnings/me",
+    "/tasks/my",
+    "/user/me",
+    "/user/me/panels-summary",
+    "/v1/me",
+    "/v1/me/withdraw-outcomes/{request_id}",
+    "/wallets/balance-history",
+    "/wallets/connect",
+    "/wallets/me",
+    "/wallets/tonconnect/check-proof",
+    "/wallets/tonconnect/proof-payload",
+    "/wallets/{wallet_id}",
+    "/wallets/{wallet_id}/make-primary",
+    "/withdraw/list",
+    "/withdraw/list/me",
+    "/withdraw/request",
+    "/withdraw/{request_id}",
+    "/withdraw/{request_id}/cancel"
+  ],
+  "frontend_page_count": 41,
+  "required_frontend_pages": [
+    "frontend/src/pages/404.tsx",
+    "frontend/src/pages/500.tsx",
+    "frontend/src/pages/_app.tsx",
+    "frontend/src/pages/_document.tsx",
+    "frontend/src/pages/_error.tsx",
+    "frontend/src/pages/admin/ads.tsx",
+    "frontend/src/pages/admin/api-workbench.tsx",
+    "frontend/src/pages/admin/bank.tsx",
+    "frontend/src/pages/admin/bonuses.tsx",
+    "frontend/src/pages/admin/diagnostics.tsx",
+    "frontend/src/pages/admin/efhc-deposits.tsx",
+    "frontend/src/pages/admin/hub.tsx",
+    "frontend/src/pages/admin/index.tsx",
+    "frontend/src/pages/admin/logs.tsx",
+    "frontend/src/pages/admin/panels.tsx",
+    "frontend/src/pages/admin/referrals.tsx",
+    "frontend/src/pages/admin/reports.tsx",
+    "frontend/src/pages/admin/sale-packages.tsx",
+    "frontend/src/pages/admin/shop.tsx",
+    "frontend/src/pages/admin/system.tsx",
+    "frontend/src/pages/admin/tasks.tsx",
+    "frontend/src/pages/admin/users.tsx",
+    "frontend/src/pages/admin/withdrawals.tsx",
+    "frontend/src/pages/ads.tsx",
+    "frontend/src/pages/app.tsx",
+    "frontend/src/pages/browser-shop.tsx",
+    "frontend/src/pages/browser-shop/orders.tsx",
+    "frontend/src/pages/browser-shop/profile.tsx",
+    "frontend/src/pages/exchange.tsx",
+    "frontend/src/pages/faq.tsx",
+    "frontend/src/pages/hub.tsx",
+    "frontend/src/pages/index.tsx",
+    "frontend/src/pages/panels.tsx",
+    "frontend/src/pages/ranks.tsx",
+    "frontend/src/pages/referrals.tsx",
+    "frontend/src/pages/referrals/active.tsx",
+    "frontend/src/pages/referrals/inactive.tsx",
+    "frontend/src/pages/support.tsx",
+    "frontend/src/pages/tasks.tsx",
+    "frontend/src/pages/web-profile.tsx",
+    "frontend/src/pages/withdraw.tsx"
+  ],
+  "required_files": [
+    "ARCHITECTURAL_LOCKS.md",
+    "KERNEL.md",
+    "START_HERE.md",
+    "URGENT_BANK_METRICS_SNAPSHOT.sql",
+    "backend/app/bot/handlers/admin/admin_access.py",
+    "backend/app/contracts/admin_contract.py",
+    "backend/app/domain/finance/external_amounts.py",
+    "backend/app/domain/panels_rules.py",
+    "backend/app/integrations/ads/registry.py",
+    "backend/app/models/bank_metrics_snapshot_models.py",
+    "backend/app/routes/admin_ads_routes.py",
+    "backend/app/routes/admin_bonus_routes.py",
+    "backend/app/routes/admin_shop_routes.py",
+    "backend/app/routes/admin_users_routes.py",
+    "backend/app/routes/ads_routes.py",
+    "backend/app/routes/profile_history_routes.py",
+    "backend/app/scheduler/ads_reward_reconciliation.py",
+    "backend/app/scheduler/financial_retention.py",
+    "backend/app/schemas/profile_history_schemas.py",
+    "backend/app/services/admin/admin_ads_service.py",
+    "backend/app/services/admin/admin_bonus_service.py",
+    "backend/app/services/admin/admin_log_export_service.py",
+    "backend/app/services/admin/admin_notifications.py",
+    "backend/app/services/admin/admin_panel_protective_service.py",
+    "backend/app/services/admin/admin_panels_service.py",
+    "backend/app/services/admin/admin_vip_nft_service.py",
+    "backend/app/services/ads/ad_manager.py",
+    "backend/app/services/ads/config_service.py",
+    "backend/app/services/ads/provider_registry.py",
+    "backend/app/services/bank_metrics_snapshot_service.py",
+    "backend/app/services/efhc_deposits_service.py",
+    "backend/app/services/financial_retention_service.py",
+    "backend/app/services/nft_requests_service.py",
+    "backend/app/services/profile_history_service.py",
+    "backend/app/services/shop_payment_tx_hash_lock_service.py",
+    "backend/app/services/wallets_service.py",
+    "backend/app/standards/financial_reason_registry.py",
+    "backend/migrations/versions/0001_initial_release_schema.py",
+    "backend/openapi/openapi.json",
+    "docs/NORM/EFHC_PANEL_PROTECTIVE_DEACTIVATION_OWNER_CONTRACT.md",
+    "docs/SSOT/ADMIN_NFT_ACCESS_CANON.md",
+    "docs/SSOT/BANK_CANON.md",
+    "docs/SSOT/ECONOMY_CANON.md",
+    "docs/SSOT/FINANCIAL_TOPOLOGY_LOCK.json",
+    "docs/SSOT/FINANCIAL_TOPOLOGY_SSOT.md",
+    "docs/SSOT/GLOBAL_IDENTITY_SSOT.md",
+    "docs/admin/ADMIN_BONUSES_AND_MANUAL_CREDITS_CANON.md",
+    "docs/admin/ADMIN_FINANCIAL_STATUS_UTILITIES_CANON.md",
+    "docs/admin/ADMIN_HUMAN_LANGUAGE_CANON.md",
+    "docs/admin/ADMIN_REPORTS_AND_OBSERVABILITY_CANON.md",
+    "docs/admin/ADMIN_SHOP_MANAGEMENT_CANON.md",
+    "docs/admin/ADMIN_TASKS_EDITOR_CANON.md",
+    "docs/admin/ADMIN_TON_DEPOSITS_RECOVERY_CANON.md",
+    "docs/admin/ADMIN_VIP_NFT_MANAGEMENT_CANON.md",
+    "docs/audits/FUNCTION_RECOVERY_CONSOLIDATION_1719_1728.md",
+    "docs/backend/FINANCIAL_AUDIT_3_REMEDIATION_EVIDENCE.md",
+    "docs/backend/RUNTIME_COMPATIBILITY_CANON.md",
+    "docs/cycles/WORK_CYCLES_1701-1800.md",
+    "docs/frontend/EFHC_FRONTEND_OWNER_QA_v182.md",
+    "docs/frontend/FRONTEND_v182_BACKEND_RECONCILIATION_HANDOFF.md",
+    "docs/payments/WALLET_PAYMENT_RECONCILIATION_CANON.md",
+    "frontend/public/brands/facebook.svg",
+    "frontend/public/brands/telegram.svg",
+    "frontend/public/brands/viber.svg",
+    "frontend/public/brands/whatsapp.svg",
+    "frontend/public/brands/x.svg",
+    "frontend/public/locale/da.json",
+    "frontend/public/locale/de.json",
+    "frontend/public/locale/en.json",
+    "frontend/public/locale/es.json",
+    "frontend/public/locale/fr.json",
+    "frontend/public/locale/hi.json",
+    "frontend/public/locale/id.json",
+    "frontend/public/locale/it.json",
+    "frontend/public/locale/pl.json",
+    "frontend/public/locale/ru.json",
+    "frontend/public/locale/sw.json",
+    "frontend/public/locale/tr.json",
+    "frontend/public/locale/uk.json",
+    "frontend/src/components/StatusIndicator.tsx",
+    "frontend/src/components/admin/AdminDomainReportsDashboardRuntime.tsx",
+    "frontend/src/components/admin/AdminTasksEditorPanel.tsx",
+    "frontend/src/components/admin/AdminTonInboxHumanPanel.tsx",
+    "frontend/src/components/admin/AdminVipNftPanel.tsx",
+    "frontend/src/components/admin/AdminVipNftRequestsPanel.tsx",
+    "frontend/src/components/referrals/ReferralListPage.tsx",
+    "frontend/src/components/referrals/ReferralRoster.tsx",
+    "frontend/src/components/ui/BonusEarningsStrip.tsx",
+    "frontend/src/features/browser-shop/BrowserShopPage.tsx",
+    "frontend/src/lib/ads/AdManager.ts",
+    "frontend/src/pages/admin/ads.tsx",
+    "frontend/src/pages/admin/bonuses.tsx",
+    "frontend/src/pages/admin/panels.tsx",
+    "frontend/src/pages/admin/shop.tsx",
+    "frontend/src/pages/admin/users.tsx",
+    "frontend/src/pages/tasks.tsx",
+    "frontend/src/queries/queryKeys.ts",
+    "frontend/src/queries/useRanks.ts",
+    "frontend/src/services/adminLogExport.service.ts",
+    "frontend/src/services/ranks.service.ts",
+    "frontend/src/styles/globals.css",
+    "ops/openapi/generate_frontend_user_economic_seams.py",
+    "ops/openapi/generate_frontend_user_economic_validators.py"
+  ],
+  "required_module_symbols": {
+    "backend/app/bot/handlers/admin/admin__main__handlers.py": [
+      "ADMIN_HUB_LABEL",
+      "handler",
+      "kb_admin_entry",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_access.py": [
+      "telegram_sender_has_admin_access"
+    ],
+    "backend/app/bot/handlers/admin/admin_ads_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_hub_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_main_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_panels_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_referrals_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_stats_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_tasks_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_users_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/handlers/admin/admin_withdrawals_handlers.py": [
+      "handler",
+      "router"
+    ],
+    "backend/app/bot/states.py": [
+      "BotStates",
+      "ConversationState",
+      "Handler",
+      "MemoryStateBackend",
+      "StateBackend",
+      "StateKey",
+      "StateManager",
+      "advance_state",
+      "clear_state_after",
+      "get_state_manager",
+      "require_state"
+    ],
+    "backend/app/contracts/admin_contract.py": [
+      "AdminContract"
+    ],
+    "backend/app/core/decimal_utils.py": [
+      "d8"
+    ],
+    "backend/app/database.py": [
+      "get_engine",
+      "get_session_factory"
+    ],
+    "backend/app/deps.py": [
+      "d8",
+      "db_ping",
+      "get_current_telegram_subject_id",
+      "get_db",
+      "require_admin",
+      "require_admin_or_nft_or_key",
+      "require_admin_write"
+    ],
+    "backend/app/domain/finance/external_amounts.py": [
+      "ExternalAmount",
+      "ExternalAsset",
+      "external_amount_from_atomic",
+      "external_amount_from_display"
+    ],
+    "backend/app/init.py": [
+      "create_app"
+    ],
+    "backend/app/integrations/ads/registry.py": [
+      "ADAPTERS",
+      "get_provider_adapter"
+    ],
+    "backend/app/integrations/ton_memo.py": [
+      "build_deposit_global_memo",
+      "build_buy_pack_global_memo",
+      "parse_memo_for_watcher"
+    ],
+    "backend/app/models/order_models.py": [
+      "ShopOrder"
+    ],
+    "backend/app/routes/admin_bonus_routes.py": [
+      "admin_bonus_activity",
+      "router"
+    ],
+    "backend/app/routes/admin_reports_routes.py": [
+      "AdminBankPolicyOut",
+      "reports_bank",
+      "reports_withdrawals"
+    ],
+    "backend/app/routes/admin_routes.py": [
+      "admin_access",
+      "admin_efhc_deposits_inbox",
+      "admin_efhc_deposits_runtime_summary",
+      "admin_efhc_deposits_unmatched",
+      "admin_reprocess_efhc_deposit_tx",
+      "ton_reconcile"
+    ],
+    "backend/app/routes/admin_shop_routes.py": [
+      "admin_delete_shop_item",
+      "admin_force_fulfill_shop_order",
+      "admin_get_order",
+      "admin_items",
+      "admin_list_user_orders",
+      "admin_orders",
+      "admin_set_item_price",
+      "admin_set_shop_item_status",
+      "admin_shop_order_status_counters",
+      "admin_upsert_shop_item",
+      "admin_vip_nft_request_decision",
+      "admin_vip_nft_requests"
+    ],
+    "backend/app/routes/admin_users_routes.py": [
+      "admin_users_activate_paid_panel",
+      "admin_users_check_all_vip_nft",
+      "admin_users_check_vip_nft",
+      "admin_users_get",
+      "admin_users_history",
+      "admin_users_resolve_provider",
+      "admin_users_set_vip"
+    ],
+    "backend/app/routes/profile_history_routes.py": [
+      "profile_history",
+      "profile_history_csv",
+      "profile_history_xlsx",
+      "router"
+    ],
+    "backend/app/routes/shopfront_routes.py": [
+      "shopfront_profile"
+    ],
+    "backend/app/scheduler/ads_reward_reconciliation.py": [
+      "run_once"
+    ],
+    "backend/app/scheduler/check_ton_inbox.py": [
+      "run_tick"
+    ],
+    "backend/app/scheduler/financial_retention.py": [
+      "run_once"
+    ],
+    "backend/app/scheduler/scheduler_context.py": [
+      "TickContext"
+    ],
+    "backend/app/scheduler/scheduler_core.py": [
+      "tick"
+    ],
+    "backend/app/scheduler/scheduler_errors.py": [
+      "JobTimeout",
+      "SchedulerError"
+    ],
+    "backend/app/scheduler/tasks_autorestart.py": [
+      "run_once"
+    ],
+    "backend/app/scheduler/tasks_maintenance.py": [
+      "run_once"
+    ],
+    "backend/app/services/admin/admin_ads_service.py": [
+      "list_providers",
+      "get_provider",
+      "save_provider",
+      "replace_secret",
+      "delete_secret",
+      "reset_provider_errors",
+      "test_provider"
+    ],
+    "backend/app/services/admin/admin_bank_service.py": [
+      "BankBalance",
+      "BankService.burn_efhc",
+      "BankService.ensure_initial_balance",
+      "BankService.get_bank_balance",
+      "BankService.list_bank_user_transfers",
+      "BankService.manual_bank_user_transfer",
+      "BankService.mint_efhc",
+      "BankService.rollback_bank_user_tx",
+      "BankTransferLogEntry",
+      "BankUserTransferRequest",
+      "MintBurnRequest"
+    ],
+    "backend/app/services/admin/admin_bonus_service.py": [
+      "AdminBonusActivity",
+      "AdminBonusItem",
+      "AdminBonusSummary",
+      "AdminBonusesService.list_activity"
+    ],
+    "backend/app/services/admin/admin_facade.py": [
+      "AdminService.admin_approve_withdraw",
+      "AdminService.admin_mark_withdraw_paid",
+      "AdminService.admin_reject_withdraw",
+      "AdminService.burn_efhc",
+      "AdminService.credit_bonus_efhc",
+      "AdminService.credit_regular_efhc",
+      "AdminService.debug_user_progress",
+      "AdminService.get_bank_balance",
+      "AdminService.get_coins_stats",
+      "AdminService.get_panels_stats",
+      "AdminService.get_referrals_stats",
+      "AdminService.get_setting",
+      "AdminService.get_shop_stats",
+      "AdminService.get_system_stats",
+      "AdminService.get_user_balances",
+      "AdminService.list_admin_logs",
+      "AdminService.list_bonus_payouts",
+      "AdminService.list_withdraw_requests",
+      "AdminService.manual_bank_user_transfer",
+      "AdminService.mget_settings",
+      "AdminService.mint_efhc",
+      "AdminService.mset_settings",
+      "AdminService.require_role",
+      "AdminService.resolve_admin",
+      "AdminService.restore_settings_from_snapshot",
+      "AdminService.rollback_bank_user_tx",
+      "AdminService.set_setting",
+      "AdminService.snapshot_settings_daily",
+      "AdminService.toggle_user_panel"
+    ],
+    "backend/app/services/admin/admin_notifications.py": [
+      "AdminNotifier.notify_generic",
+      "AdminNotifier.send_telegram_after_commit"
+    ],
+    "backend/app/services/admin/admin_panels_service.py": [
+      "AdminPanelsService.set_panel_active",
+      "AdminPanelsService.toggle_panel",
+      "PanelBrief"
+    ],
+    "backend/app/services/admin/admin_rbac.py": [
+      "AdminAuthError",
+      "AdminRole",
+      "AdminUser",
+      "RBAC.admin_from_auth_context",
+      "RBAC.is_superadmin",
+      "RBAC.require_role",
+      "RBAC.resolve_admin",
+      "RBAC.resolve_admin_nft",
+      "RBAC.try_resolve_admin"
+    ],
+    "backend/app/services/admin/admin_shop_service.py": [
+      "admin_delete_item",
+      "admin_force_fulfill_order",
+      "admin_list_items",
+      "admin_list_orders",
+      "admin_order_status_counters",
+      "admin_set_item_status",
+      "admin_set_price",
+      "admin_upsert_item"
+    ],
+    "backend/app/services/admin/admin_tasks_service.py": [
+      "force_tasks_sync"
+    ],
+    "backend/app/services/admin/admin_users_service.py": [
+      "AdjustUserBalanceRequest",
+      "AdminUsersService.adjust_user_balance_via_bank",
+      "AdminUsersService.credit_bonus_efhc",
+      "AdminUsersService.credit_regular_efhc",
+      "AdminUsersService.get_user_progress",
+      "AdminUsersService.get_user_snapshot",
+      "AdminUsersService.search_users_by_global_prefix",
+      "UserBalanceSnapshot",
+      "UserProgressSnapshot"
+    ],
+    "backend/app/services/admin/admin_vip_nft_service.py": [
+      "check_all_vip_nft_now",
+      "check_user_vip_nft_now",
+      "decide_vip_nft_request",
+      "list_vip_nft_requests"
+    ],
+    "backend/app/services/admin/admin_withdrawals_service.py": [
+      "BonusAwardFilters",
+      "BonusAwardProcessRequest",
+      "BonusAwardRecord",
+      "WithdrawalApproveRequest",
+      "WithdrawalFilters",
+      "WithdrawalRecord",
+      "WithdrawalsService.approve_withdrawal",
+      "WithdrawalsService.list_bonus_awards",
+      "WithdrawalsService.list_withdrawals",
+      "WithdrawalsService.mark_withdrawal_paid",
+      "WithdrawalsService.process_bonus_award",
+      "WithdrawalsService.record_payout_evidence",
+      "WithdrawalsService.reject_bonus_award",
+      "WithdrawalsService.reject_withdrawal"
+    ],
+    "backend/app/services/ads/ad_manager.py": [
+      "AdManagerError",
+      "AdTaskPolicy",
+      "client_complete",
+      "create_admin_test_session",
+      "create_session",
+      "fallback_session",
+      "get_session",
+      "provider_postback",
+      "reconcile_due_ad_rewards",
+      "record_client_telemetry"
+    ],
+    "backend/app/services/ads/config_service.py": [
+      "ProviderRuntimeConfig",
+      "load_provider_config",
+      "load_all_provider_configs",
+      "encrypt_secret_config",
+      "decrypt_secret_config",
+      "public_admin_view"
+    ],
+    "backend/app/services/ads/provider_registry.py": [
+      "ProviderDescriptor",
+      "PROVIDER_DESCRIPTORS",
+      "PRODUCTION_PROVIDER_CODES",
+      "get_descriptor"
+    ],
+    "backend/app/services/efhc_deposits_service.py": [
+      "process_efhc_deposit"
+    ],
+    "backend/app/services/exchange_service.py": [
+      "exchange_kwh_to_efhc",
+      "forbid_reverse_exchange",
+      "max_exchangeable_kwh",
+      "preview_exchange",
+      "request_exchange",
+      "user_balances_brief"
+    ],
+    "backend/app/services/financial_retention_service.py": [
+      "RetentionRunStats",
+      "cleanup_replay_and_idempotency_bounded",
+      "delete_financial_history_bounded",
+      "expire_stale_pending_withdrawals",
+      "run_simple_financial_retention"
+    ],
+    "backend/app/services/intent_payload_parsing_service.py": [
+      "parse_intent_payload"
+    ],
+    "backend/app/services/nft_check_service.py": [
+      "NftAsset",
+      "NftCheckError",
+      "NftCheckResult",
+      "NftCheckService.check_user_vip",
+      "NftCheckService.get_wallet_for_global_id",
+      "NftCheckService.get_wallet_for_user",
+      "NftCheckService.sync_users_is_vip",
+      "TON_ADMIN_NFT_IDS",
+      "VipBatchStats",
+      "_admin_nft_id_for_asset",
+      "_filter_admin_nft_assets",
+      "_sync_admin_nft_wallet_state",
+      "check__all__users_once",
+      "check_user_vip_once",
+      "check_users_subset",
+      "run_daily_vip_check",
+      "vip_health_snapshot"
+    ],
+    "backend/app/services/nft_requests_service.py": [
+      "check_vip_nft_due_batch",
+      "refresh_vip_status_due_batch",
+      "refresh_vip_status_for_due_users"
+    ],
+    "backend/app/services/orders_service.py": [
+      "get_order",
+      "list_user_orders"
+    ],
+    "backend/app/services/panels_service.py": [
+      "activate_panel",
+      "archive_expired_panels",
+      "archive_panel_for_user",
+      "create_panel_for_user",
+      "list_active_panels",
+      "list_archived_panels",
+      "list_user_panels",
+      "panels_summary"
+    ],
+    "backend/app/services/payment_intents_service.py": [
+      "create_intent_deposit_by_package",
+      "create_intent_deposit_custom",
+      "create_intent_shop_external",
+      "get_intent_status_for_user"
+    ],
+    "backend/app/services/payment_reconciliation_service.py": [
+      "ConfirmPaymentResult",
+      "confirm_payment_intent"
+    ],
+    "backend/app/services/profile_history_service.py": [
+      "ProfileHistoryPage",
+      "ProfileHistoryRecord",
+      "list_profile_history_page"
+    ],
+    "backend/app/services/referral_service.py": [
+      "admin_summary",
+      "build_referral_link",
+      "ensure_consistency",
+      "get_counters",
+      "get_counters_global",
+      "get_or_create_referral_code",
+      "get_referral_level_steps",
+      "get_referral_stats",
+      "get_referrals_page_stats_global",
+      "list_active_referrals",
+      "list_active_referrals_global",
+      "list_inactive_referrals",
+      "list_inactive_referrals_global",
+      "on_user_first_panel_activation",
+      "onboard_user_at_first_creation",
+      "svc_list_referrals_active",
+      "svc_list_referrals_inactive"
+    ],
+    "backend/app/services/scheduler_service.py": [
+      "SchedulerService.run_single_tick"
+    ],
+    "backend/app/services/shop_payment_tx_hash_lock_service.py": [
+      "TxHashSettlementClaim",
+      "claim_tx_hash_settlement",
+      "acquire_tx_hash_lock"
+    ],
+    "backend/app/services/shop_service.py": [
+      "ShopFacade.create_external_order",
+      "ShopFacade.get_catalog",
+      "ShopFacade.list_orders_by_owner",
+      "ShopFacade.purchase_by_efhc",
+      "admin_delete_item",
+      "admin_force_fulfill_order",
+      "admin_list_items",
+      "admin_list_orders",
+      "admin_order_status_counters",
+      "admin_set_item_status",
+      "admin_set_price",
+      "admin_upsert_item",
+      "create_external_order",
+      "create_order_external",
+      "get_catalog",
+      "list_orders_for_owner",
+      "list_shop_for_user",
+      "purchase_with_efhc",
+      "seed_default_items"
+    ],
+    "backend/app/services/tasks_service.py": [
+      "TaskCodeChangeBlockedError",
+      "TaskDeleteBlockedError",
+      "admin_create_task",
+      "admin_delete_task",
+      "admin_get_task",
+      "admin_list_submissions",
+      "admin_list_tasks",
+      "admin_update_task",
+      "claim_task_bonus",
+      "complete_task",
+      "confirm_ad_view_and_credit",
+      "list_available_tasks",
+      "list_task_bonus_log",
+      "list_tasks_catalog",
+      "list_user_tasks",
+      "moderate_submission_and_pay"
+    ],
+    "backend/app/services/tonconnect_proof_service.py": [
+      "TonProofCheckOut",
+      "TonProofError",
+      "TonProofExpired",
+      "TonProofInvalid",
+      "TonProofPayloadOut",
+      "check_proof",
+      "issue_payload",
+      "parse_ton_address"
+    ],
+    "backend/app/services/transactions_service.py": [
+      "IdempotencyPayloadConflictError",
+      "burn_bank_efhc",
+      "burn_bank_efhc_nocommit",
+      "credit_user_bonus_from_bank",
+      "credit_user_bonus_from_bank_nocommit",
+      "credit_user_from_bank",
+      "credit_user_from_bank_nocommit",
+      "debit_user_bonus_to_bank",
+      "debit_user_bonus_to_bank_nocommit",
+      "debit_user_to_bank",
+      "debit_user_to_bank_nocommit",
+      "exchange__all__available_kwh_to_main",
+      "exchange_kwh_to_efhc",
+      "exchange_partial_available_kwh_to_main",
+      "get_bank_balance",
+      "get_user_balances_snapshot",
+      "mint_bank_efhc",
+      "mint_bank_efhc_nocommit",
+      "spend_user_to_bank_bonus_then__main__nocommit",
+      "spend_user_to_bank_bonus_then_main",
+      "split_bonus_then_main",
+      "withdraw__main__only_to_bank"
+    ],
+    "backend/app/services/wallets_service.py": [
+      "STATUS_CREDITED",
+      "STATUS_ERROR_SYS",
+      "_confirm_payment_intent",
+      "credit_user_from_bank"
+    ],
+    "backend/app/services/watcher_service.py": [
+      "IncomingTx",
+      "_confirm_payment_intent",
+      "process_incoming_payments",
+      "process_incoming_tx",
+      "reconcile_last_hours",
+      "reprocess_single_tx",
+      "reprocess_unfinished_logs"
+    ],
+    "backend/app/services/withdraw_service.py": [
+      "admin_approve_withdraw",
+      "admin_mark_paid",
+      "admin_reject_withdraw",
+      "approve_withdraw_request",
+      "cancel_withdraw",
+      "ensure_consistency",
+      "list_user_withdraws",
+      "reject_withdraw_request",
+      "request_withdraw"
+    ],
+    "backend/app/standards/finance_rules.py": [
+      "quantize_external_efhc_d2"
+    ],
+    "backend/app/standards/financial_reason_registry.py": [
+      "REFERRAL_BONUS_REASONS",
+      "TASK_BONUS_REASON_PREFIX"
+    ],
+    "backend/app/models/bank_metrics_snapshot_models.py": [
+      "BankMetricsSnapshot"
+    ],
+    "backend/app/services/bank_metrics_snapshot_service.py": [
+      "calculate_bank_metrics_snapshot",
+      "refresh_bank_metrics_snapshot",
+      "format_scaled_d8",
+      "format_percent_d8",
+      "snapshot_to_facts",
+      "snapshot_updated_at_iso"
+    ],
+    "backend/app/services/admin/admin_log_export_service.py": [
+      "export_headers",
+      "iter_admin_log_export"
+    ],
+    "backend/app/domain/panels_rules.py": [
+      "PANEL_PRICE_D8",
+      "PROTECTIVELY_VOIDED_META_KEY",
+      "ProtectiveVoidAmounts",
+      "allocate_panel_payment_splits",
+      "calculate_protective_refund_split",
+      "calculate_protective_void_amounts"
+    ],
+    "backend/app/services/admin/admin_panel_protective_service.py": [
+      "PanelProtectiveError",
+      "ProtectivePanelResult",
+      "protectively_deactivate_panel_nocommit",
+      "reactivate_dead_panel_nocommit"
+    ],
+    "backend/app/services/energy_service.py": [
+      "checkpoint_user_energy_nocommit"
+    ]
+  },
+  "non_goals": [
+    "Не фиксирует имена локальных private helpers как продуктовый API.",
+    "Не запускает production-код и не импортирует app.*.",
+    "Не заменяет runtime/integration/CI проверки.",
+    "Не разрешает возвращать tg_id как business owner или transition-only migration infrastructure."
+  ],
+  "openapi_operation_count": 177,
+  "required_openapi_operations": [
+    "GET /admin/access",
+    "GET /admin/ads/dashboard",
+    "GET /admin/ads/providers",
+    "GET /admin/ads/providers/{code}",
+    "PUT /admin/ads/providers/{code}",
+    "POST /admin/ads/providers/{code}/reset-errors",
+    "POST /admin/ads/providers/{code}/secrets/delete",
+    "POST /admin/ads/providers/{code}/secrets/replace",
+    "POST /admin/ads/providers/{code}/test",
+    "GET /admin/ads/revenue-optimizer",
+    "POST /admin/ads/revenue-optimizer/apply",
+    "GET /admin/bank/balance",
+    "POST /admin/bank/burn",
+    "POST /admin/bank/mint",
+    "POST /admin/bank/transfers/{transfer_log_id}/rollback",
+    "GET /admin/bonuses",
+    "GET /admin/efhc-deposits/inbox",
+    "POST /admin/efhc-deposits/process",
+    "POST /admin/efhc-deposits/reprocess/{tx_hash}",
+    "GET /admin/efhc-deposits/runtime-summary",
+    "GET /admin/efhc-deposits/unmatched",
+    "GET /admin/hub/links",
+    "POST /admin/hub/links",
+    "POST /admin/hub/links/reorder",
+    "PUT /admin/hub/links/{link_id}",
+    "POST /admin/hub/links/{link_id}/toggle",
+    "GET /admin/hub/support-links",
+    "POST /admin/hub/support-links",
+    "POST /admin/hub/support-links/reorder",
+    "PUT /admin/hub/support-links/{link_id}",
+    "POST /admin/hub/support-links/{link_id}/toggle",
+    "GET /admin/logs/export.csv",
+    "GET /admin/logs/export.xlsx",
+    "GET /admin/logs/transfers",
+    "GET /admin/observability/events",
+    "GET /admin/observability/health",
+    "GET /admin/observability/summary",
+    "GET /admin/observability/timeseries",
+    "GET /admin/panels/",
+    "GET /admin/panels/{panel_id}",
+    "PATCH /admin/panels/{panel_id}/activate",
+    "PATCH /admin/panels/{panel_id}/deactivate",
+    "GET /admin/referrals/summary",
+    "GET /admin/reports/bank",
+    "GET /admin/reports/deposits",
+    "GET /admin/reports/overview",
+    "GET /admin/reports/panels",
+    "GET /admin/reports/users",
+    "GET /admin/reports/withdrawals",
+    "GET /admin/sale-packages/",
+    "POST /admin/sale-packages/",
+    "PUT /admin/sale-packages/{package_id}",
+    "POST /admin/sale-packages/{package_id}/toggle",
+    "GET /admin/shop/items",
+    "POST /admin/shop/items/delete",
+    "POST /admin/shop/items/set-price",
+    "POST /admin/shop/items/status",
+    "POST /admin/shop/items/upsert",
+    "GET /admin/shop/nft-requests",
+    "POST /admin/shop/nft-requests/{order_id}/decision",
+    "GET /admin/shop/order/{order_id}",
+    "GET /admin/shop/orders",
+    "GET /admin/shop/orders/status-counters",
+    "GET /admin/shop/orders/user/{global_id}",
+    "POST /admin/shop/orders/{order_id}/force-fulfill",
+    "GET /admin/tasks/",
+    "POST /admin/tasks/",
+    "POST /admin/tasks/refresh-statuses",
+    "POST /admin/tasks/submissions/{submission_id}/moderate",
+    "DELETE /admin/tasks/{task_id}",
+    "GET /admin/tasks/{task_id}",
+    "PATCH /admin/tasks/{task_id}",
+    "GET /admin/tasks/{task_id}/subs",
+    "GET /admin/templates",
+    "PUT /admin/templates/{key}",
+    "POST /admin/ton/reconcile",
+    "POST /admin/transfer",
+    "GET /admin/users/resolve-provider",
+    "GET /admin/users/search",
+    "POST /admin/users/vip/check-all",
+    "GET /admin/users/{global_id}",
+    "PATCH /admin/users/{global_id}/active",
+    "GET /admin/users/{global_id}/history",
+    "POST /admin/users/{global_id}/panels/activate",
+    "PATCH /admin/users/{global_id}/vip",
+    "POST /admin/users/{global_id}/vip/check",
+    "POST /admin/users/{global_id}/wallet/reset",
+    "GET /admin/withdrawals",
+    "POST /admin/withdrawals/repair-consistency",
+    "POST /admin/withdrawals/{request_id}/approve",
+    "POST /admin/withdrawals/{request_id}/mark-paid",
+    "GET /admin/withdrawals/{request_id}/outcome-preview",
+    "POST /admin/withdrawals/{request_id}/payout-evidence",
+    "POST /admin/withdrawals/{request_id}/reject",
+    "POST /ads/callback/{provider}",
+    "GET /ads/postback/admaven",
+    "GET /ads/postback/adsgram",
+    "GET /ads/postback/monetag",
+    "POST /ads/session",
+    "GET /ads/session/{session_id}",
+    "POST /ads/session/{session_id}/client-complete",
+    "POST /ads/session/{session_id}/event",
+    "POST /ads/session/{session_id}/fallback",
+    "POST /ads/session/{session_id}/shown",
+    "GET /ads/slot",
+    "POST /auth/logout",
+    "GET /auth/profile-photos",
+    "GET /auth/session",
+    "POST /auth/telegram/session",
+    "POST /auth/ton/challenge",
+    "POST /auth/ton/proof",
+    "POST /deposit/direct-open",
+    "POST /deposit/efhc",
+    "GET /deposit/packages",
+    "POST /exchange/convert",
+    "GET /exchange/history",
+    "GET /exchange/preview",
+    "GET /health",
+    "GET /health/db",
+    "GET /health/db-schema",
+    "GET /health/readiness",
+    "GET /health/runtime",
+    "POST /hub/efhc-handoff",
+    "GET /hub/shop-truth",
+    "GET /hub/support-links",
+    "GET /meta/health_db",
+    "GET /nft/has_vip",
+    "POST /panels/activate",
+    "GET /panels/active",
+    "GET /panels/archive",
+    "GET /payment-intents/{intent_id}",
+    "GET /profile/history",
+    "GET /profile/history/export.csv",
+    "GET /profile/history/export.xlsx",
+    "GET /ranks/my-plus-top/me",
+    "GET /ranks/top/me",
+    "GET /referrals/active/me",
+    "GET /referrals/counters/me",
+    "GET /referrals/inactive/me",
+    "GET /referrals/stats/me",
+    "GET /shop/catalog",
+    "POST /shop/order-external",
+    "GET /shop/orders",
+    "POST /shop/purchase-efhc",
+    "POST /shopfront/access-key",
+    "GET /shopfront/bootstrap",
+    "GET /shopfront/catalog",
+    "POST /shopfront/create-intent",
+    "GET /shopfront/intent-status",
+    "GET /shopfront/profile",
+    "POST /skins/activate/{skin_id}",
+    "POST /skins/buy/{skin_id}",
+    "GET /skins/catalog",
+    "GET /skins/my",
+    "GET /skins/switcher",
+    "POST /skins/switcher/activate/{skin_id}",
+    "POST /sync/me",
+    "GET /tasks/catalog",
+    "POST /tasks/claim",
+    "GET /tasks/earnings/me",
+    "GET /tasks/my",
+    "GET /user/me",
+    "GET /user/me/panels-summary",
+    "GET /v1/me",
+    "GET /v1/me/withdraw-outcomes/{request_id}",
+    "GET /wallets/balance-history",
+    "POST /wallets/connect",
+    "GET /wallets/me",
+    "POST /wallets/tonconnect/check-proof",
+    "GET /wallets/tonconnect/proof-payload",
+    "DELETE /wallets/{wallet_id}",
+    "POST /wallets/{wallet_id}/make-primary",
+    "GET /withdraw/list",
+    "GET /withdraw/list/me",
+    "POST /withdraw/request",
+    "GET /withdraw/{request_id}",
+    "POST /withdraw/{request_id}/cancel"
+  ],
+  "required_text_markers": {
+    "backend/app/__init__.py": [
+      "канонический экземпляр FastAPI создаётся в app.main",
+      "бессрочный compatibility facade"
+    ],
+    "backend/app/bot/handlers/admin/admin__main__handlers.py": [
+      "Решение цикла 1728 для будущих аудитов",
+      "второй router"
+    ],
+    "backend/app/bot/states.py": [
+      "официальный стабильный public",
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ"
+    ],
+    "backend/app/core/config_core.py": [
+      "TON_ADMIN_NFT_IDS"
+    ],
+    "backend/app/core/decimal_utils.py": [
+      "Решение цикла 1728",
+      "app.deps.d8"
+    ],
+    "backend/app/core/sql_aliases_core.py": [
+      "РЕШЕНИЕ ЦИКЛА 1729 — ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "Не возвращать этот alias-map как «удобство»"
+    ],
+    "backend/app/database.py": [
+      "Решение цикла 1728 для будущих аудитов",
+      "полного delete-proof"
+    ],
+    "backend/app/deps.py": [
+      "require_admin_or_nft_or_key",
+      "resolve_admin_nft"
+    ],
+    "backend/app/integrations/ads_providers.py": [
+      "COMPATIBILITY ONLY / REPLACED_BY_CANON",
+      "app.services.ads.ad_manager"
+    ],
+    "backend/app/models/order_models.py": [
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "нельзя\nобъявлять собственный ``ShopOrder``"
+    ],
+    "backend/app/routes/admin_observability_routes.py": [
+      "disabled_duplicate",
+      "/admin/logs/transfers",
+      "ЗАГЛУШКА ЦИКЛА 1719"
+    ],
+    "backend/app/routes/admin_reports_routes.py": [
+      "system_entity = 'BANK_EFHC'",
+      "credit_events_in_range",
+      "debit_events_in_range",
+      "total_events_in_range",
+      "canceled_count",
+      "policy=AdminBankPolicyOut()"
+    ],
+    "backend/app/scheduler/scheduler_context.py": [
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "compatibility-only"
+    ],
+    "backend/app/scheduler/scheduler_core.py": [
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "SchedulerService.run_single_tick"
+    ],
+    "backend/app/scheduler/scheduler_errors.py": [
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "параллельную error-policy"
+    ],
+    "backend/app/scheduler/tasks_maintenance.py": [
+      "ПОСЛАНИЕ БУДУЩИМ АУДИТОРАМ",
+      "tasks_autorestart.run_once"
+    ],
+    "backend/app/services/admin/admin_rbac.py": [
+      "TON_ADMIN_NFT_IDS",
+      "resolve_admin_nft",
+      "Решение цикла 1728 для будущих аудитов",
+      "не является\n        вторым способом авторизации"
+    ],
+    "backend/app/services/admin/admin_withdrawals_service.py": [
+      "list_bonus_awards",
+      "process_bonus_award",
+      "reject_bonus_award"
+    ],
+    "backend/app/services/efhc_deposits_service.py": [
+      "admin_efhc_deposit",
+      "settlement_already_claimed"
+    ],
+    "backend/app/services/nft_check_service.py": [
+      "TON_ADMIN_NFT_IDS",
+      "_filter_admin_nft_assets",
+      "_sync_admin_nft_wallet_state"
+    ],
+    "backend/app/services/payment_reconciliation_service.py": [
+      "credit_user_from_bank_fn",
+      "shop_external_efhc_confirm",
+      "status_val != \"PENDING\"",
+      "INTENT_EXPIRED",
+      "existing_tx_hash == incoming_tx_hash"
+    ],
+    "backend/app/services/shop_payment_tx_hash_lock_service.py": [
+      "claim_tx_hash_settlement",
+      "ON CONFLICT (tx_hash) DO NOTHING",
+      "same_claim"
+    ],
+    "backend/app/services/wallets_service.py": [
+      "credit_user_from_bank",
+      "_confirm_payment_intent"
+    ],
+    "backend/app/services/watcher_service.py": [
+      "legacy_sku_efhc_requires_payment_intent",
+      "watcher_efhc_jetton_nomemo",
+      "watcher_efhc_jetton_direct"
+    ],
+    "docs/admin/ADMIN_SHOP_MANAGEMENT_CANON.md": [
+      "global_id",
+      "BANK_EFHC",
+      "/admin/shop/orders/status-counters",
+      "/shopfront/profile"
+    ],
+    "docs/audits/FUNCTION_RECOVERY_CONSOLIDATION_1719_1728.md": [
+      "## 2. Десять решений",
+      "## 4. Аудит устаревших алиасов цикла 1729",
+      "REMOVE_APPROVED"
+    ],
+    "docs/backend/RUNTIME_COMPATIBILITY_CANON.md": [
+      "no caller != delete proof",
+      "официальный стабильный public FSM facade",
+      "## 7. Delete policy"
+    ],
+    "frontend/src/lib/ads/AdManager.ts": [
+      "export class AdManager",
+      "/ads/session",
+      "fallbackSession",
+      "clientComplete"
+    ],
+    "frontend/src/pages/admin/reports.tsx": [
+      "AdminDomainReportsDashboardRuntime",
+      "AdminObservabilityTimeseriesDashboardRuntime"
+    ],
+    "frontend/src/pages/ranks.tsx": [
+      "data-ranks-focused-context=\"me-neighbors\"",
+      "data-ranks-runtime=\"react-query-kwh-current-v050\""
+    ],
+    "frontend/src/pages/referrals.tsx": [
+      "BonusEarningsStrip",
+      "data-referral-share-grid=\"social\"",
+      "data-referrals-level-scale=\"visual-lvl-1-5\""
+    ],
+    "frontend/src/pages/tasks.tsx": [
+      "AdManager.runRewardedAd"
+    ],
+    "frontend/src/queries/useRanks.ts": [
+      "queryKeys.ranks.myPlusTop(globalId)",
+      "queryKeys.ranks.top(globalId)"
+    ],
+    "frontend/src/services/ranks.service.ts": [
+      "export const rankItemSchema = z.object({",
+      "`/ranks/my-plus-top/me?${params.toString()}`",
+      "`/ranks/top/me?${params.toString()}`"
+    ],
+    "backend/app/routes/admin_users_routes.py": [
+      "\"/{global_id}/panels/activate\"",
+      "panels_service.activate_panel("
+    ],
+    "backend/app/services/admin/admin_panels_service.py": [
+      "FreePanelActivationForbidden",
+      "Повторная Admin-активация разрешена только для мёртвой Панели.",
+      "protectively_deactivate_panel_nocommit",
+      "reactivate_dead_panel_nocommit"
+    ],
+    "backend/app/services/admin/admin_panel_protective_service.py": [
+      "U=min(G,A)",
+      "panel_protective_refund",
+      "PROTECTIVELY_VOIDED_META_KEY",
+      "checkpoint_user_energy_nocommit",
+      "spend_user_to_bank_bonus_then__main__nocommit"
+    ],
+    "frontend/src/pages/admin/panels.tsx": [
+      "protectively_voided",
+      "Защитно деактивировать",
+      "Повторно активировать",
+      "1000000",
+      "value=\"all\""
+    ]
+  },
+  "preservation_statuses": {
+    "ACTIVE": "Действующая функция/контракт.",
+    "RESTORED_SAFE_COMPAT": "Восстановленный безопасный фасад поверх текущего canonical runtime.",
+    "PRESERVE_NO_UI_CALLER": "Backend/operational surface без найденного прямого UI caller; удаление запрещено.",
+    "RECOVERY_CANDIDATE": "Разрыв интеграции или legacy utility требует отдельного решения; автоматически не удалять и не восстанавливать несовместимую семантику.",
+    "RETIRED_BY_CANON": "Историческое имя/контракт несовместим с final global_id/BANK/security canon и не подлежит прямому rollback.",
+    "UI_CONNECTED": "Действующий backend capability с подтверждённым прямым подключением к текущему UI.",
+    "STUBBED_DUPLICATE": "Compatibility route сохранён, но дублирующая реализация отключена прямым решением пользователя; заглушка обязана объяснять причину и replacement.",
+    "UI_CONNECTED_EXTERNAL_SHOP": "Frontend/внешняя HTML-витрина имеет прямую интеграцию с capability."
+  },
+  "critical_registered_python_symbol_count": 402,
+  "critical_registered_python_module_count": 80,
+  "frontend_authority": "INTEGRATED_FRONTEND_SOURCE_v174.61_FRONTEND_v182",
+  "frontend_merge_policy": "FRONTEND_v182_OWNER_AUTHORITY__LATEST_OWNER_CANON_OVERLAYS__RECONCILIATION_HANDOFF_REQUIRED",
+  "internal_hidden_route_count": 8,
+  "required_internal_routes": [
+    "GET /cron/tick",
+    "GET /hub/browser-shop-bootstrap",
+    "GET /hub/browser-shop-catalog",
+    "GET /hub/browser-shop-intent-status",
+    "GET /meta/deployment",
+    "GET /meta/metrics",
+    "POST /hub/browser-shop-create-intent",
+    "POST /tg/webhook"
+  ],
+  "mounted_http_operation_count": 185
+}

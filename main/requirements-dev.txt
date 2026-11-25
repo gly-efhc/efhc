@@ -1,0 +1,10 @@
+# Dev dependencies: lint, format, tests
+ruff>=0.5.7,<1.0.0
+mypy>=1.11.0,<2.0.0
+# Синхронизировано с requirements-test.txt (work pass).
+# При обновлении requirements-test.txt — обновлять и этот файл.
+pytest>=9.0.3,<10.0.0
+pytest-asyncio>=1.4.0,<2.0.0
+httpx>=0.27.0,<1.0.0
+requests>=2.32.5,<3.0.0
+bandit>=1.7.9,<2.0.0

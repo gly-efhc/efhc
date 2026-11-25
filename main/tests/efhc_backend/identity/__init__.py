@@ -1,0 +1,1 @@
+"""Identity contract tests."""

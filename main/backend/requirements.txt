@@ -1,0 +1,75 @@
+# backend/requirements.txt
+# =============================================================================
+# Назначение кода:
+# Список зависимостей EFHC Bot (API + интеграции + бот + миграции), согласованный
+# с каноном (Pydantic v2, FastAPI v0.115+, SQLAlchemy v2). Файл ориентирован на
+# деплой в окружение с PostgreSQL/Neon и асинхронным стэком.
+#
+# Канон/инварианты:
+# • Только Pydantic v2 (не смешивать с v1-пакетами).
+# • SQLAlchemy 2.x + asyncpg для async, Alembic для миграций (sync URL).
+# • Aiogram 3.x как базовый Telegram-бот фреймворк.
+# • httpx как универсальный HTTP-клиент для TON/GetGems (таймауты/HTTP2).
+#
+# Примечания:
+# • Для Alembic используем sync-драйвер (psycopg2-binary), а для приложения — asyncpg.
+# • uvloop ставится только не на Windows.
+# • Версии закреплены «штангой» (>=,<) для предсказуемости, но допускают минорные апдейты.
+# • Файл покрывает runtime, migrations и минимальный CI/test helper layer текущего HEAD.
+# =============================================================================
+
+# --- Core API stack (FastAPI + Pydantic v2) ----------------------------------
+fastapi>=0.115.0,<1.0.0
+pydantic>=2.7.0,<3.0.0
+pydantic-settings>=2.4.0,<3.0.0
+orjson>=3.9.10,<4.0.0
+
+# --- ASGI сервер --------------------------------------------------------------
+uvicorn[standard]>=0.30.0,<1.0.0
+uvloop>=0.19.0; platform_system != "Windows"
+
+# --- Database & ORM -----------------------------------------------------------
+SQLAlchemy>=2.0.30,<3.0.0
+greenlet>=3.0.0,<4.0.0
+
+# Async driver (приложение)
+asyncpg>=0.29.0,<1.0.0
+
+# Sync driver (alembic, скрипты)
+psycopg2-binary>=2.9.9,<3.0.0
+
+# Миграции
+alembic>=1.13.1,<2.0.0
+
+# --- HTTP-клиент для интеграций (TON, GetGems и пр.) -------------------------
+httpx[http2]>=0.27.0,<1.0.0
+tenacity>=8.2.3,<9.0.0
+
+# --- Telegram Bot (Aiogram v3) -----------------------------------------------
+aiogram>=3.4.0,<4.0.0
+
+# --- Server-side exports -------------------------------------------------------
+openpyxl>=3.1.5,<4.0.0
+
+# --- Env/утилиты --------------------------------------------------------------
+python-dotenv>=1.0.1,<2.0.0
+
+# JWT для auth/security_core
+PyJWT>=2.8.0,<3.0.0
+
+# TON Connect proof verification
+cryptography>=44.0.1,<45.0.0
+
+# YAML нужен для guard/tests слоя
+PyYAML>=6.0.1,<7.0.0
+
+# =============================================================================
+# Пояснения «для чайника»:
+# • FastAPI + Pydantic v2: строго не смешивать с библиотеками под Pydantic v1.
+# • Для приложения используем asyncpg (DATABASE_URL=postgresql+asyncpg://…?sslmode=require).
+#   Для alembic — SYNC_DATABASE_URL=postgresql://… (psycopg2-binary).
+# • httpx[http2] даёт устойчивые соединения и экономный трафик на TON-нодах.
+# • tenacity пригодится для экспоненциальных ретраев при сетевых сбоях интеграций.
+# • uvloop ускоряет event-loop в Linux/macOS, на Windows не ставится.
+# =============================================================================
+# Runtime requirements only. Test helpers live in requirements-dev.txt / requirements-test.txt.

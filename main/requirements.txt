@@ -1,0 +1,2 @@
+# EFHC Bot — root requirements
+-r backend/requirements.txt

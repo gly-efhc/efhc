@@ -1,0 +1,9 @@
+# Test-only dependencies for CI/pytest.
+# Runtime requirements must not import this file.
+pytest==9.0.3
+pytest-asyncio==1.4.0
+freezegun==1.5.1
+psycopg[binary]==3.3.4
+alembic==1.18.4
+PyJWT==2.13.0
+requests==2.32.5

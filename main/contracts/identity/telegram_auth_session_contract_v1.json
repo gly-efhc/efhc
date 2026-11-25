@@ -1,0 +1,46 @@
+{
+  "схема": "EFHC_TELEGRAM_AUTH_SESSION_V1",
+  "цикл": 1619,
+  "provider": "telegram",
+  "результаты": [
+    "existing_identity",
+    "existing_legacy_account",
+    "registered"
+  ],
+  "атомарность": {
+    "replay_identity_account_session": true,
+    "identity_resolver_used": true,
+    "one_global_id_one_global_account": true
+  },
+  "session": {
+    "server_side": true,
+    "raw_token_stored": false,
+    "token_returned_once": true,
+    "ttl_seconds": 2592000
+  },
+  "registration_center": {
+    "cycle": 1639,
+    "service": "AccountRegistrationService",
+    "direct_user_insert": false
+  },
+  "referral_transport": {
+    "cycle": 1638,
+    "normalized_param_accepted": true,
+    "existing_account_ignored": true,
+    "new_account_consumer": "AccountRegistrationService",
+    "loss_before_consumer": false
+  },
+  "replay": {
+    "storage": "processed_external_events",
+    "raw_init_data_stored": false,
+    "namespaced_hash_only": true
+  },
+  "запреты": {
+    "global_id_as_owner": true,
+    "global_id_from_global_id": true,
+    "auto_merge": true,
+    "financial_update": true,
+    "migration_0006": true,
+    "cycle_1620_frontend_switch": true
+  }
+}
