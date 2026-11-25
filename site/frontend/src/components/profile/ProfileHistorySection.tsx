@@ -138,9 +138,8 @@ function presentHistoryOperation(
     ? item.direction
     : "neutral";
   const isWithdrawal = item.source === "withdraw_request";
-  const isExchange = item.source === "ledger" && (
-    item.kind === "exchange" || item.reason === "exchange_kwh_to_efhc"
-  );
+  // Keep legacy ledger exchanges on the same template as the Exchange filter.
+  const isExchange = item.source === "ledger" && categoryForItem(item) === "exchange";
   const isLedger = item.source === "ledger" && item.kind === "balance_transfer" && !isExchange;
   const knownTemplate = isWithdrawal || isExchange || isLedger;
   const executionAt = executionDateForBalance(item);
