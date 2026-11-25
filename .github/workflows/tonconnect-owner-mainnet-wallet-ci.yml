@@ -1,18 +1,6 @@
 name: EFHC Owner mainnet real-wallet integration acceptance
 
 on:
-  push:
-    branches:
-      - cycle0045/iteration31-owner-mainnet-wallet-test
-    paths:
-      - 'site/frontend/src/lib/ton/testnet-guard.ts'
-      - 'site/frontend/src/lib/wallet-provider/adapters/TonConnectAdapter.ts'
-      - 'site/frontend/src/features/browser-shop/BrowserShopPage.tsx'
-      - 'site/frontend/src/components/Layout.tsx'
-      - 'site/frontend/tests/regression/current-official-tonconnect-runtime.test.mjs'
-      - 'site/frontend/tests/regression/current-owner-mainnet-wallet-boundary.test.mjs'
-      - '.github/workflows/efhc-pages.yml'
-      - '.github/workflows/tonconnect-owner-mainnet-wallet-ci.yml'
   pull_request:
     branches: [main]
     paths:

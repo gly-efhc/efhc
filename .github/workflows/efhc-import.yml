@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - 'import/*.zip'
+      - '!import/EFHC_FULL_IMPORT.zip'
       - '.github/workflows/efhc-import.yml'
   workflow_dispatch:
 
@@ -143,7 +144,7 @@ jobs:
               ap.add_argument('--metadata', default='site/RELEASE.json')
               args = ap.parse_args()
               root = Path.cwd()
-              incoming = sorted((root / args.import_dir).glob('*.zip'))
+              incoming = sorted(p for p in (root / args.import_dir).glob('*.zip') if p.name != 'EFHC_FULL_IMPORT.zip')
               if len(incoming) != 1:
                   raise ValueError(f'Expected exactly one ZIP in {args.import_dir}/, found {len(incoming)}')
               archive = incoming[0]
@@ -287,6 +288,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if ! find import -maxdepth 1 -type f -name '*.zip' ! -name 'EFHC_FULL_IMPORT.zip' -print -quit | grep -q .; then
+            echo 'EFHC_REACT_IMPORT_SKIP: no React-only upload'
+            exit 0
+          fi
           test -f import/README.md || { echo 'FAIL: import/README.md must be preserved'; exit 1; }
           python3 "$RUNNER_TEMP/efhc-pages-tools/import_frontend.py" \
             --import-dir import --target site/frontend --metadata site/RELEASE.json
@@ -303,5 +308,5 @@ jobs:
             fi
           fi
           # The ZIP remains until the explicit manual Pages deployment succeeds.
-          test "$(find import -maxdepth 1 -name '*.zip' -type f | wc -l | tr -d ' ')" = 1
+          test "$(find import -maxdepth 1 -name '*.zip' ! -name 'EFHC_FULL_IMPORT.zip' -type f | wc -l | tr -d ' ')" = 1
           echo 'EFHC_IMPORT_COMMITTED=PASS; PAGES_TOOLS_STAGED=PASS; ZIP_RETAINED_UNTIL_DEPLOY=PASS'

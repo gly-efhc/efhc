@@ -1,28 +1,22 @@
-# EFHC cycle0032: read-only live Neon TEST smoke, no production DB access.
-# Secrets are accessed only by GitHub runner and never committed or printed.
-name: EFHC cycle0032 - Neon TEST read-only
+# Read-only Neon TEST smoke, manually dispatched from main.
+name: EFHC — Neon TEST read-only
 on:
-  push:
-    branches:
-      - cycle0032/demo-backend-migration
-    paths:
-      - .github/workflows/efhc-database-test.yml
-      - demo_backend/**
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: efhc-cycle0032-neon-smoke
+  group: efhc-neon-readonly
   cancel-in-progress: true
 
 jobs:
   live-neon-readonly:
+    if: github.ref == 'refs/heads/main' && github.repository == 'gly-efhc/efhc'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      NEON_TEST_DSN: ${{ secrets.EFHC_NEON_TEST_DATABASE_URL || secrets.NEON_TEST_DATABASE_URL || secrets.NEON_DATABASE_URL || secrets.NEON_CONNECTION_STRING || secrets.EFHC_DATABASE_URL }}
+      NEON_TEST_DSN: ${{ secrets.EFHC_NEON_TEST_DATABASE_URL || secrets.NEON_TEST_DATABASE_URL }}
       STAGING_PROJECT_ID: ${{ secrets.EFHC_STAGING_PROJECT_ID }}
       STAGING_EXPECTED_PROJECT_ID: ${{ secrets.EFHC_STAGING_EXPECTED_PROJECT_ID }}
       NEON_API_TOKEN: ${{ secrets.NEON_API_KEY || secrets.EFHC_NEON_API_KEY || secrets.NEON_API_TOKEN || secrets.NEON_TOKEN }}
