@@ -11,23 +11,32 @@ function input(stepName,key,fallback){
  const value=step.match(new RegExp(`^          ${key}: (.+)$`,'m'))?.[1].trim();
  return value?.replace(/^['"]|['"]$/g,'')||fallback;
 }
-function evaluate(value,context){
- return value.replace(/\$\{\{\s*github\.(run_id|run_attempt|sha)\s*\}\}/g,(_,key)=>context[key]);
-}
 
-test('Pages selects exactly its current tested artifact after repeated attempts of the same commit',()=>{
- const upload=input('Upload compiled React to Pages','name','github-pages');
- const deploy=input('Deploy real React to GitHub Pages','artifact_name','github-pages');
- for(const run_id of ['41874108310','41874108311']){
+const jobs=workflow.split(/^  (?=[a-z]+:\s*$)/m);
+const build=jobs.find(s=>s.startsWith('build:\n'));
+const publish=jobs.find(s=>s.startsWith('publish:\n'));
+
+test('Pages selects exactly the artifact from the successful build, even after retrying only publish',()=>{
+ assert.ok(build && publish,'a failed publish must be retryable independently');
+ assert.match(publish,/^    needs: build$/m);
+ const retained='${{ steps.bundle.outputs.artifact_name }}';
+ assert.ok(build.includes('artifact_name: '+retained),'build must expose the upload name');
+ assert.ok(build.includes('artifact_id: ${{ steps.upload.outputs.artifact_id }}'));
+ assert.equal(input('Upload compiled React to Pages','name','github-pages'),retained);
+ assert.equal(input('Deploy real React to GitHub Pages','artifact_name','github-pages'),
+  '${{ needs.build.outputs.artifact_name }}');
+ const format=build.match(/artifact_name=(github-pages-%s-%s)\\n' \\\n\s*"\$build_commit" "\$GITHUB_RUN_ATTEMPT" "\$GITHUB_RUN_ID" "\$GITHUB_RUN_ATTEMPT"/);
+ assert.ok(format,'upload name must use its original run ID and build attempt');
+ for(const runId of ['41874108310','41874108311']){
   const artifacts=[];
-  for(let run_attempt=1;run_attempt<=3;run_attempt++){
-   const context={run_id,run_attempt:String(run_attempt),sha:'same-tested-source'};
-   artifacts.push({name:evaluate(upload,context),run_attempt});
-   // deploy-pages lists every attempt in this run, filters by artifact_name,
-   // and rejects zero or multiple matches. This reproduced the real failure.
-   const selected=artifacts.filter(a=>a.name===evaluate(deploy,context));
-   assert.equal(selected.length,1,`attempt ${run_attempt}: ambiguous artifact lookup`);
-   assert.equal(selected[0].run_attempt,run_attempt,'a retry must publish its own tested output');
+  for(let buildAttempt=1;buildAttempt<=3;buildAttempt++){
+   const retainedName=format[1].replace('%s',runId).replace('%s',String(buildAttempt));
+   artifacts.push({name:retainedName,buildAttempt});
+   for(const deployAttempt of [buildAttempt,buildAttempt+1]){
+    const selected=artifacts.filter(a=>a.name===retainedName);
+    assert.equal(selected.length,1,'ambiguous artifact at deploy attempt '+deployAttempt);
+    assert.equal(selected[0].buildAttempt,buildAttempt);
+   }
   }
  }
 });
