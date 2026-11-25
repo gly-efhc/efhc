@@ -4,6 +4,7 @@ import { LayoutContext } from "../Layout";
 import { Button } from "../ui/Button";
 import { BalanceSummaryCard } from "./history/BalanceSummaryCard";
 import { BalanceHistoryEmptyState } from "./history/BalanceHistoryEmptyState";
+import { BalanceHistoryLoadMore } from "./history/BalanceHistoryLoadMore";
 import {
   HistoryOperationFeed,
   type HistoryOperationModel,
@@ -362,7 +363,9 @@ export function ProfileHistorySection(props: Props) {
           className="efhc-history-bank-feed"
           data-history-state={props.items.length ? "filter-empty" : "true-empty"}
           data-history-layout={layout === "flat" ? "flat-bank-feed" : "date-grouped-bank-feed"}
-        />
+        >
+          {props.nextCursor ? <BalanceHistoryLoadMore onLoadMore={props.onLoadMore} /> : null}
+        </div>
       ) : showFilterEmpty ? (
         <div data-history-state="filter-empty">
           <BalanceHistoryEmptyState
