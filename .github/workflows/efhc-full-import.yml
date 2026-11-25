@@ -1,0 +1,64 @@
+name: EFHC — Full source import
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_commit:
+        description: '40-character commit SHA of import/full-upload'
+        type: string
+        required: true
+      archive_sha256:
+        description: 'SHA-256 of EFHC_FULL_IMPORT.zip'
+        type: string
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: efhc-full-source-import
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.ref == 'refs/heads/main' && github.repository == 'gly-efhc/efhc'
+    name: Verify full source and create an isolated candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Verify upload and stage candidate without executing imported code
+        id: candidate
+        env:
+          UPLOAD_SHA: ${{ inputs.upload_commit }}
+          ARCHIVE_SHA: ${{ inputs.archive_sha256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$UPLOAD_SHA" =~ ^[0-9a-f]{40}$ && "$ARCHIVE_SHA" =~ ^[0-9a-f]{64}$ ]]
+          git fetch --no-tags origin refs/heads/import/full-upload
+          test "$(git rev-parse FETCH_HEAD)" = "$UPLOAD_SHA"
+          test "$(git ls-tree "$UPLOAD_SHA" import/full/EFHC_FULL_IMPORT.zip | cut -d' ' -f1)" = '100644'
+          bundle="$RUNNER_TEMP/EFHC_FULL_IMPORT.zip"
+          git show "${UPLOAD_SHA}:import/full/EFHC_FULL_IMPORT.zip" > "$bundle"
+          verification="$(python3 .github/scripts/efhc_import_full.py "$bundle" "$ARCHIVE_SHA" --root .)"
+          printf '%s\n' "$verification"
+          expected_base="$(sed -nE 's/^.* base=([0-9a-f]{40}) .*$/\1/p' <<< "$verification")"
+          [[ "$expected_base" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$expected_base" HEAD
+          test -z "$(git status --porcelain)"
+          branch="import/full-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git switch -c "$branch"
+          python3 .github/scripts/efhc_import_full.py "$bundle" "$ARCHIVE_SHA" --root . --apply
+          git add -A -- site demo_backend main
+          if git diff --cached --quiet; then
+            echo 'EFHC_FULL_IMPORT=NO_CHANGES'
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m 'Stage verified EFHC full source import'
+          git push origin "HEAD:refs/heads/$branch"
+          printf 'Review candidate: https://github.com/gly-efhc/efhc/compare/main...%s\n' "$branch" >> "$GITHUB_STEP_SUMMARY"
