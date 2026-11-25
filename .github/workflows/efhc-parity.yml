@@ -95,6 +95,7 @@ jobs:
           timeout --signal=TERM --kill-after=10s 120s node --test tests/regression/current-pwa-full-cache.test.mjs
           echo EFHC_ALL_REGRESSIONS_START
           timeout --signal=TERM --kill-after=10s 240s npm run test:frontend-regression
+          node --test tests/regression/balance-history-dots.test.mjs tests/regression/balance-panel-public-id.test.mjs tests/regression/pwa-sites-index-redirect.mjs
           cd "$GITHUB_WORKSPACE"
           EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-parity-build/package.json" node site/ci/parity/generate_shell.mjs --check
           node site/frontend/tests/parity/pages-artifact.test.mjs

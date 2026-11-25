@@ -273,13 +273,22 @@ jobs:
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-persistence-artifacts
-          EFHC_PWA_EXPORT_DIR: ${{ runner.temp }}/efhc-demo-build/out
+          EFHC_PWA_EXPORT_DIR: ${{ runner.temp }}/efhc-persistence-copy
+          EFHC_SERWIST_PACKAGE_JSON: ${{ runner.temp }}/efhc-demo-build/package.json
         run: |
           set -euo pipefail
           npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
-          python3 site/ci/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-demo-build/out" --base-path "/${GITHUB_REPOSITORY#*/}"
+          publish_dir="$RUNNER_TEMP/efhc-demo-build/out"
+          test -z "$(find "$publish_dir" -type l -print -quit)" || {
+            echo 'Release export must not contain symlinks' >&2
+            exit 1
+          }
+          (cd "$publish_dir" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum) \
+            > "$RUNNER_TEMP/efhc-pages-diagnostics/release-before-tests.sha256"
+          mkdir "$EFHC_PWA_EXPORT_DIR"
+          cp -a -- "$publish_dir/." "$EFHC_PWA_EXPORT_DIR/"
           mkdir -p "$RUNNER_TEMP/efhc-persistence-http"
-          ln -s "$RUNNER_TEMP/efhc-demo-build/out" "$RUNNER_TEMP/efhc-persistence-http/${GITHUB_REPOSITORY#*/}"
+          ln -s "$EFHC_PWA_EXPORT_DIR" "$RUNNER_TEMP/efhc-persistence-http/${GITHUB_REPOSITORY#*/}"
           python3 -m http.server 19245 --bind 127.0.0.1 --directory "$RUNNER_TEMP/efhc-persistence-http" > "$RUNNER_TEMP/efhc-persistence-http.log" 2>&1 &
           server=$!
           trap 'kill "$server"' EXIT
@@ -460,6 +469,18 @@ jobs:
           test "$build_commit" = "$GITHUB_SHA"
           printf 'build_commit=%s\nbuild_attempt=%s\nartifact_name=github-pages-%s-%s\n' \
             "$build_commit" "$GITHUB_RUN_ATTEMPT" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tests did not mutate the Pages release
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/efhc-demo-build/out"
+          test -z "$(find . -type l -print -quit)"
+          find . -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum \
+            > "$RUNNER_TEMP/release-after-tests.sha256"
+          cmp "$RUNNER_TEMP/efhc-pages-diagnostics/release-before-tests.sha256" \
+              "$RUNNER_TEMP/release-after-tests.sha256"
+          echo 'EFHC_PAGES_RELEASE_IMMUTABLE=PASS'
 
       - name: Upload compiled React to Pages
         id: upload
