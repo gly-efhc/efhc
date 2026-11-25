@@ -145,7 +145,22 @@ const sw = new Serwist({
         const request = new Request(new URL(pathname,url.origin), {
           credentials:"same-origin",cache:"no-store",
         });
-        try {return await publicPages.handle({event,request});}
+        try {
+          const response=await publicPages.handle({event,request});
+          if (!response.redirected) return response;
+          // Sites canonicalizes /index.html to /. Navigation uses manual
+          // redirects, so returning a previously followed redirect is a
+          // browser network error even when its final HTTP status is 200.
+          const finalUrl=new URL(response.url);
+          if (finalUrl.origin!==url.origin || !pathname.endsWith("/index.html") ||
+              finalUrl.pathname!==pathname.slice(0,-"index.html".length))
+            throw Error("EFHC_UNEXPECTED_HTML_REDIRECT");
+          const headers=new Headers(response.headers);
+          // Fetch already decoded these bytes; do not copy transfer metadata.
+          headers.delete("content-length");
+          headers.delete("content-encoding");
+          return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+        }
         catch {return (await sw.matchPrecache(scoped("offline.html"))) || Response.error();}
       }},
     {matcher:({request,url,sameOrigin}) => sameOrigin &&
