@@ -501,17 +501,13 @@ export default function PanelsPortfolioPage(props: {
             />
           ) : null}
 
-          <div className="mt-2 flex items-center gap-2">
-            {loading && items.length > 0 ? (
+          {loading && items.length > 0 ? (
+            <div className="mt-2 flex items-center gap-2">
               <span className="text-xs efhc-text-muted2">
                 {t("common.loading")}
               </span>
-            ) : !canLoadMore ? (
-              <span className="text-xs efhc-text-muted2">
-                {t("common.end")}
-              </span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </Card>
     </GamePageShell>
