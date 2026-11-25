@@ -50,38 +50,38 @@
    chroma authority while the legacy 13-theme selectors remain compatibility
    projection during the migration. */
 
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-01"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-01"]{
   --efhc-ct-accent:#6ea8ff;--efhc-ct-accent-rgb:110,168,255;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-02"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-02"]{
   --efhc-ct-accent:#73aefc;--efhc-ct-accent-rgb:115,174,252;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-03"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-03"]{
   --efhc-ct-accent:#a78bfa;--efhc-ct-accent-rgb:167,139,250;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-04"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-04"]{
   --efhc-ct-accent:#229ed9;--efhc-ct-accent-rgb:34,158,217;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-05"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-05"]{
   --efhc-ct-accent:#e5bf58;--efhc-ct-accent-rgb:229,191,88;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-06"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-06"]{
   --efhc-ct-accent:#d946ef;--efhc-ct-accent-rgb:217,70,239;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-07"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-07"]{
   --efhc-ct-accent:#7fb4ff;--efhc-ct-accent-rgb:127,180,255;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-08"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-08"]{
   --efhc-ct-accent:#8f86ff;--efhc-ct-accent-rgb:143,134,255;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-09"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-09"]{
   --efhc-ct-accent:#58c7b4;--efhc-ct-accent-rgb:88,199,180;
 }
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id="CT-10"]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id="CT-10"]{
   --efhc-ct-accent:#c5a15a;--efhc-ct-accent-rgb:197,161,90;
 }
 
-:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id]{
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal,.efhc-withdraw-ad-overlay)[data-interface-app-mode="user"][data-color-theme-id]{
   --efhc-ct-accent-soft:color-mix(in srgb,var(--efhc-ct-accent) 9%,transparent);
   --efhc-ct-accent-strong:color-mix(in srgb,var(--efhc-ct-accent) 78%,black 22%);
   --efhc-ct-border:color-mix(in srgb,var(--efhc-ct-accent) 24%,transparent);

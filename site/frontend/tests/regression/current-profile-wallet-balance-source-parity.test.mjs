@@ -237,7 +237,8 @@ test("withdraw owner-approved form and user activity contracts remain independen
   assert.match(layout, /isAdminRoute/);
   assert.match(css, /efhc-withdraw-create-card \[data-withdraw-action="create"\]/);
   assert.match(css, /efhc-modal-overlay\[data-modal-surface="withdraw-ad"\]/);
-  assert.match(css, /efhc-user-toast\[data-toast-kind="error"\]/);
+  assert.match(layout, /item.kind === "error" \? "alert" : "status"/);
+  assert.match(css, /--efhc-toast-color:\s*var\(--efhc-ct-accent,/);
 });
 
 test("all ten CTs and only accepted XH/WD design bindings stay available", () => {
