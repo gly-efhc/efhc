@@ -33,15 +33,46 @@
   gap: .4rem;
   min-width: 0;
 }
-:global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.standalone-wallet-actions .source-button) {
-  min-height: 44px;
+/* The unchanged badge sizes each action in the active language. Only the
+ * action paints the selected Profile Wallet tab material. */
+:global(#profilePage) .boundCards .actionBox {
+  position: relative;
+  display: inline-grid;
+  flex: none;
   max-width: 100%;
-  padding: .28rem .56rem;
-  border-color: rgba(var(--efhc-ct-accent-rgb), .22);
-  background: transparent;
-  color: var(--tg-text);
-  white-space: normal;
+}
+.actionMeasure {
+  visibility: hidden;
+  display: inline-grid;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.actionMeasure > span {
+  border: 1px solid transparent;
+}
+:global(#profilePage) .boundCards .actionButton {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 .12rem;
+  border: 1px solid;
+  border-radius: .68rem;
+  background: transparent !important;
+  color: var(--tg-text, #f8fafc) !important;
+  box-shadow: none !important;
+  font-size: .65rem;
+  font-weight: 600;
+  line-height: 1.05;
+  text-align: center;
   overflow-wrap: anywhere;
+}
+:global(#profilePage) .boundCards :global(.efhc-wallet-entry) .actionButton:not(:disabled) {
+  border-color: rgba(var(--efhc-ct-accent-rgb, 148, 163, 184), .68) !important;
+}
+:global(#profilePage) .boundCards .actionButton:focus-visible {
+  outline: 2px solid var(--efhc-ct-accent);
+  outline-offset: 2px;
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-primary-status) {
   grid-column: 2;
