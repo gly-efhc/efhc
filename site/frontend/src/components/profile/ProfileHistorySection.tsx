@@ -167,6 +167,11 @@ function presentHistoryOperation(
     }
     details.push({ label: t("history.detail_rate"), value: "1 kWh = 1 EFHCm" });
   } else if (isLedger) {
+    const panelPublicId = item.panel_public_id;
+    if (direction === "debit" && item.reason === "panel_activation"
+      && panelPublicId && /^PNL-(?!00000000)[0-9]{8}$/.test(panelPublicId)) {
+      details.push({ label: t("panels.panel_id"), value: panelPublicId.replace("-", "") });
+    }
     if (balance && movement) subtitle = `${balance} · ${movement}`;
     if (balance) details.push({ label: t("history.detail_balance"), value: balance });
     if (movement) details.push({ label: t("history.detail_type"), value: movement });
