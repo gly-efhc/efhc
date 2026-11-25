@@ -19,7 +19,7 @@ export function EmptyState(
   return (
     <div
       className={containerCls}
-      data-user-feedback-kind={props.intent}
+      data-user-feedback-kind={props.intent ?? "neutral"}
       role={props.intent === "error" ? "alert" : undefined}
     >
       <div className="font-semibold">{props.title}</div>

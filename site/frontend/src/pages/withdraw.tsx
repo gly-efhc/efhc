@@ -439,7 +439,7 @@ export default function WithdrawPage(props: {
                    : t("withdraw.amount_invalid_range")}
              </div>
            ) : null}
-          {error ? <div className="text-sm text-red-600" role="alert">{error}</div> : null}
+          {error ? <div className="text-sm efhc-withdraw-inline-alert" role="alert">{error}</div> : null}
 
           <Button
             className="mt-3 w-full"
@@ -487,7 +487,7 @@ export default function WithdrawPage(props: {
             ))}
           </div>
 
-          {cancelError ? <div className="text-sm text-red-600" role="alert">{cancelError}</div> : null}
+          {cancelError ? <div className="text-sm efhc-withdraw-inline-alert" role="alert">{cancelError}</div> : null}
           {loading && items.length === 0 ? (
             <EmptyState title={t("withdraw.loading_requests")} />
           ) : null}
@@ -560,7 +560,7 @@ export default function WithdrawPage(props: {
 
           {loadMoreError ? (
             <div
-              className="text-sm text-red-600"
+              className="text-sm efhc-withdraw-inline-alert"
               role="alert"
               data-withdraw-load-more-error="true"
             >
@@ -589,6 +589,7 @@ export default function WithdrawPage(props: {
       <Modal
         open={withdrawAdOpen}
         surface="withdraw-ad"
+        portalColorThemeId={settings.color_theme_id}
         onClose={() => { if (!withdrawAdBusy) setWithdrawAdOpen(false); }}
         closeDisabled={withdrawAdBusy}
         title={t("tasks.ad_modal_title")}

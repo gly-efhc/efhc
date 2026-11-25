@@ -1383,7 +1383,6 @@ html[data-theme="light"]{
   overflow-wrap: anywhere;
   pointer-events: auto;
 }
-.efhc-user-toast[data-toast-kind="error"] { --efhc-toast-color: #ff7b87; }
 .efhc-user-toast-icon {
   display: grid;
   place-items: center;
@@ -1407,33 +1406,22 @@ html[data-theme="light"]{
   color: var(--tg-text);
   font-size: 1.1rem;
 }
-.efhc-user-toast-close:focus-visible { outline: 2px solid var(--tg-button); outline-offset: 2px; }
+.efhc-user-toast-close:focus-visible { outline: 2px solid var(--efhc-ct-focus, var(--efhc-toast-color)); outline-offset: 2px; }
 @media(max-width:380px) {
   .efhc-user-toast { gap: .5rem; padding: .68rem .7rem; }
   .efhc-user-toast-list { padding-inline: .5rem; }
 }
-/* Existing USER empty/error states share the same semantic material; neutral empties stay unchanged. */
+/* Existing USER error-state geometry; palette material is assigned below. */
 .efhc-independent-shell[data-interface-app-mode="user"] [data-user-feedback-kind="error"],
 .efhc-independent-shell[data-interface-app-mode="user"] [data-history-state="read-error"] {
-  border: 1px solid color-mix(in srgb, #ff9099 36%, var(--tg-hint));
-  border-left: 3px solid #ff9099;
+  border: 1px solid transparent;
+  border-left-width: 3px;
   border-radius: .9rem;
-  background: color-mix(in srgb, #ff9099 5%, var(--tg-secondary-bg));
   box-shadow: 0 6px 20px rgba(0,0,0,.12);
   padding: .8rem;
 }
-.efhc-independent-shell[data-interface-app-mode="user"] [data-user-feedback-kind="error"] > .font-semibold {
-  color: #ff9099;
-}
-.efhc-independent-shell[data-interface-app-mode="user"] .efhc-network-status {
-  border-color: rgba(var(--efhc-ct-accent-rgb),.32);
-  background-color: color-mix(in srgb,var(--efhc-ct-accent) 5%,var(--tg-secondary-bg));
-}
-/* Common USER inline error surfaces must remain visible and readable in all CTs. */
 [data-interface-app-mode="user"] [role="alert"].efhc-exchange-helper--warning,
-[data-interface-app-mode="user"] .efhc-withdraw-create-card .text-red-600,
-[data-interface-app-mode="user"] .efhc-withdraw-requests-history .text-red-600 {
-  color: #ff9099;
+[data-interface-app-mode="user"] .efhc-withdraw-inline-alert {
   font-size: .76rem;
   line-height: 1.4;
 }
@@ -23708,3 +23696,43 @@ body .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id
   background-image: none !important;
 }
 }
+
+
+/* USER notification chroma: consume the active ten-theme palette without
+   changing geometry, status copy, icon shapes, or accessibility behavior. */
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id]
+:is([data-user-feedback-kind], [data-history-state="read-error"],
+    .efhc-user-info-block, .efhc-user-empty-block, .efhc-network-status,
+    .efhc-history-bank-source-warning, .efhc-tonconnect-phase,
+    .efhc-tonconnect-transaction, .efhc-direct-deposit_status) {
+  border-color: var(--efhc-ct-border-strong);
+  background-color: color-mix(in srgb, var(--efhc-ct-accent) 6%, var(--tg-secondary-bg));
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+:is([data-user-feedback-kind="error"], [data-history-state="read-error"]) {
+  border-left-color: var(--efhc-ct-accent);
+}
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id]
+:is([data-user-feedback-kind="error"] > .font-semibold,
+    .efhc-exchange-helper--warning, .efhc-withdraw-inline-alert,
+    .efhc-network-status, .efhc-history-bank-source-warning,
+    .efhc-profile-pwa-maintenance small) {
+  color: var(--efhc-ct-focus);
+}
+:is(.efhc-independent-shell,.efhc-user-direct-deposit-portal)[data-interface-app-mode="user"][data-color-theme-id]
+:is(.efhc-tonconnect-phase > span:first-child,
+    .efhc-tonconnect-transaction > span:first-child,
+    .efhc-direct-deposit_status-icon) {
+  color: var(--efhc-ct-focus);
+  background: var(--efhc-ct-accent-soft);
+  box-shadow: none;
+}
+.efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id]
+.efhc-tonconnect-phase > span:first-child {
+  background: var(--efhc-ct-accent);
+}
+.efhc-withdraw-ad-overlay[data-interface-app-mode="user"][data-color-theme-id] .efhc-withdraw-ad-status-icon {
+  color: var(--efhc-ct-focus);
+  border-color: var(--efhc-ct-border-strong);
+}
+/* End USER notification chroma. */

@@ -12,7 +12,7 @@ export function TelegramEmptyState(props: Props) {
   return (
     <div
       className={[
-        "rounded-3xl border px-4 py-5 text-center",
+        "efhc-user-empty-block rounded-3xl border px-4 py-5 text-center",
         "border-[color:var(--tg-hint)]/20",
         "bg-[var(--tg-secondary-bg)]/80",
       ].join(" ")}

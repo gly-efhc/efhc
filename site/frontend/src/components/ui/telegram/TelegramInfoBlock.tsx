@@ -20,7 +20,7 @@ export function TelegramInfoBlock(
     <div
       {...rest}
       className={[
-        "rounded-2xl border px-4 py-3",
+        "efhc-user-info-block rounded-2xl border px-4 py-3",
         "border-[color:var(--tg-hint)]/20",
         "bg-[var(--tg-secondary-bg)]/80",
         className || "",
