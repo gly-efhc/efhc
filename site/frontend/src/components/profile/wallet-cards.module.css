@@ -13,6 +13,7 @@
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-address-zone) {
   grid-column: 1 / -1;
+  grid-row: 2;
   align-self: start;
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-address-control) {
@@ -21,10 +22,11 @@
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.standalone-wallet-actions) {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  margin-top: 0;
   flex-wrap: wrap;
   gap: .4rem;
   min-width: 0;
