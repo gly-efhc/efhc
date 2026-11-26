@@ -3,6 +3,7 @@
 
 import argparse
 import base64
+import hashlib
 from collections import Counter
 import json
 from pathlib import Path
@@ -12,6 +13,13 @@ import sys
 
 
 POLICY_PATH = 'site/ci/work-prefix-exceptions.json'
+# OWNER-approved exact manifest transition. This code must be trusted on the
+# target branch before installation; a policy edit cannot add its own pin.
+APPROVED_POLICY_TRANSITIONS = {
+    '67a6510c74031e83f19e7940543537117ff135c0e4bcac23986ef8f890bff09f':
+        'b1e44354e07b7e508c34c769c33f1d0924c96fde9a5adac9caf00a50b6057b63',
+}
+
 IDENTITIES_PATH = 'site/frontend/src/design-system/source-identities.json'
 TOKEN = re.compile(r'[A-Za-z_$][A-Za-z0-9_$]*(?:[-.][A-Za-z0-9_$]+)*')
 SEGMENT = re.compile(
@@ -83,8 +91,20 @@ def read_policy(ref):
             if not re.fullmatch(r'[\w-]+/[\w./-]+@v\d+(?:\.\d+)*', item['literal']):
                 raise ValueError('invalid external action version exception')
         elif item['kind'] == 'protocol':
-            if not re.fullmatch(r'/[\w/-]+/v\d+/?|https://[^\s]+', item['literal']):
+            if not re.fullmatch(r'/(?:[\w-]+/)*v\d+/?|https://[^\s]+', item['literal']):
                 raise ValueError('protocol exception must be an exact external address or API path')
+        elif item['kind'] == 'external-identifier':
+            if not TOKEN.fullmatch(item['literal']) or not (SEGMENT.search(item['literal']) or CAMEL.search(item['literal'])):
+                raise ValueError('invalid external identifier exception')
+        elif item['kind'] == 'signed-prefix':
+            if not re.fullmatch(r'[a-z][a-z0-9-]*-v[0-9]+/', item['literal']):
+                raise ValueError('invalid signed prefix exception')
+        elif item['kind'] == 'external-label':
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9 .-]* v[0-9]+(?:\.[0-9]+)*', item['literal']):
+                raise ValueError('invalid external product version label')
+        elif item['kind'] == 'dependency-comment':
+            if Path(item['path']).name != 'requirements.txt' or not re.fullmatch(r'#[^\r\n]+', item['literal']):
+                raise ValueError('invalid exact requirements comment exception')
         elif item['kind'] != 'historical-source':
             raise ValueError('unknown exception kind')
     return policy
@@ -151,6 +171,23 @@ def mask_external_metadata(path, text):
         text = LOCK_INTEGRITY.sub(mask_integrity, text)
     return text
 
+def mask_exact_exception(text, item):
+    literal = item['literal']
+    quoted = re.escape(literal)
+    kind = item['kind']
+    if kind == 'external-identifier':
+        return TOKEN.sub(lambda match: ' ' * len(literal) if match[0] == literal else match[0], text)
+    if kind == 'signed-prefix':
+        return re.sub(r"""(?<![\w'"])b(["'])""" + quoted + r'\1', ' ', text)
+    if kind == 'dependency-comment':
+        return re.sub(r'(?m)^' + quoted + r'(?=\r?$)', ' ', text)
+    if kind in {'external-label', 'protocol'}:
+        left = r'(?<![\w$.-])' if not literal.startswith('/') else ''
+        right = r'(?![\w$-]|\.[\w])'
+        return re.sub(left + quoted + right, ' ', text)
+    return text.replace(literal, ' ')
+
+
 def identities(path, content, policy):
     found = Counter()
     for part in path.split('/'):
@@ -172,7 +209,7 @@ def identities(path, content, policy):
         return found
     for item in policy['exceptions']:
         if path == item['path']:
-            text = text.replace(item['literal'], '')
+            text = mask_exact_exception(text, item)
     # Full quoted Git/SHA checksums and CSS declaration values are data, not
     # work-number identities. Selectors/function names are still inspected.
     text = QUOTED_HASH.sub('"checksum"', text)
@@ -221,16 +258,33 @@ def source_aliases(new, base):
     return aliases
 
 
+def exact_policy_installation(old, new, trusted):
+    if old != trusted:
+        return False
+    before, after = old.get(POLICY_PATH), new.get(POLICY_PATH)
+    if not before or not after or before[:2] != ('100644', 'blob') or after[:2] != before[:2]:
+        return False
+    changed_paths = {path for path in old.keys() | new.keys() if old.get(path) != new.get(path)}
+    if changed_paths != {POLICY_PATH}:
+        return False
+    expected = APPROVED_POLICY_TRANSITIONS.get(hashlib.sha256(blob(before)).hexdigest())
+    return expected == hashlib.sha256(blob(after)).hexdigest()
+
+
 def inspect(base, head, policy_ref):
     old, new = tree(base), tree(head)
+    trusted = tree(policy_ref)
     policy = read_policy(policy_ref)
     aliases = source_aliases(new, base)
     failures = []
     checked = 0
-    # A PR cannot grant itself exceptions. Initial installation is the only case
-    # in which the trusted policy ref is the candidate, pinned by the workflow.
-    if new.get(POLICY_PATH) != tree(policy_ref).get(POLICY_PATH):
-        failures.append({'path': POLICY_PATH, 'identity': 'exception policy changed; requires separate OWNER-controlled installation', 'added': 1})
+    # Only the already-trusted checker may authorize a standalone, exact policy
+    # installation. The candidate cannot approve mixed code or policy changes.
+    if new.get(POLICY_PATH) != trusted.get(POLICY_PATH):
+        if exact_policy_installation(old, new, trusted):
+            policy = read_policy(head)
+        else:
+            failures.append({'path': POLICY_PATH, 'identity': 'exception policy changed; requires separate OWNER-controlled installation', 'added': 1})
     for path, entry in new.items():
         if old.get(path) == entry:
             continue
