@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/router";
+import Router from "next/router";
 import { useAuthSessionController } from "../auth/AuthSessionProvider";
 import { isDemoBackendMode } from "../demo/session";
 import { getAuthAuthorizationHeader, getAuthSessionRevision } from "../lib/auth-session";
@@ -7,7 +7,6 @@ import { runConfirmedOperation } from "../lib/confirmed-operation";
 import { isTelegramConfirmationTest } from "../lib/telegram";
 
 export function useTestTelegramConfirmation<T>(expectedOwner: string | null, state: T) {
-  const router = useRouter();
   const auth = useAuthSessionController();
   const current = useRef({ state, auth });
   current.current = { state, auth };
@@ -16,13 +15,13 @@ export function useTestTelegramConfirmation<T>(expectedOwner: string | null, sta
   useEffect(() => {
     mounted.current = true;
     const invalidate = () => { navigation.current++; };
-    router.events.on("routeChangeStart", invalidate);
+    Router.events.on("routeChangeStart", invalidate);
     return () => {
       mounted.current = false;
       invalidate();
-      router.events.off("routeChangeStart", invalidate);
+      Router.events.off("routeChangeStart", invalidate);
     };
-  }, [router.events]);
+  }, []);
 
   return async (
     confirm: () => Promise<boolean>,

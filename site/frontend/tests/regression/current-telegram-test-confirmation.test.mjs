@@ -126,3 +126,38 @@ test("TEST transport checks the same confirmation again after asynchronous CSRF"
     }
   }
 });
+
+test("EFHC TEST coordinator rejects a replaced session even when the account is unchanged", async () => {
+  const code = source("hooks/useTestTelegramConfirmation.ts");
+  const hookCode = stripTypeScriptTypes(code.slice(code.indexOf("export function")).replace(/^export /gm, ""));
+  const operation = stripTypeScriptTypes(source("lib/confirmed-operation.ts").replace(/^export /gm, ""));
+  let account = "0000000001";
+  let authRevision = 1;
+  let onNavigation;
+  let pending;
+  let sends = 0;
+  const hook = runInNewContext(operation + "\n" + hookCode + "\nuseTestTelegramConfirmation", {
+    Router: { events: { on(_event, callback) { onNavigation = callback; }, off() {} } },
+    useEffect: (effect) => { effect(); },
+    useRef: (current) => ({ current }),
+    useAuthSessionController: () => ({ status: "authenticated", context: { global_id: account } }),
+    isDemoBackendMode: () => true,
+    isTelegramConfirmationTest: () => true,
+    getAuthAuthorizationHeader: () => "Bearer synthetic-credential",
+    getAuthSessionRevision: () => authRevision,
+    window: { location: { href: "https://fixture.invalid/efhc/withdraw/" } },
+  });
+  for (const scenario of ["session", "navigation", "approval"]) {
+    const run = hook(account, { amount: "10.00000000" });
+    const operationDone = run(
+      () => new Promise((resolve) => { pending = resolve; }),
+      (current) => current.amount === "10.00000000",
+      async (beforeSend) => { if (beforeSend()) sends++; },
+    );
+    if (scenario === "session") authRevision++;
+    if (scenario === "navigation") onNavigation();
+    pending(true);
+    await operationDone;
+    assert.equal(sends, scenario === "approval" ? 1 : 0);
+  }
+});
