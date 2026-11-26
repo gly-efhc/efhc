@@ -281,7 +281,10 @@ jobs:
           EFHC_SERWIST_PACKAGE_JSON: ${{ runner.temp }}/efhc-demo-build/package.json
         run: |
           set -euo pipefail
-          npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
+          if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
+            npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          fi
+          npm --prefix "$RUNNER_TEMP/efhc-browser-tools" list playwright-core --depth=0
           publish_dir="$RUNNER_TEMP/efhc-demo-build/out"
           test -z "$(find "$publish_dir" -type l -print -quit)" || {
             echo 'Release export must not contain symlinks' >&2
@@ -441,7 +444,10 @@ jobs:
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-parity-artifacts
         run: |
           set -euo pipefail
-          npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
+          if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
+            npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          fi
+          npm --prefix "$RUNNER_TEMP/efhc-browser-tools" list playwright-core --depth=0
           mkdir -p "$RUNNER_TEMP/efhc-parity-http"
           ln -sfn "$RUNNER_TEMP/efhc-demo-build/out" "$RUNNER_TEMP/efhc-parity-http/${GITHUB_REPOSITORY#*/}"
           python3 -m http.server 19243 --bind 127.0.0.1 --directory "$RUNNER_TEMP/efhc-parity-http" > "$RUNNER_TEMP/efhc-parity-http.log" 2>&1 &
