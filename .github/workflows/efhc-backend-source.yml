@@ -98,4 +98,4 @@ jobs:
         env:
           PYTHONPATH: backend
           EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/neondb
-        run: python -m unittest demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_project_wallets_restore_without_verification_or_quarantine demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_ton_wallet_proof_binding_is_revoked_and_slot_quarantined_on_logout demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_expired_ton_wallet_binding_quarantined_before_reallocation
+        run: python -m unittest demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_project_wallets_restore_without_verification_or_quarantine demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_project_wallet_read_and_manage_require_current_lease demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_ton_wallet_proof_binding_is_revoked_and_slot_quarantined_on_logout demo_backend.tests.test_genesis_guest_pool.GenesisGuestPoolTests.test_expired_ton_wallet_binding_quarantined_before_reallocation

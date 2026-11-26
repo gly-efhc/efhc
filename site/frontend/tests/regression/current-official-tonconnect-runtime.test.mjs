@@ -58,6 +58,9 @@ test("additional verified wallet connection replaces only the active transport s
   assert.match(profile, /data-wallet-provider-action="connect"/);
   assert.doesNotMatch(profile, /WalletConnectBanner/);
   assert.match(profile, /wallet\.is_active && wallet\.proof_verified === true/);
+  assert.match(profile, /wallet\.proof_verified === true && sameTonAddress/);
+  assert.match(profile, /wallet\.is_active && wallet\.is_project_test === true/);
+  assert.match(get("src/lib/wallet-provider/primaryWalletRouting.ts"), /wallet\.proof_verified !== false/);
   assert.equal((profile.match(/<Button/g) || []).length, 1, "reference wallet screen has one connect action");
   assert.match(profile, /t\("wallet\.connect_button"\)/);
   assert.match(layout, /const bindingMode = mode !== "execution_fallback";/);

@@ -46,6 +46,7 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
                 id bigserial PRIMARY KEY,
                 global_id bigint NOT NULL,
                 wallet_address text NOT NULL UNIQUE,
+                wallet_app text,created_at timestamptz NOT NULL DEFAULT now(),
                 tg_id bigint,proof_source text,proof_verified boolean NOT NULL DEFAULT FALSE,
                 proof_verified_at timestamptz,proof_payload_hash text,
                 is_active boolean NOT NULL,
@@ -264,6 +265,59 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual({r["wallet_address"] for r in rows},set(project_wallet_addresses(gid)))
             self.assertEqual([r["wallet_address"] for r in rows if r["is_primary"]],[project_wallet_addresses(gid)[0]])
             self.assertEqual((await db.execute(text("SELECT count(*) FROM efhc_test.guest_slot_quarantine WHERE global_id=:gid"),{"gid":gid})).scalar_one(),0)
+
+    async def test_project_wallet_read_and_manage_require_current_lease(self):
+        import ast
+        from dataclasses import dataclass
+        from pathlib import Path
+        from sqlalchemy.ext.asyncio import AsyncSession
+        from demo_backend.guest_pool import _digest
+        source = Path(__file__).resolve().parents[2] / "backend/app/services/wallets_service.py"
+        parsed = ast.parse(source.read_text(encoding="utf-8"))
+        names = {"WalletBindingOut", "WalletConflict", "list_wallets",
+                 "_project_test_lease", "_is_project_test_row",
+                 "manage_project_test_wallet", "get_verified_active_wallet"}
+        selected = [node for node in parsed.body
+                    if getattr(node, "name", "") in names]
+        ns = {"__name__": __name__, "dataclass": dataclass, "text": text,
+              "AsyncSession": AsyncSession, "sha256": hashlib.sha256,
+              "_global_id_db": int}
+        exec(compile(ast.fix_missing_locations(ast.Module(
+            body=[ast.ImportFrom(module="__future__",names=[ast.alias(name="annotations")],level=0),*selected],
+            type_ignores=[])),str(source),"exec"),ns)
+        lease = await self._claim()
+        other = await self._claim()
+        gid = lease.global_id
+        digest = _digest(lease.resume_token)
+        async with self.factory() as db:
+            await self._prepare(db)
+            rows = await ns["list_wallets"](db,global_id=gid,project_lease_hash=digest)
+            self.assertEqual(len(rows),3)
+            self.assertTrue(all(r.is_project_test and not r.proof_verified for r in rows))
+            self.assertTrue(all(not r.is_project_test for r in await ns["list_wallets"](db,global_id=gid)))
+            self.assertTrue(all(not r.is_project_test for r in await ns["list_wallets"](db,global_id=gid,project_lease_hash=_digest(other.resume_token))))
+            self.assertIsNone(await ns["get_verified_active_wallet"](db,global_id=gid,wallet_id=rows[0].id))
+            foreign = await ns["list_wallets"](db,global_id=other.global_id)
+            with self.assertRaises(ns["WalletConflict"]):
+                await ns["manage_project_test_wallet"](db,global_id=gid,wallet_id=foreign[0].id,lease_hash=digest,remove=True)
+            with self.assertRaises(ns["WalletConflict"]):
+                await ns["manage_project_test_wallet"](db,global_id=gid,wallet_id=rows[0].id,lease_hash=_digest(other.resume_token),remove=True)
+            new_primary = next(r for r in rows if not r.is_primary)
+            self.assertTrue(await ns["manage_project_test_wallet"](db,global_id=gid,wallet_id=new_primary.id,lease_hash=digest,remove=False))
+            await self._prepare(db)
+            rows = await ns["list_wallets"](db,global_id=gid,project_lease_hash=digest)
+            self.assertEqual([r.id for r in rows if r.is_primary],[new_primary.id])
+            self.assertTrue(await ns["manage_project_test_wallet"](db,global_id=gid,wallet_id=new_primary.id,lease_hash=digest,remove=True))
+            await self._prepare(db)
+            rows = await ns["list_wallets"](db,global_id=gid,project_lease_hash=digest)
+            self.assertEqual(len(rows),2)
+            self.assertEqual(sum(r.is_primary for r in rows),1)
+            self.assertTrue(await release_guest(db,global_id=gid,resume_token=lease.resume_token))
+            await db.commit()
+            await self._prepare(db)
+            rows = await ns["list_wallets"](db,global_id=gid,project_lease_hash=digest)
+            self.assertEqual(len(rows),3)
+            self.assertTrue(all(not r.is_project_test and not r.proof_verified for r in rows))
 
     async def test_two_browsers_get_different_slots_and_resume(self):
         first, second = await asyncio.gather(self._claim(), self._claim())

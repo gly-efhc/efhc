@@ -148,7 +148,8 @@ test("wallet surface exposes one official connect action with verified bound add
   assert.match(wallet, /standalone-wallet-list/);
   assert.match(wallet, /source-card-title efhc-wallet-section-heading/);
   assert.equal((wallet.match(/<Button/g) || []).length, 1);
-  assert.match(wallet, /wallet\.is_active && \(wallet\.proof_verified === true \|\| wallet\.is_project_test === true\)/);
+  assert.match(wallet, /wallet\.is_active && wallet\.proof_verified === true/);
+  assert.match(wallet, /wallet\.is_active && wallet\.is_project_test === true/);
   assert.match(wallet, /wallet\.proof_verified === true && sameTonAddress/);
   assert.match(walletItem, /data-wallet-project-test="true"/);
   assert.doesNotMatch(wallet, /WalletConnectBanner/);

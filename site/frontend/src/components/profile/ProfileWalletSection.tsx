@@ -36,7 +36,10 @@ export function ProfileWalletSection(props: Props) {
   const t = useT();
   const serverBoundWallets = useMemo(
     () => props.wallets
-      .filter((wallet) => wallet.is_active && (wallet.proof_verified === true || wallet.is_project_test === true))
+      .filter((wallet) => (
+        (wallet.is_active && wallet.proof_verified === true) ||
+        (wallet.is_active && wallet.is_project_test === true)
+      ))
       .slice()
       .sort((left, right) => Number(right.is_primary) - Number(left.is_primary)),
     [props.wallets],
