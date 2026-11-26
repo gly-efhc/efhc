@@ -50,3 +50,5 @@ cleanup: inventory consumers → stable existing name → update all imports,
 generators, selectors and tests together → build and rendered regression → save
 checkpoint. Keep frozen references and accepted UI intact. A CSS rename is not
 complete until generated assets and their consumers are verified.
+
+For verified API, stored data, and schema compatibility identities, the manifest may bind the exact reported identity to an exact path and finite occurrence limit. A different name, location, or extra occurrence remains forbidden. A contract exception is not an exception for work labels.
