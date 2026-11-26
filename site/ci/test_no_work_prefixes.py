@@ -238,6 +238,29 @@ class PrefixGuardTests(unittest.TestCase):
                 self.commit()
                 self.check(1, base)
 
+    def test_contract_record_is_exact_bounded_and_path_specific(self):
+        name = 'api_contract_' + 'v' + '1.json'
+        path = 'contracts/' + name
+        stable = 'API_CONTRACT_' + 'V' + '1'
+        self.policy['exceptions'] = [
+            {'path': path, 'literal': 'path:' + name, 'kind': 'verified-contract',
+             'reason': 'published schema pathname', 'max_count': 1},
+            {'path': path, 'literal': 'identifier:' + stable, 'kind': 'verified-contract',
+             'reason': 'published schema compatibility', 'max_count': 1},
+        ]
+        self.put(guard.POLICY_PATH, json.dumps(self.policy))
+        base = self.commit()
+        self.put(path, json.dumps({'schema': stable}))
+        clean = self.commit()
+        self.check(0, base)
+        self.put(path, json.dumps({'schema': stable, 'second': stable}))
+        self.commit()
+        self.check(1, base)
+        self.git('reset', '--hard', clean)
+        self.put('other/' + name, json.dumps({'schema': stable}))
+        self.commit()
+        self.check(1, base)
+
     def test_candidate_cannot_grant_itself_exception(self):
         self.policy['exceptions'] = [{'path': 'src/other.ts', 'literal': '/api/' + 'v' + '1', 'kind': 'protocol', 'reason': 'self-approved'}]
         self.put(guard.POLICY_PATH, json.dumps(self.policy))
