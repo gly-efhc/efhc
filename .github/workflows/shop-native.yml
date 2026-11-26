@@ -2,6 +2,9 @@ name: Shop native contracts
 on:
   pull_request:
     paths: ['main/**', 'site/**', '.github/workflows/shop-native.yml']
+  push:
+    branches: [main]
+    paths: ['main/**', 'site/**', '.github/workflows/shop-native.yml']
   workflow_dispatch:
 permissions:
   contents: read
