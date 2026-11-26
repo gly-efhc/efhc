@@ -298,7 +298,7 @@ export default function WithdrawPage(props: {
   });
 
   async function createWithdraw() {
-    if (!globalId || createBusy || withdrawAdBusy) return;
+    if (!globalId) return;
     if (!primaryWallet) {
       openWalletConnect();
       return;
@@ -333,7 +333,6 @@ export default function WithdrawPage(props: {
   }
 
   async function cancelWithdraw(requestId: DbId) {
-    if (!globalId || cancelBusyId) return;
     await withConfirmation(
       () => confirm("withdraw", t("withdraw.confirm_cancel_title"), t("withdraw.confirm_cancel_detail")),
       (latest) => latest.pendingRequests.some((item) => item.id === requestId && item.status === "PENDING"),

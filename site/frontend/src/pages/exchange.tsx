@@ -80,7 +80,7 @@ export default function ExchangePage(props: {
       toast(t("browser.auth_needed"), "info");
       return;
     }
-    if (!canExchange || exchangeMutation.isPending) return;
+    if (!canExchange) return;
     const amount = format8(amountKwh);
     if (cmp8(amount, "0.00000000") <= 0) return;
     if (cmp8(amount, maxExchangeableKwh) > 0) return;
