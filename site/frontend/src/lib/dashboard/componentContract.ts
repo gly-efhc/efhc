@@ -100,5 +100,3 @@ export type DashboardComponentContract = {
   ariaLabel?: string;
 };
 
-export const dashboardRequiredStates = dashboardPanelStatuses;
-

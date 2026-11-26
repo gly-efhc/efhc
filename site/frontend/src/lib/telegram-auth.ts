@@ -13,8 +13,6 @@ import {
 
 const TELEGRAM_INIT_DATA_MAX_LENGTH = 16_384;
 
-export type TelegramSessionLoginResponse = TelegramSessionIssueResponse;
-
 function validateTransientInitData(value: unknown): string {
   if (typeof value !== "string" || !value || value !== value.trim()) {
     throw new Error("TELEGRAM_INIT_DATA_INVALID");
@@ -27,7 +25,7 @@ function validateTransientInitData(value: unknown): string {
 
 export async function completeTelegramSessionLogin(
   initData: string,
-): Promise<TelegramSessionLoginResponse> {
+): Promise<TelegramSessionIssueResponse> {
   const transientInitData = validateTransientInitData(initData);
   try {
     const referralStartParam = readReferralStartParamForLogin();

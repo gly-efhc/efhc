@@ -361,8 +361,6 @@ const SLOT_MATRIX: Readonly<Record<GlobalThemeId, Readonly<Record<GlobalThemeGro
   }),
 });
 
-export const GLOBAL_THEME_SLOT_MATRIX = SLOT_MATRIX;
-
 export const GLOBAL_THEME_SLOTS: readonly GlobalThemeSlot[] = Object.freeze(
   GLOBAL_THEME_CATALOG.map((definition) => {
     const variants = SLOT_MATRIX[definition.id];

@@ -10,7 +10,14 @@ class ApplicationAliasTests(unittest.TestCase):
     def test_retired_internal_names_are_absent(self):
         scopes = (
             ("main/backend/app", "*.py", re.compile(r"\bShopService\b")),
-            ("site/frontend/src", "*.ts*", re.compile(r"\b(?:TonConnectMessage|TonConnectTx|faqRuCatalog)\b")),
+            (
+                "site/frontend/src",
+                "*.ts*",
+                re.compile(
+                    r"\b(?:TonConnectMessage|TonConnectTx|faqRuCatalog|GLOBAL_THEME_SLOT_MATRIX|"
+                    r"THEME_PAGE_REGISTRY|dashboardRequiredStates|TelegramSessionLoginResponse)\b"
+                ),
+            ),
         )
         unexpected = []
         for directory, glob, identifiers in scopes:
