@@ -128,7 +128,7 @@ jobs:
           python3 "$RUNNER_TEMP/efhc-pages-tools/prepare_pages.py" \
             --source site/frontend \
             --target "$RUNNER_TEMP/efhc-demo-build" \
-            --base-path "/${REPO_NAME}"
+            --base-path "/${REPO_NAME}" --genesis-wallet-layout
 
       - name: Install exact frontend dependencies
         shell: bash

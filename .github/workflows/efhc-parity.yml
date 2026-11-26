@@ -75,7 +75,9 @@ jobs:
       - name: Check bound Global ID and server-attested role boundary
         run: node site/frontend/tests/parity/global-id-env.mjs
       - name: Prepare actual React with Pages base path
-        run: python3 site/ci/pages-tools/prepare_pages.py --source site/frontend --target "$RUNNER_TEMP/efhc-parity-build" --base-path "$EFHC_DEMO_BASEPATH"
+        run: python3 site/ci/pages-tools/prepare_pages.py --source site/frontend --target "$RUNNER_TEMP/efhc-parity-build" --base-path "$EFHC_DEMO_BASEPATH" --genesis-wallet-layout
+      - name: Verify isolated Genesis Wallet build adapter
+        run: python3 -m unittest discover -s site/ci/pages-tools/tests -p test_wallet_layout.py
       - name: Install locked dependencies
         run: |
           cd "$RUNNER_TEMP/efhc-parity-build"

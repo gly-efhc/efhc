@@ -30,11 +30,28 @@ module.exports = {
 # It must never inject browser-owned DEMO identities or financial data.
 
 
+def install_genesis_wallet_layout(source: Path, target: Path) -> None:
+    template = source.parent / 'ci/pages-tools/wallet-layout.tsx'
+    profile_dir = target / 'src/components/profile'
+    component = profile_dir / 'ProfileWalletSection.tsx'
+    content = component.read_text(encoding='utf-8')
+    anchor = '      <div className="standalone-wallet-layout">'
+    if content.count(anchor) != 1 or 'TestWalletLayout' in content:
+        raise ValueError('Genesis Wallet mount point does not match')
+    shutil.copyfile(template, profile_dir / 'TestWalletLayout.tsx')
+    component.write_text(
+        'import { TestWalletLayout } from "./TestWalletLayout";\n'
+        + content.replace(anchor, '      <TestWalletLayout />\n' + anchor, 1),
+        encoding='utf-8',
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--source', required=True)
     ap.add_argument('--target', required=True)
     ap.add_argument('--base-path', required=True)
+    ap.add_argument('--genesis-wallet-layout', action='store_true')
     args = ap.parse_args()
     base = args.base_path.rstrip('/')
     if base and (not base.startswith('/') or '/' in base[1:] or base in ('/.', '/..')):
@@ -43,6 +60,8 @@ def main():
     if target.exists():
         shutil.rmtree(target)
     shutil.copytree(source, target)
+    if args.genesis_wallet_layout:
+        install_genesis_wallet_layout(source, target)
     # v868 owns the fixes in actual React source; no temporary TS/route hacks.
     # Pages basePath is independent of the API backend choice.
     # Static image paths still require the subpath prefix on project Pages.
