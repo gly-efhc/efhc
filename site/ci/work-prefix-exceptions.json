@@ -6,6 +6,162 @@
       "literal": "actions/checkout@v7",
       "kind": "external-action",
       "reason": "Official third-party action release reference; not an EFHC work-number identity."
+    },
+    {
+      "path": ".github/workflows/efhc-backend-source.yml",
+      "literal": "actions/setup-python@v5",
+      "kind": "external-action",
+      "reason": "Official GitHub Actions release reference; used to set up the configured Python version."
+    },
+    {
+      "path": "main/backend/app/bot/bot.py",
+      "literal": "aiogram v3",
+      "kind": "external-label",
+      "reason": "Aiogram library major version, matching the dependency manifest."
+    },
+    {
+      "path": "main/backend/app/bot/handlers/start_handlers.py",
+      "literal": "aiogram v3",
+      "kind": "external-label",
+      "reason": "Aiogram library major version, matching the dependency manifest."
+    },
+    {
+      "path": "main/backend/app/bot/handlers/webapp_handlers.py",
+      "literal": "aiogram v3",
+      "kind": "external-label",
+      "reason": "Aiogram library major version, matching the dependency manifest."
+    },
+    {
+      "path": "main/backend/app/bot/keyboards.py",
+      "literal": "aiogram v3",
+      "kind": "external-label",
+      "reason": "Aiogram library major version, matching the dependency manifest."
+    },
+    {
+      "path": "main/backend/app/bot/middlewares.py",
+      "literal": "Aiogram v3",
+      "kind": "external-label",
+      "reason": "Aiogram library major version, matching the dependency manifest."
+    },
+    {
+      "path": "main/backend/app/core/config_core.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/app/identity/ton_proof_verification.py",
+      "literal": "TON Connect v2",
+      "kind": "external-label",
+      "reason": "Documented TON Connect protocol version."
+    },
+    {
+      "path": "main/backend/app/identity/ton_proof_verification.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/app/identity/ton_proof_verification.py",
+      "literal": "ton-proof-item-v2/",
+      "kind": "signed-prefix",
+      "reason": "TON Connect proof domain separator: exact bytes are part of the wallet signature."
+    },
+    {
+      "path": "main/backend/app/integrations/nft_api.py",
+      "literal": "ton_api_v2",
+      "kind": "external-identifier",
+      "reason": "Helper for the documented TonAPI HTTP API version, not an EFHC work number."
+    },
+    {
+      "path": "main/backend/app/integrations/nft_api.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/app/integrations/ton_api.py",
+      "literal": "ton_api_v2",
+      "kind": "external-identifier",
+      "reason": "Helper for the documented TonAPI HTTP API version, not an EFHC work number."
+    },
+    {
+      "path": "main/backend/app/integrations/ton_api.py",
+      "literal": "TonAPI v2",
+      "kind": "external-label",
+      "reason": "Documented TonAPI HTTP API version."
+    },
+    {
+      "path": "main/backend/app/integrations/ton_api.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/app/integrations/ton_api_urls.py",
+      "literal": "ton_api_v2",
+      "kind": "external-identifier",
+      "reason": "Helper for the documented TonAPI HTTP API version, not an EFHC work number."
+    },
+    {
+      "path": "main/backend/app/integrations/ton_api_urls.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/app/services/nft_check_service.py",
+      "literal": "ton_api_v2",
+      "kind": "external-identifier",
+      "reason": "Helper for the documented TonAPI HTTP API version, not an EFHC work number."
+    },
+    {
+      "path": "main/backend/app/services/tonconnect_proof_service.py",
+      "literal": "ton_api_v2",
+      "kind": "external-identifier",
+      "reason": "Helper for the documented TonAPI HTTP API version, not an EFHC work number."
+    },
+    {
+      "path": "main/backend/app/services/tonconnect_proof_service.py",
+      "literal": "/v2",
+      "kind": "protocol",
+      "reason": "Existing TonAPI/Toncenter HTTP API path segment; changes alter integration compatibility."
+    },
+    {
+      "path": "main/backend/requirements.txt",
+      "literal": "# --- Core API stack (FastAPI + Pydantic v2) ----------------------------------",
+      "kind": "dependency-comment",
+      "reason": "Original compatibility comment describing versions of third-party dependencies; not an EFHC work number."
+    },
+    {
+      "path": "main/backend/requirements.txt",
+      "literal": "# --- Telegram Bot (Aiogram v3) -----------------------------------------------",
+      "kind": "dependency-comment",
+      "reason": "Original compatibility comment describing versions of third-party dependencies; not an EFHC work number."
+    },
+    {
+      "path": "main/backend/requirements.txt",
+      "literal": "# с каноном (Pydantic v2, FastAPI v0.115+, SQLAlchemy v2). Файл ориентирован на",
+      "kind": "dependency-comment",
+      "reason": "Original compatibility comment describing versions of third-party dependencies; not an EFHC work number."
+    },
+    {
+      "path": "main/backend/requirements.txt",
+      "literal": "# • FastAPI + Pydantic v2: строго не смешивать с библиотеками под Pydantic v1.",
+      "kind": "dependency-comment",
+      "reason": "Original compatibility comment describing versions of third-party dependencies; not an EFHC work number."
+    },
+    {
+      "path": "main/backend/requirements.txt",
+      "literal": "# • Только Pydantic v2 (не смешивать с v1-пакетами).",
+      "kind": "dependency-comment",
+      "reason": "Original compatibility comment describing versions of third-party dependencies; not an EFHC work number."
+    },
+    {
+      "path": "main/tests/efhc_backend/identity/test_ton_proof_verification.py",
+      "literal": "https://tonapi.io/v2/tonconnect/stateinit",
+      "kind": "protocol",
+      "reason": "Official TonAPI endpoint asserted by the TON proof regression."
     }
   ]
 }
