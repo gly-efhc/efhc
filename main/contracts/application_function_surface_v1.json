@@ -1,6 +1,6 @@
 {
   "schema": "EFHC_APPLICATION_FUNCTION_SURFACE_V1",
-  "version": "v175.01",
+  "version": "175.01",
   "cycle": 1842,
   "purpose": "Fail-closed контроль публичных, операционных, фоновых, Admin и compatibility capabilities; следующий GitHub CI должен выявлять их случайное удаление без исполнения production-модулей.",
   "identity_canon": "provider + subject -> global_id -> business runtime",
@@ -1214,7 +1214,7 @@
     ],
     "frontend/src/pages/ranks.tsx": [
       "data-ranks-focused-context=\"me-neighbors\"",
-      "data-ranks-runtime=\"react-query-kwh-current-v050\""
+      "data-ranks-runtime=\"react-query-current-energy\""
     ],
     "frontend/src/pages/referrals.tsx": [
       "BonusEarningsStrip",

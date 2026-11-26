@@ -1,4 +1,4 @@
-<!-- EFHC_GLOBAL_IDENTITY_CANON_V3 -->
+<!-- EFHC_GLOBAL_IDENTITY_CANON, revision 3 -->
 Identity anchor: `docs/SSOT/GLOBAL_IDENTITY_SSOT.md`.
 
 # MIGRATION RULES
@@ -18,7 +18,7 @@ Identity anchor: `docs/SSOT/GLOBAL_IDENTITY_SSOT.md`.
 
 ---
 
-## Восстановленный исходный материал v171.89
+## Восстановленный исходный материал из выпуска 171.89
 
 Следующий материал сохранён как источник остальных проверочных правил. Имена
 `0001_init.py` и прежний owner `tg_id` в нём являются историческими; действующие

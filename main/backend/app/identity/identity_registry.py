@@ -168,7 +168,7 @@ def build_identity_registry() -> dict[str, object]:
     return {
         "схема_реестра": "EFHC_IDENTITY_REGISTRY_V2",
         "цикл": 1706,
-        "версия": "v173.27",
+        "версия": "173.27",
         "канонический_идентификатор": "global_id",
         "физическая_owner_колонка": "users.global_id",
         "canonical_provider_subject_fields": dict(

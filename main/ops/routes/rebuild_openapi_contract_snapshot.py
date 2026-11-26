@@ -24,7 +24,7 @@ INVENTORY = ROOT / "docs/SSOT/ssot_pack/SSOT_ROUTE_INVENTORY_FREEZE.csv"
 OPENAPI = ROOT / "backend/openapi/openapi.json"
 MANIFEST = ROOT / "backend/openapi/openapi_manifest.json"
 REPORT = ROOT / (
-    "reports/generated/openapi_contract_snapshot_v170_18.json"
+    "reports/generated/openapi_contract_snapshot.json"
 )
 METHODS = {"get", "post", "put", "patch", "delete"}
 INTERNAL_PREFIXES = ("/cron", "/tg")
@@ -345,7 +345,7 @@ def write_openapi(rows: list[dict[str, str]]) -> None:
         "openapi": "3.0.2",
         "info": {
             "title": "EFHC Bot API",
-            "version": "v170.18-openapi-contract-snapshot",
+            "version": "170.18",
             "description": (
                 "Checked-in OpenAPI snapshot rebuilt from backend "
                 "route source during step 1442. API_PREFIX is "

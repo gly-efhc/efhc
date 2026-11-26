@@ -20,7 +20,7 @@ SSOT = ROOT / "docs/SSOT/ssot_pack/SSOT_ROUTES.csv"
 FRONTEND = ROOT / "frontend/src"
 REPORT = ROOT / (
     "reports/generated/"
-    "openapi_strict_contract_gate_v170_18.json"
+    "openapi_strict_contract_gate.json"
 )
 HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
