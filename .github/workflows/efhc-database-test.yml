@@ -23,7 +23,7 @@ jobs:
       EXPECTED_NEON_TEST_HOST: ep-fragrant-feather-zaribpm5.c-2.eu-west-2.aws.neon.tech
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Set up Python
