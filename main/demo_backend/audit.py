@@ -45,7 +45,7 @@ def build_route_inventory(root: Path) -> dict:
                              "handler": item.name, "demo_external_blocked": is_external_blocked(method, full)})
     rows.sort(key=lambda r: (r["path"], r["method"], r["source"]))
     table_names = sorted(f"{schema}.{table}" for schema, names in REQUIRED_TABLES.items() for table in names)
-    return {"schema": "efhc.demo.route-inventory.v1", "route_total": len(rows),
+    return {"schema": "efhc.demo.route-inventory", "route_total": len(rows),
             "routes": rows, "neon_required_tables": table_names,
             "neon_required_views": [f"efhc_demo_public.{v}" for v in sorted(REQUIRED_VIEWS)],
             "external_blocked_count": sum(1 for r in rows if r["demo_external_blocked"]) }
