@@ -45,7 +45,9 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
             """CREATE TABLE IF NOT EXISTS efhc_core.wallet_bindings (
                 id bigserial PRIMARY KEY,
                 global_id bigint NOT NULL,
-                wallet_address text NOT NULL,
+                wallet_address text NOT NULL UNIQUE,
+                tg_id bigint,proof_source text,proof_verified boolean NOT NULL DEFAULT FALSE,
+                proof_verified_at timestamptz,proof_payload_hash text,
                 is_active boolean NOT NULL,
                 is_primary boolean NOT NULL,
                 updated_at timestamptz)""",
@@ -192,7 +194,7 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
             await db.commit()
             bound = (await db.execute(text("""
                 SELECT is_active, is_primary FROM efhc_core.wallet_bindings
-                WHERE global_id=:gid
+                WHERE global_id=:gid AND proof_source IS NULL
             """), {"gid": int(lease.global_id)})).mappings().one()
             self.assertFalse(bound["is_active"])
             self.assertFalse(bound["is_primary"])
@@ -207,7 +209,7 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(active, 0)
             # Immutable wallet row remains in the audit history.
             history = (await db.execute(text("""
-                SELECT COUNT(*) FROM efhc_core.wallet_bindings WHERE global_id=:gid
+                SELECT COUNT(*) FROM efhc_core.wallet_bindings WHERE global_id=:gid AND proof_source IS NULL
             """), {"gid": int(lease.global_id)})).scalar_one()
             self.assertEqual(history, 1)
         next_lease = await self._claim()
@@ -237,9 +239,31 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
             """), {"gid": int(lease.global_id)})).scalar_one()
             self.assertEqual(q, "TON_TEST_WALLET_BINDING_PRESERVED")
             old = (await db.execute(text("""
-                SELECT is_active FROM efhc_core.wallet_bindings WHERE global_id=:gid
+                SELECT is_active FROM efhc_core.wallet_bindings WHERE global_id=:gid AND proof_source IS NULL
             """), {"gid": int(lease.global_id)})).scalar_one()
             self.assertFalse(old)
+
+    async def test_project_wallets_restore_without_verification_or_quarantine(self):
+        from demo_backend.guest_wallets import project_wallet_addresses, PROJECT_WALLET_SOURCE
+        lease = await self._claim()
+        gid = int(lease.global_id)
+        async with self.factory() as db:
+            await self._prepare(db)
+            rows = (await db.execute(text("""
+                SELECT wallet_address,is_active,is_primary,proof_verified,proof_source
+                FROM efhc_core.wallet_bindings WHERE global_id=:gid
+            """), {"gid":gid})).mappings().all()
+            self.assertEqual({r["wallet_address"] for r in rows}, set(project_wallet_addresses(gid)))
+            self.assertEqual(sum(r["is_primary"] for r in rows),1)
+            self.assertTrue(all(r["is_active"] and not r["proof_verified"]
+                                and r["proof_source"] == PROJECT_WALLET_SOURCE for r in rows))
+            await db.execute(text("DELETE FROM efhc_core.wallet_bindings WHERE global_id=:gid AND is_primary"), {"gid":gid})
+            self.assertTrue(await release_guest(db,global_id=lease.global_id,resume_token=lease.resume_token))
+            await db.commit()
+            rows=(await db.execute(text("SELECT wallet_address,is_primary FROM efhc_core.wallet_bindings WHERE global_id=:gid"),{"gid":gid})).mappings().all()
+            self.assertEqual({r["wallet_address"] for r in rows},set(project_wallet_addresses(gid)))
+            self.assertEqual([r["wallet_address"] for r in rows if r["is_primary"]],[project_wallet_addresses(gid)[0]])
+            self.assertEqual((await db.execute(text("SELECT count(*) FROM efhc_test.guest_slot_quarantine WHERE global_id=:gid"),{"gid":gid})).scalar_one(),0)
 
     async def test_two_browsers_get_different_slots_and_resume(self):
         first, second = await asyncio.gather(self._claim(), self._claim())

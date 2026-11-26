@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from demo_backend.account_guards import is_safe_synthetic_account
 from demo_backend.config import parse_test_admin_ids
 from demo_backend.guest_financial_reset import GuestResetUnsafe, reset_guest_economy
+from demo_backend.guest_wallets import restore_project_wallets
 from demo_backend.guest_starter_integrity import (
     quarantine_guest_slot, reusable_starter_is_intact,
 )
@@ -83,7 +84,18 @@ RETURNING global_id, expires_at
 # Keep the immutable proof/audit history and quarantine the slot instead.
 _HAS_WALLET_BINDING = text("""
 SELECT EXISTS(
- SELECT 1 FROM efhc_core.wallet_bindings WHERE global_id=:gid
+ SELECT 1 FROM efhc_core.wallet_bindings wb WHERE wb.global_id=:gid
+ AND (wb.proof_source IS DISTINCT FROM 'GENESIS_PROJECT_WALLET'
+           OR wb.proof_verified IS DISTINCT FROM FALSE
+           OR wb.proof_verified_at IS NOT NULL
+           OR wb.proof_payload_hash IS NOT NULL
+           OR wb.tg_id IS NOT NULL
+           OR wb.wallet_address NOT IN (
+               SELECT '0:' || encode(sha256(convert_to(
+                   'EFHC/Genesis/ProjectWallet/' || wb.global_id::text
+                   || '/' || slot::text, 'UTF8')), 'hex')
+               FROM generate_series(1,3) slot
+           ))
 )
 """)
 _REVOKE_BOUND_TEST_WALLETS = text("""
@@ -211,9 +223,10 @@ async def allocate_guest(
             # A failed financial reset must roll back its own partial ledger
             # work before the caller persists a quarantine/release decision.
             async with db.begin_nested():
+                await restore_project_wallets(db, old_gid)
                 if not await reusable_starter_is_intact(db, old_gid):
                     await reset_guest_economy(db, old_gid)
-        except GuestResetUnsafe:
+        except (GuestResetUnsafe, ValueError):
             await quarantine_guest_slot(
                 db, old_gid, reason="EXPIRED_RESTORE_UNSAFE",
             )
@@ -236,6 +249,7 @@ async def allocate_guest(
         raise GuestPoolFull("GENESIS_GUEST_POOL_FULL")
     if not await is_safe_synthetic_account(db, gid):
         raise GuestPoolConfigurationError("GENESIS_GUEST_CLAIMED_ACCOUNT")
+    await restore_project_wallets(db, gid)
     token = secrets.token_urlsafe(48)
     result = (await db.execute(_ASSIGN, {"gid": gid, "digest": _digest(token)})).first()
     if result is None:
@@ -267,6 +281,13 @@ async def release_guest(
     if await _quarantine_bound_guest_wallet(db, int(global_id)):
         # Wallet history is retained, active bindings are revoked, and this
         # leased ID permanently leaves the reusable guest pool.
+        result = await db.execute(_RELEASE, params)
+        return result is not None
+    try:
+        async with db.begin_nested():
+            await restore_project_wallets(db, int(global_id))
+    except ValueError:
+        await quarantine_guest_slot(db, int(global_id), reason="PROJECT_WALLET_RESTORE_UNSAFE")
         result = await db.execute(_RELEASE, params)
         return result is not None
     if not await reusable_starter_is_intact(db, int(global_id)):

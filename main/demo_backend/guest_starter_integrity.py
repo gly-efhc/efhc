@@ -27,7 +27,17 @@ SELECT EXISTS (
    -- TON wallet, even when its balance/panel snapshot still matches baseline.
    AND NOT EXISTS(
        SELECT 1 FROM efhc_core.wallet_bindings wb
-       WHERE wb.global_id=u.global_id
+       WHERE wb.global_id=u.global_id AND (wb.proof_source IS DISTINCT FROM 'GENESIS_PROJECT_WALLET'
+           OR wb.proof_verified IS DISTINCT FROM FALSE
+           OR wb.proof_verified_at IS NOT NULL
+           OR wb.proof_payload_hash IS NOT NULL
+           OR wb.tg_id IS NOT NULL
+           OR wb.wallet_address NOT IN (
+               SELECT '0:' || encode(sha256(convert_to(
+                   'EFHC/Genesis/ProjectWallet/' || wb.global_id::text
+                   || '/' || slot::text, 'UTF8')), 'hex')
+               FROM generate_series(1,3) slot
+           ))
    )
    AND u.main_balance=(b.user_row->>'main_balance')::numeric
    AND u.bonus_balance=(b.user_row->>'bonus_balance')::numeric

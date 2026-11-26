@@ -43,6 +43,13 @@ class GuestFinancialResetTests(unittest.IsolatedAsyncioTestCase):
                      last_sync_at timestamptz,updated_at timestamptz DEFAULT now())""",
                 "CREATE TABLE efhc_core.app_settings(key text PRIMARY KEY,value text NOT NULL)",
                 "CREATE TABLE efhc_core.user_identities(global_id bigint)",
+                """CREATE TABLE efhc_core.wallet_bindings(
+                     id bigserial PRIMARY KEY,global_id bigint NOT NULL,
+                     wallet_address text NOT NULL UNIQUE,tg_id bigint,
+                     proof_source text,proof_verified boolean NOT NULL DEFAULT FALSE,
+                     proof_verified_at timestamptz,proof_payload_hash text,
+                     is_active boolean NOT NULL,is_primary boolean NOT NULL,
+                     updated_at timestamptz)""",
                 "CREATE TABLE efhc_admin.admin_whitelist(global_id bigint)",
                 """CREATE TABLE efhc_core.panels(
                      id bigint PRIMARY KEY,global_id bigint NOT NULL,
