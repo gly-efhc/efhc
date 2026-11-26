@@ -12,7 +12,7 @@ SHA = re.compile(r"[0-9a-f]{64}\Z")
 GIT = re.compile(r"[0-9a-f]{40}\Z")
 PATH = re.compile(r"[A-Za-z0-9._ ()-]+(?:/[A-Za-z0-9._ ()-]+)*\Z")
 PREFIX = (
-    "site/frontend/", "site/ci/", "demo_backend/",
+    "site/frontend/", "site/ci/",
     "main/backend/app/", "main/backend/migrations/", "main/backend/openapi/",
     "main/demo_backend/", "main/contracts/", "main/tests/efhc_backend/",
     "main/tests/integration/", "main/ops/routes/",
@@ -47,7 +47,7 @@ def pathname(p):
     parts = p.split("/")
     check(not any(x in {".", ".."} or x.lower() in BLOCK or x != x.strip() or x.endswith(".") for x in parts), f"unsafe path: {p}")
     check(not any(x.lower().startswith(".env") for x in parts) or p=="main/.env.example", f"environment file: {p}")
-    check(p=="demo_backend/docker-compose.demo.yml" or Path(p).suffix.lower() not in {".zip", ".tar", ".gz", ".db", ".sqlite", ".pem", ".key", ".pfx", ".p12", ".yml", ".yaml"}, f"blocked file type: {p}")
+    check(p=="main/demo_backend/docker-compose.demo.yml" or Path(p).suffix.lower() not in {".zip", ".tar", ".gz", ".db", ".sqlite", ".pem", ".key", ".pfx", ".p12", ".yml", ".yaml"}, f"blocked file type: {p}")
     check(p in FIXED or p.startswith(PREFIX), f"not in import scope: {p}")
 
 def run(root, bundle, expected, apply):

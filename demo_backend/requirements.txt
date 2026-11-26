@@ -1,2 +1,0 @@
-# Shared SSOT dependencies from ../backend/requirements.txt, install both.
--r ../backend/requirements.txt

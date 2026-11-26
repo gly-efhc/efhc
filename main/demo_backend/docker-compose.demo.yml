@@ -1,10 +1,10 @@
 services:
   efhc-demo-api:
     build:
-      context: ..
-      dockerfile: demo_backend/Dockerfile
+      context: ../..
+      dockerfile: main/demo_backend/Dockerfile
     env_file:
-      - .env
+      - ${EFHC_TEST_ENV_FILE:?Set an absolute path to the private TEST environment file}
     ports:
       - "127.0.0.1:8000:8000"
     restart: unless-stopped

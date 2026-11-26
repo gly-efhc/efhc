@@ -45,7 +45,7 @@ def build_route_inventory(root: Path) -> dict:
                              "handler": item.name, "demo_external_blocked": is_external_blocked(method, full)})
     rows.sort(key=lambda r: (r["path"], r["method"], r["source"]))
     table_names = sorted(f"{schema}.{table}" for schema, names in REQUIRED_TABLES.items() for table in names)
-    return {"schema": "efhc.demo.route-inventory.v1", "route_total": len(rows),
+    return {"schema": "efhc.demo.route-inventory", "route_total": len(rows),
             "routes": rows, "neon_required_tables": table_names,
             "neon_required_views": [f"efhc_demo_public.{v}" for v in sorted(REQUIRED_VIEWS)],
             "external_blocked_count": sum(1 for r in rows if r["demo_external_blocked"]) }
@@ -54,10 +54,7 @@ def build_route_inventory(root: Path) -> dict:
 def main() -> None:
     root = Path(__file__).resolve().parent.parent
     inventory = build_route_inventory(root)
-    out = root / "demo_backend" / "route_inventory.json"
-    out.write_text(json.dumps(inventory, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("EFHC_DEMO_ROUTES=", inventory["route_total"], "external_guarded=", inventory["external_blocked_count"],
-          "tables=", len(inventory["neon_required_tables"]), "views=", len(inventory["neon_required_views"]))
+    print(json.dumps(inventory, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

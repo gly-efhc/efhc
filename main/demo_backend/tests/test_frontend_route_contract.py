@@ -15,7 +15,10 @@ from pathlib import Path
 def test_frontend_routes_are_all_registered_on_demo_backend():
     root = Path(__file__).resolve().parents[2]
     env = {
-        **os.environ,
+        "PATH": os.environ.get("PATH", ""),
+        "PYTHON_DOTENV_DISABLED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "DEMO_DATASET": "legacy",
         "PYTHONPATH": f"{root}:{root / 'backend'}",
         "EFHC_DEMO_ENABLED": "1",
         "DEMO_DATABASE_URL": "postgresql+asyncpg://efhc_test:fake@ep-fragrant-feather-zaribpm5.c-2.eu-west-2.aws.neon.tech/neondb?sslmode=require",
@@ -31,7 +34,7 @@ def test_frontend_routes_are_all_registered_on_demo_backend():
 import pathlib,re
 from fastapi.routing import APIRoute
 from demo_backend.asgi import app
-root=pathlib.Path.cwd()/"site/frontend/src"
+root=pathlib.Path.cwd().parent/"site/frontend/src"
 generated=root/"lib/api/generated"
 paths={}
 for f in generated.glob("*.ts"):
