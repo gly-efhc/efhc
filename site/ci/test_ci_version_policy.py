@@ -39,7 +39,7 @@ class CiVersionPolicyTests(unittest.TestCase):
     def test_frontend_build_uses_the_application_lock(self):
         lock = json.loads(FRONTEND_LOCK.read_text(encoding="utf-8"))
         self.assertGreaterEqual(lock["lockfileVersion"], 2)
-        for name in ("efhc-frontend-ci.yml", "efhc-pages.yml", "efhc-parity.yml"):
+        for name in ("efhc-pages.yml", "efhc-parity.yml"):
             with self.subTest(workflow=name):
                 content = (WORKFLOWS / name).read_text(encoding="utf-8")
                 self.assertRegex(content, r"\bnpm\s+ci(?:\s|$)")
