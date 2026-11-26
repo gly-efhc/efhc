@@ -1,20 +1,15 @@
-/* Bound Wallet cards follow the compact My Panels tile without styling
- * the portfolio itself or changing Wallet actions and address identity. */
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-entry) {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: .48rem;
   min-width: 0;
   padding: .74rem;
   border: 1px solid;
   border-radius: .86rem;
   border-color: rgba(var(--efhc-ct-accent-rgb),.22)!important;
-  background-color: color-mix(in srgb,#090a0e 97%,var(--efhc-ct-accent) 3%)!important;
+  background-color: transparent !important;
   background-image: none!important;
   box-shadow: none;
-}
-:global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-entry[data-wallet-role="additional"]) {
-  grid-template-columns: minmax(0, 1fr);
 }
 :global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-address-zone) {
   grid-column: 1 / -1;
@@ -29,6 +24,7 @@
   grid-row: 2;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: .4rem;
   min-width: 0;
@@ -53,6 +49,8 @@
 :global(#profilePage) .boundCards .actionButton {
   position: absolute;
   inset: 0;
+  display: grid;
+  place-items: center;
   min-height: 0;
   min-width: 0;
   padding: 0 .12rem;
@@ -74,15 +72,3 @@
   outline: 2px solid var(--efhc-ct-accent);
   outline-offset: 2px;
 }
-:global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global(.efhc-wallet-primary-status) {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: center;
-  justify-self: end;
-}
-:global(.efhc-profile-page[data-wg="WG-01"]) .boundCards :global([data-status="wallet-primary-badge"]) {
-  border: 1px solid rgba(var(--efhc-ct-accent-rgb), .36);
-  background: rgba(var(--efhc-ct-accent-rgb), .035);
-  color: var(--efhc-ct-accent);
-}
-
