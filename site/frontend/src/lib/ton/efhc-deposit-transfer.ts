@@ -2,7 +2,7 @@ import {
   buildJettonTransferTonConnectTx,
   resolveSenderJettonWallet,
 } from "./jetton-transfer-builder";
-import type { TonConnectTx } from "./tx";
+import type { TonWalletRawTransaction } from "./tx";
 import { parseEfhcJettonD8 } from "./units";
 
 export async function buildEfhcDirectDepositTx(args: {
@@ -14,7 +14,7 @@ export async function buildEfhcDirectDepositTx(args: {
   payloadText: string;
   feeMessageTonAmount: string;
   forwardTonAmount: string;
-}): Promise<TonConnectTx> {
+}): Promise<TonWalletRawTransaction> {
   const sender = String(args.senderOwnerAddress || "").trim();
   const receiver = String(args.receiverOwnerAddress || "").trim();
   const master = String(args.jettonMasterAddress || "").trim();

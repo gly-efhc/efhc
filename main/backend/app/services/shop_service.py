@@ -3074,8 +3074,3 @@ def get_shop_service(
 ) -> ShopContract:
     """FastAPI dependency, возвращающая canonical Shop facade."""
     return ShopFacade(db)
-
-
-# Конструктор совместимости для текущих hub/shopfront route modules.
-# Это alias того же canonical facade, а не второй Shop service.
-ShopService = ShopFacade

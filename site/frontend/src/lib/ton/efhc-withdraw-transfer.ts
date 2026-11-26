@@ -7,7 +7,7 @@ import {
   EFHC_JETTON_MASTER_ADDRESS,
 } from "./constants";
 import { parseEfhcJettonD8 } from "./units";
-import type { TonConnectTx, TonWalletStructuredTransaction } from "./tx";
+import type { TonWalletRawTransaction, TonWalletStructuredTransaction } from "./tx";
 
 function buildBodyBase64(args: {
   amountUnits: bigint;
@@ -99,7 +99,7 @@ export async function buildEfhcWithdrawTonConnectTx(args: {
   recipientOwnerAddress: string;
   amountEfhc: string;
   feeMessageTonAmount: string;
-}): Promise<TonConnectTx> {
+}): Promise<TonWalletRawTransaction> {
   const feeAmount = String(args.feeMessageTonAmount || "0").trim();
   if (!/^\d+$/.test(feeAmount)) {
     throw new Error("INVALID_EFHC_WITHDRAW_FEE_AMOUNT");

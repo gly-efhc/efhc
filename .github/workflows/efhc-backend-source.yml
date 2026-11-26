@@ -66,3 +66,5 @@ jobs:
         run: |
           export EFHC_READ_CONTRACT_ROOT="$PWD/backend/app/routes"
           python -m unittest demo_backend.tests.test_demo_testnet_policy demo_backend.tests.test_read_contracts
+      - name: Prevent retired internal application aliases
+        run: python -I -m unittest discover -s site/ci -p test_application_aliases.py -v

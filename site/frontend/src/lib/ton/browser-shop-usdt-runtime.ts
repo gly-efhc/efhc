@@ -10,12 +10,12 @@ import {
   type UsdtRuntimeReadiness,
 } from "./usdt-readiness";
 import { normalizeTonConnectTx } from "./tonconnect-normalize";
-import type { TonConnectTx } from "./tx";
+import type { TonWalletRawTransaction } from "./tx";
 
 export type BrowserShopUsdtRuntimeState = {
   featureGate: UsdtFeatureGateState;
   readiness: UsdtRuntimeReadiness;
-  normalizedTonTx: TonConnectTx | null;
+  normalizedTonTx: TonWalletRawTransaction | null;
   canBuildPreview: boolean;
   canRunCheckout: boolean;
   statusLabel: string;

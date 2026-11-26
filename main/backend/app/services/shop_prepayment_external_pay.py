@@ -85,7 +85,7 @@ class CanonicalExternalPay:
         from app.services import wallets_service
         from app.services.payment_intents_service import create_intent_shop_external_in_transaction
         from app.services.shop_service import (
-            ShopService,
+            ShopFacade,
             _build_memo_for_external,
             _legacy_external_amount_d8,
             _normalize_custom_efhc_amount_d8,
@@ -99,7 +99,7 @@ class CanonicalExternalPay:
         quote = prepared.get("quote")
         if not isinstance(quote, dict) or quote.get("item_type") != item.item_type:
             raise ShopRequestError("SHOP_REQUEST_SNAPSHOT_MISMATCH")
-        catalog = await ShopService(db).get_catalog(0)
+        catalog = await ShopFacade(db).get_catalog(0)
         if not any(str(entry.sku) == req.sku and bool(entry.active)
                    and entry.action_mode == "checkout" and req.method in (entry.methods or {})
                    for entry in catalog.items):

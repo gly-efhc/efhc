@@ -1,6 +1,6 @@
 import { Address } from "@ton/core/dist/address/Address";
 import { beginCell } from "@ton/core/dist/boc/Builder";
-import type { TonConnectMessage, TonConnectTx } from "./tx";
+import type { TonWalletMessage, TonWalletRawTransaction } from "./tx";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -8,7 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function normalizeTonConnectMessage(
   raw: unknown,
-): TonConnectMessage | null {
+): TonWalletMessage | null {
   if (!isRecord(raw)) return null;
   const rawAddress = String(raw.address || "").trim();
   const amount = String(raw.amount || "").trim();
@@ -42,13 +42,13 @@ export function normalizeTonConnectMessage(
 
 export function normalizeTonConnectTx(
   raw: unknown,
-): TonConnectTx | null {
+): TonWalletRawTransaction | null {
   if (!isRecord(raw)) return null;
   const validUntil = Number(raw.validUntil || 0);
   const messagesRaw = Array.isArray(raw.messages)
     ? raw.messages
     : [];
-  const messages: TonConnectMessage[] = [];
+  const messages: TonWalletMessage[] = [];
   for (const messageRaw of messagesRaw) {
     const message = normalizeTonConnectMessage(messageRaw);
     // A wallet signs the complete requested batch; dropping one recipient
