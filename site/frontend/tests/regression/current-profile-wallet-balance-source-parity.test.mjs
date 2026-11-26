@@ -151,7 +151,7 @@ test("wallet surface exposes one official connect action with verified bound add
   assert.match(wallet, /wallet\.is_active && wallet\.proof_verified === true/);
   assert.match(wallet, /wallet\.is_active && wallet\.is_project_test === true/);
   assert.match(wallet, /wallet\.proof_verified === true && sameTonAddress/);
-  assert.match(walletItem, /data-wallet-project-test="true"/);
+  assert.doesNotMatch(walletItem, /data-wallet-project-test|>TEST</);
   assert.doesNotMatch(wallet, /WalletConnectBanner/);
   assert.match(walletItem, /standalone-wallet-actions/);
   assert.match(address, /standalone-wallet-address/);
@@ -274,4 +274,19 @@ test("all supported languages include distinct withdrawal over-balance feedback"
     assert.ok(dict["withdraw.export_success"]?.trim(), lang);
     assert.ok(dict["withdraw.export_error"]?.trim(), lang);
   }
+});
+
+
+test("wallet card actions precede address, align top right and retain primary/delete order", () => {
+  const item = file("../../src/components/profile/wallet/WalletListItem.tsx");
+  const primary = file("../../src/components/profile/wallet/WalletPrimaryCard.tsx");
+  const css = file("../../src/components/profile/wallet-cards.module.css");
+  for (const card of [item, primary]) {
+    assert.doesNotMatch(card, /data-wallet-project-test|>TEST</);
+    assert.ok(card.indexOf("standalone-wallet-actions") < card.indexOf("<WalletAddressVerification"));
+  }
+  assert.ok(primary.indexOf('status="wallet-primary-badge"') < primary.indexOf('{props.onRemove ? ('));
+  assert.ok(item.indexOf('t("wallet.make_primary")') < item.indexOf('t("wallet.remove")'));
+  assert.match(css, /standalone-wallet-actions\)\s*\{[^}]*grid-row:\s*1;[^}]*justify-content:\s*flex-end;/s);
+  assert.match(css, /efhc-wallet-address-zone\)\s*\{[^}]*grid-row:\s*2;/s);
 });
