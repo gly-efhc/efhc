@@ -1,12 +1,30 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { useT } from "../../../hooks/useT";
 import { LayoutContext } from "../../Layout";
+import { Address } from "@ton/core/dist/address/Address";
+import { GENESIS_WALLET_CHAIN, isGenesisTestRuntime, TON_TESTNET_CHAIN } from "../../../lib/ton/testnet-guard";
 
-type Props = { address: string };
+type Props = { address: string; projectTest?: boolean };
 
 type CopyState = "idle" | "copied" | "failed";
 
-export function WalletAddressVerification({ address }: Props) {
+export function publicWalletAddress(address: string, projectTest: boolean, testnet: boolean): string | null {
+  try {
+    const parsed = Address.parse(address);
+    if (!projectTest && !Address.isRaw(address)) {
+      const friendly = Address.parseFriendly(address);
+      if (friendly.isTestOnly || !testnet) return address;
+    }
+    return parsed.toString({ bounceable: false, urlSafe: true, testOnly: projectTest || testnet });
+  } catch {
+    return null;
+  }
+}
+
+export function WalletAddressVerification({ address, projectTest = false }: Props) {
+  const publicAddress = publicWalletAddress(
+    address, projectTest, isGenesisTestRuntime() && GENESIS_WALLET_CHAIN === TON_TESTNET_CHAIN,
+  );
   const t = useT();
   const ctx = useContext(LayoutContext);
   const [copyState, setCopyState] = useState<CopyState>("idle");
@@ -30,10 +48,10 @@ export function WalletAddressVerification({ address }: Props) {
 
   async function copyAddress() {
     try {
-      if (!navigator.clipboard?.writeText) {
+      if (!publicAddress || !navigator.clipboard?.writeText) {
         throw new Error("clipboard_unavailable");
       }
-      await navigator.clipboard.writeText(address);
+      await navigator.clipboard.writeText(publicAddress);
       setCopyState("copied");
       scheduleIdleReset();
       ctx.toast(t("wallet.address_copied"), "success");
@@ -59,11 +77,12 @@ export function WalletAddressVerification({ address }: Props) {
         data-wallet-copy-keyboard="native-button"
         data-wallet-full-address="true"
         data-copy-state={copyState}
-        aria-label={`${t("wallet.copy_address")}: ${address}`}
+        aria-label={`${t("wallet.copy_address")}: ${publicAddress ?? ""}`}
+        disabled={!publicAddress}
         title={t("wallet.copy_address")}
         onClick={() => void copyAddress()}
       >
-        <code>{address}</code>
+        <code>{publicAddress ?? "—"}</code>
         <span
           className="efhc-wallet-copy-feedback standalone-wallet-copy-feedback"
           data-visible={copyState === "copied" ? "true" : "false"}
