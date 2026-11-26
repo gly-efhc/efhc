@@ -39,13 +39,6 @@ export type TonWalletTransaction =
   | TonWalletRawTransaction
   | TonWalletStructuredTransaction;
 
-/** @deprecated Compatibility aliases for existing API and tests. */
-export type TonConnectMessage = TonWalletMessage;
-/**
- * @deprecated Application code uses TonWalletTransaction.
- */
-export type TonConnectTx = TonWalletRawTransaction;
-
 export type JettonTransferPlan = {
   asset: "USDT" | "EFHC";
   decimals: number;

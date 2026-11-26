@@ -1,5 +1,5 @@
 import type { DirectDepositOpen } from "../../services/directDeposit.service";
-import type { TonConnectTx } from "./tx";
+import type { TonWalletRawTransaction } from "./tx";
 
 const NANOTON_UNIT = 1_000_000_000n;
 
@@ -31,7 +31,7 @@ export type DirectDepositReview = Readonly<{
  * estimate, network receipt or permission to send without wallet approval.
  */
 export function createDirectDepositReview(args: {
-  tx: TonConnectTx;
+  tx: TonWalletRawTransaction;
   metadata: DirectDepositOpen;
   walletAddress: string;
   amountEfhc: string;

@@ -1,4 +1,4 @@
-import type { TonConnectTx } from "./tx";
+import type { TonWalletRawTransaction } from "./tx";
 import {
   resolveSenderJettonWallet,
   buildJettonTransferTonConnectTx,
@@ -16,7 +16,7 @@ export type BuildUsdtTransferArgs =
 
 export type BuiltUsdtTransfer = {
   senderJettonWallet: string;
-  tonconnectTx: TonConnectTx;
+  tonconnectTx: TonWalletRawTransaction;
   amountUnits: string;
   payloadText: string;
   senderJettonBalance: string | null;

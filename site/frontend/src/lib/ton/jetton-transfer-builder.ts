@@ -1,6 +1,6 @@
 import { Address, beginCell, toNano } from "@ton/core";
 import { JettonWallet, TonClient, type TupleItemSlice } from "@ton/ton";
-import type { JettonTransferPlan, TonConnectTx } from "./tx";
+import type { JettonTransferPlan, TonWalletRawTransaction } from "./tx";
 import {
   GENESIS_WALLET_CHAIN,
   requireGenesisJsonRpcEndpoint,
@@ -148,7 +148,7 @@ export function buildJettonTransferBodyBase64(
 export function buildJettonTransferTonConnectTx(
   plan: JettonTransferPlan,
   senderJettonWallet: string,
-): TonConnectTx {
+): TonWalletRawTransaction {
   const feeAmount = String(plan.feeMessageTonAmount || "").trim();
   if (!/^\d+$/.test(feeAmount)) {
     throw new Error("INVALID_JETTON_FEE_AMOUNT");
