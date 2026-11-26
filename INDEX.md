@@ -21,11 +21,11 @@
 | Восстановление frontend | [site/RECOVERY.md](site/RECOVERY.md) |
 | Публичные правила приложения | [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) — маршрут B |
 | Вторичная редакция правил | [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) — не самостоятельный SSOT |
-| Маркер сборки/редакции | [site/RELEASE.json](site/RELEASE.json) — не доказательство production |
+| Идентичность TEST-релиза | [site/RELEASE.json](site/RELEASE.json) — контракт; `release.json` формируется при сборке |
 | CI и публикация | [.github/workflows/](.github/workflows/) |
 | Импорт исходного frontend | [import/README.md](import/README.md); не путать с документальным Архивом |
 
-Наличие пути не доказывает успех сборки или актуальность ранее записанного release SHA. Текущий порядок импорта определяют реально присутствующий workflow и инструкция `import/README.md`; не переносить исторические инструкции из приватного Архива.
+Наличие пути не доказывает успех сборки или актуальность ранее записанного release SHA. ZIP используется только для сравнения и восстановления в отдельной рабочей копии; маршрут в `import/README.md` не предусматривает автоматической замены исходников.
 
 ## 3. Приватные предметные маршруты
 

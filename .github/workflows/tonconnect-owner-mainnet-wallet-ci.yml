@@ -48,4 +48,4 @@ jobs:
           NEXT_PUBLIC_EFHC_ADMIN_VISUAL_PROOF: '1'
           NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
           NODE_OPTIONS: --max-old-space-size=6144
-        run: ./node_modules/.bin/next build --webpack
+        run: npm run build

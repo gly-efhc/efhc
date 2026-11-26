@@ -1,5 +1,4 @@
 # EFHC — fast development Pages deployment; full rendered USER acceptance is manual.
-# OWNER one-time bootstrap. The ZIP updates site/ci/pages-tools without modifying this workflow.
 # Requires GitHub Pages / GitHub Actions to be enabled.
 name: EFHC — React DEMO Pages
 
@@ -17,9 +16,6 @@ on:
       - ".github/workflows/efhc-pages.yml"
   push:
     branches: [main]
-    paths:
-      - "site/**"
-      - ".github/workflows/efhc-pages.yml"
 
 permissions:
   contents: read
@@ -42,7 +38,6 @@ jobs:
       contents: read
       pages: read
     outputs:
-      source_sha: ${{ steps.source.outputs.source_sha }}
       build_commit: ${{ steps.bundle.outputs.build_commit }}
       build_attempt: ${{ steps.bundle.outputs.build_attempt }}
       artifact_name: ${{ steps.bundle.outputs.artifact_name }}
@@ -52,7 +47,7 @@ jobs:
       quality_prebuild: ${{ steps.quality_prebuild.outcome }}
       quality_postbuild: ${{ steps.quality_postbuild.outcome }}
     steps:
-      - name: Checkout imported React source
+      - name: Checkout exact React source
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
@@ -67,41 +62,23 @@ jobs:
             "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$GITHUB_SHA" \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/metadata.log"
 
-      - name: Validate committed import source
-        id: source
+      - name: Verify exact checked-out source
         shell: bash
         run: |
           set -euo pipefail
-          test -f site/RELEASE.json || { echo 'FAIL: run EFHC Import first (missing site/RELEASE.json)'; exit 1; }
-          test -f site/frontend/package-lock.json || { echo 'FAIL: imported React source missing'; exit 1; }
-          python3 - <<'PYCODE'
-          import hashlib, json, pathlib, re
-          info = json.loads(pathlib.Path('site/RELEASE.json').read_text(encoding='utf-8'))
-          expected = info.get('source_archive_sha256', '')
-          if not re.fullmatch(r'[0-9a-f]{64}', expected):
-              raise SystemExit('FAIL: invalid RELEASE source archive SHA256')
-          zips = sorted(p for p in pathlib.Path('import').glob('*.zip') if p.name != 'EFHC_FULL_IMPORT.zip')
-          if len(zips) > 1:
-              raise SystemExit('FAIL: multiple ZIP files in import/; retain only the currently imported ZIP')
-          if zips:
-              actual = hashlib.file_digest(zips[0].open('rb'), 'sha256').hexdigest()
-              if actual != expected:
-                  raise SystemExit('FAIL: ZIP does not match staged source; run import first')
-          print('EFHC_COMMITTED_REACT_SOURCE_VERIFIED=' + expected)
-          PYCODE
-          python3 - <<'PYCODE' >> "$GITHUB_OUTPUT"
-          import json
-          print('source_sha=' + json.load(open('site/RELEASE.json'))['source_archive_sha256'])
-          PYCODE
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f site/RELEASE.json
+          test -f site/frontend/package-lock.json
+          git diff --exit-code HEAD -- site main ROUTES.json
 
-      - name: Load versioned Pages tools imported from ZIP
+      - name: Load checked-in Pages tools
         shell: bash
         run: |
           set -euo pipefail
           SOURCE="site/ci/pages-tools"
           DEST="$RUNNER_TEMP/efhc-pages-tools"
           for file in prepare_pages.py fix_pages_assets.py verify_export.py browser-smoke.mjs inject_serwist.mjs sw-serwist.js; do
-            test -s "$SOURCE/$file" || { echo "Missing Pages tool: $file; run EFHC Import first" >&2; exit 1; }
+            test -s "$SOURCE/$file" || { echo "Missing checked-in Pages tool: $file" >&2; exit 1; }
           done
           mkdir -p "$DEST"
           cp -- "$SOURCE/prepare_pages.py" "$SOURCE/fix_pages_assets.py" "$SOURCE/verify_export.py" "$SOURCE/browser-smoke.mjs" "$SOURCE/inject_serwist.mjs" "$SOURCE/sw-serwist.js" "$DEST/"
@@ -246,7 +223,7 @@ jobs:
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/efhc-demo-build"
-          ./node_modules/.bin/next build --webpack 2>&1 \
+          npm run build 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/next-build.log"
 
       - name: Correct absolute public asset URLs for project Pages
@@ -270,6 +247,9 @@ jobs:
             --directory "$RUNNER_TEMP/efhc-demo-build/out" \
             --base-path "/${REPO_NAME}" 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/verify-export.log"
+
+      - name: Record exact source and Serwist release identity
+        run: python3 site/ci/release_identity.py --export "$RUNNER_TEMP/efhc-demo-build/out" --expected-commit "$GITHUB_SHA"
 
       # Page persistence is mandatory; optional visual diagnostics remain separate.
       - name: Require complete offline PWA and persistent React pages before publishing
@@ -591,56 +571,3 @@ jobs:
           else
             echo "EFHC_PAGES_DEPLOYED=NO outcome:$EFHC_PUBLISH_OUTCOME"
           fi
-
-  cleanup:
-    name: Remove matching source ZIP only after successful deployment
-    needs: [build, publish]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@v7
-        with:
-          ref: main
-          persist-credentials: true
-          fetch-depth: 0
-
-      - name: Verify current release and remove deployed transport ZIP
-        shell: bash
-        env:
-          PUBLISHED_SHA: ${{ needs.build.outputs.source_sha }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PYCODE'
-          import hashlib, json, os, pathlib, re
-          info = json.loads(pathlib.Path('site/RELEASE.json').read_text(encoding='utf-8'))
-          expected = os.environ['PUBLISHED_SHA']
-          if not re.fullmatch(r'[0-9a-f]{64}', expected):
-              raise SystemExit('FAIL: published source hash missing')
-          if info.get('source_archive_sha256') != expected:
-              raise SystemExit('FAIL: imported source changed since deployment; preserving ZIP')
-          zips = sorted(p for p in pathlib.Path('import').glob('*.zip') if p.name != 'EFHC_FULL_IMPORT.zip')
-          if len(zips) > 1:
-              raise SystemExit('FAIL: unexpected multiple ZIP files; none removed')
-          if zips:
-              with zips[0].open('rb') as f:
-                  actual = hashlib.file_digest(f, 'sha256').hexdigest()
-              if actual != expected:
-                  raise SystemExit('FAIL: newer/unexpected ZIP; none removed')
-              zips[0].unlink()
-              print('EFHC_DEPLOYED_SOURCE_ZIP_REMOVED=' + expected)
-          else:
-              print('EFHC_TRANSPORT_ALREADY_CLEAN=PASS')
-          if not pathlib.Path('import/README.md').is_file():
-              raise SystemExit('FAIL: protected import/README.md missing')
-          PYCODE
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -u -- import/
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore(demo): clean deployed transport ZIP [efhc-demo-import]'
-            git push origin HEAD:main
-          fi
-          echo 'EFHC_POST_DEPLOY_IMPORT_CLEANUP=PASS'

@@ -109,7 +109,8 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXT_PUBLIC_EFHC_DATA_SOURCE: 'demo_backend'
-          NEXT_PUBLIC_EFHC_DEMO_API_ORIGIN: ${{ vars.EFHC_DEMO_API_ORIGIN || 'https://efhc-cycle0032-demo-api.onrender.com' }}
+          NEXT_PUBLIC_EFHC_WALLET_NETWORK: 'mainnet'
+          NEXT_PUBLIC_EFHC_BACKEND_API_ORIGIN: ${{ vars.EFHC_BACKEND_API_ORIGIN || vars.EFHC_DEMO_API_ORIGIN }}
           NEXT_PUBLIC_EFHC_PAGES_PREVIEW: '1'
           NEXT_PUBLIC_EFHC_E2E_TONCONNECT_MOCK: '0'
           NEXT_PUBLIC_EFHC_E2E_DISABLE_TONCONNECT_RESTORE: '1'
@@ -117,7 +118,7 @@ jobs:
           NEXT_PUBLIC_EFHC_OBSERVABILITY_VISUAL_PROOF: '1'
         run: |
           cd "$RUNNER_TEMP/efhc-parity-build"
-          ./node_modules/.bin/next build --webpack
+          npm run build
       - name: Require persistent pages under data failure
         timeout-minutes: 12
         env:

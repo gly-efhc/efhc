@@ -14,3 +14,4 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 -I -m unittest discover -s site/ci -p test_ci_version_policy.py -v
+      - run: python3 -I -m unittest discover -s site/ci -p test_release_identity.py -v
