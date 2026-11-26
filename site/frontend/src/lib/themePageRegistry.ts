@@ -26,7 +26,6 @@ const USER_THEME_PAGES: Readonly<Record<string, ThemePageDescriptor>> = Object.f
   "/500": { marker: "THM-15", groups: ["ER"], kind: "user" },
 });
 
-
 /**
  * FRONTEND_v127 owner rule. Every user-facing route participates in the
  * selected Global Theme. Admin routes are excluded by kind/app mode.
@@ -57,8 +56,6 @@ export const GLOBAL_THEME_PAGE_PATHS = Object.freeze([
 // No user page family is excluded from Global Theme coverage anymore.
 // Admin remains outside the user theme contract.
 export const INDIVIDUAL_ONLY_PAGE_GROUPS = Object.freeze([] as const);
-
-export const THEME_PAGE_REGISTRY = USER_THEME_PAGES;
 
 export function getThemePageDescriptor(pathname: string): ThemePageDescriptor {
   if (pathname.startsWith("/admin")) {
