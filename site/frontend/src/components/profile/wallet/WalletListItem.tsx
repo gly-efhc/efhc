@@ -56,7 +56,7 @@ export function WalletListItem(props: Props) {
           {t("wallet.remove")}
         </WalletCardAction>
       </div>
-      <WalletAddressVerification address={wallet.wallet_address} />
+      <WalletAddressVerification address={wallet.wallet_address} projectTest={wallet.is_project_test === true} />
     </div>
   );
 }
