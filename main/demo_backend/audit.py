@@ -54,10 +54,7 @@ def build_route_inventory(root: Path) -> dict:
 def main() -> None:
     root = Path(__file__).resolve().parent.parent
     inventory = build_route_inventory(root)
-    out = root / "demo_backend" / "route_inventory.json"
-    out.write_text(json.dumps(inventory, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print("EFHC_DEMO_ROUTES=", inventory["route_total"], "external_guarded=", inventory["external_blocked_count"],
-          "tables=", len(inventory["neon_required_tables"]), "views=", len(inventory["neon_required_views"]))
+    print(json.dumps(inventory, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

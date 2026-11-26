@@ -35,6 +35,7 @@ jobs:
           from pathlib import Path
 
           root = Path("main")
+          assert not Path("demo_backend").exists(), "Duplicate root TEST backend"
           for required in (
               "backend/app/main.py",
               "backend/requirements.lock",

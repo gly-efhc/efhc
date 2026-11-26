@@ -60,6 +60,11 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
         run: |
           python -m pytest -q tests/efhc_backend/identity/test_ton_auth_session.py tests/efhc_backend/identity/test_telegram_auth_session.py
+      - name: Verify canonical DEMO adapter offline contracts
+        working-directory: main
+        env:
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
+        run: python -m pytest -q demo_backend/tests/test_config.py demo_backend/tests/test_sessions.py demo_backend/tests/test_security.py demo_backend/tests/test_schema.py demo_backend/tests/test_tonconnect.py demo_backend/tests/test_asgi_operator_contract.py demo_backend/tests/test_frontend_route_contract.py
       - name: Install frontend lockfile and run native regressions
         working-directory: site/frontend
         run: |

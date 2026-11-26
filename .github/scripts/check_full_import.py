@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from zipfile import ZipFile
 
-from efhc_import_full import REQUIRED, run
+from efhc_import_full import REQUIRED, pathname, run
 
 
 def make_archive(path, *, extra=None, wrong_file=False):
@@ -40,6 +40,8 @@ def refused(f, message):
 
 
 def main():
+    refused(lambda: pathname("demo_backend/asgi.py"), "not in import scope")
+    pathname("main/demo_backend/docker-compose.demo.yml")
     with tempfile.TemporaryDirectory() as temp:
         folder = Path(temp)
         root = folder / "checkout"
