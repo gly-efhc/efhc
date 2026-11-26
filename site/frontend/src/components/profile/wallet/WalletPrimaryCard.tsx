@@ -1,6 +1,5 @@
 import React from "react";
 import { useT } from "../../../hooks/useT";
-import { TelegramStatusBadge } from "../../ui/telegram/TelegramStatusBadge";
 import { WalletCardAction } from "./WalletCardAction";
 import { hapticSoft } from "../../../lib/telegram";
 import type { WalletListItemModel } from "./WalletListItem";
@@ -29,8 +28,8 @@ export function WalletPrimaryCard(props: Props) {
     >
       <WalletAddressVerification address={wallet.wallet_address} />
 
-      {props.onRemove ? (
-        <div className="efhc-wallet-primary-actions standalone-wallet-actions">
+      <div className="efhc-wallet-primary-actions standalone-wallet-actions">
+        {props.onRemove ? (
           <WalletCardAction
             sizeLabel={t("wallet.primary_badge")}
             onClick={() => {
@@ -40,15 +39,13 @@ export function WalletPrimaryCard(props: Props) {
           >
             {t("wallet.remove")}
           </WalletCardAction>
-        </div>
-      ) : null}
-
-      <div className="efhc-wallet-status-zone efhc-wallet-primary-status">
-        <TelegramStatusBadge
-          label={t("wallet.primary_badge")}
-          tone="primary"
-          dataStatus="wallet-primary-badge"
-        />
+        ) : null}
+        <WalletCardAction
+          sizeLabel={t("wallet.primary_badge")}
+          status="wallet-primary-badge"
+        >
+          {t("wallet.primary_badge")}
+        </WalletCardAction>
       </div>
     </div>
   );

@@ -4,21 +4,28 @@ import { test } from "node:test";
 
 const readSource = (name) => readFileSync(new URL(`../../src/${name}`, import.meta.url), "utf8");
 
-test("bound Wallet cards use the frame and fill of My Panels without giving the section access to portfolio styles", () => {
+test("bound Wallet cards inherit the Wallet page surface without a hard-coded fill", () => {
   const section = readSource("components/profile/ProfileWalletSection.tsx");
   assert.match(section, /standalone-wallet-list \$\{styles\.boundCards\}/);
   const wallet = readSource("components/profile/wallet-cards.module.css");
-  const panels = readSource("styles/panels-layout.css");
   const card = wallet.split(".boundCards :global(.efhc-wallet-entry) {")[1].split("}")[0];
-  const material = panels.split("#panelsPortfolioPage .efhc-panel-tile {").at(-1).split("}")[0];
-  for (const name of ["border-color", "background-color", "background-image"]) {
-    const prop = new RegExp(`${name}\\s*:\\s*([^;]+);`, "u");
-    assert.equal(card.match(prop)?.[1].replace(/\s/g, ""), material.match(prop)?.[1].replace(/\s/g, ""), name);
-  }
+  assert.match(card, /background-color:\s*transparent\s*!important;/);
+  assert.match(card, /background-image:\s*none\s*!important;/);
   assert.match(card, /padding:\s*\.74rem;/);
   assert.match(card, /border-radius:\s*\.86rem;/);
-  assert.match(wallet, /\.boundCards :global\(\.efhc-wallet-primary-status\)/);
   assert.doesNotMatch(wallet, /@layer|#panelsPortfolioPage|\.efhc-panel-tile/);
+});
+
+test("remove and the noninteractive primary indicator share one compact row and sizing control", () => {
+  const card = readSource("components/profile/wallet/WalletPrimaryCard.tsx");
+  assert.match(card, /standalone-wallet-actions[\s\S]*?sizeLabel=\{t\("wallet.primary_badge"\)\}[\s\S]*?status="wallet-primary-badge"/);
+  const action = readSource("components/profile/wallet/WalletCardAction.tsx");
+  assert.match(action, /status[\s\S]*?<span data-status=\{status\} className=\{styles.actionButton\}>/);
+  const css = readSource("components/profile/wallet-cards.module.css");
+  const row = css.split(".boundCards :global(.standalone-wallet-actions) {")[1].split("}")[0];
+  assert.match(row, /display:\s*flex;/);
+  assert.match(row, /align-items:\s*center;/);
+  assert.match(row, /justify-content:\s*flex-end;/);
 });
 
 test("linked wallet actions measure the existing badge but paint like the active Wallet tab", () => {
