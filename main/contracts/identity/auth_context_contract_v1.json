@@ -1,0 +1,101 @@
+{
+  "diagnostics": {
+    "mask": "<redacted>",
+    "provider_subject_redacted": true,
+    "raw_proof_redacted": true,
+    "session_id_redacted": true,
+    "telegram_init_data_redacted": true,
+    "token_redacted": true
+  },
+  "endpoint_response": {
+    "json_schema": {
+      "$defs": {
+        "AuthProvider": {
+          "description": "Закрытый набор providers из активного identity SSOT.",
+          "enum": [
+            "telegram",
+            "ton",
+            "google",
+            "apple",
+            "facebook",
+            "discord",
+            "github",
+            "mock"
+          ],
+          "title": "AuthProvider",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Безопасный endpoint response без provider-specific identity.",
+      "properties": {
+        "global_id": {
+          "description": "Канонический EFHC global_id в форме десяти ASCII-цифр.",
+          "examples": [
+            "0000000001"
+          ],
+          "format": "efhc-global-id",
+          "maxLength": 10,
+          "minLength": 10,
+          "pattern": "^[0-9]{10}$",
+          "title": "EFHC Global ID",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/AuthProvider",
+          "description": "Provider, подтвердивший текущий auth context."
+        },
+        "roles": {
+          "default": [],
+          "description": "Детерминированный набор provider-neutral ролей.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "global_id",
+        "provider"
+      ],
+      "title": "AuthContextResponse",
+      "type": "object"
+    },
+    "provider_subject": false,
+    "session_id": false,
+    "tg_id": false,
+    "поля": [
+      "global_id",
+      "provider",
+      "roles"
+    ]
+  },
+  "resolver_interface": {
+    "auto_merge": false,
+    "database_ddl": false,
+    "input": "VerifiedIdentity",
+    "statuses": [
+      "resolved",
+      "not_found",
+      "conflict"
+    ],
+    "открывает_session": false,
+    "создаёт_account": false
+  },
+  "внутренний_context": {
+    "provider_specific_owner_fields": [],
+    "raw_credentials": false,
+    "tg_id": false,
+    "wallet_address": false,
+    "поля": [
+      "global_id",
+      "provider",
+      "provider_subject",
+      "roles",
+      "session_id"
+    ]
+  },
+  "схема": "EFHC_AUTH_CONTEXT_CONTRACT_V1",
+  "цикл": 1610
+}

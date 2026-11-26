@@ -1,0 +1,17 @@
+{
+  "schema": "EFHC_ACCOUNT_REGISTRATION_CONTRACT_V1",
+  "cycle": 1636,
+  "account_owner": "global_id",
+  "transaction_required": true,
+  "commits_inside_service": false,
+  "creates": [
+    "users",
+    "referral_links"
+  ],
+  "provider_identity_outside_service": true,
+  "caller_migration": "bot_webapp_ton",
+  "invalid_referral": "fail_closed",
+  "late_referral_binding": "forbidden",
+  "ton_referral_supported": true,
+  "invitee_provider_attribute_nullable": true
+}

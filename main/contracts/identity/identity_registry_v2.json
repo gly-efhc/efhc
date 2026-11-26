@@ -1,0 +1,114 @@
+{
+  "схема_реестра": "EFHC_IDENTITY_REGISTRY_V2",
+  "цикл": 1706,
+  "версия": "v173.27",
+  "канонический_идентификатор": "global_id",
+  "физическая_owner_колонка": "users.global_id",
+  "canonical_provider_subject_fields": {
+    "telegram": "tg_id",
+    "ton": "ton_wallet_id",
+    "google": "google_id",
+    "apple": "apple_id",
+    "facebook": "fb_id",
+    "discord": "discord_id",
+    "github": "github_id"
+  },
+  "identity_resolution": "provider + subject -> global_id",
+  "reserved_global_ids": {
+    "superadmin": "1313131313"
+  },
+  "business_owner_tg_id": 0,
+  "active_compatibility_aliases": 0,
+  "политики_имён": [
+    {
+      "name": "global_id",
+      "semantic": "canonical_global_identity",
+      "status": "canonical",
+      "owner_allowed": true,
+      "wire_type": "string_10_ascii_digits",
+      "physical_database_name": "users.global_id",
+      "allowed_scopes": [
+        "business_owner",
+        "internal_api",
+        "orm_fk",
+        "admin_actor",
+        "financial_idempotency"
+      ],
+      "forbidden_new_uses": [
+        "derive_from_provider_without_resolution",
+        "derive_from_local_pk",
+        "javascript_number",
+        "json_number"
+      ]
+    },
+    {
+      "name": "id",
+      "semantic": "local_record_primary_key",
+      "status": "local_only",
+      "owner_allowed": false,
+      "wire_type": "table_local",
+      "physical_database_name": null,
+      "allowed_scopes": [
+        "local_table_primary_key"
+      ],
+      "forbidden_new_uses": [
+        "account_owner",
+        "cross_subsystem_identity",
+        "provider_subject"
+      ]
+    },
+    {
+      "name": "tg_id",
+      "semantic": "provider_identity",
+      "status": "provider_only",
+      "owner_allowed": false,
+      "wire_type": "telegram_safe_integer",
+      "physical_database_name": "user_identities.provider_subject[telegram]",
+      "allowed_scopes": [
+        "telegram_authentication",
+        "telegram_ingress",
+        "telegram_delivery",
+        "provider_identity_mapping",
+        "telegram_payment_metadata",
+        "historical_provider_read_through"
+      ],
+      "forbidden_new_uses": [
+        "business_owner",
+        "financial_owner",
+        "owner_fk",
+        "internal_api_owner",
+        "admin_actor_owner"
+      ]
+    }
+  ],
+  "разрешённые_guard_файлы": [
+    {
+      "путь": "ops/identity/check_global_id_canon.py",
+      "максимум_упоминаний": 200,
+      "семантика": "AUTH_IDENTITY_GUARD",
+      "причина": "Fail-closed проверка current global_id canon."
+    }
+  ],
+  "исторические_области": [
+    {
+      "path_prefix": "docs/cycles/",
+      "purpose": "Исторические и будущие диапазоны рабочих циклов.",
+      "may_define_current_runtime": false
+    },
+    {
+      "path_prefix": "docs/chats/",
+      "purpose": "Нумерованные полные transcripts проектных чатов.",
+      "may_define_current_runtime": false
+    },
+    {
+      "path_prefix": "reports/numbered/",
+      "purpose": "Immutable numbered reports истории развития проекта.",
+      "may_define_current_runtime": false
+    }
+  ],
+  "historical_read_through_only": true,
+  "runtime_read_switch": true,
+  "financial_ownership_switch": true,
+  "physical_rename_complete": true,
+  "legacy_alias_removal_complete": true
+}

@@ -1,0 +1,621 @@
+{
+  "pages": [
+    "/admin/ads",
+    "/admin/api-workbench",
+    "/admin/bank",
+    "/admin/bonuses",
+    "/admin/diagnostics",
+    "/admin/efhc-deposits",
+    "/admin/emergency",
+    "/admin/hub",
+    "/admin",
+    "/admin/logs",
+    "/admin/panels",
+    "/admin/referrals",
+    "/admin/reports",
+    "/admin/sale-packages",
+    "/admin/shop",
+    "/admin/system",
+    "/admin/tasks",
+    "/admin/user-history",
+    "/admin/users",
+    "/admin/vip-nft",
+    "/admin/withdrawals",
+    "/ads",
+    "/app",
+    "/browser-shop/orders",
+    "/browser-shop/profile",
+    "/browser-shop",
+    "/exchange",
+    "/faq",
+    "/hub",
+    "/",
+    "/panels/portfolio",
+    "/panels",
+    "/ranks",
+    "/referrals/active",
+    "/referrals/inactive",
+    "/referrals/my",
+    "/referrals",
+    "/support",
+    "/tasks",
+    "/web-profile",
+    "/withdraw"
+  ],
+  "next_api": [
+    "/api/public-runtime-config",
+    "/api/tonconnect-manifest"
+  ],
+  "api": {
+    "/admin/access": [
+      "GET"
+    ],
+    "/admin/ads/dashboard": [
+      "GET"
+    ],
+    "/admin/ads/providers": [
+      "GET"
+    ],
+    "/admin/ads/providers/{code}": [
+      "GET",
+      "PUT"
+    ],
+    "/admin/ads/providers/{code}/reset-errors": [
+      "POST"
+    ],
+    "/admin/ads/providers/{code}/secrets/delete": [
+      "POST"
+    ],
+    "/admin/ads/providers/{code}/secrets/replace": [
+      "POST"
+    ],
+    "/admin/ads/providers/{code}/test": [
+      "POST"
+    ],
+    "/admin/ads/revenue-optimizer": [
+      "GET"
+    ],
+    "/admin/ads/revenue-optimizer/apply": [
+      "POST"
+    ],
+    "/admin/bank/balance": [
+      "GET"
+    ],
+    "/admin/bank/burn": [
+      "POST"
+    ],
+    "/admin/bank/mint": [
+      "POST"
+    ],
+    "/admin/bank/transfers/{transfer_log_id}/rollback": [
+      "POST"
+    ],
+    "/admin/bonuses": [
+      "GET"
+    ],
+    "/admin/efhc-deposits/inbox": [
+      "GET"
+    ],
+    "/admin/efhc-deposits/process": [
+      "POST"
+    ],
+    "/admin/efhc-deposits/reprocess/{tx_hash}": [
+      "POST"
+    ],
+    "/admin/efhc-deposits/runtime-summary": [
+      "GET"
+    ],
+    "/admin/efhc-deposits/unmatched": [
+      "GET"
+    ],
+    "/admin/hub/links": [
+      "GET",
+      "POST"
+    ],
+    "/admin/hub/links/reorder": [
+      "POST"
+    ],
+    "/admin/hub/links/{link_id}": [
+      "PUT"
+    ],
+    "/admin/hub/links/{link_id}/toggle": [
+      "POST"
+    ],
+    "/admin/hub/support-links": [
+      "GET",
+      "POST"
+    ],
+    "/admin/hub/support-links/reorder": [
+      "POST"
+    ],
+    "/admin/hub/support-links/{link_id}": [
+      "PUT"
+    ],
+    "/admin/hub/support-links/{link_id}/toggle": [
+      "POST"
+    ],
+    "/admin/logs/export.csv": [
+      "GET"
+    ],
+    "/admin/logs/export.xlsx": [
+      "GET"
+    ],
+    "/admin/logs/transfers": [
+      "GET"
+    ],
+    "/admin/observability/events": [
+      "GET"
+    ],
+    "/admin/observability/health": [
+      "GET"
+    ],
+    "/admin/observability/summary": [
+      "GET"
+    ],
+    "/admin/observability/timeseries": [
+      "GET"
+    ],
+    "/admin/panels/": [
+      "GET"
+    ],
+    "/admin/panels/{panel_id}": [
+      "GET"
+    ],
+    "/admin/panels/{panel_id}/activate": [
+      "PATCH"
+    ],
+    "/admin/panels/{panel_id}/deactivate": [
+      "PATCH"
+    ],
+    "/admin/referrals/logs": [
+      "GET"
+    ],
+    "/admin/referrals/summary": [
+      "GET"
+    ],
+    "/admin/reports/bank": [
+      "GET"
+    ],
+    "/admin/reports/deposits": [
+      "GET"
+    ],
+    "/admin/reports/overview": [
+      "GET"
+    ],
+    "/admin/reports/panels": [
+      "GET"
+    ],
+    "/admin/reports/users": [
+      "GET"
+    ],
+    "/admin/reports/withdrawals": [
+      "GET"
+    ],
+    "/admin/sale-packages/": [
+      "GET",
+      "POST"
+    ],
+    "/admin/sale-packages/{package_id}": [
+      "PUT"
+    ],
+    "/admin/sale-packages/{package_id}/toggle": [
+      "POST"
+    ],
+    "/admin/shop/items": [
+      "GET"
+    ],
+    "/admin/shop/items/delete": [
+      "POST"
+    ],
+    "/admin/shop/items/set-price": [
+      "POST"
+    ],
+    "/admin/shop/items/status": [
+      "POST"
+    ],
+    "/admin/shop/items/upsert": [
+      "POST"
+    ],
+    "/admin/shop/nft-requests": [
+      "GET"
+    ],
+    "/admin/shop/nft-requests/{order_id}/decision": [
+      "POST"
+    ],
+    "/admin/shop/order/{order_id}": [
+      "GET"
+    ],
+    "/admin/shop/orders": [
+      "GET"
+    ],
+    "/admin/shop/orders/status-counters": [
+      "GET"
+    ],
+    "/admin/shop/orders/user/{global_id}": [
+      "GET"
+    ],
+    "/admin/shop/orders/{order_id}/force-fulfill": [
+      "POST"
+    ],
+    "/admin/tasks/": [
+      "GET",
+      "POST"
+    ],
+    "/admin/tasks/refresh-statuses": [
+      "POST"
+    ],
+    "/admin/tasks/submissions/{submission_id}/moderate": [
+      "POST"
+    ],
+    "/admin/tasks/{task_id}": [
+      "DELETE",
+      "GET",
+      "PATCH"
+    ],
+    "/admin/tasks/{task_id}/subs": [
+      "GET"
+    ],
+    "/admin/templates": [
+      "GET"
+    ],
+    "/admin/templates/{key}": [
+      "PUT"
+    ],
+    "/admin/ton/reconcile": [
+      "POST"
+    ],
+    "/admin/transfer": [
+      "POST"
+    ],
+    "/admin/users/resolve-provider": [
+      "GET"
+    ],
+    "/admin/users/search": [
+      "GET"
+    ],
+    "/admin/users/vip/check-all": [
+      "POST"
+    ],
+    "/admin/users/{global_id}": [
+      "GET"
+    ],
+    "/admin/users/{global_id}/active": [
+      "PATCH"
+    ],
+    "/admin/users/{global_id}/history": [
+      "GET"
+    ],
+    "/admin/users/{global_id}/panels/activate": [
+      "POST"
+    ],
+    "/admin/users/{global_id}/vip": [
+      "PATCH"
+    ],
+    "/admin/users/{global_id}/vip/check": [
+      "POST"
+    ],
+    "/admin/users/{global_id}/wallet/reset": [
+      "POST"
+    ],
+    "/admin/withdrawals": [
+      "GET"
+    ],
+    "/admin/withdrawals/repair-consistency": [
+      "POST"
+    ],
+    "/admin/withdrawals/{request_id}/approve": [
+      "POST"
+    ],
+    "/admin/withdrawals/{request_id}/mark-paid": [
+      "POST"
+    ],
+    "/admin/withdrawals/{request_id}/outcome-preview": [
+      "GET"
+    ],
+    "/admin/withdrawals/{request_id}/payout-evidence": [
+      "POST"
+    ],
+    "/admin/withdrawals/{request_id}/payout-reservation": [
+      "GET"
+    ],
+    "/admin/withdrawals/{request_id}/payout-reserve": [
+      "POST"
+    ],
+    "/admin/withdrawals/{request_id}/reject": [
+      "POST"
+    ],
+    "/ads/callback/{provider}": [
+      "POST"
+    ],
+    "/ads/postback/admaven": [
+      "GET"
+    ],
+    "/ads/postback/adsgram": [
+      "GET"
+    ],
+    "/ads/postback/monetag": [
+      "GET"
+    ],
+    "/ads/session": [
+      "POST"
+    ],
+    "/ads/session/{session_id}": [
+      "GET"
+    ],
+    "/ads/session/{session_id}/client-complete": [
+      "POST"
+    ],
+    "/ads/session/{session_id}/event": [
+      "POST"
+    ],
+    "/ads/session/{session_id}/fallback": [
+      "POST"
+    ],
+    "/ads/session/{session_id}/shown": [
+      "POST"
+    ],
+    "/ads/slot": [
+      "GET"
+    ],
+    "/auth/logout": [
+      "POST"
+    ],
+    "/auth/profile-photos": [
+      "GET"
+    ],
+    "/auth/session": [
+      "GET"
+    ],
+    "/auth/telegram/session": [
+      "POST"
+    ],
+    "/auth/ton/challenge": [
+      "POST"
+    ],
+    "/auth/ton/proof": [
+      "POST"
+    ],
+    "/deposit/direct-open": [
+      "POST"
+    ],
+    "/deposit/efhc": [
+      "POST"
+    ],
+    "/deposit/packages": [
+      "GET"
+    ],
+    "/exchange/convert": [
+      "POST"
+    ],
+    "/exchange/history": [
+      "GET"
+    ],
+    "/exchange/preview": [
+      "GET"
+    ],
+    "/health": [
+      "GET"
+    ],
+    "/health/db": [
+      "GET"
+    ],
+    "/health/db-schema": [
+      "GET"
+    ],
+    "/health/readiness": [
+      "GET"
+    ],
+    "/health/runtime": [
+      "GET"
+    ],
+    "/hub/efhc-handoff": [
+      "POST"
+    ],
+    "/hub/links": [
+      "GET"
+    ],
+    "/hub/shop-truth": [
+      "GET"
+    ],
+    "/hub/support-links": [
+      "GET"
+    ],
+    "/meta/health_db": [
+      "GET"
+    ],
+    "/nft/has_vip": [
+      "GET"
+    ],
+    "/panels/activate": [
+      "POST"
+    ],
+    "/panels/active": [
+      "GET"
+    ],
+    "/panels/archive": [
+      "GET"
+    ],
+    "/payment-intents/{intent_id}": [
+      "GET"
+    ],
+    "/profile/history": [
+      "GET"
+    ],
+    "/profile/history/export.csv": [
+      "GET"
+    ],
+    "/profile/history/export.xlsx": [
+      "GET"
+    ],
+    "/ranks/my-plus-top/me": [
+      "GET"
+    ],
+    "/ranks/top/me": [
+      "GET"
+    ],
+    "/referrals/active/me": [
+      "GET"
+    ],
+    "/referrals/counters/me": [
+      "GET"
+    ],
+    "/referrals/inactive/me": [
+      "GET"
+    ],
+    "/referrals/stats/me": [
+      "GET"
+    ],
+    "/shop/catalog": [
+      "GET"
+    ],
+    "/shop/order-external": [
+      "POST"
+    ],
+    "/shop/orders": [
+      "GET"
+    ],
+    "/shop/purchase-efhc": [
+      "POST"
+    ],
+    "/shopfront/access-key": [
+      "POST"
+    ],
+    "/shopfront/bootstrap": [
+      "GET"
+    ],
+    "/shopfront/catalog": [
+      "GET"
+    ],
+    "/shopfront/create-intent": [
+      "POST"
+    ],
+    "/shopfront/intent-status": [
+      "GET"
+    ],
+    "/shopfront/profile": [
+      "GET"
+    ],
+    "/skins/activate/{skin_id}": [
+      "POST"
+    ],
+    "/skins/buy/{skin_id}": [
+      "POST"
+    ],
+    "/skins/catalog": [
+      "GET"
+    ],
+    "/skins/my": [
+      "GET"
+    ],
+    "/skins/switcher": [
+      "GET"
+    ],
+    "/skins/switcher/activate/{skin_id}": [
+      "POST"
+    ],
+    "/sync/me": [
+      "POST"
+    ],
+    "/tasks/catalog": [
+      "GET"
+    ],
+    "/tasks/claim": [
+      "POST"
+    ],
+    "/tasks/earnings/me": [
+      "GET"
+    ],
+    "/tasks/my": [
+      "GET"
+    ],
+    "/user/me": [
+      "GET"
+    ],
+    "/user/me/panels-summary": [
+      "GET"
+    ],
+    "/v1/me": [
+      "GET"
+    ],
+    "/v1/me/withdraw-outcomes/{request_id}": [
+      "GET"
+    ],
+    "/wallets/balance-history": [
+      "GET"
+    ],
+    "/wallets/connect": [
+      "POST"
+    ],
+    "/wallets/me": [
+      "GET"
+    ],
+    "/wallets/tonconnect/check-proof": [
+      "POST"
+    ],
+    "/wallets/tonconnect/proof-payload": [
+      "GET"
+    ],
+    "/wallets/{wallet_id}": [
+      "DELETE"
+    ],
+    "/wallets/{wallet_id}/make-primary": [
+      "POST"
+    ],
+    "/withdraw/list": [
+      "GET"
+    ],
+    "/withdraw/list/me": [
+      "GET"
+    ],
+    "/withdraw/request": [
+      "POST"
+    ],
+    "/withdraw/{request_id}": [
+      "GET"
+    ],
+    "/withdraw/{request_id}/cancel": [
+      "POST"
+    ]
+  },
+  "test_adapter": {
+    "/api/staging/visual-access": [
+      "POST"
+    ],
+    "/api/staging/login": [
+      "POST"
+    ],
+    "/api/staging/guest": [
+      "POST"
+    ],
+    "/api/staging/session": [
+      "GET"
+    ],
+    "/api/staging/select-global-id": [
+      "POST"
+    ],
+    "/api/staging/logout": [
+      "POST"
+    ],
+    "/api/staging/schema": [
+      "GET"
+    ],
+    "/api/staging/routes": [
+      "GET"
+    ],
+    "/api/staging/health": [
+      "GET"
+    ],
+    "/api/staging/bank-snapshot": [
+      "GET"
+    ],
+    "/api/staging/guest-topup": [
+      "POST"
+    ],
+    "/api/staging/topup": [
+      "POST"
+    ],
+    "/api/staging/energy/tick": [
+      "POST"
+    ]
+  }
+}

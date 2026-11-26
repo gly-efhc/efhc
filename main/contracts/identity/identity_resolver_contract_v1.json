@@ -1,0 +1,51 @@
+{
+  "схема": "EFHC_TRANSACTIONAL_IDENTITY_RESOLVER_V1",
+  "цикл": 1612,
+  "вход": "VerifiedIdentity",
+  "выходы": [
+    "resolved",
+    "not_found",
+    "conflict"
+  ],
+  "блокировки": {
+    "missing_row": "pg_advisory_xact_lock",
+    "existing_row": "SELECT_FOR_UPDATE",
+    "ключ_детерминирован": true,
+    "ключ_не_содержит_raw_subject": true
+  },
+  "транзакция": {
+    "public_method_owns_transaction": true,
+    "existing_transaction_supported": true,
+    "commit_inside_existing_transaction": false
+  },
+  "fail_closed": {
+    "multiple_matches": true,
+    "inactive_identity": true,
+    "unverified_identity": true,
+    "invalid_global_id": true,
+    "mock_provider_storage": true,
+    "oversized_subject": true
+  },
+  "side_effects": {
+    "account_creation": false,
+    "identity_creation": false,
+    "session_issue": false,
+    "auto_merge": false,
+    "financial_update": false
+  },
+  "hardening_1702": {
+    "identity_key": [
+      "provider",
+      "provider_tenant",
+      "provider_subject"
+    ],
+    "one_pair_one_global_id": true,
+    "same_subject_different_provider_distinct": true,
+    "collision_fail_closed": true,
+    "automatic_account_merge": false,
+    "session_owner": "global_id",
+    "session_identity_owner_match_required": true
+  },
+  "физическая_owner_reference": "users.global_id",
+  "логический_owner": "global_id"
+}

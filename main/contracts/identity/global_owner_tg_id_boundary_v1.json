@@ -1,0 +1,42 @@
+{
+  "schema": "EFHC_GLOBAL_OWNER_TG_ID_BOUNDARY_V2",
+  "canonical_business_owner": "global_id",
+  "telegram_provider_fact": "tg_id",
+  "forbidden_business_token": "global_id",
+  "temporary_alias_module": null,
+  "allowed_runtime_prefixes": [
+    "backend/app/identity/telegram_",
+    "backend/app/middleware/telegram_",
+    "backend/app/bot/",
+    "backend/app/integrations/telegram"
+  ],
+  "allowed_runtime_files": [
+    "backend/app/identity/account_registration.py",
+    "backend/app/identity/financial_read_switch.py",
+    "backend/app/identity/financial_write_switch.py",
+    "backend/app/identity/global_id_cutover_service.py",
+    "backend/app/identity/nonfinancial_read_switch.py",
+    "backend/app/identity/notification_channel.py",
+    "backend/app/identity/ton_account_registration.py",
+    "backend/app/identity/types.py",
+    "backend/app/integrations/ads_providers.py",
+    "backend/app/integrations/ton_memo.py",
+    "backend/app/services/admin/admin_rbac.py",
+    "backend/app/services/shop_order_notifications_service.py",
+    "backend/app/services/tonconnect_proof_service.py",
+    "backend/app/services/watcher_service.py"
+  ],
+  "physical_schema_prefixes": [
+    "backend/migrations/",
+    "backend/app/models/"
+  ],
+  "removal_order": [
+    "functional_test_and_ci_repair",
+    "provider_column_physical_rename",
+    "historical_idempotency_compatibility_retirement"
+  ],
+  "temporary_alias_removed": true,
+  "completed_steps": [
+    "temporary_alias_module_removal"
+  ]
+}

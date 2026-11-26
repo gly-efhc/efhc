@@ -1,0 +1,16 @@
+{
+  "цикл": 1638,
+  "каналы_входа": [
+    "telegram",
+    "ton",
+    "browser_pwa"
+  ],
+  "хранилище_фронтенда": "sessionStorage",
+  "нормализация_до_сервиса": true,
+  "сырой_параметр_не_owner": true,
+  "сырой_параметр_не_idempotency": true,
+  "поздняя_привязка": false,
+  "существующий_account_игнорирует": true,
+  "создание_referral_link": "AccountRegistrationService",
+  "caller_migration": "bot_webapp_ton"
+}

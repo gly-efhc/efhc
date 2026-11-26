@@ -18,6 +18,8 @@ import {
 } from "../../queries/useBrowserShop";
 import { normalizeTonConnectTx } from "./browserShopTonTx";
 import { BrowserShopPreSignChecklist } from "./BrowserShopPreSignChecklist";
+import { useShopPrepayment } from "./useShopPrepayment";
+import type { PrepareSelection } from "../../services/browserShopPrepayment.service";
 import { buildUsdtTransferPlanFromBrowserShopIntent } from "../../lib/ton/browser-shop-intent";
 import { buildJettonTransferTonConnectTx, resolveSenderJettonWallet } from "../../lib/ton/jetton-transfer-builder";
 import { GENESIS_JSON_RPC_ENDPOINT, isGenesisTestRuntime, requireGenesisJsonRpcEndpoint } from "../../lib/ton/testnet-guard";
@@ -35,6 +37,7 @@ import {
 } from "../../lib/wallet-provider";
 import { useAuthState } from "../../hooks/auth/useAuthState";
 import { newIdempotencyKey } from "../../lib/idempotency";
+import { getAuthAuthorizationHeader } from "../../lib/auth-session";
 import { ApiError } from "../../lib/api";
 import { makePrimaryWallet } from "../../services/profile.service";
 import {
@@ -62,6 +65,15 @@ type CheckoutSelection = {
   vipNumber?: string;
   customEfhcAmountD8?: string;
 };
+// Opt-in for a compatible server only; existing builds keep the current checkout.
+const SHOP_PREPAYMENT_ENABLED = process.env.NEXT_PUBLIC_EFHC_SHOP_PREPAYMENT === "1";
+function prepareSelection(selection: CheckoutSelection): PrepareSelection {
+  return {
+    sku: selection.item.sku, method: selection.method, quantity: 1,
+    custom_efhc_amount_d8: isCustomEfhcPackage(selection.item) ? selection.customEfhcAmountD8 || null : null,
+  };
+}
+
 type PaymentUiState = "idle" | "pending" | "checking" | "done" | "error";
 
 const FIXED_EFHC_PACKAGE_AMOUNTS = ["10", "50", "100", "150", "200", "250", "300", "350", "500", "750", "1000", "1500", "2000", "2500", "3000"] as const;
@@ -545,6 +557,32 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   const loadError = visualProof ? null : catalogQ.error || (Boolean(token) ? bootstrapQ.error || profileQ.error : null);
   const accountLinked = visualProof || auth.authenticated || Boolean(token && (profileQ.data?.global_id || bootstrap?.global_id));
   const linkedGlobalId = visualProof ? "0000001568" : profileQ.data?.global_id || bootstrap?.global_id || auth.globalId || "";
+  const scopedShopOwner = token && !visualProof && bootstrap?.global_id
+    && (!profileQ.data?.global_id || profileQ.data.global_id === bootstrap.global_id)
+    && (!auth.authenticated || !auth.globalId || auth.globalId === bootstrap.global_id)
+    ? String(bootstrap.global_id) : "";
+  const prepayment = useShopPrepayment(SHOP_PREPAYMENT_ENABLED, scopedShopOwner, token, Boolean(checkout), checkout ? prepareSelection(checkout) : null);
+  const prepared = Boolean(prepayment.review);
+  const reviewPresentForAnotherSelection = prepayment.session?.authoritative === "prepared" && !prepared;
+  const authoritativeAmountLabel = prepayment.review ?
+    `${methodLabel(prepayment.review.quote.asset)} ${prepayment.review.quote.amount}` : null;
+  const prepaymentPending = Boolean(prepayment.session?.operation);
+  const prepaymentFinished = ["paid", "canceled", "terminal_unpaid"].includes(prepayment.session?.authoritative || "");
+  const prepaymentFenced = Boolean(prepayment.session?.dispatchedFinalAction && !prepaymentFinished);
+  const latestPrepaymentPayer = useRef({ owner: scopedShopOwner, walletAddress });
+  latestPrepaymentPayer.current = { owner: scopedShopOwner, walletAddress };
+  useEffect(() => {
+    if (!SHOP_PREPAYMENT_ENABLED || !scopedShopOwner || !prepayment.session?.refs.intent_id) return;
+    const id = prepayment.session.refs.intent_id as DbId; // Lifecycle parser enforces canonical DB ID.
+    setActiveIntentId(id);
+  }, [scopedShopOwner, prepayment.session?.refs.intent_id]);
+  useEffect(() => {
+    if (!SHOP_PREPAYMENT_ENABLED || !scopedShopOwner || prepayment.session?.authoritative !== "paid"
+        || !prepayment.session.refs.order_id) return;
+    setConfirmedOrderId(prepayment.session.refs.order_id);
+    void profileQ.refetch();
+  }, [scopedShopOwner, prepayment.session?.authoritative, prepayment.session?.refs.order_id, profileQ.refetch]);
+
   const walletLinked = visualProof || Boolean(token && bootstrap?.wallet_linked && !walletSyncRequired);
   const mainBalance = visualProof ? "1250.00000000"
     : auth.authenticated && linkedGlobalId && accountBalances.data?.global_id === linkedGlobalId
@@ -572,7 +610,8 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     setPendingPrimaryPayment(null);
     setPendingInitialSessionAddress("");
     setPendingSawDisconnect(false);
-    void executePayment(queued);
+    if (SHOP_PREPAYMENT_ENABLED) setCheckout(queued); // Wallet reconnection never dispatches Pay.
+    else void executePayment(queued);
   }, [pendingPrimaryPayment, primaryPaymentSessionReady]);
 
   useEffect(() => {
@@ -818,7 +857,14 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
       return;
     }
     try {
-      const parsed = await createIntent.mutateAsync({
+      const issue = SHOP_PREPAYMENT_ENABLED ? await prepayment.run("pay", prepareSelection(selection)) : null;
+      if (SHOP_PREPAYMENT_ENABLED && !issue?.payment) {
+        if (issue?.intent_id) setActiveIntentId(issue.intent_id);
+        if (issue?.state === "issued" || issue?.state === "paid") setCheckout(null);
+        if (!issue) setLocalError(t("portal.browser_shop.active_intent_error"));
+        return;
+      }
+      const parsed = issue?.payment ?? await createIntent.mutateAsync({
         token,
         sku: item.sku,
         quantity: 1,
@@ -844,7 +890,9 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
         tx = buildJettonTransferTonConnectTx(plan, senderJettonWallet);
       }
       if (!tx) throw new Error("WALLET_TX_MISSING");
-      if (!sameTonAddress(walletAddress, expectedAddress)) {
+      const activeWallet = SHOP_PREPAYMENT_ENABLED ? latestPrepaymentPayer.current.walletAddress : walletAddress;
+      if (!sameTonAddress(activeWallet, expectedAddress) || (SHOP_PREPAYMENT_ENABLED &&
+          (latestPrepaymentPayer.current.owner !== scopedShopOwner || String(parsed.global_id) !== scopedShopOwner))) {
         throw new Error("PRIMARY_WALLET_MISMATCH");
       }
       setWalletTxPhase("signing"); await sendTransaction(tx); setWalletTxPhase("signed");
@@ -873,11 +921,20 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
     }
     if (method === "EFHC") {
       if (!vip) { setLocalError(t("portal.browser_shop.efhc_vip_only")); return; }
-      if (!auth.authenticated || !auth.globalId) { setLocalError(t("portal.browser_shop.efhc_auth_required")); return; }
+      if (!auth.authenticated || !auth.globalId ||
+          (SHOP_PREPAYMENT_ENABLED && (!getAuthAuthorizationHeader() || String(auth.globalId) !== scopedShopOwner))) {
+        setLocalError(t("portal.browser_shop.efhc_auth_required")); return;
+      }
       const handoffGlobalId = String(bootstrap?.global_id || "").trim();
       if (handoffGlobalId && handoffGlobalId !== String(auth.globalId)) { setLocalError(t("portal.browser_shop.efhc_auth_mismatch")); return; }
       try {
-        const result = await purchaseEfhc.mutateAsync({ sku: item.sku, quantity: 1, idempotencyKey: newIdempotencyKey() });
+        const result = SHOP_PREPAYMENT_ENABLED
+          ? await prepayment.run("pay", prepareSelection(selection))
+          : await purchaseEfhc.mutateAsync({ sku: item.sku, quantity: 1, idempotencyKey: newIdempotencyKey() });
+        if (SHOP_PREPAYMENT_ENABLED && (!result || result.state !== "paid" || !result.order_id)) {
+          setLocalError(t("portal.browser_shop.active_intent_error"));
+          return;
+        }
         const orderId = shopOrderIdFromUnknown(result);
         setConfirmedOrderId(orderId); setEfhcVipPurchased(true);
         if (selection.vipNumber) setReservedVipNumber(selection.vipNumber);
@@ -924,7 +981,27 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
   }
   async function payCheckout() {
     if (!checkout) return;
+    if (SHOP_PREPAYMENT_ENABLED) {
+      if (!token) { await linkWebAccount(checkout); return; }
+      if (!scopedShopOwner || prepaymentPending || prepaymentFenced || reviewPresentForAnotherSelection) return;
+      if (!prepared) {
+        try {
+          const reply = await prepayment.run("prepare", prepareSelection(checkout));
+          if (!reply || reply.state !== "prepared") setLocalError(t("portal.browser_shop.active_intent_error"));
+        } catch { setLocalError(t("portal.browser_shop.active_intent_error")); }
+        return;
+      }
+    }
     await executePayment(checkout);
+  }
+  async function cancelPreparedCheckout() {
+    // This handler is intentionally separate from close/backdrop/Escape.
+    if (!SHOP_PREPAYMENT_ENABLED || !checkout || !prepared || prepaymentPending || prepaymentFenced) return;
+    try {
+      const reply = await prepayment.run("cancel", prepareSelection(checkout));
+      if (reply?.state === "canceled") setCheckout(null);
+      else setLocalError(t("portal.browser_shop.active_intent_error"));
+    } catch { setLocalError(t("portal.browser_shop.active_intent_error")); }
   }
 
   const busy = createIntent.isPending || purchaseEfhc.isPending || walletTxPhase === "signing" || state === "checking" || state === "pending" || actionDenied || resumeIntent;
@@ -1302,7 +1379,7 @@ export default function BrowserShopPage({ view = "shop" }: { view?: ShopPageView
 
       </div>
 
-      {checkout ? <div ref={checkoutBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCheckout(null); }}><section ref={checkoutDialogRef} className="efhc-shop-checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle" aria-describedby={localError ? "checkoutSummary checkoutError" : "checkoutSummary"} tabIndex={-1}><button ref={checkoutCloseButtonRef} className="efhc-shop-modal-close" type="button" disabled={busy} onClick={() => setCheckout(null)} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC · {t("portal.browser_shop.checkout_label")}</span>{isCustomEfhcPackage(checkout.item) ? <label className="efhc-shop-exchange-title" id="checkoutTitle"><span>{t("portal.browser_shop.custom_exchange_title")}</span><input data-shop-checkout-initial-focus inputMode="numeric" pattern="[0-9]*" value={customEfhcAmount} onChange={(event) => updateCustomExchangeAmount(event.target.value)} placeholder={t("portal.browser_shop.custom_amount_placeholder")} aria-label={t("portal.browser_shop.custom_amount_aria")} /></label> : <h2 id="checkoutTitle">{checkout.vipMode === "selected" ? `EFHC VIP NFT #${checkout.vipNumber}` : localized(checkout.item, "title", checkout.item.title)}</h2>}<div className="efhc-shop-checkout-summary" id="checkoutSummary">{isCustomEfhcPackage(checkout.item) ? <><div><small>{t("portal.browser_shop.custom_rate_label")}</small><strong>{customRateLabel(checkout.item, checkout.method)}</strong></div><div data-exchange-total="true"><small>{t("portal.browser_shop.custom_total_label")}</small><strong>{checkoutPriceLabel(checkout)}</strong></div></> : <div><small>{t("portal.browser_shop.price_label")}</small><strong>{checkoutPriceLabel(checkout)}</strong></div>}<div><small>{t("portal.browser_shop.profile_label")}</small><strong>{linkedGlobalId ? `Global ID ${linkedGlobalId}` : t("portal.browser_shop.login_required")}</strong></div>{checkout.vipMode ? <div><small>{t("portal.browser_shop.delivery_label")}</small><strong>{checkout.vipMode === "selected" ? `${t("portal.browser_shop.number_prefix")} ${checkout.vipNumber}` : t("portal.browser_shop.vip_any_title")}</strong></div> : null}{checkout.method !== "EFHC" ? <div><small>{t("portal.browser_shop.payment_wallet_label")}</small><strong className="is-wallet">{paymentWalletAddress ? t("portal.browser_shop.payment_wallet_selected") : t("portal.browser_shop.choose_ton_wallet")}</strong></div> : <div><small>{t("portal.browser_shop.debit_label")}</small><strong>{t("portal.browser_shop.main_balance_d8")}</strong></div>}</div>{localError ? <section id="checkoutError" className="efhc-shop-landing_notice is-error efhc-shop-checkout-error" role="alert"><div><strong>{t("common.error")}</strong><p>{localError}</p></div></section> : null}{checkout.method !== "EFHC" ? <BrowserShopPreSignChecklist asset={checkout.method} amount={checkoutPriceLabel(checkout)} ready={Boolean(paymentWalletAddress)} /> : null}{checkout.method !== "EFHC" && paymentWalletAddress ? <Button variant="secondary" onClick={() => openWalletChooser(checkout)}>{t("portal.browser_shop.change_wallet")}</Button> : null}<Button onClick={() => void payCheckout()} disabled={busy || !methodAllowed(checkout.item, checkout.method) || (isCustomEfhcPackage(checkout.item) && !checkout.customEfhcAmountD8)}>{t("portal.browser_shop.pay_button")}</Button></section></div> : null}
+      {checkout ? <div ref={checkoutBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setCheckout(null); }}><section ref={checkoutDialogRef} className="efhc-shop-checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkoutTitle" aria-describedby={localError ? "checkoutSummary checkoutError" : "checkoutSummary"} tabIndex={-1}><button ref={checkoutCloseButtonRef} className="efhc-shop-modal-close" type="button" disabled={busy} onClick={() => setCheckout(null)} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC · {t("portal.browser_shop.checkout_label")}</span>{isCustomEfhcPackage(checkout.item) ? <label className="efhc-shop-exchange-title" id="checkoutTitle"><span>{t("portal.browser_shop.custom_exchange_title")}</span><input disabled={SHOP_PREPAYMENT_ENABLED && (prepared || prepaymentFenced || prepaymentPending)} data-shop-checkout-initial-focus inputMode="numeric" pattern="[0-9]*" value={customEfhcAmount} onChange={(event) => updateCustomExchangeAmount(event.target.value)} placeholder={t("portal.browser_shop.custom_amount_placeholder")} aria-label={t("portal.browser_shop.custom_amount_aria")} /></label> : <h2 id="checkoutTitle">{checkout.vipMode === "selected" ? `EFHC VIP NFT #${checkout.vipNumber}` : localized(checkout.item, "title", checkout.item.title)}</h2>}<div className="efhc-shop-checkout-summary" id="checkoutSummary">{isCustomEfhcPackage(checkout.item) ? <><div><small>{t("portal.browser_shop.custom_rate_label")}</small><strong>{customRateLabel(checkout.item, checkout.method)}</strong></div><div data-exchange-total="true"><small>{t("portal.browser_shop.custom_total_label")}</small><strong>{authoritativeAmountLabel ?? checkoutPriceLabel(checkout)}</strong></div></> : <div><small>{t("portal.browser_shop.price_label")}</small><strong>{authoritativeAmountLabel ?? checkoutPriceLabel(checkout)}</strong></div>}<div><small>{t("portal.browser_shop.profile_label")}</small><strong>{linkedGlobalId ? `Global ID ${linkedGlobalId}` : t("portal.browser_shop.login_required")}</strong></div>{checkout.vipMode ? <div><small>{t("portal.browser_shop.delivery_label")}</small><strong>{checkout.vipMode === "selected" ? `${t("portal.browser_shop.number_prefix")} ${checkout.vipNumber}` : t("portal.browser_shop.vip_any_title")}</strong></div> : null}{checkout.method !== "EFHC" ? <div><small>{t("portal.browser_shop.payment_wallet_label")}</small><strong className="is-wallet">{paymentWalletAddress ? t("portal.browser_shop.payment_wallet_selected") : t("portal.browser_shop.choose_ton_wallet")}</strong></div> : <div><small>{t("portal.browser_shop.debit_label")}</small><strong>{t("portal.browser_shop.main_balance_d8")}</strong></div>}</div>{localError ? <section id="checkoutError" className="efhc-shop-landing_notice is-error efhc-shop-checkout-error" role="alert"><div><strong>{t("common.error")}</strong><p>{localError}</p></div></section> : null}{checkout.method !== "EFHC" ? <BrowserShopPreSignChecklist asset={checkout.method} amount={authoritativeAmountLabel ?? checkoutPriceLabel(checkout)} ready={Boolean(paymentWalletAddress)} /> : null}{checkout.method !== "EFHC" && paymentWalletAddress ? <Button variant="secondary" onClick={() => openWalletChooser(checkout)}>{t("portal.browser_shop.change_wallet")}</Button> : null}{SHOP_PREPAYMENT_ENABLED && prepared && !prepaymentFenced ? <Button variant="secondary" disabled={prepaymentPending} onClick={() => void cancelPreparedCheckout()}>{t("common.cancel")}</Button> : null}{SHOP_PREPAYMENT_ENABLED && prepayment.session && (!prepared || prepaymentFenced) && !prepaymentFinished ? <Button variant="secondary" disabled={prepaymentPending} onClick={() => { void prepayment.run("status").catch(() => setLocalError(t("portal.browser_shop.active_intent_error"))); }}>{t("common.refresh")}</Button> : null}<Button onClick={() => void payCheckout()} disabled={busy || (SHOP_PREPAYMENT_ENABLED && (prepaymentPending || prepaymentFenced || reviewPresentForAnotherSelection || (!!token && !scopedShopOwner))) || !methodAllowed(checkout.item, checkout.method) || (isCustomEfhcPackage(checkout.item) && !checkout.customEfhcAmountD8)}>{t(SHOP_PREPAYMENT_ENABLED && !prepared ? "onboarding.next" : "portal.browser_shop.pay_button")}</Button></section></div> : null}
 
       {walletChooserOpen ? <div ref={walletChooserBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeWalletChooser(); }}><section ref={walletChooserDialogRef} className="efhc-shop-wallet-modal" role="dialog" aria-modal="true" aria-labelledby="walletChooserTitle" tabIndex={-1}><button ref={walletChooserCloseButtonRef} className="efhc-shop-modal-close" type="button" onClick={closeWalletChooser} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC</span><h2 id="walletChooserTitle">{t("portal.browser_shop.wallet_address_chooser_title")}</h2><p>{t("portal.browser_shop.wallet_address_chooser_detail")}</p><div className="efhc-shop-wallet-list">{linkedWalletChoices.map((wallet, index) => <button key={String(wallet.id)} type="button" data-linked-wallet-id={String(wallet.id)} data-active={String(wallet.wallet_address === paymentWalletAddress)} onClick={() => void chooseLinkedWallet(wallet)}><span>{wallet.is_primary ? "★" : String(index + 1)}</span><strong>{wallet.is_primary ? t("portal.browser_shop.primary_wallet") : `${t("portal.browser_shop.additional_wallet")} ${index + 1}`}</strong><small>{walletPrivateSuffix(wallet.wallet_address) ? `•••• ${walletPrivateSuffix(wallet.wallet_address)}` : t("portal.browser_shop.wallet_address_private")}</small></button>)}</div></section></div> : null}
       {selectedOrder ? <div ref={orderDetailBackdropRef} className="efhc-shop-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeOrderDetail(); }}><section ref={orderDetailDialogRef} className="efhc-shop-order-modal" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle" tabIndex={-1}><button ref={orderDetailCloseButtonRef} className="efhc-shop-modal-close" type="button" onClick={closeOrderDetail} aria-label={t("portal.browser_shop.close")}>×</button><span>EFHC · {t("portal.browser_shop.order_details_title")}</span><h2 id="orderDetailTitle">{t("portal.browser_shop.order_id_label")} #{String(selectedOrder.id)}</h2>{orderProductLabel(selectedOrder.sku) ? <p className="efhc-shop-order-product">{orderProductLabel(selectedOrder.sku)}</p> : null}<div className="efhc-shop-order-detail-grid"><div><small>{t("portal.browser_shop.order_id_label")}</small><strong>{String(selectedOrder.id)}</strong></div><div><small>{t("portal.browser_shop.status_label")}</small><strong>{orderStatusLabel(selectedOrder.status, t)}</strong></div><div><small>Global ID</small><strong>{selectedOrder.global_id}</strong></div><div><small>{t("portal.browser_shop.payment_method_title")}</small><strong>{selectedOrder.payment_method || "—"}</strong></div><div><small>{t("portal.browser_shop.price_label")}</small><strong>{selectedOrder.expected_amount || "—"}</strong></div><div><small>{t("portal.browser_shop.paid_at_label")}</small><strong>{selectedOrder.paid_at ? new Date(selectedOrder.paid_at).toLocaleString() : new Date(selectedOrder.created_at).toLocaleString()}</strong></div>{selectedOrder.tx_hash ? <div><small>{t("portal.browser_shop.tx_hash_label")}</small><code>{selectedOrder.tx_hash}</code></div> : null}<div><small>{t("portal.browser_shop.created_label")}</small><strong>{new Date(selectedOrder.created_at).toLocaleString()}</strong></div><div><small>{t("portal.browser_shop.updated_label")}</small><strong>{new Date(selectedOrder.updated_at).toLocaleString()}</strong></div></div></section></div> : null}

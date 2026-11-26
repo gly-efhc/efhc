@@ -1,0 +1,40 @@
+{
+  "схема": "EFHC_AUTH_RUNTIME_SERVICES_V1",
+  "цикл": 1613,
+  "challenge": {
+    "one_time": true,
+    "atomic_consume": true,
+    "raw_value_in_storage": false,
+    "caller_metadata_accepted": false,
+    "issuance_rate_limited": true,
+    "outstanding_quota": true,
+    "bounded_terminal_cleanup": true
+  },
+  "session": {
+    "server_side": true,
+    "hashed_token": true,
+    "raw_value_in_storage": false,
+    "revocable": true,
+    "last_seen_updated": true,
+    "active_account_required": true
+  },
+  "roles": {
+    "owner": "global_id",
+    "provider_specific": false,
+    "concurrent_grant": "postgresql_upsert"
+  },
+  "dependencies": {
+    "missing_credentials": 401,
+    "malformed_or_inactive_session": 401,
+    "missing_role": 403
+  },
+  "запреты": {
+    "account_creation": true,
+    "identity_creation": true,
+    "auto_merge": true,
+    "public_auth_endpoint": true,
+    "telegram_switch": true,
+    "ton_proof": true,
+    "financial_update": true
+  }
+}
