@@ -279,9 +279,6 @@
     "docs/audits/FUNCTION_RECOVERY_CONSOLIDATION_1719_1728.md",
     "docs/backend/FINANCIAL_AUDIT_3_REMEDIATION_EVIDENCE.md",
     "docs/backend/RUNTIME_COMPATIBILITY_CANON.md",
-    "docs/cycles/WORK_CYCLES_1701-1800.md",
-    "docs/frontend/EFHC_FRONTEND_OWNER_QA_v182.md",
-    "docs/frontend/FRONTEND_v182_BACKEND_RECONCILIATION_HANDOFF.md",
     "docs/payments/WALLET_PAYMENT_RECONCILIATION_CANON.md",
     "frontend/public/brands/facebook.svg",
     "frontend/public/brands/telegram.svg",
@@ -1270,8 +1267,22 @@
   },
   "critical_registered_python_symbol_count": 402,
   "critical_registered_python_module_count": 80,
-  "frontend_authority": "INTEGRATED_FRONTEND_SOURCE_v174.61_FRONTEND_v182",
-  "frontend_merge_policy": "FRONTEND_v182_OWNER_AUTHORITY__LATEST_OWNER_CANON_OVERLAYS__RECONCILIATION_HANDOFF_REQUIRED",
+  "frontend_authority": "INTEGRATED_FRONTEND_SOURCE",
+  "frontend_merge_policy": "FRONTEND_OWNER_AUTHORITY__LATEST_OWNER_CANON_OVERLAYS__RECONCILIATION_HANDOFF_REQUIRED",
+  "frontend_source_releases": {
+    "integrated": "174.61",
+    "reference": "182"
+  },
+  "archive_evidence": {
+    "repository": "gly-efhc/efhc_archive",
+    "references": [
+      "04_CYCLES/FRONTEND_RECONSTRUCTION/RECONSTRUCTION_CYCLE_MANIFEST.json",
+      "05_SSOT/FRONTEND/APPLICATION_RULES.md",
+      "10_FRONTEND/FIXED_PAGES.md"
+    ],
+    "original_source_repository": "EFHC-Project/EFHC_cod",
+    "original_source_commit": "58d29bf769db6fa123ade5e71bc5104548b4ed43"
+  },
   "internal_hidden_route_count": 8,
   "required_internal_routes": [
     "GET /cron/tick",
