@@ -146,15 +146,15 @@ jobs:
       - name: Verify guest pages and denied Admin in Chrome
         timeout-minutes: 12
         env:
-          EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-c0034-browser-tools/package.json
+          EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-preview-browser-tools/package.json
           EFHC_PAGES_URL: https://gly-efhc.github.io/efhc/
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-c0034-live-artifacts
         run: |
           set -euo pipefail
-          if [ ! -f "$RUNNER_TEMP/efhc-c0034-browser-tools/node_modules/playwright-core/package.json" ]; then
-            npm install --prefix "$RUNNER_TEMP/efhc-c0034-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          if [ ! -f "$RUNNER_TEMP/efhc-preview-browser-tools/node_modules/playwright-core/package.json" ]; then
+            npm install --prefix "$RUNNER_TEMP/efhc-preview-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
           fi
-          npm --prefix "$RUNNER_TEMP/efhc-c0034-browser-tools" list playwright-core --depth=0
+          npm --prefix "$RUNNER_TEMP/efhc-preview-browser-tools" list playwright-core --depth=0
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           node --check site/frontend/tests/parity/live-pages.mjs
           node site/frontend/tests/parity/live-pages.mjs
