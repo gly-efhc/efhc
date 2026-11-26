@@ -141,7 +141,7 @@ jobs:
           node site/frontend/tests/parity/persistent-pages.mjs
       - name: Retain mandatory persistence verification
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-persistence-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/efhc-persistence-artifacts/
@@ -176,7 +176,7 @@ jobs:
           test "$failed" -eq 0
       - name: Retain visual review and precise results
         if: ${{ always() && (inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react'))) }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-parity-${{ github.sha }}
           path: ${{ runner.temp }}/efhc-parity-artifacts/

@@ -160,7 +160,7 @@ jobs:
           node site/frontend/tests/parity/live-pages.mjs
       - name: Retain live C0034 route evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-c0034-route-evidence-${{ github.run_id }}
           path: ${{ runner.temp }}/efhc-c0034-live-artifacts/

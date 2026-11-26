@@ -308,7 +308,7 @@ jobs:
           node site/frontend/tests/parity/persistent-pages.mjs
       - name: Retain mandatory persistence evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-persistence-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/efhc-persistence-artifacts/
@@ -429,7 +429,7 @@ jobs:
       - name: Upload pre-deploy diagnostic logs, even when tests fail
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-pages-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/efhc-pages-diagnostics/
@@ -464,7 +464,7 @@ jobs:
 
       - name: Retain USER recovery review artifacts
         if: ${{ always() && inputs.full_review == true }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: efhc-parity-${{ github.sha }}
           path: ${{ runner.temp }}/efhc-parity-artifacts/
