@@ -453,7 +453,7 @@ class GenesisGuestPoolTests(unittest.IsolatedAsyncioTestCase):
         """Owner 3101 stays usable; guest quarantine remains operative for others."""
         from demo_backend.preview_access import test_admin_lease_active
 
-        secret = "c0046-owner-lease-resume-token-for-test-only"
+        secret = "reserved-admin-lease-resume-token-for-test-only"
         digest = hashlib.sha256(secret.encode("ascii")).hexdigest()
         with patch.dict(os.environ, {
             "EFHC_TEST_ADMIN_GLOBAL_IDS": "0000003101,0000003257",

@@ -1,4 +1,4 @@
-"""C0046: GitHub-tracked, nonsecret Admin Global ID allowlist for Genesis TEST."""
+"""Genesis TEST Admin Global ID allowlist checks."""
 from __future__ import annotations
 
 import tempfile

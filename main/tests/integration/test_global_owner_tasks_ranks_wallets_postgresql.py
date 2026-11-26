@@ -96,7 +96,7 @@ async def test_ton_only_задачи_кошельки_и_рейтинг_испо
                 limit_per_user,
                 performed_count
             ) VALUES (
-                'cycle1644_ad',
+                'owner_ad_fixture',
                 'Cycle 1644 ad',
                 'watch_ad',
                 TRUE,
@@ -136,9 +136,9 @@ async def test_ton_only_задачи_кошельки_и_рейтинг_испо
     pending = await complete_task(
         db_session,
         global_id=ton_global_id,
-        task_code="cycle1644_ad",
+        task_code="owner_ad_fixture",
         proof={},
-        idempotency_key="cycle1644-ad-credit",
+        idempotency_key="owner-ad-credit-fixture",
     )
     assert pending["ok"] is True
     assert pending["bonus_efhc"] == Decimal("0")
@@ -146,11 +146,11 @@ async def test_ton_only_задачи_кошельки_и_рейтинг_испо
     credited = await confirm_ad_view_and_credit(
         db_session,
         global_id=ton_global_id,
-        task_code="cycle1644_ad",
+        task_code="owner_ad_fixture",
         provider="test",
-        provider_ref="cycle1644",
+        provider_ref="owner-ad-provider-fixture",
         bonus_efhc=Decimal("1.25000000"),
-        idempotency_key="cycle1644-ad-credit",
+        idempotency_key="owner-ad-credit-fixture",
     )
     assert credited["ok"] is True
     assert credited["bonus_efhc"] == Decimal("1.25000000")
@@ -164,7 +164,7 @@ async def test_ton_only_задачи_кошельки_и_рейтинг_испо
                  WHERE idempotency_key = :idk
                 """
             ),
-            {"idk": "cycle1644-ad-credit"},
+            {"idk": "owner-ad-credit-fixture"},
         )
     ).one()
     assert int(owner_row.global_id) == ton_global_id
@@ -174,7 +174,7 @@ async def test_ton_only_задачи_кошельки_и_рейтинг_испо
         global_id=ton_global_id,
     )
     assert any(
-        item.task_code == "cycle1644_ad"
+        item.task_code == "owner_ad_fixture"
         for item in tasks.items
     )
     rewards = await list_task_bonus_log(
