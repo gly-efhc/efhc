@@ -30,7 +30,7 @@
     "dataloader": "^2.0.0",
     "eventsource": "^2.0.2",
     "jssha": "3.3.3",
-    "next": "16.4.3",
+    "next": "16.4.6",
     "node-fetch": "^2.7.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
