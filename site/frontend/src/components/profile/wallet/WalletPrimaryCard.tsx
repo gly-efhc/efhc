@@ -26,10 +26,13 @@ export function WalletPrimaryCard(props: Props) {
       data-wallet-id={String(wallet.id)}
       data-wallet-session-owned={props.sessionOwned ? "true" : "false"}
     >
-      {wallet.is_project_test === true ? <span className="source-muted" data-wallet-project-test="true">TEST</span> : null}
-      <WalletAddressVerification address={wallet.wallet_address} />
-
       <div className="efhc-wallet-primary-actions standalone-wallet-actions">
+        <WalletCardAction
+          sizeLabel={t("wallet.primary_badge")}
+          status="wallet-primary-badge"
+        >
+          {t("wallet.primary_badge")}
+        </WalletCardAction>
         {props.onRemove ? (
           <WalletCardAction
             sizeLabel={t("wallet.primary_badge")}
@@ -41,13 +44,8 @@ export function WalletPrimaryCard(props: Props) {
             {t("wallet.remove")}
           </WalletCardAction>
         ) : null}
-        <WalletCardAction
-          sizeLabel={t("wallet.primary_badge")}
-          status="wallet-primary-badge"
-        >
-          {t("wallet.primary_badge")}
-        </WalletCardAction>
       </div>
+      <WalletAddressVerification address={wallet.wallet_address} projectTest={wallet.is_project_test === true} />
     </div>
   );
 }
