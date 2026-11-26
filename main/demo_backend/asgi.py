@@ -118,6 +118,8 @@ async def demo_isolation(request: Request, call_next):
                     SESSIONS.revoke(operator_session.token)
                     return JSONResponse({"detail":"GUEST_LEASE_EXPIRED_OR_REVOKED"},
                                         status_code=401)
+            if CONFIG.genesis_mode and operator_session.scope == "guest":
+                request.state.genesis_project_wallet_lease_hash = operator_session.lease_hash
             visual_aggregate = (
                 operator_session.scope == "visual"
                 and CONFIG.visual_access_active

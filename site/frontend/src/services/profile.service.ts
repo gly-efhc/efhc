@@ -14,6 +14,7 @@ export const walletItemSchema = z.object({
   is_primary: z.boolean(),
   is_active: z.boolean(),
   proof_verified: z.boolean(),
+  is_project_test: z.boolean().optional().default(false),
   created_at: z.string().nullable().optional().transform(
     (value) => value ?? "",
   ),

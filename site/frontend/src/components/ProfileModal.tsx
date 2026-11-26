@@ -56,6 +56,8 @@ type WalletItem = {
   wallet_app: string | null;
   is_primary: boolean;
   is_active: boolean;
+  proof_verified?: boolean;
+  is_project_test?: boolean;
   created_at: string;
 };
 

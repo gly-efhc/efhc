@@ -47,8 +47,10 @@ async def wallets_me(
     db: AsyncSession = Depends(get_db),
     owner: FinancialReadOwner = Depends(get_financial_read_owner),
 ) -> WalletMeOut:
+    gid = str(global_id_from_database(owner.global_id))
+    project_lease_hash = getattr(request.state, "genesis_project_wallet_lease_hash", None)
     items = await wallets_service.list_wallets(
-        db, global_id=str(global_id_from_database(owner.global_id))
+        db, global_id=gid, **({"project_lease_hash": project_lease_hash} if project_lease_hash else {})
     )
     wallets = [WalletItemOut.model_validate(w, from_attributes=True) for w in items]
     return WalletMeOut(
@@ -276,11 +278,17 @@ async def make_primary(
     db: AsyncSession = Depends(get_db),
     owner: FinancialReadOwner = Depends(get_financial_read_owner),
 ) -> None:
-    await wallets_service.make_primary(
-        db,
-        global_id=str(global_id_from_database(owner.global_id)),
-        wallet_id=wallet_id,
-    )
+    gid = str(global_id_from_database(owner.global_id))
+    lease_hash = getattr(request.state, "genesis_project_wallet_lease_hash", None)
+    if lease_hash:
+        try:
+            if await wallets_service.manage_project_test_wallet(
+                db, global_id=gid, wallet_id=wallet_id, lease_hash=lease_hash, remove=False,
+            ):
+                return
+        except wallets_service.WalletConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await wallets_service.make_primary(db, global_id=gid, wallet_id=wallet_id)
 
 
 @router.delete(
@@ -294,8 +302,14 @@ async def delete_wallet(
     db: AsyncSession = Depends(get_db),
     owner: FinancialReadOwner = Depends(get_financial_read_owner),
 ) -> None:
-    await wallets_service.deactivate_wallet(
-        db,
-        global_id=str(global_id_from_database(owner.global_id)),
-        wallet_id=wallet_id,
-    )
+    gid = str(global_id_from_database(owner.global_id))
+    lease_hash = getattr(request.state, "genesis_project_wallet_lease_hash", None)
+    if lease_hash:
+        try:
+            if await wallets_service.manage_project_test_wallet(
+                db, global_id=gid, wallet_id=wallet_id, lease_hash=lease_hash, remove=True,
+            ):
+                return
+        except wallets_service.WalletConflict as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await wallets_service.deactivate_wallet(db, global_id=gid, wallet_id=wallet_id)

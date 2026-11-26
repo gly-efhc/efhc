@@ -13704,6 +13704,11 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "is_project_test": {
+            "type": "boolean",
+            "title": "Is Project Test",
+            "default": false
           }
         },
         "type": "object",

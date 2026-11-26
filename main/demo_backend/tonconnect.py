@@ -10,6 +10,8 @@ provider resolution. No new tables are introduced.
 """
 from __future__ import annotations
 
+import re
+
 from demo_backend.session_store import DemoSessionStore
 from fastapi import Request
 
@@ -59,5 +61,9 @@ def genesis_guest_wallet_route(method: str, path: str) -> str | None:
     if method == "GET" and path in _GUEST_WALLET_READ:
         return "read"
     if method == "POST" and path in _GUEST_WALLET_WRITES:
+        return "write"
+    if method == "POST" and re.fullmatch(r"/api/wallets/[1-9][0-9]{0,18}/make-primary", path):
+        return "write"
+    if method == "DELETE" and re.fullmatch(r"/api/wallets/[1-9][0-9]{0,18}", path):
         return "write"
     return None

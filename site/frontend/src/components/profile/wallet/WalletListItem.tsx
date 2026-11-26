@@ -12,6 +12,7 @@ export type WalletListItemModel = {
   is_primary: boolean;
   is_active: boolean;
   proof_verified?: boolean;
+  is_project_test?: boolean;
   created_at: string;
 };
 
@@ -34,6 +35,7 @@ export function WalletListItem(props: Props) {
       data-wallet-id={String(wallet.id)}
       data-wallet-session-owned={props.sessionOwned ? "true" : "false"}
     >
+      {wallet.is_project_test === true ? <span className="source-muted" data-wallet-project-test="true">TEST</span> : null}
       <WalletAddressVerification address={wallet.wallet_address} />
 
       <div className="efhc-wallet-item_actions standalone-wallet-actions">

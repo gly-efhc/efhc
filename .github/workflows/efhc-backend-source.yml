@@ -92,7 +92,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install isolated test dependencies
-        run: python -m pip install sqlalchemy asyncpg
+        run: python -m pip install 'sqlalchemy[asyncio]>=2.0,<2.1' 'asyncpg>=0.29,<1'
       - name: Test deterministic project bindings, guest recycle and external wallet isolation
         working-directory: main
         env:
