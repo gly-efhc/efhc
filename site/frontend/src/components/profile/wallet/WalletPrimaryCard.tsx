@@ -45,7 +45,7 @@ export function WalletPrimaryCard(props: Props) {
           </WalletCardAction>
         ) : null}
       </div>
-      <WalletAddressVerification address={wallet.wallet_address} />
+      <WalletAddressVerification address={wallet.wallet_address} projectTest={wallet.is_project_test === true} />
     </div>
   );
 }
