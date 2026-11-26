@@ -80,7 +80,11 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Install browser driver for full review
         if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
-        run: npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
+        run: |
+          if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
+            npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          fi
+          npm --prefix "$RUNNER_TEMP/efhc-browser-tools" list playwright-core --depth=0
       - name: Run TypeScript semantic checks
         run: |
           cd "$RUNNER_TEMP/efhc-parity-build"
@@ -119,7 +123,10 @@ jobs:
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-persistence-artifacts
         run: |
           set -euo pipefail
-          npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@1.64.1 --ignore-scripts --no-audit --no-fund
+          if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
+            npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          fi
+          npm --prefix "$RUNNER_TEMP/efhc-browser-tools" list playwright-core --depth=0
           python3 site/ci/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-parity-build/out" --base-path "/${GITHUB_REPOSITORY#*/}"
           mkdir -p "$RUNNER_TEMP/efhc-persistence-http"
           ln -s "$RUNNER_TEMP/efhc-parity-build/out" "$RUNNER_TEMP/efhc-persistence-http/${GITHUB_REPOSITORY#*/}"

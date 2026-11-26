@@ -1,0 +1,16 @@
+name: CI toolchain policy
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ci-toolchain-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: python3 -I -m unittest discover -s site/ci -p test_ci_version_policy.py -v
