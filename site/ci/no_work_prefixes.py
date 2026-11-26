@@ -18,6 +18,8 @@ POLICY_PATH = 'site/ci/work-prefix-exceptions.json'
 APPROVED_POLICY_TRANSITIONS = {
     '67a6510c74031e83f19e7940543537117ff135c0e4bcac23986ef8f890bff09f':
         'b1e44354e07b7e508c34c769c33f1d0924c96fde9a5adac9caf00a50b6057b63',
+    'b1e44354e07b7e508c34c769c33f1d0924c96fde9a5adac9caf00a50b6057b63':
+        '5e3d98a3a5d78821e522ecb0bbe383dc831d5cd8c23ef15d80a38449a9e0e646',
 }
 
 IDENTITIES_PATH = 'site/frontend/src/design-system/source-identities.json'
@@ -82,8 +84,12 @@ def read_policy(ref):
     policy = json.loads(raw)
     if policy.get('schema') != 1 or set(policy) != {'schema', 'exceptions'}:
         raise ValueError('invalid exception policy')
+    contract_records = set()
     for item in policy['exceptions']:
-        if set(item) != {'path', 'literal', 'kind', 'reason'}:
+        fields = {'path', 'literal', 'kind', 'reason'}
+        if item.get('kind') == 'verified-contract':
+            fields.add('max_count')
+        if set(item) != fields:
             raise ValueError('exception must specify exact path, literal, kind and reason')
         if not item['reason'].strip() or not item['literal'] or any(x in item['path'] for x in ('*', '?', '..')):
             raise ValueError('blanket/undocumented exceptions are forbidden')
@@ -105,6 +111,17 @@ def read_policy(ref):
         elif item['kind'] == 'dependency-comment':
             if Path(item['path']).name != 'requirements.txt' or not re.fullmatch(r'#[^\r\n]+', item['literal']):
                 raise ValueError('invalid exact requirements comment exception')
+        elif item['kind'] == 'verified-contract':
+            field, sep, token = item['literal'].partition(':')
+            pathname = Path(item['path'])
+            key = (item['path'], item['literal'])
+            if (not sep or type(item['max_count']) is not int or not 1 <= item['max_count'] <= 16
+                    or key in contract_records or pathname.is_absolute()
+                    or not (SEGMENT.search(token) or CAMEL.search(token))
+                    or not ((field == 'path' and token == pathname.name and item['max_count'] == 1)
+                            or (field == 'identifier' and TOKEN.fullmatch(token)))):
+                raise ValueError('invalid bounded contract identity exception')
+            contract_records.add(key)
         elif item['kind'] != 'historical-source':
             raise ValueError('unknown exception kind')
     return policy
@@ -208,7 +225,7 @@ def identities(path, content, policy):
     if path == POLICY_PATH:
         return found
     for item in policy['exceptions']:
-        if path == item['path']:
+        if path == item['path'] and item['kind'] != 'verified-contract':
             text = mask_exact_exception(text, item)
     # Full quoted Git/SHA checksums and CSS declaration values are data, not
     # work-number identities. Selectors/function names are still inspected.
@@ -224,6 +241,13 @@ def identities(path, content, policy):
             found['identifier:' + token] += 1
     for match in DOM_WORK_VALUE.finditer(text):
         found['attribute:' + match[1] + '=' + (match[2] or match[3])] += 1
+    for item in policy['exceptions']:
+        if item['kind'] == 'verified-contract' and item['path'] == path:
+            key = item['literal']
+            if found[key]:
+                found[key] -= min(found[key], item['max_count'])
+                if not found[key]:
+                    del found[key]
     return found
 
 
