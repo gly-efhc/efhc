@@ -30,7 +30,7 @@
     "@tonconnect/sdk": "5.0.0",
     "@tonconnect/ui-react": "5.0.1",
     "@twa-dev/sdk": "^8.0.2",
-    "axios": "1.20.0",
+    "axios": "1.21.1",
     "buffer": "^6.0.3",
     "dataloader": "^2.0.0",
     "eventsource": "^2.0.2",
