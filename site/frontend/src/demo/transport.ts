@@ -9,6 +9,12 @@ import { demoFetch } from "./request";
 export async function demoRawRequest(
   path: string, method: HttpMethod, options: ApiRequestOptions = {},
 ): Promise<Response> {
+  const requireCurrentOperation = () => {
+    if (options.beforeSend && !options.beforeSend()) {
+      throw new ApiError({ status: 409, code: "CONFIRMED_OPERATION_CONTEXT_CHANGED" });
+    }
+  };
+  requireCurrentOperation();
   const guest = ["guest", "visual"].includes(currentDemoSessionScope() || "");
   const normalized = normalizeApiPath(path);
   // C0034 preview writes use canonical TEST APIs, guest scope remains read-only.
@@ -39,6 +45,7 @@ export async function demoRawRequest(
     headers["X-EFHC-Test-CSRF"] = await sessionCsrf();
   }
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  requireCurrentOperation();
   const response = await demoFetch(`${demoApiOrigin()}${endpoint}`, {
     method, headers, credentials: "include", cache: "no-store", signal: options.signal,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),

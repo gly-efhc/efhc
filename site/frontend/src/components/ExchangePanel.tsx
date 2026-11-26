@@ -13,7 +13,7 @@ import {
 
 type Props = {
   maxKwh: string;
-  onExchange: (amountKwh: string) => Promise<void>;
+  onExchange: (amountKwh: string, amountStillSelected: () => boolean) => Promise<void>;
   pending?: boolean;
 };
 
@@ -54,6 +54,7 @@ export function ExchangePanel(props: Props) {
   }, [props.maxKwh]);
   const [amount, setAmount] = useOwnerDraft("exchange.amount","0.00000000");
   const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const amountRevision = useRef(0);
   const cardSurface = useInterfaceVariantSurface<HTMLDivElement>("XC", { registerDots: false, interactive: false });
   const actionSurface = useInterfaceVariantSurface<HTMLDivElement>("XA", { registerDots: false, interactive: false });
 
@@ -88,10 +89,12 @@ export function ExchangePanel(props: Props) {
   }, [amountIsValid, overMax, t]);
 
   function setMax() {
+    amountRevision.current++;
     setAmount(fromScaledBigint(maxScaled, 8));
   }
 
   function onAmountChange(value: string) {
+    amountRevision.current++;
     setAmount(sanitizeAmountInput(value));
   }
 
@@ -236,7 +239,13 @@ export function ExchangePanel(props: Props) {
         <Button
           className="w-full efhc-theme03-cta"
           data-exchange-submit-action="true"
-          onClick={() => props.onExchange(normalizedAmount)}
+          onClick={() => {
+            const revision = amountRevision.current;
+            const inputValue = amountInputRef.current?.value;
+            return props.onExchange(normalizedAmount, () =>
+              revision === amountRevision.current && inputValue !== undefined &&
+              amountInputRef.current?.value === inputValue);
+          }}
           disabled={disabled}
         >
           {props.pending

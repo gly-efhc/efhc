@@ -81,6 +81,7 @@ export async function createWithdrawRequest(args: {
   amount: string;
   walletId: DbId;
   idempotencyKey: string;
+  beforeSend?: () => boolean;
 }): Promise<WithdrawDetail> {
   const body = ensureWithdrawRequestCreate({
     amount: args.amount,
@@ -88,6 +89,7 @@ export async function createWithdrawRequest(args: {
   });
   const raw = await apiRequest<unknown>(WITHDRAW_REQUEST_PATH, "POST", {
     idempotencyKey: args.idempotencyKey,
+    beforeSend: args.beforeSend,
     body,
   });
   return parseWithdrawDetail(raw);
@@ -96,6 +98,7 @@ export async function createWithdrawRequest(args: {
 export async function cancelWithdrawRequest(args: {
   requestId: DbId;
   idempotencyKey: string;
+  beforeSend?: () => boolean;
 }): Promise<WithdrawDetail> {
   const raw = await apiRequest<unknown>(
     WITHDRAW_CANCEL_PATH.replace(
@@ -105,6 +108,7 @@ export async function cancelWithdrawRequest(args: {
     "POST",
     {
       idempotencyKey: args.idempotencyKey,
+      beforeSend: args.beforeSend,
       body: {},
     },
   );

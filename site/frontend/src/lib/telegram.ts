@@ -323,12 +323,44 @@ export function hapticNotify(
   }
 }
 
+export function isTelegramConfirmationTest(isDemo: boolean): boolean {
+  return isDemo && Boolean(getTelegramWebApp()?.initData);
+}
+
 export async function telegramConfirm(
   title: string,
   message?: string,
+  testMode = false,
 ): Promise<boolean> {
   const tg = getTelegramWebApp();
-  // Prefer Telegram-native confirm/popup if supported.
+  if (testMode && tg?.initData &&
+      (typeof tg.showConfirm === "function" || typeof tg.showPopup === "function")) {
+    return new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), 120_000);
+      const settle = (approved: boolean) => {
+        clearTimeout(timer);
+        resolve(approved);
+      };
+      try {
+        if (typeof tg.showConfirm === "function") {
+          tg.showConfirm(message ? `${title}\n\n${message}` : title,
+            (approved: unknown) => settle(approved === true));
+        } else {
+          tg.showPopup({
+            title,
+            message: message || "",
+            buttons: [
+              { id: "ok", type: "default", text: "OK" },
+              { id: "cancel", type: "destructive", text: "Cancel" },
+            ],
+          }, (buttonId: unknown) => settle(buttonId === "ok"));
+        }
+      } catch {
+        settle(false);
+      }
+    });
+  }
+  // Preserve the existing browser and non-TEST behavior.
   try {
     if (typeof tg?.showConfirm === "function") {
       const r = await tg.showConfirm(

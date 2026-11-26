@@ -543,7 +543,7 @@ export function Layout(
       generic: true,
     }[kind];
     if (!gate) return true;
-    return await telegramConfirm(title, detail);
+    return await telegramConfirm(title, detail, isDemoBackendMode());
   }
 
   const bottom = [

@@ -209,6 +209,7 @@ export function normalizeApiPath(path: string): string {
 }
 
 export type ApiRequestOptions = {
+  beforeSend?: () => boolean;
   body?: unknown;
   idempotencyKey?: string;
   headers?: Record<string, string>;

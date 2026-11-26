@@ -17,6 +17,12 @@ export type AuthSessionContext = {
 
 const STORAGE_KEY = "efhc.auth.session.v1";
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+let sessionRevision = 0;
+
+export function getAuthSessionRevision(): number {
+  return sessionRevision;
+}
+
 const invalidationListeners = new Set<() => void>();
 
 function getSessionStorage(): Storage | null {
@@ -52,6 +58,7 @@ export function storeAuthSession(
   const storage = getSessionStorage();
   if (!storage) throw new Error("AUTH_SESSION_STORAGE_UNAVAILABLE");
   storage.setItem(STORAGE_KEY, JSON.stringify(credential));
+  sessionRevision++;
 }
 
 export function readAuthSession(): AuthSessionCredential | null {
@@ -70,6 +77,7 @@ export function readAuthSession(): AuthSessionCredential | null {
 }
 
 export function clearAuthSession(): void {
+  sessionRevision++;
   getSessionStorage()?.removeItem(STORAGE_KEY);
   for (const listener of invalidationListeners) listener();
 }
