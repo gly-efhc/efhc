@@ -126,7 +126,10 @@ test("Withdrawal page retains its actual form with populated and malformed read 
   const t = (value) => value;
   const runtime = sourceRuntime({overrides: {
     "../components/Layout": {LayoutContext},
-    "../auth/AuthSessionProvider": {useAuthOwnerGlobalId: () => owner},
+    "../auth/AuthSessionProvider": {
+      useAuthOwnerGlobalId: () => owner,
+      useAuthSessionController: () => ({status: "authenticated", context: {global_id: owner}}),
+    },
     "../hooks/useT": {useT: () => t},
     "../../hooks/useT": {useT: () => t},
     "../hooks/useInterfaceVariantSurface": {
