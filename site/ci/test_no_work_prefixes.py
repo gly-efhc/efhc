@@ -1,5 +1,6 @@
 """Exercise real Git snapshots and negative exit statuses without runtime changes."""
 
+import hashlib
 import importlib.util
 import base64
 import json
@@ -204,12 +205,76 @@ class PrefixGuardTests(unittest.TestCase):
         self.check(2)
 
 
+    def test_external_exceptions_are_exact_and_path_bound(self):
+        suffix = 'v' + '2'
+        helper = 'external_api_' + suffix
+        signed = 'signed-item-' + suffix + '/'
+        dependency = '# Pydantic ' + suffix + ' is required.'
+        self.policy['exceptions'] = [
+            {'path': 'src/api.py', 'literal': helper, 'kind': 'external-identifier', 'reason': 'External API version'},
+            {'path': 'src/api.py', 'literal': '/' + suffix, 'kind': 'protocol', 'reason': 'External API path'},
+            {'path': 'src/proof.py', 'literal': signed, 'kind': 'signed-prefix', 'reason': 'Signed protocol payload'},
+            {'path': 'main/backend/requirements.txt', 'literal': dependency, 'kind': 'dependency-comment', 'reason': 'Dependency version'},
+        ]
+        self.put(guard.POLICY_PATH, json.dumps(self.policy))
+        base = self.commit()
+        self.put('src/api.py', 'def ' + helper + '(): return "/' + suffix + '"')
+        self.put('src/proof.py', 'PREFIX = b"' + signed + '"')
+        self.put('main/backend/requirements.txt', dependency + '\npydantic>=2,<3\n')
+        clean = self.commit()
+        self.check(0, base)
+        for path, addition in [
+            ('src/other.py', helper),
+            ('src/api.py', helper + '0'),
+            ('src/api.py', '"/' + suffix + '0"'),
+            ('src/proof.py', 'b"other-' + signed + '"'),
+            ('src/proof.py', 'b"' + signed + 'unexpected"'),
+            ('main/backend/requirements.txt', dependency + ' newCycle' + '1234'),
+        ]:
+            with self.subTest(path=path, addition=addition):
+                self.git('reset', '--hard', clean)
+                target = self.root / path
+                self.put(path, (target.read_text() if target.exists() else '') + '\n' + addition)
+                self.commit()
+                self.check(1, base)
+
     def test_candidate_cannot_grant_itself_exception(self):
         self.policy['exceptions'] = [{'path': 'src/other.ts', 'literal': '/api/' + 'v' + '1', 'kind': 'protocol', 'reason': 'self-approved'}]
         self.put(guard.POLICY_PATH, json.dumps(self.policy))
         self.put('src/other.ts', 'const endpoint = "/api/' + 'v' + '1";')
         self.commit()
         self.check(1)
+
+    def test_trusted_base_approves_only_the_pinned_standalone_policy(self):
+        path = self.root / guard.POLICY_PATH
+        old_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        self.policy['exceptions'] = [
+            {'path': 'src/api.ts', 'literal': '/api/' + 'v' + '1', 'kind': 'protocol', 'reason': 'reviewed exception'},
+        ]
+        self.put(guard.POLICY_PATH, json.dumps(self.policy))
+        new_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        exact = self.commit()
+        script = (
+            'import importlib.util, sys; '
+            'spec = importlib.util.spec_from_file_location("guard", sys.argv[1]); '
+            'g = importlib.util.module_from_spec(spec); spec.loader.exec_module(g); '
+            'g.APPROVED_POLICY_TRANSITIONS = {sys.argv[2]: sys.argv[3]}; '
+            'result = g.inspect(sys.argv[4], sys.argv[5], sys.argv[4]); '
+            'print(result); sys.exit(result["status"] != "PASS")'
+        )
+        def check(head, expected):
+            result = subprocess.run(
+                ['python3', '-c', script, str(SCRIPT), old_digest, new_digest, self.base, head],
+                cwd=self.root, capture_output=True, text=True, check=False,
+            )
+            self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+        check(exact, 0)
+        self.put('src/header.css', '.header { color: red; }')
+        check(self.commit(), 1)
+        self.git('reset', '--hard', exact)
+        self.policy['exceptions'][0]['reason'] = 'different bytes'
+        self.put(guard.POLICY_PATH, json.dumps(self.policy))
+        check(self.commit(), 1)
 
     def test_missing_baseline_fails_closed(self):
         self.check(2, 'missing-reference')
