@@ -44,10 +44,10 @@ export async function getPanelsPage(args: {
 }
 
 export async function activatePanel(
-  idempotencyKey: string,
+  command: string | { idempotencyKey: string; beforeSend?: () => boolean },
 ): Promise<PanelActivationResponse> {
   const raw = await apiRequest<unknown>(PANELS_ACTIVATE_PATH, "POST", {
-    idempotencyKey,
+    ...(typeof command === "string" ? { idempotencyKey: command } : command),
   });
   return parsePanelActivationResponse(raw);
 }

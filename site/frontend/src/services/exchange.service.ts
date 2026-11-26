@@ -24,12 +24,14 @@ export async function getExchangePreview(): Promise<
 export async function convertExchange(args: {
   amountKwh: string;
   idempotencyKey: string;
+  beforeSend?: () => boolean;
 }): Promise<ExchangeConvertResponse> {
   const body = ensureExchangeConvertRequest({
     amount_kwh: args.amountKwh,
   });
   const raw = await apiRequest<unknown>(EXCHANGE_CONVERT_PATH, "POST", {
     idempotencyKey: args.idempotencyKey,
+    beforeSend: args.beforeSend,
     body,
   });
   return parseExchangeConvertResponse(raw);

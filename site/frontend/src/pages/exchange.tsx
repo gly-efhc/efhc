@@ -9,6 +9,7 @@ import {
   GameStatsGrid,
 } from "../components/ui/GameShell";
 import { publicApiErrorMessage } from "../lib/publicError";
+import { useTestTelegramConfirmation } from "../hooks/useTestTelegramConfirmation";
 import { newIdempotencyKey } from "../lib/idempotency";
 import type { SyncSnapshot } from "../hooks/useSnapshot";
 import { LayoutContext } from "../components/Layout";
@@ -68,7 +69,12 @@ export default function ExchangePage(props: {
     toast(publicApiErrorMessage(previewQuery.error, t), "error");
   }, [previewQuery.error, t, toast]);
 
-  const doPartialExchange = async (amountKwh: string) => {
+  const withConfirmation = useTestTelegramConfirmation(globalId, {
+    blocked: customization.mutationBlocked,
+    max: maxExchangeableKwh,
+  });
+
+  const doPartialExchange = async (amountKwh: string, amountStillSelected: () => boolean) => {
     if (customization.mutationBlocked) return;
     if (!globalId) {
       toast(t("browser.auth_needed"), "info");
@@ -78,26 +84,29 @@ export default function ExchangePage(props: {
     const amount = format8(amountKwh);
     if (cmp8(amount, "0.00000000") <= 0) return;
     if (cmp8(amount, maxExchangeableKwh) > 0) return;
-    const ok = await confirm(
-      "convert",
-      t("exchange.confirm_exchange_title"),
-      t("exchange.confirm_exchange_detail"),
+    await withConfirmation(
+      () => confirm("convert", t("exchange.confirm_exchange_title"), t("exchange.confirm_exchange_detail")),
+      (latest) => !latest.blocked && amountStillSelected() && cmp8(amount, latest.max) <= 0,
+      async (beforeSend, sameActor) => {
+        try {
+          const result = await exchangeMutation.mutateAsync({
+            amountKwh: amount,
+            beforeSend,
+            idempotencyKey: newIdempotencyKey(),
+          });
+          if (sameActor && !sameActor()) return;
+          hapticSuccess(settings.haptics_enabled);
+          toast(result.detail || t("exchange.exchange_success"), "success");
+        } catch (error: unknown) {
+          if (sameActor && !sameActor()) return;
+          hapticError(settings.haptics_enabled);
+          toast(
+            publicApiErrorMessage(error, t, "exchange.exchange_failed"),
+            "error",
+          );
+        }
+      },
     );
-    if (!ok) return;
-    try {
-      const result = await exchangeMutation.mutateAsync({
-        amountKwh: amount,
-        idempotencyKey: newIdempotencyKey(),
-      });
-      hapticSuccess(settings.haptics_enabled);
-      toast(result.detail || t("exchange.exchange_success"), "success");
-    } catch (error: unknown) {
-      hapticError(settings.haptics_enabled);
-      toast(
-        publicApiErrorMessage(error, t, "exchange.exchange_failed"),
-        "error",
-      );
-    }
   };
 
   return (

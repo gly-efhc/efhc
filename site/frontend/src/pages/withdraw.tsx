@@ -12,6 +12,7 @@ import { AdManager, adManagerErrorCode } from "../lib/ads/AdManager";
 import { WITHDRAW_REQUIRED_AD_PLACEMENT_CODE } from "../lib/ads/systemPlacements";
 import type { AdRunPhase } from "../lib/ads/types";
 import { cmp8, format8, formatD8ToHuman } from "../lib/format";
+import { useTestTelegramConfirmation } from "../hooks/useTestTelegramConfirmation";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { hapticMedium, onTelegramViewportChanged } from "../lib/telegram";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
@@ -70,6 +71,7 @@ export default function WithdrawPage(props: {
     dotsPlacement: "below",
   });
   const [amount, setAmount] = useOwnerDraft("withdraw.amount", mainBalance ?? "");
+  const amountRevision = useRef(0);
   const amountInputRef = useRef<HTMLInputElement | null>(null);
   const createSurfaceRef = useRef<HTMLDivElement | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -291,6 +293,10 @@ export default function WithdrawPage(props: {
     }
   }
 
+  const withConfirmation = useTestTelegramConfirmation(globalId, {
+    amount, withdrawAmountOk, withdrawMinOk, primaryWallet, pendingRequests: items,
+  });
+
   async function createWithdraw() {
     if (!globalId) return;
     if (!primaryWallet) {
@@ -298,45 +304,51 @@ export default function WithdrawPage(props: {
       return;
     }
     if (!withdrawAmountOk || !withdrawMinOk) return;
-    const ok = await confirm(
-      "withdraw",
-      t("withdraw.confirm_create_title"),
-      t("withdraw.confirm_create_detail"),
+    const wallet = primaryWallet;
+    const amountInput = amountInputRef.current;
+    const revision = amountRevision.current;
+    await withConfirmation(
+      () => confirm("withdraw", t("withdraw.confirm_create_title"), t("withdraw.confirm_create_detail")),
+      (latest) => latest.amount === amount && latest.withdrawAmountOk && latest.withdrawMinOk &&
+        revision === amountRevision.current && amountInput !== null && amountInputRef.current === amountInput && amountInput.value === amount &&
+        latest.primaryWallet?.id === wallet.id && latest.primaryWallet.wallet_address === wallet.wallet_address,
+      async (beforeSend, sameActor) => {
+        const adConfirmed = await runRequiredWithdrawAd();
+        if (!adConfirmed || (beforeSend && !beforeSend())) return;
+        setWithdrawAdOpen(false);
+
+        try {
+          await createWithdrawMutation.mutateAsync({
+            amount: format8(amount),
+            walletId: wallet.id,
+            beforeSend,
+            idempotencyKey: newIdempotencyKey(),
+          });
+          if (!sameActor || sameActor()) toast(t("withdraw.request_accepted"), "success");
+        } catch {
+          // The mutation error is rendered through the safe public error helper.
+        }
+      },
     );
-    if (!ok) return;
-
-    const adConfirmed = await runRequiredWithdrawAd();
-    if (!adConfirmed) return;
-    setWithdrawAdOpen(false);
-
-    try {
-      await createWithdrawMutation.mutateAsync({
-        amount: format8(amount),
-        walletId: primaryWallet.id,
-        idempotencyKey: newIdempotencyKey(),
-      });
-      toast(t("withdraw.request_accepted"), "success");
-    } catch {
-      // The mutation error is rendered through the safe public error helper.
-    }
   }
 
   async function cancelWithdraw(requestId: DbId) {
-    const ok = await confirm(
-      "withdraw",
-      t("withdraw.confirm_cancel_title"),
-      t("withdraw.confirm_cancel_detail"),
+    await withConfirmation(
+      () => confirm("withdraw", t("withdraw.confirm_cancel_title"), t("withdraw.confirm_cancel_detail")),
+      (latest) => latest.pendingRequests.some((item) => item.id === requestId && item.status === "PENDING"),
+      async (beforeSend, sameActor) => {
+        try {
+          await cancelWithdrawMutation.mutateAsync({
+            requestId,
+            beforeSend,
+            idempotencyKey: newIdempotencyKey(),
+          });
+          if (!sameActor || sameActor()) toast(t("withdraw.toast_canceled"), "success");
+        } catch {
+          // The mutation error is rendered through the safe public error helper.
+        }
+      },
     );
-    if (!ok) return;
-    try {
-      await cancelWithdrawMutation.mutateAsync({
-        requestId,
-        idempotencyKey: newIdempotencyKey(),
-      });
-      toast(t("withdraw.toast_canceled"), "success");
-    } catch {
-      // The mutation error is rendered through the safe public error helper.
-    }
   }
 
 
@@ -394,7 +406,10 @@ export default function WithdrawPage(props: {
               className="efhc-withdraw-max-cta"
               onClick={() => {
                 hapticMedium(settings.haptics_enabled);
-                if (mainBalance !== null) setAmount(mainBalance);
+                if (mainBalance !== null) {
+                  amountRevision.current++;
+                  setAmount(mainBalance);
+                }
                 setAmountTouched(false);
               }}
               disabled={!withdrawMinOk}
@@ -410,7 +425,7 @@ export default function WithdrawPage(props: {
             <input
               ref={amountInputRef}
               value={amount}
-              onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }}
+              onChange={(e) => { amountRevision.current++; setAmount(e.target.value); setAmountTouched(true); }}
               className="efhc-input mt-2 w-full tabular-nums"
               data-amount-state={amountTouched && amountIssue ? "invalid" : "valid"}
               inputMode="decimal"

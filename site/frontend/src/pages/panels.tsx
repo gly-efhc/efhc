@@ -9,6 +9,7 @@ import {
   usePanelActivation,
   usePanelsSummary,
 } from "../queries/usePanels";
+import { useTestTelegramConfirmation } from "../hooks/useTestTelegramConfirmation";
 import { newIdempotencyKey } from "../lib/idempotency";
 import { useAuthOwnerGlobalId } from "../auth/AuthSessionProvider";
 import { useT } from "../hooks/useT";
@@ -107,35 +108,49 @@ export default function PanelsPage(props: {
     return cmp8(totalActivationBalance, "100") >= 0;
   }, [totalActivationBalance]);
 
+  const withConfirmation = useTestTelegramConfirmation(globalId,
+    !customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),
+  );
+
   const activatePanel = async () => {
     if (customization.mutationBlocked) return;
     if (activating || (!canActivatePanel && !pendingPurchaseKey) || !globalId) return;
-    const ok = await confirm(
-      "purchase",
-      t("panels.activate_panel"),
-      t("panels.subtitle_price_100"),
+    await withConfirmation(
+      () => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100")),
+      (eligible) => eligible,
+      async (beforeSend, sameActor) => {
+        // Retry a possibly committed purchase under the ORIGINAL key.
+        const idk = pendingPurchaseRef.current ?? newIdempotencyKey();
+        recordPendingPurchase(idk);
+        try {
+          if (beforeSend) await activationMutation.mutateAsync({ idempotencyKey: idk, beforeSend });
+          else await activationMutation.mutateAsync(idk);
+          if (!sameActor || sameActor()) {
+            recordPendingPurchase(null);
+            toast(t("panels.activate_ok"), "success");
+          } else if (purchaseStorageKey) {
+            try {
+              if (window.sessionStorage.getItem(purchaseStorageKey) === idk) {
+                window.sessionStorage.removeItem(purchaseStorageKey);
+              }
+            } catch { /* Safe retry uses the original key. */ }
+          }
+        } catch (error) {
+          if (sameActor && !sameActor()) return;
+          // Only definite client-side rejection can free the pending key.
+          // Timeout, transport failure, 5xx and a malformed response cannot.
+          if (error instanceof ApiError && [400, 403, 422].includes(error.status)) {
+            recordPendingPurchase(null);
+          }
+          const message = publicApiErrorMessage(
+            error,
+            t,
+            "panels.activate_failed",
+          );
+          toast(message, "error");
+        }
+      },
     );
-    if (!ok) return;
-    // Retry a possibly committed purchase under the ORIGINAL key.
-    const idk = pendingPurchaseRef.current ?? newIdempotencyKey();
-    recordPendingPurchase(idk);
-    try {
-      await activationMutation.mutateAsync(idk);
-      recordPendingPurchase(null);
-      toast(t("panels.activate_ok"), "success");
-    } catch (error) {
-      // Only definite client-side rejection can free the pending key.
-      // Timeout, transport failure, 5xx and a malformed response cannot.
-      if (error instanceof ApiError && [400, 403, 422].includes(error.status)) {
-        recordPendingPurchase(null);
-      }
-      const message = publicApiErrorMessage(
-        error,
-        t,
-        "panels.activate_failed",
-      );
-      toast(message, "error");
-    }
   };
 
   const activatePanelRef = useRef(activatePanel);
