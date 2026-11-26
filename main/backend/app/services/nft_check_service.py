@@ -23,7 +23,7 @@ from app.core.config_core import get_settings
 from app.core.database_core import get_session_factory
 from app.core.logging_core import get_logger
 from app.core.sql_aliases_core import canon_admin_table, canon_schema
-from app.integrations.ton_api_urls import ton_api_base_url
+from app.integrations.ton_api_urls import ton_api_v2
 from app.lib.time import utcnow
 from app.services.energy_service import (
     set_user_vip_with_energy_checkpoint,
@@ -48,7 +48,7 @@ SCHEMA_ADMIN: str = (
     getattr(S, "DB_SCHEMA_ADMIN", SCHEMA_CORE) or SCHEMA_CORE
 )
 
-TON_API_BASE: str = ton_api_base_url(S.TON_API_BASE_URL)
+TON_API_BASE: str = ton_api_v2(S.TON_API_BASE_URL)
 TON_API_KEY: str = str(getattr(S, "TON_API_KEY", "") or "")
 
 TON_NFT_COLLECTION: str = str(

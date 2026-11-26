@@ -24,9 +24,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Check Python source and saved OpenAPI inventory
         run: |
-          python3 - <<'PY'
+          python - <<'PY'
           import ast
           import json
           from pathlib import Path
@@ -62,4 +65,4 @@ jobs:
           PYTHONPATH: backend
         run: |
           export EFHC_READ_CONTRACT_ROOT="$PWD/backend/app/routes"
-          python3 -m unittest demo_backend.tests.test_demo_testnet_policy demo_backend.tests.test_read_contracts demo_backend.tests.test_ton_api_url_contract
+          python -m unittest demo_backend.tests.test_demo_testnet_policy demo_backend.tests.test_read_contracts

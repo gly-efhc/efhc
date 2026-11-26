@@ -44,7 +44,7 @@ import httpx
 # асинхронный HTTP-клиент; нужна зависимость "httpx[http2]"
 from app.core.config_core import get_settings
 from app.core.logging_core import get_logger
-from app.integrations.ton_api_urls import ton_api_base_url
+from app.integrations.ton_api_urls import ton_api_v2
 from app.lib.time import utcnow
 
 MIN_SAFE_NANOTON: int = 10_000_000  # 0.01 TON
@@ -181,7 +181,7 @@ class TonAPIClient:
         """Инициализация клиента TON API с fallback и таймаутом."""
         env_primary = getattr(settings, "TON_API_BASE_URL", "")
         selected = base_url or env_primary or "https://tonapi.io"
-        self._primary = ton_api_base_url(selected)
+        self._primary = ton_api_v2(selected)
         # fallback из .env
         # TON_API_FALLBACK_URLS="https://toncenter.com/api/v2,"
         # "https://tonapi.io/v2"
@@ -202,7 +202,7 @@ class TonAPIClient:
             self._primary,
             *[u for u in self._fallbacks if u != self._primary],
         ]
-        self._urls = [ton_api_base_url(u) for u in seq]
+        self._urls = [ton_api_v2(u) for u in seq]
 
         self._key = api_key or getattr(settings, "TON_API_KEY", None)
         self._timeout = request_timeout_sec
@@ -304,7 +304,7 @@ class TonAPIClient:
         if since_utime:
             start_date = str(int(since_utime))
 
-        # base_url already ends in exactly one /v2 (ton_api_base_url).
+        # base_url already ends in exactly one /v2 (ton_api_v2).
         # Appending /v2 again produces 404: /v2/v2/accounts.
         # TonAPI v2 transaction API path: /v2/accounts/{address}/transactions
         candidates.append(

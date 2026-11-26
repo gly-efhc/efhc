@@ -11,6 +11,6 @@ def ton_api_root(value: str) -> str:
     return root
 
 
-def ton_api_base_url(value: str) -> str:
+def ton_api_v2(value: str) -> str:
     """Return exactly one ``/v2`` suffix."""
     return ton_api_root(value) + "/v2"

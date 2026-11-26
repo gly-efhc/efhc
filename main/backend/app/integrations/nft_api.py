@@ -40,7 +40,7 @@ except Exception:  # pragma: no cover
 
 from app.core.config_core import get_settings
 from app.core.logging_core import get_logger
-from app.integrations.ton_api_urls import ton_api_base_url
+from app.integrations.ton_api_urls import ton_api_v2
 
 logger = get_logger(__name__)
 
@@ -49,7 +49,7 @@ settings = get_settings()
 
 # --- Конфигурация ---
 
-TON_API_URL = ton_api_base_url(
+TON_API_URL = ton_api_v2(
     getattr(settings, "TON_API_BASE_URL", "https://tonapi.io")
 )
 TON_API_KEY: str = getattr(
