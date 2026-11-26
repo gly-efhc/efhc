@@ -35,9 +35,6 @@ export function WalletListItem(props: Props) {
       data-wallet-id={String(wallet.id)}
       data-wallet-session-owned={props.sessionOwned ? "true" : "false"}
     >
-      {wallet.is_project_test === true ? <span className="source-muted" data-wallet-project-test="true">TEST</span> : null}
-      <WalletAddressVerification address={wallet.wallet_address} />
-
       <div className="efhc-wallet-item_actions standalone-wallet-actions">
         <WalletCardAction
           sizeLabel={t("wallet.primary_badge")}
@@ -59,6 +56,7 @@ export function WalletListItem(props: Props) {
           {t("wallet.remove")}
         </WalletCardAction>
       </div>
+      <WalletAddressVerification address={wallet.wallet_address} />
     </div>
   );
 }
