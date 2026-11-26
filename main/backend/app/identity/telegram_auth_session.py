@@ -475,7 +475,7 @@ def build_telegram_auth_session_contract() -> dict[str, object]:
             "auto_merge": True,
             "financial_update": True,
             "migration_0006": True,
-            "cycle_1620_frontend_switch": True,
+            "frontend_auth_switch": True,
         },
     }
 

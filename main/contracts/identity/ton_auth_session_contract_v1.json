@@ -26,6 +26,6 @@
     "telegram_dependency": true,
     "synthetic_provider_identifier": true,
     "financial_update": true,
-    "cycle_1619_adapter": true
+    "legacy_ton_adapter": true
   }
 }

@@ -54,6 +54,12 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}/main/tests
         run: python site/ci/run_shop_native.py
+      - name: Native TON and Telegram session contract tests
+        working-directory: main
+        env:
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
+        run: |
+          python -m pytest -q tests/efhc_backend/identity/test_ton_auth_session.py tests/efhc_backend/identity/test_telegram_auth_session.py
       - name: Install frontend lockfile and run native regressions
         working-directory: site/frontend
         run: |

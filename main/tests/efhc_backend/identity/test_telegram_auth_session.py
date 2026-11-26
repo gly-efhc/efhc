@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
@@ -30,6 +32,11 @@ def test_telegram_session_contract_фиксирует_owner_и_replay() -> None:
     assert contract["session"]["raw_token_stored"] is False
     assert contract["replay"]["raw_init_data_stored"] is False
     assert contract["запреты"]["tg_id_as_owner"] is True
+    assert contract["запреты"]["frontend_auth_switch"] is True
+    snapshot_path = Path(__file__).resolve().parents[3] / "contracts" / "identity"
+    (snapshot_file,) = snapshot_path.glob("telegram_auth_session_contract_*.json")
+    snapshot = json.loads(snapshot_file.read_text(encoding="utf-8"))
+    assert snapshot["запреты"]["frontend_auth_switch"] is contract["запреты"]["frontend_auth_switch"]
 
 
 def test_result_repr_не_раскрывает_global_id_или_token() -> None:

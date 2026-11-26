@@ -41,6 +41,6 @@
     "auto_merge": true,
     "financial_update": true,
     "migration_0006": true,
-    "cycle_1620_frontend_switch": true
+    "frontend_auth_switch": true
   }
 }

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 from uuid import UUID
 
@@ -50,7 +52,11 @@ def test_ton_auth_session_contract_фиксирует_границы() -> None:
     assert contract["session"]["raw_token_stored"] is False
     assert contract["session"]["logout_revokes"] is True
     assert contract["frontend_transport"]["storage"] == "sessionStorage"
-    assert contract["запреты"]["cycle_1619_adapter"] is True
+    assert contract["запреты"]["legacy_ton_adapter"] is True
+    snapshot_path = Path(__file__).resolve().parents[3] / "contracts" / "identity"
+    (snapshot_file,) = snapshot_path.glob("ton_auth_session_contract_*.json")
+    snapshot = json.loads(snapshot_file.read_text(encoding="utf-8"))
+    assert snapshot["запреты"]["legacy_ton_adapter"] is contract["запреты"]["legacy_ton_adapter"]
 
 
 def test_ton_auth_result_скрывает_session_token_в_repr() -> None:

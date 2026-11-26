@@ -140,7 +140,7 @@ def build_ton_auth_session_contract() -> dict[str, object]:
             "telegram_dependency": True,
             "synthetic_provider_identifier": True,
             "financial_update": True,
-            "cycle_1619_adapter": True,
+            "legacy_ton_adapter": True,
         },
     }
 
