@@ -1,0 +1,26 @@
+{
+  "схема": "EFHC_TON_PROOF_VERIFICATION_V1",
+  "цикл": 1616,
+  "provider": "ton",
+  "endpoint": "POST /api/auth/ton/proof",
+  "проверки": {
+    "domain": true,
+    "timestamp": true,
+    "network": true,
+    "state_init": true,
+    "authoritative_public_key": true,
+    "ed25519_signature": true,
+    "challenge_ttl": true,
+    "replay": "atomic_postgresql_consume_exact_challenge_id"
+  },
+  "побочные_эффекты": {
+    "account_creation": false,
+    "identity_storage": false,
+    "session_issue": false,
+    "auto_merge": false,
+    "financial_update": false
+  },
+  "alembic_head": "0001",
+  "migration_0005": false,
+  "ton_wallet_id": "<workchain>:<64 lowercase hex account_id>"
+}

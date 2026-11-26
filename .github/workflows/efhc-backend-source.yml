@@ -1,0 +1,68 @@
+name: EFHC — backend source checks
+
+on:
+  pull_request:
+    paths:
+      - 'main/**'
+      - 'ROUTES.json'
+      - '.github/workflows/efhc-backend-source.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'main/**'
+      - 'ROUTES.json'
+      - '.github/workflows/efhc-backend-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-source:
+    name: Verify backend syntax, routes and offline contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check Python source and saved OpenAPI inventory
+        run: |
+          python - <<'PY'
+          import ast
+          import json
+          from pathlib import Path
+
+          root = Path("main")
+          for required in (
+              "backend/app/main.py",
+              "backend/requirements.lock",
+              "backend/migrations/versions/0001_initial_release_schema.py",
+              "demo_backend/asgi.py",
+              "demo_backend/Dockerfile",
+          ):
+              assert (root / required).is_file(), required
+
+          sources = sorted(root.rglob("*.py"))
+          assert sources, "Backend source tree is empty"
+          for path in sources:
+              ast.parse(path.read_bytes(), filename=str(path))
+
+          api = json.loads((root / "backend/openapi/openapi.json").read_text())["paths"]
+          routes = json.loads(Path("ROUTES.json").read_text())
+          methods = {"get", "post", "put", "patch", "delete", "head", "options", "trace"}
+          expected = {p: sorted(m.upper() for m in spec if m in methods) for p, spec in api.items()}
+          actual = {p: sorted(verbs) for p, verbs in routes["api"].items()}
+          assert actual == expected, "OpenAPI and route inventory differ"
+          assert len(set(routes["pages"])) == len(routes["pages"]) > 0
+          print(f"Python source files: {len(sources)}; OpenAPI paths: {len(api)}")
+          PY
+      - name: Run isolated backend contracts without Neon, TON, or secrets
+        working-directory: main
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: backend
+        run: |
+          export EFHC_READ_CONTRACT_ROOT="$PWD/backend/app/routes"
+          python -m unittest demo_backend.tests.test_demo_testnet_policy demo_backend.tests.test_read_contracts

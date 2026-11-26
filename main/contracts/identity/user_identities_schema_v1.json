@@ -1,0 +1,74 @@
+{
+  "схема": "EFHC_USER_IDENTITIES_SCHEMA_V1",
+  "цикл": 1633,
+  "статус": "ACTIVE_RELEASE_SCHEMA",
+  "alembic": {
+    "предыдущая_revision": null,
+    "целевая_revision": "0001",
+    "migration": "backend/migrations/versions/0001_initial_release_schema.py",
+    "класс": "INITIAL_RELEASE",
+    "historical_backfill": false,
+    "runtime_read_switch": false,
+    "financial_ownership_switch": false
+  },
+  "таблица": {
+    "schema": "efhc_core",
+    "name": "user_identities",
+    "orm_class": "UserIdentity",
+    "orm_file": "backend/app/models/identity_models.py",
+    "поля": [
+      "id",
+      "global_id",
+      "provider",
+      "provider_tenant",
+      "provider_subject",
+      "status",
+      "is_primary",
+      "is_verified",
+      "verified_at",
+      "metadata",
+      "created_at",
+      "updated_at"
+    ],
+    "provider_tenant_default": "default",
+    "statuses": [
+      "active",
+      "disabled",
+      "revoked"
+    ]
+  },
+  "constraints": {
+    "primary_key": "pk_user_identities",
+    "foreign_key": "fk_user_identities_global_id_users_global_id",
+    "foreign_key_target": "efhc_core.users.global_id",
+    "unique_provider_subject": "uq_user_identities_provider_tenant_subject",
+    "global_id_range": "ck_user_identities_global_id_range",
+    "provider_format": "ck_user_identities_provider_format",
+    "provider_not_mock": "ck_user_identities_provider_not_mock",
+    "tenant_length": "ck_user_identities_tenant_length",
+    "subject_length": "ck_user_identities_subject_length",
+    "status": "ck_user_identities_status",
+    "verified_at": "ck_user_identities_verified_at",
+    "primary_state": "ck_user_identities_primary_state",
+    "primary_per_global": "uq_user_identities_primary_per_global"
+  },
+  "индексы": [
+    "ix_user_identities_global_id",
+    "ix_user_identities_provider_status",
+    "uq_user_identities_primary_per_global"
+  ],
+  "инварианты": {
+    "provider_subject_может_принадлежать_двум_accounts": false,
+    "global_id_вычисляется_из_provider_subject": false,
+    "создаёт_user": false,
+    "создаёт_session": false,
+    "auto_merge": false,
+    "меняет_financial_data": false,
+    "mock_provider_разрешён_в_production": false
+  },
+  "ci_workflow_sha256": {
+    "ci.yml": "8c69eca26bc59330e059fb04da9cf2ea43fc7405c048d1196ea06547fe6c9496",
+    ".github/workflows/canon.yml": "8c69eca26bc59330e059fb04da9cf2ea43fc7405c048d1196ea06547fe6c9496",
+    ".github/workflows/frontend-visual.yml": "637f46a7b0b42b912cb0b5543e3aad136c670bfee03fdb50c0236944dc039ed4"
+  }
+}

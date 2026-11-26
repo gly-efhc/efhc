@@ -1,0 +1,88 @@
+{
+  "схема": "EFHC_AUTH_PROVIDER_REGISTRY_V1",
+  "цикл": 1609,
+  "канонические_provider": [
+    "telegram",
+    "ton",
+    "google",
+    "apple",
+    "facebook",
+    "discord",
+    "github",
+    "mock"
+  ],
+  "production_provider_по_умолчанию": [
+    {
+      "provider": "telegram",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "ton",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "google",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "apple",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "facebook",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "discord",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    },
+    {
+      "provider": "github",
+      "состояние": "disabled",
+      "capabilities": [
+        "verify_identity"
+      ]
+    }
+  ],
+  "mock_provider": {
+    "provider": "mock",
+    "test_only": true,
+    "production_enabled": false
+  },
+  "canonical_subject_fields": {
+    "telegram": "tg_id",
+    "ton": "ton_wallet_id",
+    "google": "google_id",
+    "apple": "apple_id",
+    "facebook": "fb_id",
+    "discord": "discord_id",
+    "github": "github_id"
+  },
+  "инварианты": {
+    "unknown_fail_closed": true,
+    "missing_flag_means_disabled": true,
+    "provider_is_not_global_owner": true,
+    "verified_identity_has_global_id": false,
+    "creates_user": false,
+    "creates_session": false,
+    "database_ddl": false
+  }
+}

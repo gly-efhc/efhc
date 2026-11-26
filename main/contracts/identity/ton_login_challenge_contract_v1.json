@@ -1,0 +1,46 @@
+{
+  "схема": "EFHC_TON_LOGIN_CHALLENGE_V1",
+  "цикл": 1615,
+  "provider": "ton",
+  "purpose": "ton.login",
+  "endpoint": {
+    "method": "POST",
+    "path": "/api/auth/ton/challenge",
+    "status": 201,
+    "wire_fields": [
+      "challenge_id",
+      "payload",
+      "expires_at",
+      "domain",
+      "provider",
+      "purpose",
+      "canonical_address_format"
+    ]
+  },
+  "storage": {
+    "table": "efhc_core.auth_challenges",
+    "raw_payload_stored": false,
+    "sha256_hash_stored": true,
+    "provider_tenant": "default",
+    "ttl_seconds": 600
+  },
+  "canonical_address": {
+    "format": "<workchain>:<64 lowercase hex account_id>",
+    "friendly_forms_at_boundary": true,
+    "unknown_friendly_tag_rejected": true,
+    "checksum_required": true,
+    "implicit_type_coercion": false
+  },
+  "инварианты": {
+    "telegram_dependency": false,
+    "global_id_field": false,
+    "provider_id_is_owner": false,
+    "creates_account": false,
+    "creates_identity": false,
+    "creates_session": false,
+    "verifies_ton_proof": false,
+    "migration_0005": false
+  },
+  "provider_subject_field": "ton_wallet_id",
+  "provider_subject_semantics": "TON wallet address"
+}

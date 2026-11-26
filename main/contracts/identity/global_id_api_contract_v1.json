@@ -1,0 +1,78 @@
+{
+  "схема_контракта": "EFHC_GLOBAL_ID_API_CONTRACT_V2",
+  "версия": "173.12",
+  "цикл": 1692,
+  "поле": "global_id",
+  "пример": "0000000001",
+  "openapi_format": "efhc-global-id",
+  "openapi_pattern": "^[0-9]{10}$",
+  "нулевое_значение_запрещено": true,
+  "active_routes_use_global_id_contract": true,
+  "active_compatibility_aliases": 0,
+  "изолированный_openapi_path": "/contract/global-accounts/{global_id}",
+  "схема_path_параметра": {
+    "type": "string",
+    "title": "Global Id",
+    "description": "Главный идентификатор единого аккаунта EFHC: ровно десять ASCII-цифр; 0000000000 запрещён.",
+    "format": "efhc-global-id",
+    "pattern": "^[0-9]{10}$",
+    "minLength": 10,
+    "maxLength": 10,
+    "examples": [
+      "0000000001"
+    ]
+  },
+  "схема_поля_ответа": {
+    "type": "string",
+    "maxLength": 10,
+    "minLength": 10,
+    "pattern": "^[0-9]{10}$",
+    "format": "efhc-global-id",
+    "title": "EFHC Global ID",
+    "description": "Канонический EFHC global_id в форме десяти ASCII-цифр.",
+    "examples": [
+      "0000000001"
+    ]
+  },
+  "схема_pydantic_значения": {
+    "description": "Главный идентификатор единого аккаунта EFHC: ровно десять ASCII-цифр; 0000000000 запрещён.",
+    "examples": [
+      "0000000001"
+    ],
+    "format": "efhc-global-id",
+    "maxLength": 10,
+    "minLength": 10,
+    "pattern": "^[0-9]{10}$",
+    "title": "EFHC Global ID",
+    "type": "string"
+  },
+  "backend_константа_схемы": {
+    "type": "string",
+    "title": "EFHC Global ID",
+    "description": "Главный идентификатор единого аккаунта EFHC: ровно десять ASCII-цифр; 0000000000 запрещён.",
+    "format": "efhc-global-id",
+    "pattern": "^[0-9]{10}$",
+    "minLength": 10,
+    "maxLength": 10,
+    "examples": [
+      "0000000001"
+    ]
+  },
+  "frontend_контракт": {
+    "модуль": "frontend/src/contracts/global-id.ts",
+    "тип_запроса": "GlobalIdRequestDto",
+    "тип_ответа": "GlobalIdResponseDto",
+    "поле": "global_id",
+    "формат": "efhc-global-id",
+    "шаблон": "^[0-9]{10}$",
+    "wire_тип": "string"
+  },
+  "инварианты": {
+    "ведущие_нули_сохраняются": true,
+    "javascript_number_запрещён": true,
+    "json_number_запрещён": true,
+    "provider_subject_not_owner": true,
+    "physical_owner_column": "users.global_id",
+    "single_alembic_head": "0001_initial_release_schema.py"
+  }
+}

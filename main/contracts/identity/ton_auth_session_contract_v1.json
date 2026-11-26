@@ -1,0 +1,31 @@
+{
+  "схема": "EFHC_TON_AUTH_SESSION_V1",
+  "цикл": 1618,
+  "атомарность": {
+    "account_identity_binding_session": true,
+    "transaction_owner": "TonAuthSessionService"
+  },
+  "session": {
+    "server_side": true,
+    "raw_token_stored": false,
+    "token_returned_once": true,
+    "ttl_seconds": 2592000,
+    "logout_revokes": true
+  },
+  "referral_transport": {
+    "cycle": 1638,
+    "normalized_param_accepted": true,
+    "new_account_consumer": "AccountRegistrationService"
+  },
+  "frontend_transport": {
+    "authorization_scheme": "Bearer",
+    "storage": "sessionStorage",
+    "global_id_as_javascript_number": false
+  },
+  "запреты": {
+    "telegram_dependency": true,
+    "synthetic_provider_identifier": true,
+    "financial_update": true,
+    "legacy_ton_adapter": true
+  }
+}

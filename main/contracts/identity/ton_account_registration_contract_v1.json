@@ -1,0 +1,46 @@
+{
+  "схема": "EFHC_TON_ACCOUNT_REGISTRATION_V1",
+  "цикл": 1617,
+  "provider": "ton",
+  "provider_subject_field": "ton_wallet_id",
+  "provider_subject_semantics": "TON wallet address",
+  "результаты": [
+    "existing_identity",
+    "existing_binding",
+    "registered"
+  ],
+  "атомарность": {
+    "account_identity_binding": true,
+    "advisory_lock_by_identity": true,
+    "one_wallet_one_global_account": true
+  },
+  "ton_only": {
+    "provider_identity_in_user_identities": true,
+    "fake_tg_id": false,
+    "global_id_generated_by_sequence": true
+  },
+  "fail_closed": {
+    "auto_merge": false,
+    "unverified_binding": true,
+    "inactive_binding": true,
+    "conflicting_owner": true
+  },
+  "registration_center": {
+    "cycle": 1639,
+    "service": "AccountRegistrationService",
+    "direct_user_insert": false
+  },
+  "referral_transport": {
+    "cycle": 1638,
+    "normalized_param_accepted": true,
+    "existing_account_ignored": true,
+    "new_account_consumer": "AccountRegistrationService",
+    "loss_before_consumer": false
+  },
+  "side_effects": {
+    "session_issue": false,
+    "financial_update": false,
+    "read_switch": false
+  },
+  "alembic_head": "0001"
+}

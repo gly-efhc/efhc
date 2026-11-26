@@ -1,0 +1,24 @@
+{
+  "схема": "EFHC_TELEGRAM_INIT_DATA_ADAPTER_V1",
+  "цикл": 1619,
+  "provider": "telegram",
+  "проверки": {
+    "hmac": true,
+    "auth_date_required": true,
+    "ttl_seconds": 600,
+    "future_skew_seconds": 30,
+    "duplicate_fields_rejected": true,
+    "tg_id_nominal_type": "TelegramId"
+  },
+  "выход": {
+    "verified_identity": true,
+    "provider_subject_is_decimal_tg_id": true,
+    "raw_init_data_retained": false,
+    "replay_key_namespaced_hash": true
+  },
+  "запреты": {
+    "global_id_as_global_owner": true,
+    "global_id_from_global_id": true,
+    "domain_side_effects": true
+  }
+}
