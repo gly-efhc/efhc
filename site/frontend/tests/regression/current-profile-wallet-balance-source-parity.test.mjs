@@ -290,3 +290,18 @@ test("wallet card actions precede address, align top right and retain primary/de
   assert.match(css, /standalone-wallet-actions\)\s*\{[^}]*grid-row:\s*1;[^}]*justify-content:\s*flex-end;/s);
   assert.match(css, /efhc-wallet-address-zone\)\s*\{[^}]*grid-row:\s*2;/s);
 });
+
+
+test("wallet card displays and copies the identical TON user-friendly address", () => {
+  const address = file("../../src/components/profile/wallet/WalletAddressVerification.tsx");
+  const item = file("../../src/components/profile/wallet/WalletListItem.tsx");
+  const primary = file("../../src/components/profile/wallet/WalletPrimaryCard.tsx");
+  assert.match(address, /Address\.parse\(address\)/);
+  assert.match(address, /Address\.parseFriendly\(address\)/);
+  assert.match(address, /bounceable: false, urlSafe: true, testOnly: projectTest \|\| testnet/);
+  assert.match(address, /writeText\(publicAddress\)/);
+  assert.match(address, /<code>\{publicAddress \?\? "—"\}<\/code>/);
+  assert.match(address, /disabled=\{!publicAddress\}/);
+  assert.match(address, /return null;/);
+  for (const card of [item, primary]) assert.match(card, /projectTest=\{wallet\.is_project_test === true\}/);
+});
