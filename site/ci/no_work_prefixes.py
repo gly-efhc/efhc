@@ -83,8 +83,20 @@ def read_policy(ref):
             if not re.fullmatch(r'[\w-]+/[\w./-]+@v\d+(?:\.\d+)*', item['literal']):
                 raise ValueError('invalid external action version exception')
         elif item['kind'] == 'protocol':
-            if not re.fullmatch(r'/[\w/-]+/v\d+/?|https://[^\s]+', item['literal']):
+            if not re.fullmatch(r'/(?:[\w-]+/)*v\d+/?|https://[^\s]+', item['literal']):
                 raise ValueError('protocol exception must be an exact external address or API path')
+        elif item['kind'] == 'external-identifier':
+            if not TOKEN.fullmatch(item['literal']) or not (SEGMENT.search(item['literal']) or CAMEL.search(item['literal'])):
+                raise ValueError('invalid external identifier exception')
+        elif item['kind'] == 'signed-prefix':
+            if not re.fullmatch(r'[a-z][a-z0-9-]*-v[0-9]+/', item['literal']):
+                raise ValueError('invalid signed prefix exception')
+        elif item['kind'] == 'external-label':
+            if not re.fullmatch(r'[A-Za-z][A-Za-z0-9 .-]* v[0-9]+(?:\.[0-9]+)*', item['literal']):
+                raise ValueError('invalid external product version label')
+        elif item['kind'] == 'dependency-comment':
+            if Path(item['path']).name != 'requirements.txt' or not re.fullmatch(r'#[^\r\n]+', item['literal']):
+                raise ValueError('invalid exact requirements comment exception')
         elif item['kind'] != 'historical-source':
             raise ValueError('unknown exception kind')
     return policy
@@ -151,6 +163,23 @@ def mask_external_metadata(path, text):
         text = LOCK_INTEGRITY.sub(mask_integrity, text)
     return text
 
+def mask_exact_exception(text, item):
+    literal = item['literal']
+    quoted = re.escape(literal)
+    kind = item['kind']
+    if kind == 'external-identifier':
+        return TOKEN.sub(lambda match: ' ' * len(literal) if match[0] == literal else match[0], text)
+    if kind == 'signed-prefix':
+        return re.sub(r"""(?<![\w'"])b(["'])""" + quoted + r'\1', ' ', text)
+    if kind == 'dependency-comment':
+        return re.sub(r'(?m)^' + quoted + r'(?=\r?$)', ' ', text)
+    if kind in {'external-label', 'protocol'}:
+        left = r'(?<![\w$.-])' if not literal.startswith('/') else ''
+        right = r'(?![\w$-]|\.[\w])'
+        return re.sub(left + quoted + right, ' ', text)
+    return text.replace(literal, ' ')
+
+
 def identities(path, content, policy):
     found = Counter()
     for part in path.split('/'):
@@ -172,7 +201,7 @@ def identities(path, content, policy):
         return found
     for item in policy['exceptions']:
         if path == item['path']:
-            text = text.replace(item['literal'], '')
+            text = mask_exact_exception(text, item)
     # Full quoted Git/SHA checksums and CSS declaration values are data, not
     # work-number identities. Selectors/function names are still inspected.
     text = QUOTED_HASH.sub('"checksum"', text)

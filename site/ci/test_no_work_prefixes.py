@@ -204,6 +204,39 @@ class PrefixGuardTests(unittest.TestCase):
         self.check(2)
 
 
+    def test_external_exceptions_are_exact_and_path_bound(self):
+        suffix = 'v' + '2'
+        helper = 'external_api_' + suffix
+        signed = 'signed-item-' + suffix + '/'
+        dependency = '# Pydantic ' + suffix + ' is required.'
+        self.policy['exceptions'] = [
+            {'path': 'src/api.py', 'literal': helper, 'kind': 'external-identifier', 'reason': 'External API version'},
+            {'path': 'src/api.py', 'literal': '/' + suffix, 'kind': 'protocol', 'reason': 'External API path'},
+            {'path': 'src/proof.py', 'literal': signed, 'kind': 'signed-prefix', 'reason': 'Signed protocol payload'},
+            {'path': 'main/backend/requirements.txt', 'literal': dependency, 'kind': 'dependency-comment', 'reason': 'Dependency version'},
+        ]
+        self.put(guard.POLICY_PATH, json.dumps(self.policy))
+        base = self.commit()
+        self.put('src/api.py', 'def ' + helper + '(): return "/' + suffix + '"')
+        self.put('src/proof.py', 'PREFIX = b"' + signed + '"')
+        self.put('main/backend/requirements.txt', dependency + '\npydantic>=2,<3\n')
+        clean = self.commit()
+        self.check(0, base)
+        for path, addition in [
+            ('src/other.py', helper),
+            ('src/api.py', helper + '0'),
+            ('src/api.py', '"/' + suffix + '0"'),
+            ('src/proof.py', 'b"other-' + signed + '"'),
+            ('src/proof.py', 'b"' + signed + 'unexpected"'),
+            ('main/backend/requirements.txt', dependency + ' newCycle' + '1234'),
+        ]:
+            with self.subTest(path=path, addition=addition):
+                self.git('reset', '--hard', clean)
+                target = self.root / path
+                self.put(path, (target.read_text() if target.exists() else '') + '\n' + addition)
+                self.commit()
+                self.check(1, base)
+
     def test_candidate_cannot_grant_itself_exception(self):
         self.policy['exceptions'] = [{'path': 'src/other.ts', 'literal': '/api/' + 'v' + '1', 'kind': 'protocol', 'reason': 'self-approved'}]
         self.put(guard.POLICY_PATH, json.dumps(self.policy))

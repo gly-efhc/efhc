@@ -14,8 +14,9 @@ working source fails closed. The guard prints identifiers and paths, not source
 lines or credentials.
 
 Frozen historical sources remain unchanged. Exact necessary external action and
-protocol references require a path, literal, kind and reason in
+protocol references, signed prefixes, and third-party dependency versions require a path, literal, kind and reason in
 `work-prefix-exceptions.json`. No wildcard exemptions or blanket version skips.
+External identifiers match complete tokens; signed prefixes match exact byte literals; requirements exceptions match the complete comment, not executable constraints. The Archive records the OWNER authorization and exact entries.
 PRs cannot authorize their own exemptions: the checker and policy are read from
 the event's trusted base. A new exception requires a separate explicit OWNER
 installation. Unit fixtures construct forbidden identities in memory.
