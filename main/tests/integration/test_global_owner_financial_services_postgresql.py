@@ -68,15 +68,15 @@ async def test_canonical_global_owner_и_idempotency_ledger(
         db_session,
         global_id=telegram_global_id,
         amount=Decimal("5"),
-        reason="cycle1641",
-        idempotency_key="cycle1641-selector-equivalence",
+        reason="owner-selector",
+        idempotency_key="owner-selector-equivalence",
     )
     second = await credit_user_from_bank(
         db_session,
         global_id=telegram_global_id,
         amount=Decimal("5"),
-        reason="cycle1641",
-        idempotency_key="cycle1641-selector-equivalence",
+        reason="owner-selector",
+        idempotency_key="owner-selector-equivalence",
     )
     assert first.global_id == telegram_global_id
     assert second.detail == "idempotent"
@@ -87,7 +87,7 @@ async def test_canonical_global_owner_и_idempotency_ledger(
                 text(
                     "SELECT count(*) FROM efhc_core.efhc_transfers_log "
                     "WHERE idempotency_key = "
-                    "'cycle1641-selector-equivalence'"
+                    "'owner-selector-equivalence'"
                 )
             )
         ).scalar_one()
@@ -110,8 +110,8 @@ async def test_ton_only_credit_panel_withdraw_и_cancel(
         db_session,
         global_id=global_id,
         amount=Decimal("10"),
-        reason="cycle1641-ton-only",
-        idempotency_key="cycle1641-ton-only-credit",
+        reason="ton-only-owner",
+        idempotency_key="ton-only-owner-credit",
     )
     assert credit.tg_id is None
     assert credit.global_id == global_id
@@ -120,7 +120,7 @@ async def test_ton_only_credit_panel_withdraw_и_cancel(
             text(
                 "SELECT tg_id, global_id "
                 "FROM efhc_core.efhc_transfers_log "
-                "WHERE idempotency_key = 'cycle1641-ton-only-credit'"
+                "WHERE idempotency_key = 'ton-only-owner-credit'"
             )
         )
     ).first()
@@ -132,7 +132,7 @@ async def test_ton_only_credit_panel_withdraw_и_cancel(
         db_session,
         global_id=global_id,
         qty=1,
-        idempotency_key="cycle1642-ton-only-panel",
+        idempotency_key="ton-only-owner-panel",
     )
     assert purchase.created_panel_ids
     panel_owner = (
@@ -151,7 +151,7 @@ async def test_ton_only_credit_panel_withdraw_и_cancel(
         db_session,
         global_id=global_id,
         amount=Decimal("10"),
-        idempotency_key="cycle1642-ton-only-withdraw",
+        idempotency_key="ton-only-owner-withdraw",
         external_address="EQ_TEST_WITHDRAW_DESTINATION",
     )
     assert request.global_id == global_id

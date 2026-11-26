@@ -67,7 +67,7 @@ def _ton_proof(subject: str) -> VerifiedTonProof:
         ),
         network="mainnet",
         verified_at=NOW,
-        key_source="cycle_1639_integration",
+        key_source="referral_ingress_fixture",
     )
 
 

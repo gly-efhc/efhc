@@ -35,7 +35,7 @@ async def _seed_cross_provider_account(
             await db.execute(
                 text(
                     "INSERT INTO efhc_core.users (username) "
-                    "VALUES ('cycle1630') RETURNING global_id"
+                    "VALUES ('cross-provider-session') RETURNING global_id"
                 ),
             )
         ).scalar_one()

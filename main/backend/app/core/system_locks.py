@@ -86,7 +86,7 @@ def assert_per_sec_canon() -> None:
     При несоответствии поднимает
     LockViolation и не даёт приложению запуститься.
     """
-    # C28: a deployment must supply both server-side rates explicitly.
+    # A deployment must supply both server-side rates explicitly.
     # Pydantic model_fields_set includes values from protected .env or process ENV.
     if getattr(settings, "env_normalized", "local") in {
         "prod", "production", "stage", "staging",
