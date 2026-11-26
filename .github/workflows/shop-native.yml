@@ -83,7 +83,8 @@ jobs:
           python site/ci/pages-tools/fix_pages_assets.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
           python site/ci/pages-tools/verify_export.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
           . /etc/os-release
-          test "$ID" = ubuntu && test "$VERSION_ID" = 26.04
+          test "$ID" = ubuntu
+          test "$VERSION_ID" = 26.04
           python -m playwright --version
           python -m playwright install --with-deps chromium
           python site/ci/shop_ui_smoke.py
