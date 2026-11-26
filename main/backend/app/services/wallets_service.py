@@ -119,12 +119,14 @@ class WalletBindingOut:
     is_active: bool
     proof_verified: bool
     created_at: str
+    is_project_test: bool = False
 
 
 async def list_wallets(
     db: AsyncSession,
     *,
     global_id: str,
+    project_lease_hash: str | None = None,
 ) -> list[WalletBindingOut]:
     """Вернуть bindings по canonical ``global_id``."""
     rows = (
@@ -137,6 +139,7 @@ async def list_wallets(
                        is_primary,
                        is_active,
                        proof_verified,
+                       proof_source, proof_verified_at, proof_payload_hash, tg_id,
                        created_at
                   FROM efhc_core.wallet_bindings
                  WHERE global_id = :global_id
@@ -146,6 +149,7 @@ async def list_wallets(
             {"global_id": _global_id_db(global_id)},
         )
     ).mappings().all()
+    project_allowed = await _project_test_lease(db, global_id, project_lease_hash)
     return [
         WalletBindingOut(
             id=int(row["id"]),
@@ -159,9 +163,103 @@ async def list_wallets(
             is_active=bool(row["is_active"]),
             proof_verified=bool(row["proof_verified"]),
             created_at=str(row["created_at"]),
+            is_project_test=project_allowed and _is_project_test_row(row, _global_id_db(global_id)),
         )
         for row in rows
     ]
+
+
+def _is_project_test_row(row, gid: int) -> bool:
+    return (
+        3001 <= gid <= 4000
+        and row.get("proof_source") == "GENESIS_PROJECT_WALLET"
+        and row.get("proof_verified") is False
+        and row.get("proof_verified_at") is None
+        and row.get("proof_payload_hash") is None
+        and row.get("tg_id") is None
+        and row.get("wallet_address") in {
+            "0:" + sha256(f"EFHC/Genesis/ProjectWallet/{gid}/{slot}".encode("ascii")).hexdigest()
+            for slot in (1, 2, 3)
+        }
+    )
+
+
+async def _project_test_lease(db: AsyncSession, global_id: str, lease_hash: str | None) -> bool:
+    if not lease_hash or not 3001 <= _global_id_db(global_id) <= 4000:
+        return False
+    target = (await db.execute(text("""
+        SELECT current_setting('neon.project_id',TRUE)='fragrant-mountain-35143707'
+           AND current_setting('neon.branch_id',TRUE)='br-winter-rice-zalqeb10'
+           AND current_database()='neondb'
+    """))).scalar_one()
+    if not target:
+        return False
+    return bool((await db.execute(text("""
+        SELECT EXISTS(
+          SELECT 1 FROM efhc_core.users u
+          JOIN efhc_test.guest_leases l ON l.global_id=u.global_id
+          WHERE u.global_id=:gid AND u.is_active
+            AND u.meta->>'genesis'='true' AND u.meta->>'test_only'='true'
+            AND l.token_hash=:lease_hash AND l.expires_at>now()
+            AND NOT EXISTS(SELECT 1 FROM efhc_test.guest_slot_quarantine q WHERE q.global_id=u.global_id)
+            AND NOT EXISTS(SELECT 1 FROM efhc_core.user_identities i WHERE i.global_id=u.global_id)
+            AND NOT EXISTS(SELECT 1 FROM efhc_admin.admin_whitelist a WHERE a.global_id=u.global_id)
+            AND EXISTS(SELECT 1 FROM efhc_core.app_settings WHERE key='genesis.seed.status' AND value='COMPLETE')
+        )
+    """), {"gid":_global_id_db(global_id),"lease_hash":lease_hash})).scalar_one())
+
+
+async def manage_project_test_wallet(
+    db: AsyncSession, *, global_id: str, wallet_id: int,
+    lease_hash: str | None, remove: bool,
+) -> bool:
+    if not lease_hash:
+        return False
+    await db.execute(text("SELECT pg_advisory_xact_lock(4520045)"))
+    if not await _project_test_lease(db, global_id, lease_hash):
+        raise WalletConflict("GENESIS_PROJECT_WALLET_LEASE_INVALID")
+    gid = _global_id_db(global_id)
+    rows = (await db.execute(text("""
+        SELECT id,wallet_address,is_active,is_primary,proof_source,proof_verified,
+               proof_verified_at,proof_payload_hash,tg_id
+        FROM efhc_core.wallet_bindings WHERE global_id=:gid ORDER BY id FOR UPDATE
+    """), {"gid":gid})).mappings().all()
+    selected = next((r for r in rows if r["id"] == int(wallet_id)), None)
+    if selected is None:
+        raise WalletConflict("WALLET_OWNER_MISMATCH")
+    if not _is_project_test_row(selected, gid):
+        return False
+    if not selected["is_active"]:
+        raise WalletConflict("GENESIS_PROJECT_WALLET_INACTIVE")
+    active_verified = any(r["is_active"] and r["proof_verified"] for r in rows)
+    if remove:
+        await db.execute(text("""
+            DELETE FROM efhc_core.wallet_bindings WHERE global_id=:gid AND id=:wid
+        """), {"gid":gid,"wid":int(wallet_id)})
+        if selected["is_primary"]:
+            remaining = [r for r in rows if r["id"] != int(wallet_id) and r["is_active"]
+                         and (r["proof_verified"] or _is_project_test_row(r,gid))]
+            next_primary = next((r for r in remaining if r["proof_verified"]), None)
+            if next_primary is None and not active_verified:
+                next_primary = next(iter(remaining), None)
+            if next_primary is not None:
+                await db.execute(text("""
+                    UPDATE efhc_core.wallet_bindings SET is_primary=FALSE,updated_at=now()
+                    WHERE global_id=:gid AND is_primary
+                """), {"gid":gid})
+                await db.execute(text("""
+                    UPDATE efhc_core.wallet_bindings SET is_primary=TRUE,updated_at=now()
+                    WHERE global_id=:gid AND id=:wid
+                """), {"gid":gid,"wid":next_primary["id"]})
+    else:
+        if active_verified:
+            raise WalletConflict("VERIFIED_WALLET_PRIMARY_REQUIRED")
+        await db.execute(text("""
+            UPDATE efhc_core.wallet_bindings SET is_primary=(id=:wid),updated_at=now()
+            WHERE global_id=:gid
+        """), {"gid":gid,"wid":int(wallet_id)})
+    await db.commit()
+    return True
 
 
 async def get_verified_active_wallet(

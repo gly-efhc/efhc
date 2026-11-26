@@ -36,7 +36,10 @@ export function ProfileWalletSection(props: Props) {
   const t = useT();
   const serverBoundWallets = useMemo(
     () => props.wallets
-      .filter((wallet) => wallet.is_active && wallet.proof_verified === true)
+      .filter((wallet) => (
+        (wallet.is_active && wallet.proof_verified === true) ||
+        (wallet.is_active && wallet.is_project_test === true)
+      ))
       .slice()
       .sort((left, right) => Number(right.is_primary) - Number(left.is_primary)),
     [props.wallets],
@@ -52,7 +55,7 @@ export function ProfileWalletSection(props: Props) {
   const liveSessionWallet = useMemo(
     () => props.sessionConnected && props.sessionWalletAddress
       ? serverBoundWallets.find((wallet) => (
-          sameTonAddress(wallet.wallet_address, props.sessionWalletAddress)
+          wallet.proof_verified === true && sameTonAddress(wallet.wallet_address, props.sessionWalletAddress)
         )) || null
       : null,
     [props.sessionConnected, props.sessionWalletAddress, serverBoundWallets],

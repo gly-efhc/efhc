@@ -15,6 +15,7 @@ class WalletItemOut(EfhcBaseModel):
     is_active: bool
     proof_verified: bool
     created_at: str
+    is_project_test: bool = False
 
 
 class WalletMeOut(EfhcBaseModel):

@@ -26,6 +26,7 @@ export function WalletPrimaryCard(props: Props) {
       data-wallet-id={String(wallet.id)}
       data-wallet-session-owned={props.sessionOwned ? "true" : "false"}
     >
+      {wallet.is_project_test === true ? <span className="source-muted" data-wallet-project-test="true">TEST</span> : null}
       <WalletAddressVerification address={wallet.wallet_address} />
 
       <div className="efhc-wallet-primary-actions standalone-wallet-actions">

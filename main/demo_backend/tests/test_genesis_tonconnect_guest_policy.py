@@ -26,7 +26,12 @@ class GenesisGuestTonConnectPolicyTests(unittest.TestCase):
             genesis_guest_wallet_route("POST", "/api/wallets/connect"),
             "write",
         )
+        self.assertEqual(genesis_guest_wallet_route("POST", "/api/wallets/123/make-primary"), "write")
+        self.assertEqual(genesis_guest_wallet_route("DELETE", "/api/wallets/123"), "write")
         for method, path in (
+            ("DELETE", "/api/wallets/0"),
+            ("POST", "/api/wallets/abc/make-primary"),
+            ("DELETE", "/api/wallets/123/anything"),
             ("POST", "/api/wallets/tonconnect/proof-payload"),
             ("GET", "/api/wallets/tonconnect/check-proof"),
             ("GET", "/api/wallets/connect"),
