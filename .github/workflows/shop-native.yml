@@ -82,7 +82,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           cd "$RUNNER_TEMP/shop-pages"
-          ./node_modules/.bin/next build --webpack
+          npm run build
       - name: Verify export and rendered Shop without purchases
         env:
           SHOP_EXPORT_DIRECTORY: ${{ runner.temp }}/shop-pages/out

@@ -30,10 +30,10 @@
 | [site/RECOVERY.md](site/RECOVERY.md) | Техническая инструкция восстановления frontend; исторические утверждения сверять с текущими решениями OWNER |
 | [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) | Утверждённый публичный маршрут правил приложения (редакция B) |
 | [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) | Вторичный публичный документ, не независимый SSOT |
-| [site/RELEASE.json](site/RELEASE.json) | Локальный marker редакции; не замена release/CI-доказательствам |
-| [import/README.md](import/README.md) | Вход для предусмотренного репозиторием импорта frontend, не документального ZIP |
+| [site/RELEASE.json](site/RELEASE.json) | Контракт идентичности TEST-релиза; фактический `release.json` формируется из Git и собранного Serwist |
+| [import/README.md](import/README.md) | Безопасное сравнение архивов; автоматическая замена исходников запрещена |
 
-Действительность инструкций по импорту, release и восстановлению проверяется по соответствующему действующему workflow, manifest и источнику на конкретном HEAD. Приватный `Archive_vNNN.zip` не загружается в публичный `efhc/import/`.
+Единая команда компиляции — `npm run build`; Pages использует её для статического профиля. `release.json` идентифицирует исходные деревья и скомпилированный PWA, но не подтверждает развернутый Backend или миграции БД. Приватный `Archive_vNNN.zip` не загружается в публичный `efhc/import/`.
 
 ## Локальная разработка
 

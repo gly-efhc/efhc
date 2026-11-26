@@ -1,31 +1,7 @@
 {
-  "source_version": "CYCLE0032_DEMO_BACKEND",
-  "source_archive_name": "efhc.cycle0032.github-import.v1.json.gz",
-  "source_archive_sha256": "8763296c6ff9b0ef5426a0482e59323c85425ca0934275e98425da66095f4324",
-  "runtime_files_imported": 765,
-  "pages_workflow_sha256": "7a4583174474a2424bbb01337b5ba324dac15b478c4cc1b0a9978f8270284572",
-  "parity_tools_sha256": {
-    "extract_source.py": "4c1f1abf37080f688ac0d8a25275db53939abaea8b3d8bfbd1aaa3be0c60f25e",
-    "generate_referrals.mjs": "b2f7737869975b24239f4b4e2e20fc3f87fc82bcbd386e355d48096311261f23",
-    "generate_shell.mjs": "a93e4322d416fb037cacb30b625e894323dfdd2954424acd11f34152a68073e3",
-    "referrals_chroma.mjs": "0e07c7b78e84a61dbe75a40f7c126ed12f48103b8fa39a87b3c0112b1cae9a45"
-  },
-  "pages_tools_path": "site/ci/pages-tools",
-  "pages_tools_sha256": {
-    "browser-smoke.mjs": "ed7dd05c22897f8bed1f34c7775a834024fd521153f638812f6f3d5805a40aa5",
-    "fix_pages_assets.py": "d1cb859982758980651588a1c23517edd9beba7b6c91aa6ecd2b801240e89283",
-    "prepare_pages.py": "c155a61e880638feed6709326fa700a8bab1f2c38d40847b9c150dd206323548",
-    "verify_export.py": "62cf5fc385856bfd4589c39a106cb6b81e02bacde37c5b897ed4656010fb40e1"
-  },
-  "excluded": [
-    "backend",
-    "docs",
-    "reports",
-    "ops",
-    "tests except frontend/tests/parity",
-    "other workflow files",
-    "root DEMO HTML",
-    "secrets",
-    "logs"
-  ]
+  "schema": "efhc.release.identity",
+  "source": "git_commit",
+  "artifact_manifest": "release.json",
+  "environment": "TEST",
+  "runtime_backend_attestation": "separate"
 }
