@@ -1,5 +1,5 @@
 import { publicRuntimeValue } from "../lib/public-runtime";
-import type { TonConnectTx } from "../lib/ton/tx";
+import type { TonWalletRawTransaction } from "../lib/ton/tx";
 import { createDirectDepositReview, type DirectDepositReview } from "../lib/ton/direct-deposit-review";
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
@@ -69,7 +69,7 @@ function directDepositFailureCode(error: unknown): string | null {
 }
 
 type PreparedDirectDeposit = {
-  tx: TonConnectTx;
+  tx: TonWalletRawTransaction;
   senderAddress: string;
   ownerGlobalId: string;
   amount: string;

@@ -53,7 +53,7 @@ from app.services.payment_intents_service import (
 )
 from app.services.shop_prepayment_store import ShopPreparationActiveError
 from app.services.shop_service import (
-    ShopService,
+    ShopFacade,
     bind_vip_number_reservation_in_transaction,
 )
 from app.services.transactions_service import (
@@ -565,7 +565,7 @@ async def get_browser_shop_catalog() -> BrowserShopCatalogOut:
 
 async def _browser_shop_catalog() -> BrowserShopCatalogOut:
     async with new_session() as db:
-        svc = ShopService(db)
+        svc = ShopFacade(db)
         catalog = await svc.get_catalog(0)
 
     items: list[BrowserShopCatalogItemOut] = []
@@ -669,7 +669,7 @@ async def _browser_shop_create_intent(
                 detail="Active intent already exists; resume the current payment path",
             )
 
-        svc = ShopService(db)
+        svc = ShopFacade(db)
         catalog = await svc.get_catalog(0)
         item = next(
             (it for it in catalog.items if str(it.sku) == sku and bool(it.active)),
