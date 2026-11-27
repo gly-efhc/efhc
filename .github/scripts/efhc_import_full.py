@@ -15,7 +15,7 @@ PREFIX = (
     "site/frontend/", "site/ci/",
     "main/backend/app/", "main/backend/migrations/", "main/backend/openapi/",
     "main/demo_backend/", "main/contracts/", "main/tests/efhc_backend/",
-    "main/tests/integration/", "main/ops/routes/",
+    "main/tests/integration/", "scripts/ops/routes/", "scripts/frontend/",
 )
 FIXED = {
     "AGENTS.md", "INDEX.md", "KERNEL.md", "LICENSE.txt", "README.md", "START_HERE.md",
@@ -26,6 +26,7 @@ FIXED = {
     "main/backend/README_ADMIN_GLOBAL_IDS.md", "main/backend/__init__.py",
     "main/backend/alembic.ini", "main/backend/init.py", "main/backend/run.py",
     "main/backend/requirements.lock", "main/backend/requirements.txt", "main/tests/conftest.py",
+    "main/ops/routes/check_orm_0001_columns.py",
 }
 REQUIRED = {
     "site/frontend/package-lock.json", "site/frontend/src/pages/index.tsx",
