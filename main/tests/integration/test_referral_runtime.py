@@ -19,6 +19,7 @@ from app.services import referral_service
 from app.services.admin.admin_users_service import _get_referrals_brief
 from app.services.panels_service import (
     PanelPurchaseError,
+    _reserve_panel_public_ids,
     activate_panel,
 )
 from app.services.referral_service import (
@@ -922,21 +923,14 @@ async def test_parallel_invitees_cross_one_level_without_conflict(
     integration_session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
     await _create_user(db_session, tg_id=INVITER_TG)
+    reserved = await _reserve_panel_public_ids(db_session, qty=9)
+    assert reserved == [f"PNL-{n:08d}" for n in range(1, 10)]
     await _add_active_referrals(
         db_session,
         start_index=1,
         end_index=9,
         base_tg_id=TG_BASE + 300_000,
     )
-    counter = await db_session.execute(
-        text(
-            "UPDATE efhc_core.app_settings SET value = '9' "
-            "WHERE key = 'panels.pnl.last_issued' AND value = '0' "
-            "RETURNING value"
-        )
-    )
-    assert str(counter.scalar_one()) == "9"
-    await db_session.commit()
     buyers = (INVITEE_TG, INVITEE_TG + 1)
     for buyer in buyers:
         await _create_user(
