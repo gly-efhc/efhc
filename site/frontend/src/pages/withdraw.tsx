@@ -235,7 +235,6 @@ export default function WithdrawPage(props: {
     if (historyExporting) return;
     try {
       await historyExport.mutateAsync({ format, category: "withdraw" });
-      toast(t("withdraw.export_success"), "success");
     } catch {
       toast(t("withdraw.export_error"), "error");
     }

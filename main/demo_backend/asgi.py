@@ -64,7 +64,12 @@ async def demo_isolation(request: Request, call_next):
     if method == "OPTIONS":
         return await call_next(request)
     origin = request.headers.get("origin")
-    if origin and origin not in CONFIG.cors_origins:
+    profile_export_download = (
+        path == "/api/profile/history/export-download" and method in {"GET", "HEAD"}
+    )
+    if origin and origin not in CONFIG.cors_origins and not (
+        profile_export_download and origin == "https://web.telegram.org"
+    ):
         return JSONResponse({"detail": "DEMO_ORIGIN_FORBIDDEN"}, status_code=403)
     # Retain original external integrations (including TON Proof). The real
     # underlying backend verifies proofs, source signatures and credentials.
@@ -72,7 +77,7 @@ async def demo_isolation(request: Request, call_next):
         return JSONResponse({"detail": "DEMO_UNSUPPORTED_OPERATION"}, status_code=409)
     # TON/Telegram login endpoints are public by contract: they perform their
     # *own* verification, then issue a native Neon TEST auth session.
-    public = path in {
+    public = profile_export_download or path in {
         "/api/staging/login", "/api/staging/guest", "/api/staging/health", "/api/staging/visual-access", "/meta/health_db",
         "/openapi.json", "/docs", "/redoc",
         "/api/auth/ton/challenge", "/api/auth/ton/proof",
@@ -142,8 +147,12 @@ async def demo_isolation(request: Request, call_next):
                 if CONFIG.genesis_mode and operator_session.scope == "guest"
                 else None
             )
+            guest_export_grant = (
+                operator_session.scope in {"guest", "visual"} and method == "POST"
+                and path == "/api/profile/history/export-ticket"
+            )
             guest_write = (
-                guest_ton_route == "write" or (
+                guest_export_grant or guest_ton_route == "write" or (
                 operator_session.scope=="guest" and method=="POST"
                 and (path in {
                     "/api/panels/activate",

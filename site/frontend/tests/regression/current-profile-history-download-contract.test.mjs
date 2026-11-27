@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { readFileSync } from "node:fs";
+
+const read = path => readFileSync(new URL("../../" + path, import.meta.url), "utf8");
+
+test("CSV and XLSX use authenticated, scoped HTTPS download requests", () => {
+  const service = read("src/services/profile.service.ts");
+  assert.match(service, /export-ticket\?\$\{query\.toString\(\)\}`, "POST"/);
+  assert.match(service, /getAuthSessionRevision\(\) !== revision/);
+  assert.match(service, /new URL\("export-download", response\.url\)/);
+  assert.match(service, /url\.searchParams\.set\("ticket", grant\.ticket\)/);
+  assert.match(service, /webApp\.downloadFile\(\{ url: url\.href, file_name: grant\.filename \}/);
+  assert.match(service, /anchor\.href = url\.href/);
+  assert.doesNotMatch(service, /URL\.createObjectURL\(blob\)/);
+});
+
+test("History and withdrawal export never report unverified local file persistence", () => {
+  assert.doesNotMatch(read("src/features/profile/WebProfilePage.tsx"), /toast\(t\("history\.export_success"\)/);
+  assert.doesNotMatch(read("src/pages/withdraw.tsx"), /toast\(t\("withdraw\.export_success"\)/);
+});

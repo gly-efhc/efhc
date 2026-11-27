@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { apiRequest } from "../lib/api";
 import { transportRawRequest } from "../data/transport";
+import { getAuthAuthorizationHeader, getAuthSessionRevision } from "../lib/auth-session";
+import { getTelegramWebApp } from "../lib/telegram";
 import { parseGlobalId } from "../types/identity";
 import type { DbId } from "../types/db-id";
 import { dbIdSchema } from "../lib/api/db-id";
@@ -377,33 +379,58 @@ export async function getUnifiedProfileHistoryPage(args?: {
 
 export type ProfileHistoryExportCategory = "all" | "purchases" | "exchange" | "withdraw" | "bonuses" | "panels";
 
+const profileExportGrantSchema = z.object({
+  ticket: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  filename: z.string().regex(/^EFHC_[a-z]+_\d{4}-\d{2}-\d{2}\.(csv|xlsx)$/),
+});
+
 export async function downloadProfileHistoryExport(
   format: "csv" | "xlsx",
   category: ProfileHistoryExportCategory,
 ): Promise<void> {
-  const query = new URLSearchParams({ category });
-  const response = await transportRawRequest(`/profile/history/export.${format}?${query.toString()}`, "GET");
-  if (!response.ok) throw new Error("profile_history_export_failed");
-  // A stale session, gateway or offline fallback must never download HTML
-  // as a successful financial export.
-  const expectedType = format === "csv"
-    ? "text/csv"
-    : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  const actualType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
-  if (actualType !== expectedType) throw new Error("profile_history_export_invalid_content_type");
-  const blob = await response.blob();
-  if (blob.size === 0) throw new Error("profile_history_export_empty_file");
-  const url = URL.createObjectURL(blob);
-  try {
-    const anchor = document.createElement("a");
-    const day = new Date().toISOString().slice(0, 10);
-    anchor.href = url;
-    anchor.download = `EFHC_${category}_${day}.${format}`;
-    anchor.rel = "noopener";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  } finally {
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const actor = getAuthAuthorizationHeader();
+  const revision = getAuthSessionRevision();
+  if (!actor) throw new Error("profile_history_export_auth_required");
+  const query = new URLSearchParams({ category, format });
+  const response = await transportRawRequest(
+    `/profile/history/export-ticket?${query.toString()}`, "POST",
+  );
+  if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) {
+    throw new Error("profile_history_export_failed");
   }
+  const grant = profileExportGrantSchema.parse(await response.json());
+  if (getAuthAuthorizationHeader() !== actor || getAuthSessionRevision() !== revision) return;
+  if (!grant.filename.startsWith(`EFHC_${category}_`) || !grant.filename.endsWith(`.${format}`)) {
+    throw new Error("profile_history_export_invalid_filename");
+  }
+  const url = new URL("export-download", response.url);
+  if (url.protocol !== "https:" && !(
+    url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname)
+  )) throw new Error("profile_history_export_invalid_origin");
+  url.searchParams.set("ticket", grant.ticket);
+  const webApp = getTelegramWebApp();
+  if (url.protocol === "https:" && webApp?.initData &&
+      typeof webApp.downloadFile === "function" &&
+      (typeof webApp.isVersionAtLeast !== "function" || webApp.isVersionAtLeast("8.0"))) {
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, 120_000);
+      try {
+        webApp.downloadFile({ url: url.href, file_name: grant.filename }, () => {
+          window.clearTimeout(timer);
+          resolve();
+        });
+      } catch (error) {
+        window.clearTimeout(timer);
+        reject(error);
+      }
+    });
+    return;
+  }
+  const anchor = document.createElement("a");
+  anchor.href = url.href;
+  anchor.download = grant.filename;
+  anchor.rel = "noopener noreferrer";
+  anchor.referrerPolicy = "no-referrer";
+  document.body.appendChild(anchor);
+  try { anchor.click(); } finally { anchor.remove(); }
 }

@@ -38,7 +38,9 @@ export async function demoRawRequest(
   const guestActivityWrite = currentDemoSessionScope() === "guest"
     && method === "POST"
     && normalized.split("?")[0] === "/api/deposit/direct-check";
-  if (guestTonProofWrite || guestActivityWrite || (
+  const guestExportGrantWrite = guest && method === "POST"
+    && normalized.split("?")[0] === "/api/profile/history/export-ticket";
+  if (guestTonProofWrite || guestActivityWrite || guestExportGrantWrite || (
       method !== "GET" && !guest &&
       normalized !== "/api/staging/login" && normalized !== "/api/staging/guest"
   )) {

@@ -441,6 +441,12 @@
     "/profile/history": [
       "GET"
     ],
+    "/profile/history/export-download": [
+      "GET"
+    ],
+    "/profile/history/export-ticket": [
+      "POST"
+    ],
     "/profile/history/export.csv": [
       "GET"
     ],
