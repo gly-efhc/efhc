@@ -219,7 +219,7 @@ try{
           try{
             for(let i=1;i<=10;i++){
               const ct='CT-'+String(i).padStart(2,'0');
-              const legacy=i===10?'13':String(i).padStart(2,'0');
+              const legacy=String(i).padStart(2,'0'); // Current CT runtime IDs 01–10; legacy input 13 is migration-only.
               for(const node of [html,shell]){
                 node.dataset.colorThemeId=ct;
                 node.dataset.globalThemeId=legacy;
