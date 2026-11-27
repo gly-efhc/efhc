@@ -22,6 +22,15 @@ class ReleaseIdentityTests(unittest.TestCase):
             'main/backend/migrations/example.py': '',
             'main/demo_backend/asgi.py': '',
         }
+        for category in ('locale', 'faq'):
+            for lang in ('ru', 'en', 'uk', 'de', 'fr', 'es', 'it', 'tr',
+                         'pl', 'da', 'hi', 'id', 'sw', 'pt', 'ko', 'ja'):
+                relative = f'{category}/{lang}.json'
+                content = json.dumps({'language': lang})
+                files[f'site/frontend/public/{relative}'] = content
+                built = self.export / relative
+                built.parent.mkdir(parents=True, exist_ok=True)
+                built.write_text(content)
         for name, content in files.items():
             file = self.root / name
             file.parent.mkdir(parents=True, exist_ok=True)
@@ -41,8 +50,14 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual(result['source_commit'], self.commit)
         self.assertEqual(result['frontend_tree'], self.git('rev-parse', 'HEAD:site/frontend').decode().strip())
         self.assertEqual(result['service_worker_sha256'], hashlib.sha256(b'test fixture').hexdigest())
+        self.assertEqual(len(result['public_language_assets_sha256']), 32)
         self.assertFalse(result['backend_runtime_attested'])
         self.assertFalse(result['database_migrations_attested'])
+
+    def test_exported_translation_drift_is_rejected(self):
+        (self.export / 'locale/uk.json').write_text('{}')
+        with self.assertRaisesRegex(ValueError, 'Exported asset differs from source'):
+            identity(self.root, self.export, self.commit)
 
     def test_wrong_checkout_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'expected commit'):
