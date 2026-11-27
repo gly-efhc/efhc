@@ -170,3 +170,13 @@ test("panel confirmation uses EFHC Modal after settings gates and retains cancel
   assert.ok(panels.includes('!customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),\n    true,'));
   assert.ok(hook.includes('!guardAsyncConfirmation && !isTelegramConfirmationTest(isDemoBackendMode())'));
 });
+
+
+test("panel confirmation buttons share the cancellation button style", () => {
+  const css = source("styles/dialog-navigation.css");
+  const rule = css.match(/\.efhc-panel-confirmation-actions button\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule);
+  assert.match(rule, /background:\s*var\(--tg-secondary-bg\)/);
+  assert.match(rule, /color:\s*var\(--tg-text\)/);
+  assert.doesNotMatch(css, /\.efhc-panel-confirmation-actions button:(?:last-child|first-child|nth-child)/);
+});

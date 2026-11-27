@@ -78,10 +78,6 @@
   color: var(--tg-text);
   background: var(--tg-secondary-bg);
 }
-.efhc-panel-confirmation-actions button:last-child {
-  background: var(--efhc-ct-accent, var(--tg-button));
-  color: #101319;
-}
 .efhc-panel-confirmation-actions button:focus-visible {
   outline: 2px solid var(--efhc-ct-accent, var(--tg-button));
   outline-offset: 2px;
