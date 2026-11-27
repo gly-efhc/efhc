@@ -81,7 +81,7 @@ jobs:
           cd "$RUNNER_TEMP/efhc-parity-build"
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Install browser driver for full review
-        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
+        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/'))) }}
         run: |
           if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
             npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
@@ -151,7 +151,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Check actual rendered selections, colors, sizing and routes
-        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
+        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/'))) }}
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-parity-artifacts
@@ -178,7 +178,7 @@ jobs:
           done
           test "$failed" -eq 0
       - name: Retain visual review and precise results
-        if: ${{ always() && (inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react'))) }}
+        if: ${{ always() && (inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/')))) }}
         uses: actions/upload-artifact@v4
         with:
           name: efhc-parity-${{ github.sha }}
