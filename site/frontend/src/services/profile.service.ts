@@ -387,7 +387,23 @@ const profileExportGrantSchema = z.object({
 export async function downloadProfileHistoryExport(
   format: "csv" | "xlsx",
   category: ProfileHistoryExportCategory,
-): Promise<void> {
+): Promise<ProfileDownloadOutcome> {
+  if (profileDownloadInFlight) return "busy";
+  profileDownloadInFlight = true;
+  try {
+    return await prepareProfileDownload(format, category);
+  } finally {
+    profileDownloadInFlight = false;
+  }
+}
+
+export type ProfileDownloadOutcome = "requested" | "cancelled" | "unknown" | "busy" | "session_changed";
+let profileDownloadInFlight = false;
+
+async function prepareProfileDownload(
+  format: "csv" | "xlsx",
+  category: ProfileHistoryExportCategory,
+): Promise<ProfileDownloadOutcome> {
   const actor = getAuthAuthorizationHeader();
   const revision = getAuthSessionRevision();
   if (!actor) throw new Error("profile_history_export_auth_required");
@@ -399,7 +415,7 @@ export async function downloadProfileHistoryExport(
     throw new Error("profile_history_export_failed");
   }
   const grant = profileExportGrantSchema.parse(await response.json());
-  if (getAuthAuthorizationHeader() !== actor || getAuthSessionRevision() !== revision) return;
+  if (getAuthAuthorizationHeader() !== actor || getAuthSessionRevision() !== revision) return "session_changed";
   if (!grant.filename.startsWith(`EFHC_${category}_`) || !grant.filename.endsWith(`.${format}`)) {
     throw new Error("profile_history_export_invalid_filename");
   }
@@ -412,19 +428,29 @@ export async function downloadProfileHistoryExport(
   if (url.protocol === "https:" && webApp?.initData &&
       typeof webApp.downloadFile === "function" &&
       (typeof webApp.isVersionAtLeast !== "function" || webApp.isVersionAtLeast("8.0"))) {
-    await new Promise<void>((resolve, reject) => {
-      const timer = window.setTimeout(resolve, 120_000);
+    return await new Promise<ProfileDownloadOutcome>((resolve, reject) => {
+      // Telegram acknowledges the request, not physical file persistence.
+      // Cancellation or an unknown result must never start a second adapter.
+      let settled = false;
+      const settle = (result: ProfileDownloadOutcome) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(result);
+      };
+      const timer = window.setTimeout(() => settle("unknown"), 120_000);
       try {
-        webApp.downloadFile({ url: url.href, file_name: grant.filename }, () => {
-          window.clearTimeout(timer);
-          resolve();
+        webApp.downloadFile({ url: url.href, file_name: grant.filename }, (accepted: unknown) => {
+          settle(accepted === true ? "requested" : accepted === false ? "cancelled" : "unknown");
         });
       } catch (error) {
-        window.clearTimeout(timer);
-        reject(error);
+        if (!settled) {
+          settled = true;
+          window.clearTimeout(timer);
+          reject(error);
+        }
       }
     });
-    return;
   }
   const anchor = document.createElement("a");
   anchor.href = url.href;
@@ -433,4 +459,5 @@ export async function downloadProfileHistoryExport(
   anchor.referrerPolicy = "no-referrer";
   document.body.appendChild(anchor);
   try { anchor.click(); } finally { anchor.remove(); }
+  return "requested";
 }

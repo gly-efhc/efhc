@@ -20,3 +20,13 @@ test("History and withdrawal export never report unverified local file persisten
   assert.doesNotMatch(read("src/features/profile/WebProfilePage.tsx"), /toast\(t\("history\.export_success"\)/);
   assert.doesNotMatch(read("src/pages/withdraw.tsx"), /toast\(t\("withdraw\.export_success"\)/);
 });
+
+test("One download coordinator uses no application confirmation and settles native outcomes", () => {
+  const service = read("src/services/profile.service.ts").split("export async function downloadProfileHistoryExport(")[1];
+  assert.match(service, /if \(profileDownloadInFlight\) return "busy"/);
+  assert.match(service, /finally \{\s*profileDownloadInFlight = false/);
+  assert.match(service, /accepted === true \? "requested" : accepted === false \? "cancelled" : "unknown"/);
+  assert.match(service, /setTimeout\(\(\) => settle\("unknown"\), 120_000\)/);
+  assert.match(service, /return await new Promise<ProfileDownloadOutcome>/);
+  assert.doesNotMatch(service, /telegramConfirm|showConfirm|showPopup|window\.confirm|ConfirmationDialog/);
+});
