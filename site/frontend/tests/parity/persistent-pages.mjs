@@ -138,6 +138,45 @@ try{
     assert.ok(rows.length>=30,'expected every USER route at mobile and desktop');
     assert.ok(rows.every(row=>row.themes===10),'ten themes required for each route');
   });
+  await check('confirmation dialog computed layout in delivered Pages CSS',async()=>{
+    await visit('panels/');
+    const shell=page.locator('.efhc-independent-shell[data-interface-app-mode="user"]').first();
+    await shell.waitFor({state:'attached'});
+    for(const [width,height] of [[320,640],[390,844],[1440,900]]) {
+      await page.setViewportSize({width,height});
+      const rows=await page.evaluate(()=>{
+        const root=document.createElement('div');
+        root.className='fixed inset-0 efhc-modal-overlay efhc-user-direct-deposit-portal';
+        root.dataset.interfaceAppMode='user';
+        root.dataset.modalPortal='body';
+        root.dataset.modalSurface='confirmation';
+        root.innerHTML='<div class="efhc-modal efhc-modal-sheet w-full"><div class="efhc-modal-header"><div class="efhc-modal-title">Активация панели</div><button type="button" class="efhc-modal-close">×</button></div><div class="efhc-modal-body"><p>Активация панели: 100 EFHC</p><div class="efhc-confirmation-actions"><button type="button">Отмена</button><button type="button">Активировать</button></div></div></div>';
+        document.body.appendChild(root);
+        const sheet=root.querySelector('.efhc-modal-sheet'),actions=root.querySelector('.efhc-confirmation-actions'),buttons=[...actions.children];
+        const output=[];
+        try{
+          for(let i=1;i<=10;i++){
+            root.dataset.colorThemeId='CT-'+String(i).padStart(2,'0');
+            const r=sheet.getBoundingClientRect(),a=buttons[0].getBoundingClientRect(),b=buttons[1].getBoundingClientRect();
+            const style=buttons.map(el=>{const s=getComputedStyle(el);return [s.borderTopWidth,s.borderTopStyle,s.borderTopColor,s.backgroundColor,s.color,s.borderRadius]});
+            output.push({theme:root.dataset.colorThemeId,align:getComputedStyle(root).alignItems,display:getComputedStyle(actions).display,centerX:Math.abs(r.x+r.width/2-innerWidth/2),centerY:Math.abs(r.y+r.height/2-innerHeight/2),inside:r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight,gap:b.left-a.right,widthDiff:Math.abs(a.width-b.width),heightDiff:Math.abs(a.height-b.height),minHeight:Math.min(a.height,b.height),style});
+          }
+        }finally{root.remove();}
+        return output;
+      });
+      assert.equal(rows.length,10);
+      for(const row of rows){
+        assert.equal(row.align,'center',row.theme);
+        assert.equal(row.display,'grid',row.theme);
+        assert.ok(row.inside&&row.centerX<=2&&row.centerY<=2,JSON.stringify(row));
+        assert.ok(row.gap>=8&&row.widthDiff<=1&&row.heightDiff<=1&&row.minHeight>=44,JSON.stringify(row));
+        assert.deepEqual(row.style[0],row.style[1],row.theme);
+        assert.equal(row.style[0][0],'1px',row.theme);
+        assert.equal(row.style[0][1],'solid',row.theme);
+      }
+    }
+    await page.setViewportSize({width:390,height:844});
+  });
   await check('removed browser finance store does not reappear',async()=>{
     await visit();
     assert.equal(await page.evaluate(()=>localStorage.getItem('efhc:react:unified-demo:v893')),null);
