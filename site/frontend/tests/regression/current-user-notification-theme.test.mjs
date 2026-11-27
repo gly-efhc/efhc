@@ -40,3 +40,22 @@ test("portal-owned deposit and withdraw notices receive each of the ten USER pal
   assert.match(contents("components/DepositModal.tsx"), /portalColorThemeId=\{colorThemeId\}/);
   assert.match(contents("components/ui/Modal.tsx"), /data-color-theme-id=\{props.portalColorThemeId\}/);
 });
+
+test("only panel activation outcomes use the centered dismissible technical notice", () => {
+  const panels = contents("pages/panels.tsx");
+  const layout = contents("components/Layout.tsx");
+  const modal = contents("components/ui/Modal.tsx");
+  const css = contents("styles/dialog-navigation.css");
+  assert.ok(panels.includes('toast(t("panels.activate_ok"), "success", "panel-notice")'));
+  assert.ok(panels.includes('toast(message, "error", "panel-notice")'));
+  assert.ok(panels.includes('() => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100"))'));
+  assert.ok(layout.includes('item.surface !== "panel-notice"'));
+  assert.ok(layout.includes('title={panelNotice?.msg ?? ""}'));
+  assert.ok(layout.includes('portalColorThemeId={customization.colorThemeId}'));
+  assert.ok(modal.includes('getColorThemeDefinition(props.portalColorThemeId).accent'));
+  assert.ok(modal.includes('if (!props.closeDisabled) props.onClose()'));
+  assert.ok(modal.includes('onClick={props.onClose}'));
+  assert.ok(modal.includes('aria-modal="true"'));
+  assert.ok(css.includes('[data-modal-surface="panel-notice"].efhc-modal-overlay'));
+  assert.ok(css.includes('border: 1px solid var(--efhc-panel-notice-accent)'));
+});

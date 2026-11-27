@@ -127,7 +127,7 @@ export default function PanelsPage(props: {
           else await activationMutation.mutateAsync(idk);
           if (!sameActor || sameActor()) {
             recordPendingPurchase(null);
-            toast(t("panels.activate_ok"), "success");
+            toast(t("panels.activate_ok"), "success", "panel-notice");
           } else if (purchaseStorageKey) {
             try {
               if (window.sessionStorage.getItem(purchaseStorageKey) === idk) {
@@ -147,7 +147,7 @@ export default function PanelsPage(props: {
             t,
             "panels.activate_failed",
           );
-          toast(message, "error");
+          toast(message, "error", "panel-notice");
         }
       },
     );
