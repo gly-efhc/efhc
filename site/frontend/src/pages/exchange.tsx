@@ -72,7 +72,7 @@ export default function ExchangePage(props: {
   const withConfirmation = useTestTelegramConfirmation(globalId, {
     blocked: customization.mutationBlocked,
     max: maxExchangeableKwh,
-  });
+  }, true);
 
   const doPartialExchange = async (amountKwh: string, amountStillSelected: () => boolean) => {
     if (customization.mutationBlocked) return;
@@ -85,7 +85,7 @@ export default function ExchangePage(props: {
     if (cmp8(amount, "0.00000000") <= 0) return;
     if (cmp8(amount, maxExchangeableKwh) > 0) return;
     await withConfirmation(
-      () => confirm("convert", t("exchange.confirm_exchange_title"), t("exchange.confirm_exchange_detail")),
+      () => confirm("convert", t("exchange.confirm_exchange_title"), t("exchange.confirm_exchange_detail"), t("exchange.interactive_confirm")),
       (latest) => !latest.blocked && amountStillSelected() && cmp8(amount, latest.max) <= 0,
       async (beforeSend, sameActor) => {
         try {

@@ -659,6 +659,7 @@
   "panels.activate_failed": "Panel belum dapat diaktifkan. Periksa ketentuan lalu coba lagi.",
   "panels.activate_ok": "Panel diaktifkan.",
   "panels.activate_panel": "Aktivasi panel",
+  "panels.confirm_activate": "Aktifkan",
   "panels.activate_panel_aria": "Aktifkan satu panel surya",
   "panels.activated_at": "Diaktifkan pada",
   "panels.activation_context_detail": "Kanon aktivasi panel disatukan: 100 EFHC didebit saat aktivasi, dan status panel serta hasil akhir harus terbaca sama di Panels, Profile, dan riwayat operasi.",

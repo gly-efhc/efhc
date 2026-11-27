@@ -659,6 +659,7 @@
   "panels.activate_failed": "Panelet kunne ikke aktiveres. Tjek betingelserne, og prøv igen.",
   "panels.activate_ok": "Panel aktiveret.",
   "panels.activate_panel": "Panelaktivering",
+  "panels.confirm_activate": "Aktivér",
   "panels.activate_panel_aria": "Aktivér ét solpanel",
   "panels.activated_at": "Aktiveret",
   "panels.activation_context_detail": "Kanon for panelaktivering er ensartet: 100 EFHC debiteres ved aktivering, og panelstatus samt slutresultat skal læses ens i Panels, Profil og operationshistorik.",

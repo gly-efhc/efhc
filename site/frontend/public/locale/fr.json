@@ -659,6 +659,7 @@
   "panels.activate_failed": "Impossible d’activer le panneau. Vérifiez les conditions et réessayez.",
   "panels.activate_ok": "Panneau activé.",
   "panels.activate_panel": "Activation du panneau",
+  "panels.confirm_activate": "Activer",
   "panels.activate_panel_aria": "Activer un panneau solaire",
   "panels.activated_at": "Activé le",
   "panels.activation_context_detail": "Le canon d’activation du panneau est unifié : 100 EFHC sont débités à l’activation, et le statut du panneau ainsi que le résultat final doivent se lire de la même façon dans Panels, Profile et l’historique des opérations.",

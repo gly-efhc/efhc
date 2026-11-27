@@ -659,6 +659,7 @@
   "panels.activate_failed": "パネルを有効化できませんでした。条件を確認してもう一度お試しください。",
   "panels.activate_ok": "パネルを有効化しました。",
   "panels.activate_panel": "パネル有効化",
+  "panels.confirm_activate": "有効にする",
   "panels.activate_panel_aria": "ソーラーパネルを1台有効化",
   "panels.activated_at": "有効化日時",
   "panels.activation_context_detail": "パネル有効化の基準は共通です。有効化時に100 EFHCが差し引かれ、パネルのステータスと最終結果はPanels、Profile、操作履歴で同じように表示されます。",

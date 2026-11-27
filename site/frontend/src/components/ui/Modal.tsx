@@ -119,7 +119,7 @@ export function Modal(
     closeDisabled?: boolean;
     portalColorThemeId?: ColorThemeId;
     referenceLayout?: "deposit" | "settings";
-    surface?: "withdraw-ad" | "panel-confirmation";
+    surface?: "withdraw-ad" | "confirmation";
   }>,
 ) {
   const t = useT();

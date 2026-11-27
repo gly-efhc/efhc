@@ -659,6 +659,7 @@
   "panels.activate_failed": "Panel konnte nicht aktiviert werden. Prüfen Sie die Bedingungen und versuchen Sie es erneut.",
   "panels.activate_ok": "Panel aktiviert.",
   "panels.activate_panel": "Panel-Aktivierung",
+  "panels.confirm_activate": "Aktivieren",
   "panels.activate_panel_aria": "Ein Solarpanel aktivieren",
   "panels.activated_at": "Aktiviert am",
   "panels.activation_context_detail": "Der Kanon der Panel-Aktivierung ist einheitlich: Bei der Aktivierung werden 100 EFHC belastet, und Panel-Status sowie Endergebnis müssen in Panels, Profil und Operationsverlauf gleich lesbar sein.",

@@ -659,6 +659,7 @@
   "panels.activate_failed": "패널 활성화에 실패했습니다. 조건을 확인하고 다시 시도하세요.",
   "panels.activate_ok": "패널이 활성화되었습니다.",
   "panels.activate_panel": "패널 활성화",
+  "panels.confirm_activate": "활성화",
   "panels.activate_panel_aria": "태양광 패널 1개 활성화",
   "panels.activated_at": "활성화 시각",
   "panels.activation_context_detail": "패널 활성화 canonical은 통합되어 있습니다. 활성화 시 100 EFHC가 차감되며 패널 상태와 최종 결과는 Panels, Profile, 작업 기록에서 동일하게 표시되어야 합니다.",

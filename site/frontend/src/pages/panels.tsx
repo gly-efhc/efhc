@@ -117,7 +117,7 @@ export default function PanelsPage(props: {
     if (customization.mutationBlocked) return;
     if (activating || (!canActivatePanel && !pendingPurchaseKey) || !globalId) return;
     await withConfirmation(
-      () => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100")),
+      () => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100"), t("panels.confirm_activate")),
       (eligible) => eligible,
       async (beforeSend, sameActor) => {
         // Retry a possibly committed purchase under the ORIGINAL key.

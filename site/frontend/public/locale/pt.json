@@ -659,6 +659,7 @@
   "panels.activate_failed": "Não foi possível ativar o painel. Verifique as condições e tente novamente.",
   "panels.activate_ok": "Ativação concluída.",
   "panels.activate_panel": "Ativação do painel",
+  "panels.confirm_activate": "Ativar",
   "panels.activate_panel_aria": "Ativar um painel solar",
   "panels.activated_at": "Ativado",
   "panels.activation_context_detail": "O cânone de ativação do painel é único: são debitados 100 EFHC e o estado do painel e o resultado final devem ser apresentados de forma consistente em Painéis, Perfil e histórico de operações.",
