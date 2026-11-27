@@ -182,11 +182,13 @@ test("all EFHC user confirmations share one themed dialog and retain settings an
 });
 
 test("confirmation buttons share the cancellation button style", () => {
-  const css = source("styles/dialog-navigation.css");
+  const css = readFileSync(new URL("../../public/react-runtime-layout.css", import.meta.url), "utf8");
+  assert.ok(source("pages/_app.tsx").includes("/react-runtime-layout.css"));
+  assert.doesNotMatch(source("styles/dialog-navigation.css"), /efhc-confirmation-actions/);
   const rule = css.match(/\.efhc-confirmation-actions button\s*\{([^}]+)\}/)?.[1];
   assert.ok(rule);
   assert.match(rule, /background:\s*var\(--tg-secondary-bg\)/);
-  assert.match(rule, /color:\s*var\(--tg-text\)/);
+  assert.match(rule, /color:\s*var\(--efhc-color-text, var\(--tg-text\)\)/);
   assert.doesNotMatch(css, /\.efhc-confirmation-actions button:(?:last-child|first-child|nth-child)/);
 });
 
