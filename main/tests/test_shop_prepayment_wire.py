@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from main.backend.app.routes import shop_prepayment_routes as api
 from main.backend.app.services.shop_prepayment import Checkout, ShopRequest, ShopRequestError
 from main.backend.app.services.shop_prepayment_store import PostgresCheckoutStore
-from test_shop_prepayment_component import _Store
+from tests.test_shop_prepayment_component import _Store
 
 
 class HttpContract(unittest.TestCase):

@@ -128,7 +128,7 @@ jobs:
           import psycopg
           from psycopg import sql
           with psycopg.connect(os.environ["PSYCOPG_URL"], autocommit=True) as conn:
-              for name in ("efhc_regression_ci", "efhc_demo_regression_ci"):
+              for name in ("efhc_regression_ci", "neondb"):
                   conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
           PY
       - name: Complete backend regression suite
@@ -145,10 +145,13 @@ jobs:
         working-directory: main
         env:
           PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
-          DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
-          ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
-          SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
-          PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
-          EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
+          DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           EFHC_READ_CONTRACT_ROOT: ${{ github.workspace }}/main/backend/app/routes
+          EFHC_BACKEND_ROOT: ${{ github.workspace }}/main/backend
+          EFHC_READ_SQL_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          EFHC_PUBLIC_CI: '1'
         run: python -m pytest -q demo_backend/tests

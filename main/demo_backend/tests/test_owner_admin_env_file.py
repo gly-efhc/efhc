@@ -1,6 +1,7 @@
 """Genesis TEST Admin Global ID allowlist checks."""
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,10 @@ from demo_backend.config import DemoConfigurationError, read_repo_test_admin_ids
 
 class TestOwnerAdminEnvFile(unittest.TestCase):
     def test_tracked_owner_allowlist_contains_requested_global_id(self):
+        if os.environ.get("EFHC_PUBLIC_CI") == "1":
+            with self.assertRaisesRegex(DemoConfigurationError, "EFHC_TEST_ADMIN_GLOBAL_IDS_FILE_UNAVAILABLE"):
+                read_repo_test_admin_ids()
+            return
         ids = read_repo_test_admin_ids()
         self.assertIn("0000003101", ids)
         self.assertIn("0000003257", ids)
