@@ -41,13 +41,10 @@ test("portal-owned deposit and withdraw notices receive each of the ten USER pal
   assert.match(contents("components/ui/Modal.tsx"), /data-color-theme-id=\{props.portalColorThemeId\}/);
 });
 
-test("panel activation success retains the existing bottom toast with a uniform theme border", () => {
-  const rule = '[data-theme-page-route="/panels"] .efhc-user-toast[data-toast-kind="success"]';
-  const border = "1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint))";
-  assert.ok(globals.includes(rule + " {\n  border-left: " + border + ";\n}"));
-  assert.ok(globals.includes("border: " + border + ";"));
+test("all USER toasts retain bottom placement and a uniform theme border", () => {
+  const rule = globals.split(".efhc-user-toast {")[1].split("}")[0];
+  assert.ok(rule.includes("border: 1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint))"));
+  assert.doesNotMatch(rule, /border-left/);
   assert.ok(globals.includes("bottom: calc(var(--efhc-safe-bottom) + 5.9rem)"));
-  assert.ok(contents("components/Layout.tsx").includes("data-theme-page-route={router.pathname}"));
   assert.ok(contents("pages/panels.tsx").includes('toast(t("panels.activate_ok"), "success")'));
-  assert.ok(contents("pages/panels.tsx").includes('() => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100"))'));
 });

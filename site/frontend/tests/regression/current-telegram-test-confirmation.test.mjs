@@ -161,3 +161,12 @@ test("EFHC TEST coordinator rejects a replaced session even when the account is 
     assert.equal(sends, scenario === "approval" ? 1 : 0);
   }
 });
+
+test("panel confirmation uses EFHC Modal after settings gates and retains cancellation and session guard", () => {
+  const layout = source("components/Layout.tsx");
+  const panels = source("pages/panels.tsx");
+  const hook = source("hooks/useTestTelegramConfirmation.ts");
+  for (const marker of ['if (!props.settings.confirm_actions) return true;', 'if (!gate) return true;', 'kind === "purchase" && router.pathname === "/panels"', 'return await confirmPanelPurchase(title, detail)', 'surface="panel-confirmation"', 'portalColorThemeId={customization.colorThemeId}', 'onClose={() => settlePanelConfirmation(false)}', 'onClick={() => settlePanelConfirmation(true)}', 'subscribeAuthSessionInvalidation(cancel)', 'router.events.on("routeChangeStart", cancel)', 'pendingPanelConfirmation.current = null']) assert.ok(layout.includes(marker), marker);
+  assert.ok(panels.includes('!customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),\n    true,'));
+  assert.ok(hook.includes('!guardAsyncConfirmation && !isTelegramConfirmationTest(isDemoBackendMode())'));
+});

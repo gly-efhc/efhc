@@ -6,7 +6,7 @@ import { getAuthAuthorizationHeader, getAuthSessionRevision } from "../lib/auth-
 import { runConfirmedOperation } from "../lib/confirmed-operation";
 import { isTelegramConfirmationTest } from "../lib/telegram";
 
-export function useTestTelegramConfirmation<T>(expectedOwner: string | null, state: T) {
+export function useTestTelegramConfirmation<T>(expectedOwner: string | null, state: T, guardAsyncConfirmation = false) {
   const auth = useAuthSessionController();
   const current = useRef({ state, auth });
   current.current = { state, auth };
@@ -28,7 +28,7 @@ export function useTestTelegramConfirmation<T>(expectedOwner: string | null, sta
     eligible: (latest: T) => boolean,
     dispatch: (beforeSend?: () => boolean, sameActor?: () => boolean) => Promise<void>,
   ): Promise<void> => {
-    if (!isTelegramConfirmationTest(isDemoBackendMode())) {
+    if (!guardAsyncConfirmation && !isTelegramConfirmationTest(isDemoBackendMode())) {
       if (await confirm()) await dispatch();
       return;
     }

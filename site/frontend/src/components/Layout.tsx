@@ -7,6 +7,8 @@ import type { Dict, Lang } from "../lib/i18n";
 import { tFromDicts } from "../lib/i18n";
 import type { UserSettings } from "../lib/settings";
 import { DepositModal } from "./DepositModal";
+import { Modal } from "./ui/Modal";
+import { subscribeAuthSessionInvalidation } from "../lib/auth-session";
 import {
   getTelegramWebApp,
   hapticError,
@@ -233,6 +235,37 @@ export function Layout(
     [props.descDict, props.uiDict, props.ruDict],
   );
   const [depositOpen, setDepositOpen] = useState(false);
+  const [panelConfirmation, setPanelConfirmation] = useState<{ title: string; detail?: string } | null>(null);
+  const pendingPanelConfirmation = useRef<{ resolve: (approved: boolean) => void; timer: number } | null>(null);
+
+  function settlePanelConfirmation(approved: boolean, updateView = true) {
+    const pending = pendingPanelConfirmation.current;
+    if (!pending) return;
+    pendingPanelConfirmation.current = null;
+    window.clearTimeout(pending.timer);
+    if (updateView) setPanelConfirmation(null);
+    pending.resolve(approved);
+  }
+
+  useEffect(() => {
+    const cancel = () => settlePanelConfirmation(false);
+    router.events.on("routeChangeStart", cancel);
+    const unsubscribe = subscribeAuthSessionInvalidation(cancel);
+    return () => {
+      router.events.off("routeChangeStart", cancel);
+      unsubscribe();
+      settlePanelConfirmation(false, false);
+    };
+  }, [router.events]);
+
+  function confirmPanelPurchase(title: string, detail?: string): Promise<boolean> {
+    if (pendingPanelConfirmation.current) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      const timer = window.setTimeout(() => settlePanelConfirmation(false), 120_000);
+      pendingPanelConfirmation.current = { resolve, timer };
+      setPanelConfirmation({ title, detail });
+    });
+  }
   const [walletHint, setWalletHint] = useState<string | null>(null);
   const [availableWallets, setAvailableWallets] = useState<WalletView[]>([]);
   const [proofState, setProofState] = useState<
@@ -543,6 +576,9 @@ export function Layout(
       generic: true,
     }[kind];
     if (!gate) return true;
+    if (kind === "purchase" && router.pathname === "/panels") {
+      return await confirmPanelPurchase(title, detail);
+    }
     return await telegramConfirm(title, detail, isDemoBackendMode());
   }
 
@@ -944,6 +980,20 @@ export function Layout(
             </div>
           </div>
         ) : null}
+
+        <Modal
+          open={panelConfirmation !== null}
+          onClose={() => settlePanelConfirmation(false)}
+          title={panelConfirmation?.title ?? ""}
+          portalColorThemeId={customization.colorThemeId}
+          surface="panel-confirmation"
+        >
+          {panelConfirmation?.detail ? <p>{panelConfirmation.detail}</p> : null}
+          <div className="efhc-panel-confirmation-actions">
+            <button type="button" data-modal-initial-focus onClick={() => settlePanelConfirmation(false)}>{t("common.cancel")}</button>
+            <button type="button" onClick={() => settlePanelConfirmation(true)}>OK</button>
+          </div>
+        </Modal>
 
         <DepositModal
           open={depositOpen}

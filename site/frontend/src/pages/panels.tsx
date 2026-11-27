@@ -110,6 +110,7 @@ export default function PanelsPage(props: {
 
   const withConfirmation = useTestTelegramConfirmation(globalId,
     !customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),
+    true,
   );
 
   const activatePanel = async () => {

@@ -1374,7 +1374,6 @@ html[data-theme="light"]{
   gap: .75rem;
   padding: .78rem .9rem;
   border: 1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint));
-  border-left: 3px solid var(--efhc-toast-color);
   border-radius: .95rem;
   color: var(--tg-text);
   background: color-mix(in srgb, var(--tg-secondary-bg) 94%, var(--efhc-toast-color));
@@ -1382,9 +1381,6 @@ html[data-theme="light"]{
   backdrop-filter: blur(14px);
   overflow-wrap: anywhere;
   pointer-events: auto;
-}
-[data-theme-page-route="/panels"] .efhc-user-toast[data-toast-kind="success"] {
-  border-left: 1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint));
 }
 .efhc-user-toast-icon {
   display: grid;
