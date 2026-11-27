@@ -3027,7 +3027,43 @@
         },
         "x-efhc-ssot-handler": "profile_history",
         "x-efhc-ssot-file": "backend/app/routes/profile_history_routes.py",
-        "x-efhc-ssot-line": "69",
+        "x-efhc-ssot-line": "77",
+        "x-efhc-generated-from": "backend route source static scan"
+      }
+    },
+    "/profile/history/export-download": {
+      "get": {
+        "tags": [
+          "profile-history"
+        ],
+        "summary": "Redeem one private profile history download",
+        "operationId": "profile_history_export_download",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-efhc-ssot-handler": "profile_history_export_download",
+        "x-efhc-ssot-file": "backend/app/routes/profile_history_routes.py",
+        "x-efhc-ssot-line": "341",
+        "x-efhc-generated-from": "backend route source static scan"
+      }
+    },
+    "/profile/history/export-ticket": {
+      "post": {
+        "tags": [
+          "profile-history"
+        ],
+        "summary": "Prepare one private profile history download",
+        "operationId": "profile_history_export_ticket",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "x-efhc-ssot-handler": "profile_history_export_ticket",
+        "x-efhc-ssot-file": "backend/app/routes/profile_history_routes.py",
+        "x-efhc-ssot-line": "313",
         "x-efhc-generated-from": "backend route source static scan"
       }
     },
@@ -3045,7 +3081,7 @@
         },
         "x-efhc-ssot-handler": "profile_history_csv",
         "x-efhc-ssot-file": "backend/app/routes/profile_history_routes.py",
-        "x-efhc-ssot-line": "197",
+        "x-efhc-ssot-line": "228",
         "x-efhc-generated-from": "backend route source static scan"
       }
     },
@@ -3063,7 +3099,7 @@
         },
         "x-efhc-ssot-handler": "profile_history_xlsx",
         "x-efhc-ssot-file": "backend/app/routes/profile_history_routes.py",
-        "x-efhc-ssot-line": "254",
+        "x-efhc-ssot-line": "286",
         "x-efhc-generated-from": "backend route source static scan"
       }
     },
@@ -5790,8 +5826,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 100000.0,
-            "minimum": -100000.0,
+            "maximum": 100000,
+            "minimum": -100000,
             "title": "Sort Order",
             "default": 0
           }
@@ -6859,7 +6895,7 @@
           },
           "quantity": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Quantity",
             "default": 1
           },
@@ -8208,8 +8244,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Sort Order",
             "default": 100
           },
@@ -8365,8 +8401,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Sort Order"
           }
         },
@@ -8430,8 +8466,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Sort Order"
           },
           "is_active": {
@@ -8576,8 +8612,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Sort Order",
             "default": 100
           },
@@ -8635,8 +8671,8 @@
           },
           "sort_order": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 0.0,
+            "maximum": 1000000,
+            "minimum": 0,
             "title": "Sort Order"
           },
           "is_active": {
@@ -8729,7 +8765,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string",
@@ -8805,7 +8841,7 @@
         "properties": {
           "skin_id": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Skin Id"
           },
           "purchased_at": {
@@ -10066,7 +10102,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -10640,8 +10676,8 @@
           },
           "min_requests": {
             "type": "integer",
-            "maximum": 1000000.0,
-            "minimum": 1.0,
+            "maximum": 1000000,
+            "minimum": 1,
             "title": "Min Requests",
             "default": 20
           }
@@ -11062,8 +11098,8 @@
           },
           "quantity": {
             "type": "integer",
-            "maximum": 1.0,
-            "minimum": 1.0,
+            "maximum": 1,
+            "minimum": 1,
             "title": "Quantity",
             "description": "Одна catalog position на один внешний order."
           },
@@ -11403,7 +11439,7 @@
         "properties": {
           "skin_id": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Skin Id"
           },
           "title": {
@@ -11432,8 +11468,8 @@
         "properties": {
           "skin_id": {
             "type": "integer",
-            "maximum": 12.0,
-            "minimum": 1.0,
+            "maximum": 12,
+            "minimum": 1,
             "title": "Skin Id"
           },
           "title": {
@@ -11467,8 +11503,8 @@
         "properties": {
           "current_level": {
             "type": "integer",
-            "maximum": 12.0,
-            "minimum": 1.0,
+            "maximum": 12,
+            "minimum": 1,
             "title": "Current Level"
           },
           "available_skin_ids": {
@@ -11480,8 +11516,8 @@
           },
           "active_skin_id": {
             "type": "integer",
-            "maximum": 12.0,
-            "minimum": 1.0,
+            "maximum": 12,
+            "minimum": 1,
             "title": "Active Skin Id"
           },
           "items": {
@@ -11521,7 +11557,7 @@
         "properties": {
           "active_skin_id": {
             "type": "integer",
-            "minimum": 1.0,
+            "minimum": 1,
             "title": "Active Skin Id"
           },
           "owned": {
@@ -11721,13 +11757,13 @@
           },
           "active_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Active Count",
             "description": "Активные"
           },
           "inactive_count": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Inactive Count",
             "description": "Неактивные"
           },
@@ -11912,7 +11948,7 @@
           },
           "limit_per_user": {
             "type": "integer",
-            "minimum": 0.0,
+            "minimum": 0,
             "title": "Limit Per User",
             "default": 1
           },
@@ -11920,7 +11956,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -12297,7 +12333,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -12309,7 +12345,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "null"
@@ -12702,7 +12738,7 @@
         "properties": {
           "timestamp": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Timestamp"
           },
           "domain": {
@@ -12743,8 +12779,8 @@
         "properties": {
           "lengthBytes": {
             "type": "integer",
-            "maximum": 255.0,
-            "minimum": 1.0,
+            "maximum": 255,
+            "minimum": 1,
             "title": "Lengthbytes"
           },
           "value": {

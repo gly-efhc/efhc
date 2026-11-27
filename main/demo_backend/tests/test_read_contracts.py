@@ -92,4 +92,55 @@ class ReadContracts(unittest.IsolatedAsyncioTestCase):
         args['if_none_match'] = '"exact"'
         self.assertEqual((await fn(**args)).status_code, 304)
 
+def load_export_store():
+    import importlib.util
+    import sys
+    name = "efhc_isolated_profile_history_download"
+    spec = importlib.util.spec_from_file_location(
+        name, ROOT.parent / "services" / "profile_history_download.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module.ProfileExportDownloadStore
+
+
+class ProfileExportDownloads(unittest.IsolatedAsyncioTestCase):
+    async def test_private_download_grant_is_one_use_and_cleans_file(self):
+        from tempfile import TemporaryDirectory
+        ProfileExportDownloadStore = load_export_store()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "history.csv"
+            path.write_bytes(b"amount\n100\n")
+            store = ProfileExportDownloadStore()
+            ticket = store.issue(path, "EFHC_all_2026-11-27.csv", "text/csv")
+            self.assertEqual(len(ticket), 43)
+            self.assertIsNone(store.lookup("A" * 43))
+            self.assertEqual(store.lookup(ticket).size, 11)
+            self.assertIsNotNone(store.lookup(ticket))
+            self.assertEqual(store.redeem(ticket).path, path)
+            self.assertIsNone(store.redeem(ticket))
+            self.assertIsNone(store.lookup(ticket))
+            store.release(ticket)
+            self.assertFalse(path.exists())
+
+    async def test_expired_download_and_pending_capacity(self):
+        from tempfile import TemporaryDirectory
+        ProfileExportDownloadStore = load_export_store()
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "history.xlsx"
+            path.write_bytes(b"test")
+            other = Path(directory) / "other.csv"
+            other.write_bytes(b"test")
+            store = ProfileExportDownloadStore(ttl=0.01, max_entries=1)
+            ticket = store.issue(path, "EFHC_all_2026-11-27.xlsx", "application/test")
+            with self.assertRaises(ValueError):
+                store.issue(other, "EFHC_all_2026-11-27.csv", "text/csv")
+            await asyncio.sleep(0.04)
+            self.assertIsNone(store.lookup(ticket))
+            self.assertFalse(path.exists())
+            self.assertTrue(other.exists())
+
+
 if __name__ == '__main__': unittest.main()

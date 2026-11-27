@@ -105,3 +105,53 @@ jobs:
           "$browser_python" -m playwright --version
           "$browser_python" -m playwright install --with-deps chromium
           "$browser_python" site/ci/shop_ui_smoke.py
+
+      - name: Verify remaining frontend and architecture contracts
+        run: |
+          python -I -m unittest discover -s site/ci -p 'test_*.py' -v
+          cd site/frontend
+          node --test tests/parity/pages-artifact.test.mjs tests/regression/balance-history-dots.test.mjs tests/regression/balance-panel-public-id.test.mjs
+      - name: Build server React from clean source
+        working-directory: site/frontend
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run build
+      - name: Prepare disposable regression databases
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, "site/ci")
+          from run_shop_native import check_database_environment
+          check_database_environment(os.environ)
+          import psycopg
+          from psycopg import sql
+          with psycopg.connect(os.environ["PSYCOPG_URL"], autocommit=True) as conn:
+              for name in ("efhc_regression_ci", "neondb"):
+                  conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+          PY
+      - name: Complete backend regression suite
+        working-directory: main
+        env:
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
+          DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
+          ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
+          SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
+          PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
+        run: python -m pytest -q tests
+      - name: Complete DEMO adapter regression suite
+        if: ${{ !cancelled() }}
+        working-directory: main
+        env:
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
+          DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          EFHC_READ_CONTRACT_ROOT: ${{ github.workspace }}/main/backend/app/routes
+          EFHC_BACKEND_ROOT: ${{ github.workspace }}/main/backend
+          EFHC_READ_SQL_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
+          EFHC_PUBLIC_CI: '1'
+        run: python -m pytest -q demo_backend/tests

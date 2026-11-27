@@ -9,7 +9,7 @@ import pytest
 sqlalchemy = pytest.importorskip("sqlalchemy")
 text = sqlalchemy.text
 
-from app.services.admin.admin_rbac import AdminRole, AdminUser  # noqa: E402
+from app.services.admin.admin_rbac import AdminRole, AdminUser, EFHC_SUPERADMIN_GLOBAL_ID  # noqa: E402
 from app.services.admin.admin_withdrawals_service import (  # noqa: E402
     WithdrawalApproveRequest,
     WithdrawalsService,
@@ -171,7 +171,7 @@ async def _transfer_count(db, *, idempotency_key: str) -> int:
 def _admin() -> AdminUser:
     return AdminUser(
         id=101,
-        global_id=5_900_000_101,
+        global_id=EFHC_SUPERADMIN_GLOBAL_ID,
         tg_id=900001,
         role=AdminRole.SUPERADMIN,
         is_active=True,

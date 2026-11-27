@@ -296,7 +296,6 @@ export default function WebProfilePage(props: Props) {
     if (historyExporting) return;
     try {
       await historyExport.mutateAsync({ format, category: historyFilter });
-      ctx.toast(t("history.export_success"), "success");
     } catch {
       ctx.toast(t("history.export_error"), "error");
     }

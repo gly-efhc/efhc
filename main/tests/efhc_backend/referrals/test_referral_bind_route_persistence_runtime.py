@@ -8,7 +8,7 @@ def test_late_referral_binding_surface_is_removed() -> None:
         encoding="utf-8"
     )
     frontend = (
-        ROOT / "frontend/src/services/referrals.service.ts"
+        ROOT.parent / "site/frontend/src/services/referrals.service.ts"
     ).read_text(encoding="utf-8")
     assert '"/bind"' not in routes
     assert '"/attach"' not in routes

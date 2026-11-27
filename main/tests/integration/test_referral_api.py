@@ -122,10 +122,10 @@ async def _seed_api_data(db: AsyncSession) -> None:
                 last_generated_at, base_gen_per_sec, generated_kwh
             )
             VALUES
-                (:active1_global, 'ITAPI00000001', TRUE, FALSE,
+                (:active1_global, 'PNL-00000001', TRUE, FALSE,
                  NOW(), NOW() + INTERVAL '180 days', NULL,
                  NOW(), 0, 0),
-                (:active2_global, 'ITAPI00000002', FALSE, TRUE,
+                (:active2_global, 'PNL-00000002', FALSE, TRUE,
                  NOW(), NOW() + INTERVAL '180 days', NOW(),
                  NOW(), 0, 0)
             """

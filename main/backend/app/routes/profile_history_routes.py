@@ -27,8 +27,9 @@ from app.services.profile_history_service import (
     ProfileHistoryRecord,
     list_profile_history_page,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import FileResponse
+from app.services.profile_history_download import ProfileExportDownloadStore
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from starlette.background import BackgroundTask
 
 router = APIRouter(prefix="/profile", tags=["profile-history"])
@@ -304,5 +305,73 @@ async def profile_history_xlsx(
         filename=f"EFHC_{category}_{day}.xlsx",
         background=BackgroundTask(_delete_temp_file, str(path)),
     )
+
+_PROFILE_EXPORT_DOWNLOADS = ProfileExportDownloadStore()
+_XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@router.post("/history/export-ticket", summary="Prepare one private profile history download")
+async def profile_history_export_ticket(
+    format: Literal["csv", "xlsx"] = Query(...),
+    category: HistoryCategory = Query("all"),
+    owner: FinancialReadOwner = Depends(get_financial_read_owner),
+) -> JSONResponse:
+    path: Path | None = None
+    try:
+        path = await (_build_csv_export(owner.global_id, category)
+                      if format == "csv" else _build_xlsx_export(owner.global_id, category))
+        day = datetime.now(UTC).date().isoformat()
+        filename = f"EFHC_{category}_{day}.{format}"
+        media_type = "text/csv; charset=utf-8" if format == "csv" else _XLSX_MEDIA_TYPE
+        ticket = _PROFILE_EXPORT_DOWNLOADS.issue(path, filename, media_type)
+    except Exception as exc:
+        if path is not None:
+            path.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail="PROFILE_HISTORY_EXPORT_UNAVAILABLE") from exc
+    return JSONResponse(
+        {"ticket": ticket, "filename": filename},
+        headers={"Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer"},
+    )
+
+
+async def _release_profile_export(ticket: str) -> None:
+    _PROFILE_EXPORT_DOWNLOADS.release(ticket)
+
+
+@router.get("/history/export-download", summary="Redeem one private profile history download")
+@router.head("/history/export-download", include_in_schema=False)
+async def profile_history_export_download(
+    request: Request,
+    ticket: str = Query(..., min_length=43, max_length=43),
+) -> Response:
+    grant = (_PROFILE_EXPORT_DOWNLOADS.lookup(ticket) if request.method == "HEAD"
+             else _PROFILE_EXPORT_DOWNLOADS.redeem(ticket))
+    if grant is None:
+        raise HTTPException(status_code=404, detail="PROFILE_HISTORY_DOWNLOAD_UNAVAILABLE",
+                            headers={"Cache-Control": "private, no-store"})
+    headers = {
+        "Content-Disposition": f'attachment; filename="{grant.filename}"',
+        "Content-Length": str(grant.size),
+        "Content-Type": grant.media_type,
+        "Cache-Control": "private, no-store",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+        "Access-Control-Allow-Origin": "https://web.telegram.org",
+        "Accept-Ranges": "none",
+    }
+    if request.method == "HEAD":
+        return Response(headers=headers)
+
+    async def stream() -> AsyncIterator[bytes]:
+        try:
+            with grant.path.open("rb") as handle:
+                while chunk := await asyncio.to_thread(handle.read, 65536):
+                    yield chunk
+        finally:
+            _PROFILE_EXPORT_DOWNLOADS.release(ticket)
+
+    return StreamingResponse(stream(), headers=headers,
+                             background=BackgroundTask(_release_profile_export, ticket))
+
 
 __all__ = ["router"]
