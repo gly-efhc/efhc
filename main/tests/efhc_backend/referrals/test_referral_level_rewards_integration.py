@@ -70,7 +70,7 @@ async def _insert_panel(
         ),
         {
             "global_id": int(global_id),
-            "pid": f"IDREF{n:06d}",
+            "pid": f"PNL-{n:08d}",
             "now": now,
             "exp": now + timedelta(days=180),
         },

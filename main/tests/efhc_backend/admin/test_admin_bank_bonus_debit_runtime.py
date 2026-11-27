@@ -14,7 +14,7 @@ from app.services.admin.admin_bank_service import (  # noqa: E402
     BankService,
     BankUserTransferRequest,
 )
-from app.services.admin.admin_rbac import AdminRole, AdminUser  # noqa: E402
+from app.services.admin.admin_rbac import AdminRole, AdminUser, EFHC_SUPERADMIN_GLOBAL_ID  # noqa: E402
 
 pytestmark = pytest.mark.asyncio
 
@@ -100,7 +100,7 @@ async def _log_rows(db, idempotency_key: str):
 def _admin() -> AdminUser:
     return AdminUser(
         id=201,
-        global_id=5_900_000_201,
+        global_id=EFHC_SUPERADMIN_GLOBAL_ID,
         role=AdminRole.SUPERADMIN,
         is_active=True,
     )

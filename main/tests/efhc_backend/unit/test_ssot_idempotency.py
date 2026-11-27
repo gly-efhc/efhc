@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 
-import yaml
 
 
 def test_must_idempotency_paths_have_depends_marker():
@@ -13,11 +12,34 @@ def test_must_idempotency_paths_have_depends_marker():
     """
 
     repo = Path(__file__).resolve().parents[3]
-    raw = (repo / "ops" / "canon_rules.yaml").read_text("utf-8")
-    rules = yaml.safe_load(raw)
-    patterns: list[re.Pattern[str]] = []
-    for pat in rules["idempotency"]["must__path__patterns"]:
-        patterns.append(re.compile(pat))
+    patterns = [re.compile(pat) for pat in (
+        "^/admin/.*bonus",
+        "^/admin/.*manual",
+        "^/admin/bank/",
+        "^/admin/bank/(mint|burn)$",
+        "^/admin/bank/(to-user|from-user)$",
+        "^/admin/config/",
+        "^/admin/exchange/",
+        "^/admin/fees/",
+        "^/admin/nft-claims/",
+        "^/admin/rates/",
+        "^/admin/tasks/.*/pay",
+        "^/admin/transactions/",
+        "^/admin/transfer$",
+        "^/admin/withdrawals/",
+        "^/admin/withdrawals/[^/]+/(approve|reject|mark-paid)$",
+        "^/ads/.*/reward",
+        "^/ads/claim$",
+        "^/deposit/efhc$",
+        "^/exchange/",
+        "^/nft/",
+        "^/panels/",
+        "^/shop/",
+        "^/skins/buy/",
+        "^/tasks/claim/",
+        "^/wallets/connect$",
+        "^/withdraw/",
+    )]
 
     route_files = list(
         (repo / "backend" / "app" / "routes").glob("**/*.py")

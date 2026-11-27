@@ -36,7 +36,7 @@ async def test_panel_activation_preserves_transaction_key(
     activated_at = datetime(2026, 7, 16, 10, tzinfo=UTC)
     expires_at = datetime(2027, 1, 12, 10, tzinfo=UTC)
     db = _PanelDb(
-        (2, "ID00000002", activated_at, expires_at),
+        (2, "PNL-00000002", activated_at, expires_at),
     )
     activate = AsyncMock(
         return_value=SimpleNamespace(created_panel_ids=[2]),
@@ -57,7 +57,7 @@ async def test_panel_activation_preserves_transaction_key(
     )
     assert db.execute_calls == 1
     assert output.panel.id == 2
-    assert output.panel.public_id == "ID00000002"
+    assert output.panel.public_id == "PNL-00000002"
     assert output.panel.activated_at == activated_at.isoformat()
     assert output.panel.expires_at == expires_at.isoformat()
 

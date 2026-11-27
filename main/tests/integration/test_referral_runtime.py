@@ -378,7 +378,7 @@ async def _add_active_referrals(
             )
             SELECT
                 identity.global_id,
-                'IT' || LPAD(gs::TEXT, 12, '0'),
+                'PNL-' || LPAD(gs::TEXT, 8, '0'),
                 TRUE,
                 FALSE,
                 NOW(),
@@ -1026,7 +1026,7 @@ async def test_internal_user_pk_collision_does_not_activate_referral(
     await _add_panel(
         db_session,
         tg_id=int(internal_id),
-        public_id="ITPKCOLLISION",
+        public_id="PNL-00000001",
     )
     assert await _count_active_referrals(
         db_session,
@@ -1049,7 +1049,7 @@ async def test_archived_panel_keeps_referral_active(
     await _add_panel(
         db_session,
         tg_id=INVITEE_TG,
-        public_id="ITARCHIVED001",
+        public_id="PNL-00000002",
         archived=True,
     )
     items, cursor = await svc_list_referrals_active(
@@ -1089,7 +1089,7 @@ async def test_active_status_is_permanent_and_ignores_panel_count(
     """Activ is a permanent event flag, not current panel state.
 
     This test executes the real onboarding and first-panel purchase,
-    physically deletes every invitee panel, then checks all three
+    verifies historical deletion is forbidden, archives the panel, then checks all three
     public/admin consumers of the status.
     """
     inviter_tg = next_referral_tg_id()
@@ -1138,14 +1138,19 @@ async def test_active_status_is_permanent_and_ignores_panel_count(
     )
     assert admin_brief.active_invited == 1
 
+    with pytest.raises(IntegrityError, match="Historical panel records cannot be deleted"):
+        async with db_session.begin_nested():
+            await db_session.execute(
+                text("DELETE FROM efhc_core.panels WHERE global_id = :global_id"),
+                {"global_id": invitee_global_id},
+            )
     await db_session.execute(
         text(
-            "DELETE FROM efhc_core.panels "
+            "UPDATE efhc_core.panels SET is_active = FALSE, "
+            "is_archived = TRUE, archived_at = NOW() "
             "WHERE global_id = :global_id"
         ),
-        {
-                "global_id": invitee_global_id
-            },
+        {"global_id": invitee_global_id},
     )
     await db_session.commit()
     panels_left = (
@@ -1159,7 +1164,7 @@ async def test_active_status_is_permanent_and_ignores_panel_count(
             },
         )
     ).scalar_one()
-    assert int(panels_left) == 0
+    assert int(panels_left) == 1
 
     counters_after = await get_counters(
         db_session,
@@ -1179,7 +1184,7 @@ async def test_active_status_is_permanent_and_ignores_panel_count(
     assert counters_after.active == 1
     assert len(active_page_after.items) == 1
     assert active_page_after.items[0].is_active is True
-    assert active_page_after.items[0].panels_count == 0
+    assert active_page_after.items[0].panels_count == 1
     assert summary_row_after["active_count"] == 1
     admin_brief_after = await _get_referrals_brief(
         db_session,
@@ -1360,7 +1365,7 @@ async def test_bank_deficit_mode_does_not_block_referral_bonus(
     await _add_panel(
         db_session,
         tg_id=INVITEE_TG,
-        public_id="ITDEFICIT001",
+        public_id="PNL-00000003",
     )
     await _maybe_reward_active_unit_bonus(
         db_session,
