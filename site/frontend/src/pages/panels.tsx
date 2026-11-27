@@ -110,13 +110,14 @@ export default function PanelsPage(props: {
 
   const withConfirmation = useTestTelegramConfirmation(globalId,
     !customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),
+    true,
   );
 
   const activatePanel = async () => {
     if (customization.mutationBlocked) return;
     if (activating || (!canActivatePanel && !pendingPurchaseKey) || !globalId) return;
     await withConfirmation(
-      () => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100")),
+      () => confirm("purchase", t("panels.activate_panel"), t("panels.subtitle_price_100"), t("panels.confirm_activate")),
       (eligible) => eligible,
       async (beforeSend, sameActor) => {
         // Retry a possibly committed purchase under the ORIGINAL key.

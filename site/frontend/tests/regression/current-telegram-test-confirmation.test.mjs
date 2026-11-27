@@ -161,3 +161,39 @@ test("EFHC TEST coordinator rejects a replaced session even when the account is 
     assert.equal(sends, scenario === "approval" ? 1 : 0);
   }
 });
+
+test("all EFHC user confirmations share one themed dialog and retain settings and cancellation guards", () => {
+  const layout = source("components/Layout.tsx");
+  const dialog = source("components/ui/ConfirmationDialog.tsx");
+  const panels = source("pages/panels.tsx");
+  const exchange = source("pages/exchange.tsx");
+  const withdraw = source("pages/withdraw.tsx");
+  const hook = source("hooks/useTestTelegramConfirmation.ts");
+  for (const marker of ['if (kind === "watch_ad") return true;', 'if (!props.settings.confirm_actions) return true;', 'if (!gate) return true;', 'return await confirmOperation(title, detail, actionLabel)', '<ConfirmationDialog', 'colorThemeId={customization.colorThemeId}', 'subscribeAuthSessionInvalidation(cancel)', 'router.events.on("routeChangeStart", cancel)', 'pendingConfirmation.current = null']) assert.ok(layout.includes(marker), marker);
+  assert.doesNotMatch(layout, /telegramConfirm\(/);
+  for (const marker of ['surface="confirmation"', 'portalColorThemeId={props.colorThemeId}', 'onClose={() => props.onDecision(false)}', 'onClick={() => props.onDecision(true)}', 'data-modal-initial-focus']) assert.ok(dialog.includes(marker), marker);
+  assert.ok(panels.includes('!customization.mutationBlocked && (canActivatePanel || Boolean(pendingPurchaseKey)),\n    true,'));
+  assert.ok(panels.includes('t("panels.confirm_activate")'));
+  assert.ok(exchange.includes('max: maxExchangeableKwh,\n  }, true)'));
+  assert.ok(withdraw.includes('pendingRequests: items,\n  }, true)'));
+  assert.ok(hook.includes('!guardAsyncConfirmation && !isTelegramConfirmationTest(isDemoBackendMode())'));
+  assert.ok(withdraw.includes('const adConfirmed = await runRequiredWithdrawAd()'));
+  assert.ok(source("pages/tasks.tsx").includes('AdManager.runRewardedAd'));
+});
+
+test("confirmation buttons share the cancellation button style", () => {
+  const css = source("styles/dialog-navigation.css");
+  const rule = css.match(/\.efhc-confirmation-actions button\s*\{([^}]+)\}/)?.[1];
+  assert.ok(rule);
+  assert.match(rule, /background:\s*var\(--tg-secondary-bg\)/);
+  assert.match(rule, /color:\s*var\(--tg-text\)/);
+  assert.doesNotMatch(css, /\.efhc-confirmation-actions button:(?:last-child|first-child|nth-child)/);
+});
+
+test("all supported languages localize the panel activation decision", () => {
+  for (const lang of ["en","ru","uk","de","fr","es","it","tr","pl","da","hi","id","sw","pt","ko","ja"]) {
+    const dict = JSON.parse(readFileSync(new URL("../../public/locale/" + lang + ".json", import.meta.url), "utf8"));
+    assert.ok(dict["panels.confirm_activate"] && dict["panels.confirm_activate"] !== "OK", lang);
+    if (lang === "ru") assert.equal(dict["panels.confirm_activate"], "Активировать");
+  }
+});

@@ -659,6 +659,7 @@
   "panels.activate_failed": "Panel etkinleştirilemedi. Koşulları kontrol edip tekrar deneyin.",
   "panels.activate_ok": "Panel etkinleştirildi.",
   "panels.activate_panel": "Panel etkinleştirme",
+  "panels.confirm_activate": "Etkinleştir",
   "panels.activate_panel_aria": "Bir güneş panelini etkinleştir",
   "panels.activated_at": "Etkinleştirildi",
   "panels.activation_context_detail": "Panel aktivasyon kanonu birleştirilmiştir: Aktivasyonda 100 EFHC düşülür; panel durumu ve nihai sonuç Panels, Profile ve işlem geçmişinde aynı okunmalıdır.",

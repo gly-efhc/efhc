@@ -659,6 +659,7 @@
   "panels.activate_failed": "पैनल सक्रिय नहीं हो सका। शर्तें जाँचें और फिर से प्रयास करें।",
   "panels.activate_ok": "पैनल सक्रिय हो गया।",
   "panels.activate_panel": "पैनल सक्रियण",
+  "panels.confirm_activate": "सक्रिय करें",
   "panels.activate_panel_aria": "एक सौर पैनल सक्रिय करें",
   "panels.activated_at": "सक्रिय किया गया",
   "panels.activation_context_detail": "पैनल सक्रियण कानन एकीकृत है: सक्रियण पर 100 EFHC डेबिट होते हैं, और पैनल स्थिति व अंतिम परिणाम Panels, प्रोफ़ाइल और ऑपरेशन इतिहास में समान रूप से पढ़े जाने चाहिए।",

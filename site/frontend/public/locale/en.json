@@ -659,6 +659,7 @@
   "panels.activate_failed": "Panel activation failed. Check the conditions and try again.",
   "panels.activate_ok": "Panel activated.",
   "panels.activate_panel": "Panel activation",
+  "panels.confirm_activate": "Activate",
   "panels.activate_panel_aria": "Activate one solar panel",
   "panels.activated_at": "Activated At",
   "panels.activation_context_detail": "The panel activation canon is unified: 100 EFHC are debited on activation, and the panel status plus the final result must read the same in Panels, Profile, and operation history.",

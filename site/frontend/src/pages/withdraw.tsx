@@ -294,7 +294,7 @@ export default function WithdrawPage(props: {
 
   const withConfirmation = useTestTelegramConfirmation(globalId, {
     amount, withdrawAmountOk, withdrawMinOk, primaryWallet, pendingRequests: items,
-  });
+  }, true);
 
   async function createWithdraw() {
     if (!globalId) return;
@@ -307,7 +307,7 @@ export default function WithdrawPage(props: {
     const amountInput = amountInputRef.current;
     const revision = amountRevision.current;
     await withConfirmation(
-      () => confirm("withdraw", t("withdraw.confirm_create_title"), t("withdraw.confirm_create_detail")),
+      () => confirm("withdraw", t("withdraw.confirm_create_title"), t("withdraw.confirm_create_detail"), t("withdraw.create_request")),
       (latest) => latest.amount === amount && latest.withdrawAmountOk && latest.withdrawMinOk &&
         revision === amountRevision.current && amountInput !== null && amountInputRef.current === amountInput && amountInput.value === amount &&
         latest.primaryWallet?.id === wallet.id && latest.primaryWallet.wallet_address === wallet.wallet_address,
@@ -333,7 +333,7 @@ export default function WithdrawPage(props: {
 
   async function cancelWithdraw(requestId: DbId) {
     await withConfirmation(
-      () => confirm("withdraw", t("withdraw.confirm_cancel_title"), t("withdraw.confirm_cancel_detail")),
+      () => confirm("withdraw", t("withdraw.confirm_cancel_title"), t("withdraw.confirm_cancel_detail"), t("withdraw.cancel_request")),
       (latest) => latest.pendingRequests.some((item) => item.id === requestId && item.status === "PENDING"),
       async (beforeSend, sameActor) => {
         try {

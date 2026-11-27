@@ -659,6 +659,7 @@
   "panels.activate_failed": "Не вдалося активувати панель. Перевірте умови та спробуйте ще раз.",
   "panels.activate_ok": "Панель активовано.",
   "panels.activate_panel": "Активація панелі",
+  "panels.confirm_activate": "Активувати",
   "panels.activate_panel_aria": "Активувати одну сонячну панель",
   "panels.activated_at": "Активована",
   "panels.activation_context_detail": "Канон активації панелі уніфіковано: під час активації списується 100 EFHC, а статус панелі та фінальний результат мають однаково читатися в Panels, Profile й історії операцій.",

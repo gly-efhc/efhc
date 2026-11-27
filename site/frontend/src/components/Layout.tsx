@@ -7,13 +7,14 @@ import type { Dict, Lang } from "../lib/i18n";
 import { tFromDicts } from "../lib/i18n";
 import type { UserSettings } from "../lib/settings";
 import { DepositModal } from "./DepositModal";
+import { ConfirmationDialog } from "./ui/ConfirmationDialog";
+import { subscribeAuthSessionInvalidation } from "../lib/auth-session";
 import {
   getTelegramWebApp,
   hapticError,
   hapticSelection,
   hapticSuccess,
   hapticTap,
-  telegramConfirm,
 } from "../lib/telegram";
 import {
   useWalletProvider,
@@ -77,6 +78,7 @@ export type LayoutContextValue = {
       | "generic",
     title: string,
     detail?: string,
+    actionLabel?: string,
   ) => Promise<boolean>;
   toast: (msg: string, kind?: "success" | "error" | "info") => void;
   openProfile: (section?: "wallet" | "history") => void;
@@ -233,6 +235,37 @@ export function Layout(
     [props.descDict, props.uiDict, props.ruDict],
   );
   const [depositOpen, setDepositOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<{ title: string; detail?: string; actionLabel: string } | null>(null);
+  const pendingConfirmation = useRef<{ resolve: (approved: boolean) => void; timer: number } | null>(null);
+
+  function settleConfirmation(approved: boolean, updateView = true) {
+    const pending = pendingConfirmation.current;
+    if (!pending) return;
+    pendingConfirmation.current = null;
+    window.clearTimeout(pending.timer);
+    if (updateView) setConfirmation(null);
+    pending.resolve(approved);
+  }
+
+  useEffect(() => {
+    const cancel = () => settleConfirmation(false);
+    router.events.on("routeChangeStart", cancel);
+    const unsubscribe = subscribeAuthSessionInvalidation(cancel);
+    return () => {
+      router.events.off("routeChangeStart", cancel);
+      unsubscribe();
+      settleConfirmation(false, false);
+    };
+  }, [router.events]);
+
+  function confirmOperation(title: string, detail: string | undefined, actionLabel: string): Promise<boolean> {
+    if (pendingConfirmation.current) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      const timer = window.setTimeout(() => settleConfirmation(false), 120_000);
+      pendingConfirmation.current = { resolve, timer };
+      setConfirmation({ title, detail, actionLabel });
+    });
+  }
   const [walletHint, setWalletHint] = useState<string | null>(null);
   const [availableWallets, setAvailableWallets] = useState<WalletView[]>([]);
   const [proofState, setProofState] = useState<
@@ -533,17 +566,18 @@ export function Layout(
       | "generic",
     title: string,
     detail?: string,
+    actionLabel = t("exchange.interactive_confirm"),
   ): Promise<boolean> {
+    if (kind === "watch_ad") return true;
     if (!props.settings.confirm_actions) return true;
     const gate = {
       purchase: props.settings.confirm_purchase,
       withdraw: props.settings.confirm_withdraw,
       convert: props.settings.confirm_convert,
-      watch_ad: props.settings.confirm_watch_ad,
       generic: true,
     }[kind];
     if (!gate) return true;
-    return await telegramConfirm(title, detail, isDemoBackendMode());
+    return await confirmOperation(title, detail, actionLabel);
   }
 
   const bottom = [
@@ -944,6 +978,13 @@ export function Layout(
             </div>
           </div>
         ) : null}
+
+        <ConfirmationDialog
+          request={confirmation}
+          colorThemeId={customization.colorThemeId}
+          cancelLabel={t("common.cancel")}
+          onDecision={settleConfirmation}
+        />
 
         <DepositModal
           open={depositOpen}

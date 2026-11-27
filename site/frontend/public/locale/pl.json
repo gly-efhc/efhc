@@ -659,6 +659,7 @@
   "panels.activate_failed": "Nie udało się aktywować panelu. Sprawdź warunki i spróbuj ponownie.",
   "panels.activate_ok": "Panel aktywowany.",
   "panels.activate_panel": "Aktywacja panelu",
+  "panels.confirm_activate": "Aktywuj",
   "panels.activate_panel_aria": "Aktywuj jeden panel słoneczny",
   "panels.activated_at": "Aktywowano",
   "panels.activation_context_detail": "Kanon aktywacji panelu jest jednolity: przy aktywacji pobierane jest 100 EFHC, a status panelu i wynik końcowy muszą być czytelne tak samo w Panels, Profile i historii operacji.",

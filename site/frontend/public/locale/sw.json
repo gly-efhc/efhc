@@ -659,6 +659,7 @@
   "panels.activate_failed": "Paneli haikuweza kuwezeshwa. Kagua masharti kisha ujaribu tena.",
   "panels.activate_ok": "Paneli imewashwa.",
   "panels.activate_panel": "Uwezeshaji wa paneli",
+  "panels.confirm_activate": "Washa",
   "panels.activate_panel_aria": "Washa paneli moja ya jua",
   "panels.activated_at": "Imewezeshwa",
   "panels.activation_context_detail": "Kanuni ya kuwezesha paneli imeunganishwa: 100 EFHC hukatwa wakati wa kuwezesha, na hali ya paneli pamoja na matokeo ya mwisho lazima yasomeke sawa katika Panels, Profile na historia ya operesheni.",
