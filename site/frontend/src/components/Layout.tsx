@@ -7,7 +7,6 @@ import type { Dict, Lang } from "../lib/i18n";
 import { tFromDicts } from "../lib/i18n";
 import type { UserSettings } from "../lib/settings";
 import { DepositModal } from "./DepositModal";
-import { Modal } from "./ui/Modal";
 import {
   getTelegramWebApp,
   hapticError,
@@ -79,7 +78,7 @@ export type LayoutContextValue = {
     title: string,
     detail?: string,
   ) => Promise<boolean>;
-  toast: (msg: string, kind?: "success" | "error" | "info", surface?: "panel-notice") => void;
+  toast: (msg: string, kind?: "success" | "error" | "info") => void;
   openProfile: (section?: "wallet" | "history") => void;
   openDeposit: () => void;
   openWalletConnect: (mode?: "binding" | "execution_fallback") => void;
@@ -251,19 +250,8 @@ export function Layout(
       msg: string;
       kind: "success" | "error" | "info";
       createdAt: number;
-      surface?: "panel-notice";
     }[]
   >([]);
-
-  const panelNotice = router.pathname === "/panels"
-    ? toasts.find((item) => item.surface === "panel-notice") : undefined;
-  const regularToasts = toasts.filter((item) => item.surface !== "panel-notice");
-  useEffect(() => {
-    if (router.pathname !== "/panels") {
-      setToasts((prev) => prev.some((item) => item.surface === "panel-notice")
-        ? prev.filter((item) => item.surface !== "panel-notice") : prev);
-    }
-  }, [router.pathname]);
 
   const globalId = useAuthOwnerGlobalId();
   const authSession = useAuthSessionController();
@@ -513,7 +501,6 @@ export function Layout(
   function toast(
     msg: string,
     kind: "success" | "error" | "info" = "info",
-    surface?: "panel-notice",
   ) {
     if (!props.settings.toasts_enabled) return;
     if (kind === "success") {
@@ -526,13 +513,11 @@ export function Layout(
       const duplicate = prev.some(
         (item) =>
           item.msg === msg &&
-          item.kind === kind && item.surface === surface &&
+          item.kind === kind &&
           createdAt - item.createdAt < 2500,
       );
       if (duplicate) return prev;
-      const remaining = surface === "panel-notice"
-        ? prev.filter((item) => item.surface !== surface) : prev;
-      return [...remaining, { id, msg, kind, createdAt, surface }].slice(-3);
+      return [...prev, { id, msg, kind, createdAt }].slice(-3);
     });
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((item) => item.id !== id));
@@ -924,12 +909,12 @@ export function Layout(
           <InterfaceCustomizationButton hasBottomNav={!isAdminRoute} />
         </div>
 
-        {regularToasts.length ? (
+        {toasts.length ? (
           <div className={isAdminRoute
             ? "fixed left-0 right-0 bottom-24 z-40 pointer-events-none"
             : "efhc-user-toast-stack"}>
             <div className={isAdminRoute ? "max-w-xl mx-auto px-4 grid gap-2" : "efhc-user-toast-list"}>
-              {regularToasts.map((item) => (
+              {toasts.map((item) => (
                 <div
                   key={item.id}
                   role={item.kind === "error" ? "alert" : "status"}
@@ -959,15 +944,6 @@ export function Layout(
             </div>
           </div>
         ) : null}
-
-        <Modal
-          open={Boolean(panelNotice)}
-          onClose={() => setToasts((prev) => prev.filter((item) => item.surface !== "panel-notice"))}
-          title={panelNotice?.msg ?? ""}
-          surface="panel-notice"
-          portalColorThemeId={customization.colorThemeId}
-          noticeKind={panelNotice?.kind}
-        />
 
         <DepositModal
           open={depositOpen}

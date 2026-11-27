@@ -1383,6 +1383,9 @@ html[data-theme="light"]{
   overflow-wrap: anywhere;
   pointer-events: auto;
 }
+[data-theme-page-route="/panels"] .efhc-user-toast[data-toast-kind="success"] {
+  border-left: 1px solid color-mix(in srgb, var(--efhc-toast-color) 42%, var(--tg-hint));
+}
 .efhc-user-toast-icon {
   display: grid;
   place-items: center;

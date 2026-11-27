@@ -2,7 +2,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 
 import { useT } from "../../hooks/useT";
-import { getColorThemeDefinition, type ColorThemeId } from "../../lib/colorThemeRegistry";
+import type { ColorThemeId } from "../../lib/colorThemeRegistry";
 
 const MODAL_TABBABLE_SELECTOR = [
   "a[href]",
@@ -119,8 +119,7 @@ export function Modal(
     closeDisabled?: boolean;
     portalColorThemeId?: ColorThemeId;
     referenceLayout?: "deposit" | "settings";
-    surface?: "withdraw-ad" | "panel-notice";
-    noticeKind?: "success" | "error" | "info";
+    surface?: "withdraw-ad";
   }>,
 ) {
   const t = useT();
@@ -304,12 +303,7 @@ export function Modal(
   return createPortal(
     <div
       ref={overlayRef}
-      style={props.surface === "panel-notice" ? {
-        "--efhc-panel-notice-accent": getColorThemeDefinition(props.portalColorThemeId).accent,
-      } as React.CSSProperties : undefined}
-      className={props.surface === "panel-notice"
-        ? "fixed inset-0 efhc-modal-overlay efhc-panel-notice-overlay"
-        : props.surface === "withdraw-ad"
+      className={props.surface === "withdraw-ad"
         ? "fixed inset-0 efhc-modal-overlay efhc-withdraw-ad-overlay"
         : props.portalColorThemeId
           ? "fixed inset-0 efhc-modal-overlay efhc-user-direct-deposit-portal"
@@ -345,10 +339,7 @@ export function Modal(
           onPointerUp={onDragEnd}
           onPointerCancel={onDragEnd}
         >
-          <div className="efhc-modal-title" role={props.surface === "panel-notice" ? (props.noticeKind === "error" ? "alert" : "status") : undefined}>
-            {props.surface === "panel-notice" ? <span className="efhc-panel-notice-icon" aria-hidden="true">{props.noticeKind === "success" ? "✓" : props.noticeKind === "error" ? "!" : "i"}</span> : null}
-            {props.title}
-          </div>
+          <div className="efhc-modal-title">{props.title}</div>
           <button
             ref={closeButtonRef}
             type="button"
@@ -360,7 +351,7 @@ export function Modal(
             ×
           </button>
         </div>
-        {props.surface !== "panel-notice" ? <div className="efhc-modal-body">{props.children}</div> : null}
+        <div className="efhc-modal-body">{props.children}</div>
       </div>
     </div>,
     document.body,
