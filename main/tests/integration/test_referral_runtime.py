@@ -928,6 +928,15 @@ async def test_parallel_invitees_cross_one_level_without_conflict(
         end_index=9,
         base_tg_id=TG_BASE + 300_000,
     )
+    counter = await db_session.execute(
+        text(
+            "UPDATE efhc_core.app_settings SET value = '9' "
+            "WHERE key = 'panels.pnl.last_issued' AND value = '0' "
+            "RETURNING value"
+        )
+    )
+    assert str(counter.scalar_one()) == "9"
+    await db_session.commit()
     buyers = (INVITEE_TG, INVITEE_TG + 1)
     for buyer in buyers:
         await _create_user(
@@ -995,6 +1004,15 @@ async def test_parallel_invitees_cross_one_level_without_conflict(
     assert int(level_count) == 1
     assert int(direct_count) == 2
     assert bonus == Decimal("1.20000000")
+    issued = (await db_session.execute(text(
+        "SELECT public_id FROM efhc_core.panels ORDER BY public_id"
+    ))).scalars().all()
+    assert issued == [f"PNL-{n:08d}" for n in range(1, 12)]
+    counter = (await db_session.execute(text(
+        "SELECT value FROM efhc_core.app_settings "
+        "WHERE key = 'panels.pnl.last_issued'"
+    ))).scalar_one()
+    assert str(counter) == "11"
 
 
 async def test_internal_user_pk_collision_does_not_activate_referral(
