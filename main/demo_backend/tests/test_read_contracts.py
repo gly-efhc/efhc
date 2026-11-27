@@ -92,10 +92,24 @@ class ReadContracts(unittest.IsolatedAsyncioTestCase):
         args['if_none_match'] = '"exact"'
         self.assertEqual((await fn(**args)).status_code, 304)
 
+def load_export_store():
+    import importlib.util
+    import sys
+    name = "efhc_isolated_profile_history_download"
+    spec = importlib.util.spec_from_file_location(
+        name, ROOT.parent / "services" / "profile_history_download.py",
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module.ProfileExportDownloadStore
+
+
 class ProfileExportDownloads(unittest.IsolatedAsyncioTestCase):
     async def test_private_download_grant_is_one_use_and_cleans_file(self):
         from tempfile import TemporaryDirectory
-        from app.services.profile_history_download import ProfileExportDownloadStore
+        ProfileExportDownloadStore = load_export_store()
         with TemporaryDirectory() as directory:
             path = Path(directory) / "history.csv"
             path.write_bytes(b"amount\n100\n")
@@ -113,7 +127,7 @@ class ProfileExportDownloads(unittest.IsolatedAsyncioTestCase):
 
     async def test_expired_download_and_pending_capacity(self):
         from tempfile import TemporaryDirectory
-        from app.services.profile_history_download import ProfileExportDownloadStore
+        ProfileExportDownloadStore = load_export_store()
         with TemporaryDirectory() as directory:
             path = Path(directory) / "history.xlsx"
             path.write_bytes(b"test")

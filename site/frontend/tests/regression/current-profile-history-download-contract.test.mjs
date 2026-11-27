@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 const read = path => readFileSync(new URL("../../" + path, import.meta.url), "utf8");
 
 test("CSV and XLSX use authenticated, scoped HTTPS download requests", () => {
-  const service = read("src/services/profile.service.ts");
+  const service = read("src/services/profile.service.ts").split("export async function downloadProfileHistoryExport(")[1];
+  assert.ok(service);
   assert.match(service, /export-ticket\?\$\{query\.toString\(\)\}`, "POST"/);
   assert.match(service, /getAuthSessionRevision\(\) !== revision/);
   assert.match(service, /new URL\("export-download", response\.url\)/);

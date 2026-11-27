@@ -191,12 +191,14 @@ test("profile and withdraw CSV/XLSX exports use the same server stream with dist
   const history = file("../../src/components/profile/ProfileHistorySection.tsx");
 
   const downloadExport = service.slice(service.indexOf("export async function downloadProfileHistoryExport("));
-  assert.match(service, /new URLSearchParams\(\{ category \}\)/);
+  assert.match(downloadExport, /new URLSearchParams\(\{ category, format \}\)/);
   assert.match(downloadExport, /response\.headers\.get\("content-type"\)/);
-  assert.match(downloadExport, /actualType !== expectedType/);
-  assert.match(downloadExport, /blob\.size === 0/);
-  assert.match(downloadExport, /URL\.revokeObjectURL\(url\), 60_000/);
-  assert.match(service, /transportRawRequest\(`\/profile\/history\/export\.\$\{format\}\?\$\{query\.toString\(\)\}`/);
+  assert.match(downloadExport, /profileExportGrantSchema\.parse/);
+  assert.match(downloadExport, /getAuthSessionRevision\(\) !== revision/);
+  assert.match(downloadExport, /export-ticket\?\$\{query\.toString\(\)\}, "POST"/);
+  assert.match(downloadExport, /url\.searchParams\.set\("ticket", grant\.ticket\)/);
+  assert.match(downloadExport, /webApp\.downloadFile/);
+  assert.doesNotMatch(downloadExport, /URL\.createObjectURL/);
   assert.match(query, /downloadProfileHistoryExport\(format, category\)/);
   assert.match(profile, /mutateAsync\(\{ format, category: historyFilter \}\)/);
   assert.match(profile, /useState<HistoryFilter>\("all"\)/);
