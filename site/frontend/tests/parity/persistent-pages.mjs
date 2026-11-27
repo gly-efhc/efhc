@@ -181,6 +181,7 @@ try{
     await visit('panels/portfolio/');
     const portfolio=page.locator('#panelsPortfolioPage');
     await portfolio.waitFor({state:'visible'});
+    const matrix=[],mismatches=[];
     for(const width of [320,390,1440]){
       await page.setViewportSize({width,height:844});
       for(const tab of ['active','archive']){
@@ -211,7 +212,9 @@ try{
           motion.textContent='#panelsPortfolioPage .efhc-panels-tabs > *,#panelsPortfolioPage .efhc-panel-tile{transition:none!important}';
           document.head.appendChild(motion);
           const restore=(node,key,value)=>value===null?node.removeAttribute(key):node.setAttribute(key,value);
-          const material=node=>{const s=getComputedStyle(node);return [s.backgroundColor,s.backgroundImage]};
+          // Chromium may serialize a transparent base as an extra trailing "none"
+          // layer. This paints nothing; do not hide any real color/image mismatch.
+          const material=node=>{const s=getComputedStyle(node);return [s.backgroundColor,s.backgroundImage.replace(/(?:,\s*none)+$/,'')]};
           const rows=[];
           try{
             for(let i=1;i<=10;i++){
@@ -241,12 +244,17 @@ try{
         assert.equal(rows.length,90);
         for(const row of rows){
           const label=`${width}/${tab}/${row.ct}/${row.physical}`;
-          assert.deepEqual(row.card,row.expected,label+' card must use page canvas');
-          assert.deepEqual(row.inactive,row.expected,label+' unselected tab must use page canvas');
-          assert.notDeepEqual(row.active,row.expected,label+' selected tab must retain active material');
+          matrix.push({width,tab,...row});
+          for(const [target,actual] of [['card',row.card],['unselected tab',row.inactive]]){
+            if(JSON.stringify(actual)!==JSON.stringify(row.expected))mismatches.push({label,target,actual,expected:row.expected});
+          }
+          if(JSON.stringify(row.active)===JSON.stringify(row.expected))mismatches.push({label,target:'selected tab lost emphasis',actual:row.active});
         }
       }
     }
+    await fs.writeFile(dir+'/portfolio-page-material.json',JSON.stringify({matrix,mismatches},null,2));
+    assert.equal(matrix.length,540,'complete Portfolio material matrix');
+    assert.equal(mismatches.length,0,JSON.stringify(mismatches.slice(0,12)));
     await page.setViewportSize({width:390,height:844});
   });
   await check('removed browser finance store does not reappear',async()=>{
