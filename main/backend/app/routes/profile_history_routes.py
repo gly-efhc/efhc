@@ -334,8 +334,8 @@ async def profile_history_export_ticket(
     )
 
 
-async def _release_profile_export(ticket: str) -> None:
-    _PROFILE_EXPORT_DOWNLOADS.release(ticket)
+async def _close_profile_export(handle) -> None:
+    handle.close()
 
 
 @router.get("/history/export-download", summary="Redeem one private profile history download")
@@ -362,16 +362,23 @@ async def profile_history_export_download(
     if request.method == "HEAD":
         return Response(headers=headers)
 
+    # Open before yielding to the ASGI server. On the Linux runtime an open
+    # descriptor remains readable if expiry unlinks the temporary pathname.
+    try:
+        handle = grant.path.open("rb")
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="PROFILE_HISTORY_DOWNLOAD_UNAVAILABLE",
+                            headers={"Cache-Control": "private, no-store"}) from exc
+
     async def stream() -> AsyncIterator[bytes]:
         try:
-            with grant.path.open("rb") as handle:
-                while chunk := await asyncio.to_thread(handle.read, 65536):
-                    yield chunk
+            while chunk := await asyncio.to_thread(handle.read, 65536):
+                yield chunk
         finally:
-            _PROFILE_EXPORT_DOWNLOADS.release(ticket)
+            handle.close()
 
     return StreamingResponse(stream(), headers=headers,
-                             background=BackgroundTask(_release_profile_export, ticket))
+                             background=BackgroundTask(_close_profile_export, handle))
 
 
 __all__ = ["router"]

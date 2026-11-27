@@ -17,12 +17,15 @@ class ProfileExportGrant:
     size: int
     expires_at: float
     timer: asyncio.TimerHandle | None = None
-    redeemed: bool = False
+    requests: int = 0
 
 
 class ProfileExportDownloadStore:
     def __init__(self, *, ttl: float = 120, max_entries: int = 32,
-                 max_bytes: int = 256 * 1024 * 1024) -> None:
+                 max_bytes: int = 256 * 1024 * 1024, max_requests: int = 3) -> None:
+        if max_requests < 1:
+            raise ValueError("PROFILE_EXPORT_DOWNLOAD_REQUEST_LIMIT")
+        self.max_requests = max_requests
         self.ttl = ttl
         self.max_entries = max_entries
         self.max_bytes = max_bytes
@@ -62,10 +65,12 @@ class ProfileExportDownloadStore:
         if key is None:
             return None
         entry = self._entries.get(key)
-        if entry is None or entry.redeemed:
+        if entry is None:
             return None
         if entry.expires_at <= time.monotonic():
             self._discard(key)
+            return None
+        if entry.requests >= self.max_requests:
             return None
         return entry
 
@@ -73,12 +78,9 @@ class ProfileExportDownloadStore:
         entry = self.lookup(ticket)
         if entry is None:
             return None
-        key = self._key(ticket)
-        assert key is not None
-        entry.redeemed = True
-        if entry.timer is not None:
-            entry.timer.cancel()
-        entry.timer = asyncio.get_running_loop().call_later(600, self._discard, key)
+        # Native clients may fetch once to validate and again to save the file.
+        # All attempts refer to the same immutable export and original expiry.
+        entry.requests += 1
         return entry
 
     def release(self, ticket: str) -> None:

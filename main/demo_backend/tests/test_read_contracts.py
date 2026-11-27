@@ -107,23 +107,74 @@ def load_export_store():
 
 
 class ProfileExportDownloads(unittest.IsolatedAsyncioTestCase):
-    async def test_private_download_grant_is_one_use_and_cleans_file(self):
+    async def test_private_download_grant_allows_bounded_retries_for_both_formats(self):
         from tempfile import TemporaryDirectory
         ProfileExportDownloadStore = load_export_store()
         with TemporaryDirectory() as directory:
-            path = Path(directory) / "history.csv"
-            path.write_bytes(b"amount\n100\n")
-            store = ProfileExportDownloadStore()
-            ticket = store.issue(path, "EFHC_all_2026-11-27.csv", "text/csv")
-            self.assertEqual(len(ticket), 43)
-            self.assertIsNone(store.lookup("A" * 43))
-            self.assertEqual(store.lookup(ticket).size, 11)
-            self.assertIsNotNone(store.lookup(ticket))
-            self.assertEqual(store.redeem(ticket).path, path)
-            self.assertIsNone(store.redeem(ticket))
-            self.assertIsNone(store.lookup(ticket))
-            store.release(ticket)
-            self.assertFalse(path.exists())
+            for extension, payload, media in (
+                ("csv", b"amount\n100\n", "text/csv"),
+                ("xlsx", b"PK\x03\x04test", "application/test"),
+            ):
+                with self.subTest(extension=extension):
+                    path = Path(directory) / f"history.{extension}"
+                    path.write_bytes(payload)
+                    store = ProfileExportDownloadStore()
+                    ticket = store.issue(path, f"EFHC_all_2026-11-27.{extension}", media)
+                    self.assertEqual(len(ticket), 43)
+                    self.assertIsNone(store.lookup("A" * 43))
+                    first = store.lookup(ticket)
+                    self.assertEqual(first.size, len(payload))
+                    expiry = first.expires_at
+                    self.assertIsNotNone(store.lookup(ticket))  # HEAD is non-consuming.
+                    for _ in range(3):
+                        grant = store.redeem(ticket)
+                        self.assertEqual(grant.path.read_bytes(), payload)
+                        self.assertEqual(grant.expires_at, expiry)
+                    self.assertIsNone(store.redeem(ticket))
+                    self.assertIsNone(store.lookup(ticket))
+                    store.release(ticket)
+                    self.assertFalse(path.exists())
+
+    async def test_actual_download_handler_allows_probe_then_save(self):
+        from tempfile import TemporaryDirectory
+        ProfileExportDownloadStore = load_export_store()
+        class HTTPError(Exception):
+            def __init__(self, **kw):
+                self.status_code = kw["status_code"]
+
+        with TemporaryDirectory() as directory:
+            for extension, payload, media in (
+                ("csv", b"amount\n100\n", "text/csv"),
+                ("xlsx", b"PK\x03\x04test", "application/test"),
+            ):
+                with self.subTest(extension=extension):
+                    store = ProfileExportDownloadStore(ttl=0.5)
+                    path = Path(directory) / f"history.{extension}"
+                    path.write_bytes(payload)
+                    ticket = store.issue(path, f"EFHC_all_2026-11-27.{extension}", media)
+                    fn = handler("profile_history_routes.py", "profile_history_export_download", {
+                        "_PROFILE_EXPORT_DOWNLOADS": store, "asyncio": asyncio,
+                        "HTTPException": HTTPError,
+                        "Response": lambda **kw: SimpleNamespace(**kw),
+                        "StreamingResponse": lambda stream, **kw: SimpleNamespace(stream=stream, **kw),
+                        "BackgroundTask": lambda close, handle: lambda: close(handle),
+                        "_close_profile_export": lambda handle: asyncio.to_thread(handle.close),
+                    })
+                    for _ in range(2):
+                        head = await fn(SimpleNamespace(method="HEAD"), ticket)
+                        self.assertEqual(head.headers["Content-Length"], str(len(payload)))
+                    for _ in range(3):
+                        response = await fn(SimpleNamespace(method="GET"), ticket)
+                        self.assertEqual(response.headers["Cache-Control"], "private, no-store")
+                        self.assertEqual(response.headers["Content-Type"], media)
+                        self.assertEqual(b"".join([chunk async for chunk in response.stream]), payload)
+                        await response.background()
+                        self.assertTrue(path.exists())
+                    with self.assertRaises(HTTPError) as denied:
+                        await fn(SimpleNamespace(method="GET"), ticket)
+                    self.assertEqual(denied.exception.status_code, 404)
+                    await asyncio.sleep(0.6)
+                    self.assertFalse(path.exists())
 
     async def test_expired_download_and_pending_capacity(self):
         from tempfile import TemporaryDirectory
@@ -137,6 +188,7 @@ class ProfileExportDownloads(unittest.IsolatedAsyncioTestCase):
             ticket = store.issue(path, "EFHC_all_2026-11-27.xlsx", "application/test")
             with self.assertRaises(ValueError):
                 store.issue(other, "EFHC_all_2026-11-27.csv", "text/csv")
+            self.assertIsNotNone(store.redeem(ticket))
             await asyncio.sleep(0.04)
             self.assertIsNone(store.lookup(ticket))
             self.assertFalse(path.exists())
