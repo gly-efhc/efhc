@@ -134,7 +134,7 @@ jobs:
       - name: Complete backend regression suite
         working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
           ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
           SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
@@ -144,10 +144,11 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
+          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
           ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
           SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
           PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
           EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_demo_regression_ci
+          EFHC_READ_CONTRACT_ROOT: ${{ github.workspace }}/main/backend/app/routes
         run: python -m pytest -q demo_backend/tests

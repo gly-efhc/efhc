@@ -13,3 +13,14 @@ class DatabaseSafety(unittest.TestCase):
             for value in ('postgresql://postgres@shared.example/efhc_shop_ci', 'postgresql://postgres@127.0.0.1:5432/production', 'postgresql://postgres@127.0.0.1:5432/efhc_shop_ci?host=shared.example', ''):
                 with self.subTest(key=key,value=value), self.assertRaises(ValueError):
                     check_database_environment(self.fixture() | {key:value})
+
+    def test_accepts_dedicated_full_regression_database(self):
+        env = self.fixture()
+        env = {k: v.replace('/efhc_shop_ci', '/efhc_regression_ci') for k, v in env.items()}
+        check_database_environment(env)
+
+    def test_rejects_mixed_database_aliases(self):
+        env = self.fixture()
+        env['DATABASE_URL'] = env['DATABASE_URL'].replace('/efhc_shop_ci', '/efhc_regression_ci')
+        with self.assertRaises(ValueError):
+            check_database_environment(env)
