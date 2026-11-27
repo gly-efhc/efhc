@@ -290,3 +290,18 @@ html[data-customization-mode="editing"]
   outline: 2px solid var(--efhc-ct-accent, var(--tg-button));
   outline-offset: 2px;
 }
+
+/* My Panels: OWNER 1057–1059. The page canvas owns this material, not
+ * the old almost-black card tint. Match the existing USER main canvas
+ * (including its theme haze); only these two Portfolio backings change.
+ * The selected tab, Activ status, PC/PT geometry and other routes stay intact. */
+html[data-interface-app-mode="user"][data-color-theme-id] .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id] #panelsPortfolioPage {
+  --efhc-portfolio-page-haze:radial-gradient(34rem 14rem at 50% -8rem,var(--efhc-tone-page),transparent 72%);
+}
+html[data-interface-app-mode="user"][data-color-theme-id] .efhc-independent-shell[data-interface-app-mode="user"][data-global-theme-id="03"] #panelsPortfolioPage {
+  --efhc-portfolio-page-haze:radial-gradient(34rem 14rem at 50% -8rem,var(--efhc-route-glow,transparent),transparent 72%);
+}
+html[data-interface-app-mode="user"][data-color-theme-id] .efhc-independent-shell[data-interface-app-mode="user"][data-color-theme-id] #panelsPortfolioPage :is(.efhc-panel-tile[data-panel-card],.efhc-panels-tabs > [data-panels-tab-button][data-active="false"]) {
+  background-color:var(--tg-bg)!important;
+  background-image:var(--efhc-portfolio-page-haze)!important;
+}
