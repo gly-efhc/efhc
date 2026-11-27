@@ -20,7 +20,18 @@ def identity(root: Path, export: Path, expected_commit: str) -> dict:
     pwa = json.loads((export / 'pwa-build.json').read_bytes())
     if pwa.get('static_export') is not True or not pwa.get('build_id'):
         raise ValueError('Compiled static Serwist generation required')
+    asset_hashes = {}
+    for category in ('locale', 'faq'):
+        for lang in ('ru', 'en', 'uk', 'de', 'fr', 'es', 'it', 'tr',
+                     'pl', 'da', 'hi', 'id', 'sw', 'pt', 'ko', 'ja'):
+            relative = f'{category}/{lang}.json'
+            source = git('show', f'HEAD:site/frontend/public/{relative}')
+            built = (export / relative).read_bytes()
+            if built != source:
+                raise ValueError(f'Exported asset differs from source: {relative}')
+            asset_hashes[relative] = hashlib.sha256(built).hexdigest()
     return {
+        'public_language_assets_sha256': asset_hashes,
         'schema': policy['schema'],
         'environment': policy['environment'],
         'source_commit': commit,

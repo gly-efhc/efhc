@@ -75,75 +75,17 @@ export function getEmbeddedDict(lang: Lang): Dict {
   return EMBEDDED_DICTS[lang] || EMBEDDED_DICTS.en || {};
 }
 
-type LocaleCacheEntry = {
-  checksum: string;
-  dict: Dict;
-};
-
-async function localeChecksum(lang: Lang): Promise<string> {
-  const response = await fetch(publicAssetPath("/pwa-build.json"), {
-    cache: "no-store",
-  });
-  if (!response.ok) return "";
-  const payload = await response.json() as {
-    locale_checksums?: Record<string, string>;
-  };
-  return String(payload.locale_checksums?.[lang] || "");
-}
-
-function readLocaleCache(lang: Lang): LocaleCacheEntry | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(
-      `efhc_locale_cache_v1_${lang}`,
-    );
-    if (!raw) return null;
-    const value = JSON.parse(raw) as LocaleCacheEntry;
-    if (!value.checksum || !value.dict) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-
-function writeLocaleCache(
-  lang: Lang,
-  checksum: string,
-  dict: Dict,
-): void {
-  if (typeof window === "undefined" || !checksum) return;
-  try {
-    window.localStorage.setItem(
-      `efhc_locale_cache_v1_${lang}`,
-      JSON.stringify({ checksum, dict }),
-    );
-  } catch {
-    // Locale cache is best effort.
-  }
-}
-
 export async function loadDict(lang: Lang): Promise<Dict> {
   try {
-    const checksum = await localeChecksum(lang);
-    const cached = readLocaleCache(lang);
-    if (cached && cached.checksum === checksum) {
-      return cached.dict;
-    }
-    const res = await fetch(`/locale/${lang}.json`, {
+    const response = await fetch(publicAssetPath(`/locale/${lang}.json`), {
       cache: "default",
     });
-    if (!res.ok) {
-      throw new Error(`LOCALE_HTTP_${res.status}`);
-    }
-    const dict = await res.json() as Dict;
-    writeLocaleCache(lang, checksum, dict);
-    return dict;
-  } catch (err) {
-    const cached = readLocaleCache(lang);
-    if (cached) return cached.dict;
+    if (!response.ok) throw new Error(`LOCALE_HTTP_${response.status}`);
+    return await response.json() as Dict;
+  } catch (error) {
     const fallback = getEmbeddedDict(lang);
     if (Object.keys(fallback).length > 0) return fallback;
-    throw err;
+    throw error;
   }
 }
 

@@ -14,7 +14,8 @@
     "test:tonconnect-update-acceptance": "node --test tests/regression/current-official-tonconnect-runtime.test.mjs",
     "check:tonconnect-update-acceptance": "npm run test:tonconnect-update-acceptance",
     "music:playlist": "node scripts/generate-background-playlist.mjs",
-    "test:html-react-parity": "node --test tests/parity/contracts.test.mjs"
+    "test:html-react-parity": "node --test tests/parity/contracts.test.mjs",
+    "prebuild": "npm run release-assets:verify"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.59.0",

@@ -1,8 +1,6 @@
 {
-  "schema": "EFHC_FRONTEND_RELEASE_ASSETS_V1",
-  "version": "FRONTEND_v860",
+  "schema": "efhc.frontend.faq-assets",
   "asset_state": "CHECKED_IN_BEFORE_RELEASE_PACKAGING",
-  "generated_at": "release_packaging",
   "runtime_dependencies": [
     "nodejs"
   ],
@@ -12,10 +10,6 @@
   "faq_authority": "OWNER_APPROVED_CHECKED_IN_FRONTEND_RUNTIME",
   "ssot_role": "DUPLICATE_CONTROL_ONLY_NO_RUNTIME_WRITE",
   "files": {
-    ".efhc-build-id": [
-      "34679a337f99b37ae5bd97c8d4931dff",
-      "28af2b48715cfac65f57357463a180ae"
-    ],
     "public/faq/da.json": "d25fca93925a55c268cc4dbd20156c81b95b717d7fa757838a098b2997acdf5b",
     "public/faq/de.json": "c1265fe44aeb7031433a3d66d090ede628c52a0a573f8aa765bc58d9505e9fb9",
     "public/faq/en.json": "2e60121e9ff2bb92e6229cda1f3d0f5199adf1160ef6228318319166885d2a34",
@@ -32,23 +26,6 @@
     "public/faq/sw.json": "9b30915ec561fb0e4b324e5349dcb3313d3e9ab32182ad0abb4dc81b65a282ba",
     "public/faq/tr.json": "996889f38d2b0db3cc044e9007397bd9f7bcbb49df6d414ede66521ff2589e22",
     "public/faq/uk.json": "2a0b0713e8361135b3484161b4dea8d392baa3e172fb52220b7841c860b86dad",
-    "public/locale/da.json": "d21b722618f69d1169eac585fef081b415682b4505fbee05e1374b5bb74684c2",
-    "public/locale/de.json": "6cf38fe7c9ebc8562fcac252de47a631729ef52fa3d10ba0606a4b8e42b51860",
-    "public/locale/en.json": "c6bf18d964804274876de511bd4abeddbde3de65c202a7e7a35619b38d2e8001",
-    "public/locale/es.json": "191848fbe7428288531203225041a508cfc4a22e3ba8f939546f64bdaeda6111",
-    "public/locale/fr.json": "8fa3e60df343d483b7f543d97303cb06adcce5f282a704120e0ab1383f7d2ab2",
-    "public/locale/hi.json": "8d380e15573a89e49fbe13da3175b5b1189902078b1b06ff6384e0b7fe2211cf",
-    "public/locale/id.json": "72f9ff682edd16963a0cdcbbc3b9e417e39565d846a0062741c3cad631ff32df",
-    "public/locale/it.json": "6dcdd7e42e04fc751020abab424693059cece32bf9edc1459a995873e029e4c0",
-    "public/locale/ja.json": "9ed660783968c37a69423def57d830b8256f9108790ff16c1e3e717e8d8a5f15",
-    "public/locale/ko.json": "6ef5acaa50e40ff3652dfbbbc4f54569c3da6a36b3533ff032dc648cb5f6f8cc",
-    "public/locale/pl.json": "a53105ac9c654cb0e44e772e3ae6e479399d2b7c6f8baada16f56b43d81fad7c",
-    "public/locale/pt.json": "37d61178c37851cbbc64dc4b6d18fd7d40c5be903c92ed33d31bf752084fa11e",
-    "public/locale/ru.json": "dc1ff17fd6cd767736e83259b8efa2c0e5bcd3325d7d77b26b527f20f7d3a90e",
-    "public/locale/sw.json": "4f681e95568ea4e19ed7896151fdca3e94a28b91305f1dd1e11fb51abb323d92",
-    "public/locale/tr.json": "a8296c12deaf013de6e4c1b604b4205f80a9b2e6e394aeb331655c6e24aa7134",
-    "public/locale/uk.json": "e047e235961fbab6d859c765a5611c7d95a40fc49278a61f1b345c2f16bed861",
-    "public/pwa-build.json": "309410b8160e5bf2bd7df3f80550b03c754a9295e753bde263d96885c03f5860",
     "src/data/faq/catalogs.ts": "21cca71ac9a02dd5110d88134c53844b07113d232c2c69a9b8087e1020a41026"
   }
 }

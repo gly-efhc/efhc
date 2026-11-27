@@ -9,6 +9,7 @@ const faqLanguages = [
   "tr", "pl", "da", "hi", "id", "sw", "pt", "ko", "ja",
 ];
 const localeLanguages = [...faqLanguages];
+const requiredFaqAssets = [...faqLanguages.map(lang => `public/faq/${lang}.json`), "src/data/faq/catalogs.ts"];
 
 function fail(message) {
   console.error(`EFHC RELEASE ASSETS VERIFY: FAIL; ${message}`);
@@ -31,7 +32,7 @@ try {
 } catch (error) {
   fail(`invalid release asset manifest: ${error}`);
 }
-if (manifest.schema !== "EFHC_FRONTEND_RELEASE_ASSETS_V1") {
+if (manifest.schema !== "efhc.frontend.faq-assets") {
   fail("unsupported release asset manifest schema");
 }
 if (!manifest.files || typeof manifest.files !== "object") {
@@ -54,6 +55,11 @@ if (manifest.ssot_role !== "DUPLICATE_CONTROL_ONLY_NO_RUNTIME_WRITE") {
 }
 if (manifest.packaging_source !== "checked-in production frontend assets") {
   fail("release packaging source must be checked-in assets");
+}
+
+if (Object.keys(manifest.files).length !== requiredFaqAssets.length ||
+    requiredFaqAssets.some(path => !Object.hasOwn(manifest.files, path))) {
+  fail("approved FAQ asset scope mismatch");
 }
 
 for (const [relativePath, expected] of Object.entries(manifest.files)) {
@@ -80,41 +86,18 @@ for (const [relativePath, expected] of Object.entries(manifest.files)) {
   }
 }
 
-for (const language of faqLanguages) {
-  const faq = `public/faq/${language}.json`;
-  if (!Object.hasOwn(manifest.files, faq)) fail(`missing ${faq}`);
-}
+const russian = JSON.parse(readFileSync(resolve(root, "public/locale/ru.json"), "utf8"));
+const userKeys = Object.keys(russian).filter(key => !key.startsWith("admin."));
 for (const language of localeLanguages) {
-  const locale = `public/locale/${language}.json`;
-  if (!Object.hasOwn(manifest.files, locale)) fail(`missing ${locale}`);
-}
-for (const path of [
-  "src/data/faq/catalogs.ts",
-  "public/pwa-build.json",
-  ".efhc-build-id",
-]) {
-  if (!Object.hasOwn(manifest.files, path)) fail(`missing ${path}`);
-}
-
-const pwa = JSON.parse(
-  readFileSync(resolve(root, "public/pwa-build.json"), "utf8"),
-);
-if (pwa.schema !== "EFHC_PWA_BUILD_V2") {
-  fail("invalid PWA build schema");
-}
-for (const language of faqLanguages) {
-  const faqPath = resolve(root, "public", "faq", `${language}.json`);
-  if (pwa.faq_checksums?.[language] !== checksum(faqPath)) {
-    fail(`PWA FAQ checksum mismatch: ${language}`);
-  }
-}
-for (const language of localeLanguages) {
-  const localePath = resolve(root, "public", "locale", `${language}.json`);
-  if (pwa.locale_checksums?.[language] !== checksum(localePath)) {
-    fail(`PWA locale checksum mismatch: ${language}`);
+  const locale = JSON.parse(readFileSync(resolve(root, "public", "locale", language + ".json"), "utf8"));
+  for (const key of userKeys) {
+    if (!Object.hasOwn(locale, key) || typeof locale[key] !== "string" ||
+        (russian[key].trim() && !locale[key].trim())) {
+      fail("incomplete locale " + language + ": " + key);
+    }
   }
 }
 
-console.log(
-  `EFHC RELEASE ASSETS VERIFY: PASS; files=${Object.keys(manifest.files).length}`,
-);
+console.log("EFHC RELEASE ASSETS VERIFY: PASS; approved FAQ assets=" +
+  requiredFaqAssets.length + "; user locale keys=" + userKeys.length +
+  "; languages=" + localeLanguages.length);
