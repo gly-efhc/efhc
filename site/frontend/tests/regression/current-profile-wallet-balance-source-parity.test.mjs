@@ -195,7 +195,7 @@ test("profile and withdraw CSV/XLSX exports use the same server stream with dist
   assert.match(downloadExport, /response\.headers\.get\("content-type"\)/);
   assert.match(downloadExport, /profileExportGrantSchema\.parse/);
   assert.match(downloadExport, /getAuthSessionRevision\(\) !== revision/);
-  assert.match(downloadExport, /export-ticket\?\$\{query\.toString\(\)\}, "POST"/);
+  assert.match(downloadExport, /export-ticket\?\$\{query\.toString\(\)\}`,\s*"POST"/);
   assert.match(downloadExport, /url\.searchParams\.set\("ticket", grant\.ticket\)/);
   assert.match(downloadExport, /webApp\.downloadFile/);
   assert.doesNotMatch(downloadExport, /URL\.createObjectURL/);
