@@ -177,6 +177,86 @@ try{
     }
     await page.setViewportSize({width:390,height:844});
   });
+  await check('Portfolio card and unselected tab match the delivered USER page canvas in ten CT',async()=>{
+    await visit('panels/portfolio/');
+    const portfolio=page.locator('#panelsPortfolioPage');
+    await portfolio.waitFor({state:'visible'});
+    const matrix=[],mismatches=[];
+    for(const width of [320,390,1440]){
+      await page.setViewportSize({width,height:844});
+      for(const tab of ['active','archive']){
+        await portfolio.locator(`[data-panels-tab-button="${tab}"]`).click();
+        await portfolio.locator(`[data-panels-tab-button="${tab}"][data-active="true"]`).waitFor({state:'visible'});
+        const rows=await page.evaluate(()=>{
+          const html=document.documentElement;
+          const shell=document.querySelector('.efhc-independent-shell[data-interface-app-mode="user"]');
+          const main=document.querySelector('#efhc-main-content');
+          const host=document.querySelector('#panelsPortfolioPage');
+          const surface=host.querySelector('.efhc-panels-card-surface');
+          const tabs=host.querySelector('.efhc-panels-tabs');
+          const active=tabs.querySelector('[data-panels-tab-button][data-active="true"]');
+          const inactive=tabs.querySelector('[data-panels-tab-button][data-active="false"]');
+          if(!shell||!main||!surface||!active||!inactive)throw Error('Missing live Portfolio elements');
+          const original=[html,shell].map(node=>[node,node.getAttribute('data-color-theme-id'),node.getAttribute('data-global-theme-id')]);
+          const pc=surface.getAttribute('data-pc');
+          const probe=document.createElement('div');
+          probe.className='efhc-panel-tile';
+          probe.dataset.panelCard=surface.dataset.panelsList;
+          probe.setAttribute('aria-hidden','true');
+          surface.appendChild(probe);
+          const canvasBase=document.createElement('span');
+          canvasBase.setAttribute('aria-hidden','true');
+          canvasBase.style.cssText='position:absolute;visibility:hidden;background-color:var(--tg-bg)';
+          main.appendChild(canvasBase);
+          const motion=document.createElement('style');
+          motion.textContent='#panelsPortfolioPage .efhc-panels-tabs > *,#panelsPortfolioPage .efhc-panel-tile{transition:none!important}';
+          document.head.appendChild(motion);
+          const restore=(node,key,value)=>value===null?node.removeAttribute(key):node.setAttribute(key,value);
+          // Chromium may serialize a transparent base as an extra trailing "none"
+          // layer. This paints nothing; do not hide any real color/image mismatch.
+          const material=node=>{const s=getComputedStyle(node);return [s.backgroundColor,s.backgroundImage.replace(/(?:,\s*none)+$/,'')]};
+          const rows=[];
+          try{
+            for(let i=1;i<=10;i++){
+              const ct='CT-'+String(i).padStart(2,'0');
+              const legacy=String(i).padStart(2,'0'); // Current CT runtime IDs 01–10; legacy input 13 is migration-only.
+              for(const node of [html,shell]){
+                node.dataset.colorThemeId=ct;
+                node.dataset.globalThemeId=legacy;
+              }
+              const expected=material(main);
+              // CT03 main uses a transparent base over the shared canvas.
+              if(expected[0]==='rgba(0, 0, 0, 0)')expected[0]=material(canvasBase)[0];
+              const inactiveMaterial=material(inactive),activeMaterial=material(active);
+              for(const physical of ['PC-01','PC-02','PC-03','PC-04','PC-05','PC-06','PC-08','PC-09','PC-10']){
+                surface.dataset.pc=physical;
+                rows.push({ct,physical,expected,inactive:inactiveMaterial,active:activeMaterial,card:material(probe)});
+              }
+            }
+          }finally{
+            for(const [node,color,legacy] of original){
+              restore(node,'data-color-theme-id',color);restore(node,'data-global-theme-id',legacy);
+            }
+            restore(surface,'data-pc',pc);probe.remove();canvasBase.remove();motion.remove();
+          }
+          return rows;
+        });
+        assert.equal(rows.length,90);
+        for(const row of rows){
+          const label=`${width}/${tab}/${row.ct}/${row.physical}`;
+          matrix.push({width,tab,...row});
+          for(const [target,actual] of [['card',row.card],['unselected tab',row.inactive]]){
+            if(JSON.stringify(actual)!==JSON.stringify(row.expected))mismatches.push({label,target,actual,expected:row.expected});
+          }
+          if(JSON.stringify(row.active)===JSON.stringify(row.expected))mismatches.push({label,target:'selected tab lost emphasis',actual:row.active});
+        }
+      }
+    }
+    await fs.writeFile(dir+'/portfolio-page-material.json',JSON.stringify({matrix,mismatches},null,2));
+    assert.equal(matrix.length,540,'complete Portfolio material matrix');
+    assert.equal(mismatches.length,0,JSON.stringify(mismatches.slice(0,12)));
+    await page.setViewportSize({width:390,height:844});
+  });
   await check('removed browser finance store does not reappear',async()=>{
     await visit();
     assert.equal(await page.evaluate(()=>localStorage.getItem('efhc:react:unified-demo:v893')),null);
