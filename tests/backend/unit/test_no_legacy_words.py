@@ -81,6 +81,10 @@ def test_no_legacy_words_present() -> None:
         if p.name.startswith("logs_"):
             continue
         rel = p.relative_to(repo).as_posix()
+        # Next.js bundles are generated during CI before this source test runs.
+        # The source tree (including frontend/src) remains subject to the guard.
+        if rel.startswith("frontend/.next/"):
+            continue
         if rel in {
             "docs/frontend/FRONTEND_PWA_INSTALL_POLICY.md",
             "docs/frontend/FRONTEND_FUNCTION_RECOVERY_CANON.md",
