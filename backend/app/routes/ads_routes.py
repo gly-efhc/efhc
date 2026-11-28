@@ -8,29 +8,19 @@ surface, но больше не являются production reward architecture.
 from __future__ import annotations
 
 import hmac
-from datetime import timedelta
-from decimal import Decimal
 from typing import Any, Never, cast
 
 from app.core.config_core import get_settings
-from app.core.decimal_utils import d8
 from app.deps import get_db
 from app.identity.nonfinancial_owner import NonFinancialReadOwner
 from app.identity.nonfinancial_read_dependency import (
     get_nonfinancial_read_owner,
 )
-from app.identity.telegram_auth_session import (
-    resolve_telegram_subject_global_id,
-)
 from app.identity.types import format_global_id, global_id_from_database
 from app.integrations.ads.common import correlation_session_id
 from app.integrations.ads_providers import (
     get_verified_event,
-    issue_builtin_timer_token,
 )
-from app.lib.time import utcnow
-from app.models.ads_models import AdEvent, AdSession
-from app.models.tasks_models import Task
 from app.services.ads.ad_manager import (
     AdContext,
     AdManagerError,
@@ -42,16 +32,29 @@ from app.services.ads.ad_manager import (
     provider_postback,
     record_client_telemetry,
 )
+from app.schemas.ads_schemas import (
+    AdSessionCreateIn,
+    AdFallbackIn,
+    AdClientEventIn,
+    AdTelemetryIn,
+    AdSessionOut,
+    AdSlotOut,
+    AdCallbackResultOut,
+)
 from app.services.ads.config_service import load_provider_config
+from app.services.ads.http_use_cases import (
+    ACTIVE_LANGUAGES,
+    AdSlotError,
+    get_compat_slot,
+    record_adsgram_reward_url_signal,
+    stored_language,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
-from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 settings = get_settings()
 router = APIRouter(prefix="/ads", tags=["ads"])
 
-ACTIVE_LANGUAGES = frozenset({"en", "ru", "uk", "de", "fr", "es", "it", "tr", "pl", "da", "hi", "id", "sw", "pt", "ko", "ja"})
 
 
 async def _require_provider_postback_secret(
@@ -73,87 +76,12 @@ async def _require_provider_postback_secret(
         raise HTTPException(status_code=403, detail="VERIFICATION_FAILED")
 
 
-class AdSessionCreateIn(BaseModel):
-    task_code: str = Field(min_length=1, max_length=64)
-
-
-class AdFallbackIn(BaseModel):
-    reason: str = Field(default="PROVIDER_ERROR", max_length=64)
-
-
-class AdClientEventIn(BaseModel):
-    payload: dict[str, Any] = Field(default_factory=dict)
-
-
-class AdTelemetryIn(BaseModel):
-    event_type: str = Field(min_length=1, max_length=48)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class AdSessionOut(BaseModel):
-    session_id: str
-    task_code: str
-    status: str
-    primary_provider: str | None = None
-    actual_provider: str | None = None
-    provider: dict[str, Any] | None = None
-    reward_efhcb: str
-    expires_at: str
-    failure_code: str | None = None
-    fallback_count: int
-    verification_level: str | None = None
-    estimated_revenue_usd: str | None = None
-    actual_revenue_usd: str | None = None
-    rewarded: bool
-    test_mode: bool
-
-
-# Compatibility schema старого /ads/slot.
-class AdSlotOut(BaseModel):
-    provider: str
-    task_code: str
-    global_id: str
-    bonus_efhc: str
-    token: str | None = None
-    expires_at: str | None = None
-    min_view_sec: int | None = None
-    placement_id: str | None = None
-
-
-class AdCallbackResultOut(BaseModel):
-    ok: bool
-    provider: str
-    task_code: str
-    provider_ref: str
-    bonus_efhc: str
-    replayed: bool = False
-
-
 def _raise_manager(exc: AdManagerError) -> Never:
     raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
 
 
 def _owner_display(owner: NonFinancialReadOwner) -> str:
     return str(format_global_id(global_id_from_database(owner.global_id)))
-
-
-async def _stored_language(db: AsyncSession, owner: NonFinancialReadOwner) -> str | None:
-    row = (
-        await db.execute(
-            text("SELECT meta FROM efhc_core.users WHERE global_id=:gid LIMIT 1"),
-            {"gid": owner.global_id},
-        )
-    ).scalar_one_or_none()
-    if not isinstance(row, dict):
-        return None
-    for key in ("app_language", "ui_lang", "preferred_language", "language", "lang", "telegram_language_code", "language_code"):
-        value = str(row.get(key) or "").strip()
-        if value in ACTIVE_LANGUAGES:
-            return value
-        base = value.split("-", 1)[0].lower()
-        if base in ACTIVE_LANGUAGES:
-            return base
-    return None
 
 
 async def _ad_context(
@@ -166,7 +94,7 @@ async def _ad_context(
     header_lang = str(request.headers.get("X-App-Language") or "").strip()
     language = header_lang if header_lang in ACTIVE_LANGUAGES else None
     if language is None:
-        language = await _stored_language(db, owner)
+        language = await stored_language(db, global_id=owner.global_id)
     language = language or "en"
 
     country: str | None = None
@@ -398,47 +326,7 @@ async def adsgram_reward_url_signal(
 ) -> dict[str, Any]:
     """Дополнительный AdsGram Reward URL signal; сам по себе EFHCb не выдаёт."""
 
-    global_id = await resolve_telegram_subject_global_id(db, provider_tg_id)
-    if global_id is None:
-        return {"ok": True, "matched": False}
-    cutoff = utcnow() - timedelta(minutes=30)
-    session = (
-        await db.execute(
-            select(AdSession)
-            .where(
-                AdSession.global_id == global_id.value,
-                AdSession.actual_provider == "adsgram",
-                AdSession.started_at >= cutoff,
-            )
-            .order_by(AdSession.started_at.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
-    if session is None:
-        return {"ok": True, "matched": False}
-    provider_event_id = f"adsgram-reward-url:{session.session_id}"
-    existing = (
-        await db.execute(
-            select(AdEvent.id).where(
-                AdEvent.provider == "adsgram",
-                AdEvent.provider_event_id == provider_event_id,
-                AdEvent.event_type == "postback_received",
-            ).limit(1)
-        )
-    ).scalar_one_or_none()
-    if existing is None:
-        db.add(
-            AdEvent(
-                session_id=session.session_id,
-                provider="adsgram",
-                task_code=session.task_code,
-                event_type="postback_received",
-                provider_event_id=provider_event_id,
-                metadata_json={"source": "reward_url", "reward_authority": False},
-            )
-        )
-        await db.commit()
-    return {"ok": True, "matched": True}
+    return await record_adsgram_reward_url_signal(db, provider_tg_id=provider_tg_id)
 
 
 # ---------------------------------------------------------------------------
@@ -455,49 +343,10 @@ async def get_ad_slot_compat(
 ) -> AdSlotOut:
     """Compatibility-only slot. builtin_timer доступен только ADS_TEST_MODE."""
 
-    task = (
-        await db.execute(select(Task).where(Task.code == task_code).limit(1))
-    ).scalar_one_or_none()
-    if task is None:
-        raise HTTPException(status_code=404, detail="Задание не найдено")
-    if not task.active or task.type != "watch_ad":
-        raise HTTPException(status_code=409, detail="NOT_SUPPORTED")
-    selected = str(provider or "adsgram").strip().lower()
-    bonus = d8(task.bonus_efhc or Decimal("0"))
-
-    if selected == "builtin_timer":
-        if not bool(settings.ADS_TEST_MODE) or not bool(settings.ADS_BUILTIN_TIMER_ENABLED):
-            raise HTTPException(status_code=410, detail="NOT_SUPPORTED")
-        if owner.provider_tg_id is None:
-            raise HTTPException(status_code=409, detail="telegram_provider_required")
-        token = issue_builtin_timer_token(
-            tg_id=owner.provider_tg_id,
-            task_code=task_code,
-            bonus_efhc=bonus,
-            ttl_sec=int(settings.ADS_BUILTIN_TOKEN_TTL_SEC),
-        )
-        return AdSlotOut(
-            provider="builtin_timer",
-            task_code=task_code,
-            global_id=_owner_display(owner),
-            bonus_efhc=str(bonus),
-            token=token,
-            expires_at=(utcnow() + timedelta(seconds=int(settings.ADS_BUILTIN_TOKEN_TTL_SEC))).isoformat(),
-            min_view_sec=int(settings.ADS_BUILTIN_MIN_VIEW_SEC),
-        )
-
-    if selected != "adsgram":
-        raise HTTPException(status_code=410, detail="USE_AD_MANAGER_SESSION")
-    config = await load_provider_config(db, "adsgram")
-    if not config.enabled or not config.is_configured():
-        raise HTTPException(status_code=409, detail="NOT_CONFIGURED")
-    return AdSlotOut(
-        provider="adsgram",
-        task_code=task_code,
-        global_id=_owner_display(owner),
-        bonus_efhc=str(bonus),
-        placement_id=str(config.public.get("reward_block_id") or "") or None,
-    )
+    try:
+        return await get_compat_slot(db, task_code=task_code, provider=provider, global_id=_owner_display(owner), provider_tg_id=owner.provider_tg_id)
+    except AdSlotError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 @router.post("/callback/{provider}", response_model=AdCallbackResultOut)

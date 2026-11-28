@@ -20,6 +20,7 @@ from typing import cast
 
 from app.core.config_core import get_settings
 from app.core.logging_core import get_logger
+from app.crud.transactions_crud import list_user_transfers_desc_cursor
 from app.identity.types import (
     global_id_from_database,
     global_id_to_database,
@@ -855,3 +856,10 @@ async def _confirm_payment_intent(
         credit_user_from_bank_fn=credit_user_from_bank,
     )
     return str(result)
+
+
+async def list_balance_history(db: AsyncSession, *, global_id: str, limit: int, next_cursor: str | None):
+    """Read the canonical transfer ledger without changing its cursor contract."""
+    return await list_user_transfers_desc_cursor(
+        db, global_id=_global_id_db(global_id), limit=limit, next_cursor=next_cursor,
+    )

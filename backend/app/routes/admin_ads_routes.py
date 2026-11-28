@@ -25,38 +25,16 @@ from app.services.admin.admin_ads_service import (
 from app.services.ads.analytics_service import ads_dashboard
 from app.services.ads.revenue_optimizer import revenue_recommendation
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from app.schemas.admin.admin_ads_schemas import (
+    ProviderSaveIn,
+    SecretReplaceIn,
+    SecretDeleteIn,
+    ProviderTestIn,
+    RevenueOptimizerApplyIn,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/admin/ads", tags=["admin:ads"])
-
-
-class ProviderSaveIn(BaseModel):
-    enabled: bool | None = None
-    priority: int | None = Field(default=None, ge=0)
-    miniapp_enabled: bool | None = None
-    bot_enabled: bool | None = None
-    rewarded_enabled: bool | None = None
-    public_config: dict[str, Any] | None = None
-    config: dict[str, Any] | None = None
-    countries_allow: list[str] | None = None
-    countries_block: list[str] | None = None
-    languages_allow: list[str] | None = None
-    languages_block: list[str] | None = None
-    moderation_status: str | None = Field(default=None, max_length=32)
-
-
-class SecretReplaceIn(BaseModel):
-    field: str = Field(min_length=1, max_length=64)
-    value: str = Field(min_length=1, max_length=8192)
-
-
-class SecretDeleteIn(BaseModel):
-    field: str = Field(min_length=1, max_length=64)
-
-
-class ProviderTestIn(BaseModel):
-    mode: str = Field(default="configuration", pattern="^(configuration|sdk|request)$")
 
 
 def _error(exc: ValueError) -> Never:
@@ -78,11 +56,6 @@ def _test_context(request: Request) -> AdContext:
         telegram_premium=None,
         test_mode=True,
     )
-
-
-class RevenueOptimizerApplyIn(BaseModel):
-    period: str = Field(default="30d", pattern="^(24h|7d|30d)$")
-    min_requests: int = Field(default=20, ge=1, le=1_000_000)
 
 
 @router.get("/dashboard")

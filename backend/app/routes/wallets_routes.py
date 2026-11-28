@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from app.crud.transactions_crud import list_user_transfers_desc_cursor
 from app.deps import (
     get_current_telegram_subject_id,
     get_db,
@@ -145,7 +144,7 @@ async def balance_history(
         description="Сколько записей вернуть.",
     ),
 ) -> WalletBalanceHistoryOut:
-    items, next_cursor = await list_user_transfers_desc_cursor(
+    items, next_cursor = await wallets_service.list_balance_history(
         db,
         global_id=str(global_id_from_database(owner.global_id)),
         limit=limit,
