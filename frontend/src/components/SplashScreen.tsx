@@ -1,4 +1,5 @@
 import React from "react";
+import { appBasePath } from "../lib/appBasePath";
 
 type SplashScreenProps = {
   visible: boolean;
@@ -17,7 +18,7 @@ export function SplashScreen(props: SplashScreenProps) {
       aria-hidden={!props.visible}
     >
       <div className="efhc-entry-splash_content">
-        <img src="/assets/efhc/canon/efhc_logo_canon.svg" alt="EFHC" className="efhc-entry-splash_logo efhc-splash-breathe" />
+        <img src={`${appBasePath()}/assets/efhc/canon/efhc_logo_canon.svg`} alt="EFHC" className="efhc-entry-splash_logo efhc-splash-breathe" />
         <div className="text-sm tracking-wide efhc-text-muted2">
           EFHC
         </div>

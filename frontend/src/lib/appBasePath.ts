@@ -1,4 +1,4 @@
-/** The deployment prefix is supplied by the same generated Next config as basePath. */
+/** The deployment prefix is supplied by the same canonical Next config as basePath. */
 export function appBasePath(): string {
   if (process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW !== "1") return "";
   const base = process.env.NEXT_PUBLIC_EFHC_BASE_PATH || "";

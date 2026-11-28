@@ -1,4 +1,4 @@
-"""Transform an ephemeral COPY of actual React source for safe static export.
+"""Stage an ephemeral COPY of actual React source for static export.
 
 The imported source tree frontend is never changed by this script.
 """
@@ -8,23 +8,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-
-NEXT_CONFIG = '''/** EFHC isolated GitHub Pages DEMO; generated for an ephemeral build only. */
-const basePath = process.env.EFHC_DEMO_BASEPATH || '';
-module.exports = {
-  reactStrictMode: true,
-  output: 'export',
-  basePath,
-  assetPrefix: basePath,
-  env: { NEXT_PUBLIC_EFHC_BASE_PATH: basePath },
-  trailingSlash: true,
-  images: { unoptimized: true },
-  typescript: { ignoreBuildErrors: false },
-  // Pages Router basePath guard: prevent repeated deployment-prefix hard redirects.
-  // Next.js upstream #75477 / #80852; temporary DEMO build only.
-  experimental: { cpus: 2, clientRouterFilter: false },
-};
-'''
 
 # Pages serves only the React app and a public, nonprivileged runtime config.
 # It must never inject browser-owned DEMO identities or financial data.
@@ -43,21 +26,8 @@ def main():
     if target.exists():
         shutil.rmtree(target)
     shutil.copytree(source, target)
-    # v868 owns the fixes in actual React source; no temporary TS/route hacks.
-    # Pages basePath is independent of the API backend choice.
-    # Static image paths still require the subpath prefix on project Pages.
-    splash = target / 'src/components/SplashScreen.tsx'
-    splash_text = splash.read_text(encoding='utf-8')
-    logo_src = 'src="/assets/efhc/canon/efhc_logo_canon.svg"'
-    if splash_text.count(logo_src) != 1:
-        raise ValueError('Splash logo path changed: review basePath manually')
-    splash.write_text(
-        splash_text.replace(logo_src, f'src="{base}/assets/efhc/canon/efhc_logo_canon.svg"', 1),
-        encoding='utf-8',
-    )
-    print('EFHC_PAGES_SPLASH_LOGO_BASEPATH=PASS')
-    # All edits above apply exclusively to the ephemeral build-copy.
-    (target / 'next.config.js').write_text(NEXT_CONFIG, encoding='utf-8')
+    # The canonical Next config and shared React components select their own
+    # build profile. Do not rewrite either in the staged source.
     # GitHub Pages cannot execute Next API handlers. Keep all real USER/ADMIN React pages.
     api = target / 'src/pages/api'
     if api.exists():
@@ -66,16 +36,6 @@ def main():
     custom_error = target / 'src/pages/_error.tsx'
     if custom_error.exists():
         custom_error.unlink()
-    doc = target / 'src/pages/_document.tsx'
-    content = doc.read_text(encoding='utf-8')
-    if 'src="/public-runtime-config.js"' not in content:
-        raise ValueError('Expected runtime-config script not found in actual _document.tsx')
-    content = content.replace('src="/public-runtime-config.js"',
-                              f'src="{base}/public-runtime-config.js"', 1)
-    # Retain the existing Telegram runtime; public Pages remains an ordinary browser host.
-    # Static assets referenced directly from document are not basePath-rewritten by Next.
-    content = content.replace('href="/assets/', f'href="{base}/assets/')
-    doc.write_text(content, encoding='utf-8')
     (target / 'public/public-runtime-config.js').write_text(
         'window.__EFHC_PUBLIC_CONFIG__=Object.freeze({});\n', encoding='utf-8')
     owner = os.environ.get('GITHUB_REPOSITORY_OWNER', 'gly-efhc')

@@ -181,4 +181,24 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Select the static Pages artifact using the existing explicit preview environment.
+// The server profile remains the default and retains its headers and API rewrites.
+const staticExport = process.env.NEXT_PUBLIC_EFHC_PAGES_PREVIEW === "1" &&
+  process.env.EFHC_DEMO_BASEPATH !== undefined;
+const basePath = (process.env.EFHC_DEMO_BASEPATH || "").replace(/\/+$/, "");
+if (staticExport && basePath &&
+    (!/^\/[A-Za-z0-9_.-]+$/.test(basePath) || basePath === "/." || basePath === "/..")) {
+  throw new Error("Invalid configured Pages basePath");
+}
+
+module.exports = staticExport ? {
+  reactStrictMode: nextConfig.reactStrictMode,
+  output: "export",
+  basePath,
+  assetPrefix: basePath,
+  env: { NEXT_PUBLIC_EFHC_BASE_PATH: basePath },
+  trailingSlash: true,
+  images: { unoptimized: true },
+  typescript: { ignoreBuildErrors: false },
+  experimental: { cpus: 2, clientRouterFilter: false },
+} : nextConfig;

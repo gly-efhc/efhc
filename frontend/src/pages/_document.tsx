@@ -1,10 +1,11 @@
 import { Html, Head, Main, NextScript } from "next/document";
+import { appBasePath } from "../lib/appBasePath";
 
 export default function Document() {
   return (
     <Html lang="en" data-theme="dark">
       <Head>
-        <script src="/public-runtime-config.js" />
+        <script src={`${appBasePath()}/public-runtime-config.js`} />
         <meta name="theme-color" content="#0a0a0f" />
         <meta
           name="viewport"
@@ -15,7 +16,7 @@ export default function Document() {
         <link
           rel="preload"
           as="image"
-          href="/assets/efhc/responsive/efhc_coin_128.avif"
+          href={`${appBasePath()}/assets/efhc/responsive/efhc_coin_128.avif`}
           type="image/avif"
           fetchPriority="high"
         />
