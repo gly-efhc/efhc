@@ -12,29 +12,28 @@ SHA = re.compile(r"[0-9a-f]{64}\Z")
 GIT = re.compile(r"[0-9a-f]{40}\Z")
 PATH = re.compile(r"[A-Za-z0-9._ ()-]+(?:/[A-Za-z0-9._ ()-]+)*\Z")
 PREFIX = (
-    "site/frontend/", "site/ci/",
-    "main/backend/app/", "main/backend/migrations/", "main/backend/openapi/",
-    "main/demo_backend/", "main/contracts/", "main/tests/efhc_backend/",
-    "main/tests/integration/", "scripts/ops/routes/", "scripts/frontend/",
+    "frontend/",
+    "backend/app/", "backend/migrations/", "backend/openapi/",
+    "environments/test/demo_backend/", "contracts/", "tests/backend/",
+    "tests/integration/", "scripts/ops/routes/", "scripts/frontend/", "scripts/parity/", "deployment/pages-tools/", "scripts/ci/", "tests/architecture/", "tests/frontend/",
 )
 FIXED = {
     "AGENTS.md", "INDEX.md", "KERNEL.md", "LICENSE.txt", "README.md", "START_HERE.md",
-    "import/README.md", "site/APPLICATION_RULES.md", "site/EFHC_APPLICATION_RULES.md",
-    "site/RECOVERY.md", "site/RELEASE.json", "main/.dockerignore", "main/.env.example",
-    "main/VERSION", "main/pytest.ini", "main/pyproject.toml",
-    "main/requirements.txt", "main/requirements-dev.txt", "main/requirements-test.txt",
-    "main/backend/README_ADMIN_GLOBAL_IDS.md", "main/backend/__init__.py",
-    "main/backend/alembic.ini", "main/backend/init.py", "main/backend/run.py",
-    "main/backend/requirements.lock", "main/backend/requirements.txt", "main/tests/conftest.py",
-    "main/ops/routes/check_orm_0001_columns.py",
+    "import/README.md", "frontend/APPLICATION_RULES.md", "frontend/EFHC_APPLICATION_RULES.md",
+    "frontend/RECOVERY.md", "frontend/RELEASE.json", ".dockerignore", ".env.example",
+    "VERSION", "pytest.ini", "pyproject.toml", "environments/test/Dockerfile", "environments/test/docker-compose.demo.yml",
+    "requirements.txt", "requirements-dev.txt", "requirements-test.txt",
+    "backend/README_ADMIN_GLOBAL_IDS.md", "backend/__init__.py",
+    "backend/alembic.ini", "backend/init.py", "backend/run.py",
+    "backend/requirements.lock", "backend/requirements.txt", "tests/conftest.py",
 }
 REQUIRED = {
-    "site/frontend/package-lock.json", "site/frontend/src/pages/index.tsx",
-    "site/ci/pages-tools/prepare_pages.py", "site/RELEASE.json",
-    "main/backend/app/main.py", "main/demo_backend/asgi.py",
-    "main/demo_backend/Dockerfile", "main/backend/requirements.lock",
-    "main/backend/migrations/versions/0001_initial_release_schema.py",
-    "main/backend/openapi/openapi.json",
+    "frontend/package-lock.json", "frontend/src/pages/index.tsx",
+    "deployment/pages-tools/prepare_pages.py", "frontend/RELEASE.json",
+    "backend/app/main.py", "environments/test/demo_backend/asgi.py",
+    "environments/test/Dockerfile", "backend/requirements.lock",
+    "backend/migrations/versions/0001_initial_release_schema.py",
+    "backend/openapi/openapi.json",
 }
 CAP = 50 * 1024 * 1024
 BLOCK = {".git", ".github", "node_modules", "__pycache__", ".next", "secrets", ".aws"}
@@ -47,8 +46,8 @@ def pathname(p):
     check(isinstance(p, str) and PATH.fullmatch(p), f"invalid name: {p!r}")
     parts = p.split("/")
     check(not any(x in {".", ".."} or x.lower() in BLOCK or x != x.strip() or x.endswith(".") for x in parts), f"unsafe path: {p}")
-    check(not any(x.lower().startswith(".env") for x in parts) or p=="main/.env.example", f"environment file: {p}")
-    check(p=="main/demo_backend/docker-compose.demo.yml" or Path(p).suffix.lower() not in {".zip", ".tar", ".gz", ".db", ".sqlite", ".pem", ".key", ".pfx", ".p12", ".yml", ".yaml"}, f"blocked file type: {p}")
+    check(not any(x.lower().startswith(".env") for x in parts) or p==".env.example", f"environment file: {p}")
+    check(p=="environments/test/docker-compose.demo.yml" or Path(p).suffix.lower() not in {".zip", ".tar", ".gz", ".db", ".sqlite", ".pem", ".key", ".pfx", ".p12", ".yml", ".yaml"}, f"blocked file type: {p}")
     check(p in FIXED or p.startswith(PREFIX), f"not in import scope: {p}")
 
 def run(root, bundle, expected, apply):

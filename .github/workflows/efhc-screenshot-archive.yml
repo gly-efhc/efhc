@@ -71,7 +71,7 @@ jobs:
           import path from 'node:path';
           import {setTimeout as delay} from 'node:timers/promises';
 
-          const root = path.resolve('site/frontend/src/pages');
+          const root = path.resolve('frontend/src/pages');
           const out = path.resolve(process.env.SCREENSHOT_DIR || 'efhc-screenshots');
           const expectedSite = `https://${process.env.GITHUB_REPOSITORY_OWNER}.github.io/${process.env.GITHUB_REPOSITORY?.split('/')[1]}/`;
           const site = (process.env.SITE_URL || expectedSite).replace(/\/?$/, '/');

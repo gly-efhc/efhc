@@ -38,7 +38,7 @@ GitHub-доступ не является разрешением на дейст
 
 В public нельзя переносить приватные документы или их закрытое содержание, переписку OWNER, внутренние реестры, секреты, PII, исходные HTML-эталоны, отчетную историю или коммерческие детали. Разрешены публично безопасные ссылки, названия и минимальные правила инженерного исполнения. Не создавать публичный дубликат `CANON/SSOT/NORM`.
 
-Публично присутствуют [`site/EFHC_APPLICATION_RULES.md`](site/EFHC_APPLICATION_RULES.md) (OWNER-утверждённый маршрут редакции B) и [`site/APPLICATION_RULES.md`](site/APPLICATION_RULES.md) (вторичная редакция). Их текст сверяется с текущим source и приватным `01_CANON/APP_RULES_OWNER_DECISION_B.md` и `05_SSOT/FRONTEND/APPLICATION_RULES.md`; они не становятся вторым независимым SSOT.
+Публично присутствуют [`frontend/EFHC_APPLICATION_RULES.md`](frontend/EFHC_APPLICATION_RULES.md) (OWNER-утверждённый маршрут редакции B) и [`frontend/APPLICATION_RULES.md`](frontend/APPLICATION_RULES.md) (вторичная редакция). Их текст сверяется с текущим source и приватным `01_CANON/APP_RULES_OWNER_DECISION_B.md` и `05_SSOT/FRONTEND/APPLICATION_RULES.md`; они не становятся вторым независимым SSOT.
 
 ## 5. Технические инварианты
 
@@ -53,7 +53,7 @@ GitHub-доступ не является разрешением на дейст
 1. `PIN`: зафиксировать точный HEAD, уполномоченный режим, список разрешённых файлов, контракты и возможные параллельные изменения.
 2. `ROUTE`: через [INDEX.md](INDEX.md) и приватный предметный маршрут получить нужные требования и реальные исходники; не проводить повторный тотальный аудит.
 3. `EDIT`: короткий адресный diff, без новых конкурирующих источников истины, скрытых массовых правок, force/reset и неразрешённого deploy.
-4. `VERIFY`: только релевантные проверки; для frontend использовать скрипты [`site/frontend/package.json`](site/frontend/package.json) (`npm ci`, `npm run typecheck`, `npm run test:frontend-regression`, `npm run build`). Отдельно фиксировать `PASS/FAIL/PARTIAL/NOT_RUN`; документационная правка не требует фиктивного Next.js PASS.
+4. `VERIFY`: только релевантные проверки; для frontend использовать скрипты [`frontend/package.json`](frontend/package.json) (`npm ci`, `npm run typecheck`, `npm run test:frontend-regression`, `npm run build`). Отдельно фиксировать `PASS/FAIL/PARTIAL/NOT_RUN`; документационная правка не требует фиктивного Next.js PASS.
 5. `WRITE`: commit на разрешённой ветке, без перезаписи конкурирующих изменений.
 6. `READBACK`: перечитать именно изменённые remote файлы; проверить SHA, доступные CI verdict и отсутствие закрытых материалов в public.
 7. `HANDOFF`: `scope | mode | CODE_HEAD | ARCHIVE_HEAD/ZIP (если применимо) | changed paths | verification | protected unchanged | pending`.

@@ -5,7 +5,7 @@ import re
 from collections import Counter, defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTES = ROOT / "backend" / "app" / "routes"
 
 

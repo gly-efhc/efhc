@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTE = ROOT / "backend" / "app" / "routes" / "withdraw_routes.py"
 SERVICE = ROOT / "backend" / "app" / "services" / "withdraw_service.py"
 MODEL = ROOT / "backend" / "app" / "models" / "withdraw_models.py"

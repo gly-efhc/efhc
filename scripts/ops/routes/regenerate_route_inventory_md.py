@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 FREEZE = ROOT / "docs/SSOT/ssot_pack/SSOT_ROUTE_INVENTORY_FREEZE.csv"
 OUT = ROOT / "docs/audits/ROUTE_INVENTORY_FREEZE.md"
 

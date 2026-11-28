@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 SHOP_ROUTE = ROOT / "backend/app/routes/shop_routes.py"
 HUB_ROUTE = ROOT / "backend/app/routes/hub_routes.py"
 SHOPFRONT_ROUTE = ROOT / "backend/app/routes/shopfront_routes.py"

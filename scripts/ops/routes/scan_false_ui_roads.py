@@ -4,7 +4,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 FRONTEND = ROOT / "frontend"
 
 

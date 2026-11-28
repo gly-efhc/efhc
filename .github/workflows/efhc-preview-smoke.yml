@@ -156,8 +156,8 @@ jobs:
           fi
           npm --prefix "$RUNNER_TEMP/efhc-preview-browser-tools" list playwright-core --depth=0
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
-          node --check site/frontend/tests/parity/live-pages.mjs
-          node site/frontend/tests/parity/live-pages.mjs
+          node --check tests/frontend/parity/live-pages.mjs
+          node tests/frontend/parity/live-pages.mjs
       - name: Retain live C0034 route evidence
         if: always()
         uses: actions/upload-artifact@v4

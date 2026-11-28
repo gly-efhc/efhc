@@ -12,7 +12,7 @@ import ast
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 MODEL_DIR = ROOT / "backend" / "app" / "models"
 MIG = ROOT / "backend" / "migrations" / "versions" / "0001_initial_release_schema.py"
 OUT = ROOT / "reports" / "generated" / "orm_0001_compare.json"

@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 OPENAPI = ROOT / "backend/openapi/openapi.json"
 SSOT = ROOT / "docs/SSOT/ssot_pack/SSOT_ROUTES.csv"
 FRONTEND = ROOT / "frontend/src"

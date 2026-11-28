@@ -28,7 +28,7 @@
 
 ## 4. Технические ограничения
 
-- `site/frontend/` — React/Next.js frontend; `site/frontend/tests/`, `site/ci/`, `.github/workflows/` — проверки и доставка. Реальный backend и блокчейн-проводки подтверждаются отдельно.
+- `frontend/` — React/Next.js frontend; `tests/frontend/`, `scripts/`, `tests/architecture/`, `.github/workflows/` — проверки и доставка. `backend/` — единый доменный backend; `contracts/` — общие контракты; `environments/test/demo_backend/` — изолированный TEST-адаптер; `tests/backend/`, `tests/integration/` — серверные проверки. Runtime backend и блокчейн-проводки подтверждаются отдельно.
 - Пользовательский интерфейс, функциональность, десять тем, локализации, TON/Wallet, Global ID, Admin/RBAC, финансовые и API-контракты сверять с соответствующими действующими владельцами приватного Архива. Не подменять реальное состояние DEMO/fixtures.
 - React Admin **не имеет общего визуального freeze**: исправления допустимы только по отдельному прямому заданию, с проверкой физического эталона `FRONTEND_v866.html`, когда он предоставлен. Защищённые принятые компоненты и решения OWNER сохраняются в своей точной области.
 - Serwist — единый движок PWA/CacheStorage в принятом контракте; не вводить самостоятельный EFHC runtime cache поверх него. Пользовательское owner-scoped состояние и финансовые сетевые операции проверять отдельно по профильным SSOT.

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTE_FILE = ROOT / "backend/app/routes/user_routes.py"
 OUT = ROOT / "reports/generated/profile_route_canon.json"
 FRONTEND = ROOT / "frontend/src"

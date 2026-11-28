@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 PAY = ROOT / "backend/app/services/payment_reconciliation_service.py"
 WATCHER = ROOT / "backend/app/services/watcher_service.py"
 GUARDS = ROOT / "backend/app/services/confirm__path__guards_service.py"

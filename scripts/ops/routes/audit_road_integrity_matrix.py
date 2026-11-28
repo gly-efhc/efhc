@@ -11,7 +11,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTE_DIR = ROOT / "backend" / "app" / "routes"
 MODEL_DIR = ROOT / "backend" / "app" / "models"
 ALEMBIC_DIR = ROOT / "backend" / "alembic"

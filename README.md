@@ -2,7 +2,7 @@
 
 **Проект:** Energy for Humanity Coin (EFHC) · **Исходный код:** [gly-efhc/efhc](https://github.com/gly-efhc/efhc) · **Документальный Архив:** приватный [gly-efhc/efhc_archive](https://github.com/gly-efhc/efhc_archive).
 
-Этот репозиторий содержит исходные файлы React/Next.js frontend, тесты, инструменты CI/Pages и публично безопасные инструкции. Он **не** является копией приватного документального Архива, production backend, базой данных или доказательством исполнения финансовой операции. Наличие приложения в GitHub Pages либо успешного frontend build не подтверждает состояние production, реальность выплат и on-chain settlement.
+Этот репозиторий содержит исходные файлы React/Next.js frontend, FastAPI backend, общий контракт, изолированный TEST-адаптер, тесты, инструменты CI/Pages и публично безопасные инструкции. Он **не** является копией приватного документального Архива, production backend, базой данных или доказательством исполнения финансовой операции. Наличие приложения в GitHub Pages либо успешного frontend build не подтверждает состояние production, реальность выплат и on-chain settlement.
 
 ## Начало работы
 
@@ -21,26 +21,30 @@
 
 | Путь | Назначение |
 | --- | --- |
-| [site/frontend/](site/frontend/) | React/Next.js приложение и зависимости |
-| [site/frontend/src/](site/frontend/src/) | Реальные компоненты, состояния и маршруты |
-| [site/frontend/tests/](site/frontend/tests/) | Регрессионные и parity-проверки |
-| [site/ci/parity/](site/ci/parity/) | Сопоставление frontend с исходными эталонами |
-| [site/ci/pages-tools/](site/ci/pages-tools/) | Проверки публикации и browser smoke |
+| [frontend/](frontend/) | React/Next.js приложение и зависимости |
+| [frontend/src/](frontend/src/) | Реальные компоненты, состояния и маршруты |
+| [tests/frontend/](tests/frontend/) | Регрессионные и parity-проверки |
+| [backend/](backend/) | Общий backend, API, Bot, scheduler, миграции |
+| [contracts/](contracts/) | Общие контракты |
+| [environments/test/demo_backend/](environments/test/demo_backend/) | Изолированный TEST-адаптер |
+| [tests/backend/](tests/backend/), [tests/integration/](tests/integration/) | Backend и интеграционные тесты |
+| [scripts/parity/](scripts/parity/) | Сопоставление frontend с исходными эталонами |
+| [deployment/pages-tools/](deployment/pages-tools/) | Проверки публикации и browser smoke |
 | [.github/workflows/](.github/workflows/) | GitHub Actions и процедуры CI/Pages |
-| [site/RECOVERY.md](site/RECOVERY.md) | Техническая инструкция восстановления frontend; исторические утверждения сверять с текущими решениями OWNER |
-| [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) | Утверждённый публичный маршрут правил приложения (редакция B) |
-| [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) | Вторичный публичный документ, не независимый SSOT |
-| [site/RELEASE.json](site/RELEASE.json) | Контракт идентичности TEST-релиза; фактический `release.json` формируется из Git и собранного Serwist |
+| [frontend/RECOVERY.md](frontend/RECOVERY.md) | Техническая инструкция восстановления frontend; исторические утверждения сверять с текущими решениями OWNER |
+| [frontend/EFHC_APPLICATION_RULES.md](frontend/EFHC_APPLICATION_RULES.md) | Утверждённый публичный маршрут правил приложения (редакция B) |
+| [frontend/APPLICATION_RULES.md](frontend/APPLICATION_RULES.md) | Вторичный публичный документ, не независимый SSOT |
+| [frontend/RELEASE.json](frontend/RELEASE.json) | Контракт идентичности TEST-релиза; фактический `release.json` формируется из Git и собранного Serwist |
 | [import/README.md](import/README.md) | Безопасное сравнение архивов; автоматическая замена исходников запрещена |
 
 Единая команда компиляции — `npm run build`; Pages использует её для статического профиля. `release.json` идентифицирует исходные деревья и скомпилированный PWA, но не подтверждает развернутый Backend или миграции БД. Приватный `Archive_vNNN.zip` не загружается в публичный `efhc/import/`.
 
 ## Локальная разработка
 
-Рабочий каталог frontend — `site/frontend/`. Команды объявлены в [package.json](site/frontend/package.json):
+Рабочий каталог frontend — `frontend/`. Команды объявлены в [package.json](frontend/package.json):
 
 ```bash
-cd site/frontend
+cd frontend
 npm ci
 npm run dev
 ```

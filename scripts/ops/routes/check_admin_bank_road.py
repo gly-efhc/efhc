@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ADMIN_ROUTE = ROOT / "backend/app/routes/admin_routes.py"
 BANK_SERVICE = ROOT / "backend/app/services/admin/admin_bank_service.py"
 TX_SERVICE = ROOT / "backend/app/services/transactions_service.py"

@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 MODELS = ROOT / "backend" / "app" / "models"
 MIGRATION = ROOT / "backend" / "migrations" / "versions" / "0001_initial_release_schema.py"
 

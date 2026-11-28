@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 MODEL = ROOT / "backend/app/models/shop_payment_tx_hash_lock_models.py"
 LOCK_SERVICE = (
     ROOT / "backend/app/services/shop_payment_tx_hash_lock_service.py"

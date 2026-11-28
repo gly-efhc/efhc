@@ -1,0 +1,48 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync,existsSync} from "node:fs";
+
+const existing = path => existsSync(new URL(path,import.meta.url));
+const source = path => readFileSync(new URL(path,import.meta.url),"utf8");
+
+test("OWNER-retired technical pages are physically absent from current source",()=>{
+  for(const path of [
+    "../../../frontend/src/pages/dev",
+    "../../../frontend/public/dev",
+    "../../../frontend/src/pages/404.tsx",
+    "../../../frontend/src/pages/500.tsx",
+    "../../../frontend/src/pages/_error.tsx",
+    "../../../frontend/src/components/ui/SafeErrorState.tsx",
+    "../../../frontend/src/components/QuietPageSurface.tsx",
+    "../../../frontend/src/components/ErrorBoundary.tsx",
+  ]){
+    assert.equal(existing(path),false,"Retired source still exists: "+path);
+  }
+});
+
+test("App mounts real USER/Admin/Shop routes, with no fatal page replacement",()=>{
+  const app=source("../../../frontend/src/pages/_app.tsx");
+  assert.doesNotMatch(app,/ErrorBoundary|QuietPageSurface|SafeErrorState/);
+  assert.match(app,/<Component/);
+  assert.match(app,/<AdminVisualProofRouter/);
+  assert.match(app,/<ShopLayout/);
+  assert.match(app,/<Layout/);
+});
+
+test("PWA never intercepts retired routes with synthetic 404 pages",()=>{
+  const worker=source("../../../deployment/pages-tools/sw-serwist.js");
+  assert.doesNotMatch(worker,/isRetiredRoute|QuietPageSurface|SafeErrorState/);
+  assert.ok(!worker.includes('event.respondWith(new Response("", {status: 404'));
+  assert.match(worker,/new Serwist\(/);
+  assert.match(worker,/cleanupOutdatedCaches:true/);
+  assert.doesNotMatch(worker,/retireLegacyCachesOnce|legacyPublicCaches/);
+  assert.doesNotMatch(worker,/legacyHtmlFallback/);
+});
+
+test("The actual Withdraw page is retained in the tree for data-safe rendering",()=>{
+  const page=source("../../../frontend/src/pages/withdraw.tsx");
+  assert.match(page,/data-public-surface="withdraw"/);
+  assert.match(page,/efhc-withdraw-create-card/);
+  assert.match(page,/withdraw.my_requests/);
+  assert.doesNotMatch(page,/QuietPageSurface/);
+});

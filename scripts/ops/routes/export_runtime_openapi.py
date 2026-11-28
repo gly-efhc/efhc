@@ -10,7 +10,7 @@ import sysconfig
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / "reports" / "generated" / "runtime_openapi.json"
 STATUS = (
     ROOT / "reports" / "generated" / "runtime_openapi_1182_status.json"

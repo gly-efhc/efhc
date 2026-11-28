@@ -1,0 +1,13 @@
+services:
+  efhc-demo-api:
+    build:
+      context: ../..
+      dockerfile: environments/test/Dockerfile
+    env_file:
+      - ${EFHC_TEST_ENV_FILE:?Set an absolute path to the private TEST environment file}
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp

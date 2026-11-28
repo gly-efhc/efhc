@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-root = Path(__file__).resolve().parents[3] / "main"
+root = Path(__file__).resolve().parents[3]
 pi = (
     root / "backend/app/services/payment_intents_service.py"
 ).read_text()

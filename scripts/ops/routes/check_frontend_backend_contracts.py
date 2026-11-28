@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTES = ROOT / "backend" / "app" / "routes"
 OUT = ROOT / "reports" / "generated" / "frontend_backend_contracts.json"
 SEAM_DIR = ROOT / "frontend" / "src" / "lib" / "api" / "generated"

@@ -42,7 +42,12 @@ jobs:
             base="$(git merge-base HEAD origin/main)"
           fi
           policy="$base"
-          if git cat-file -e "$base:site/ci/no_work_prefixes.py" 2>/dev/null; then
+          if git cat-file -e "$base:scripts/ci/no_work_prefixes.py" 2>/dev/null; then
+            if git cat-file -e "$base:site/ci/no_work_prefixes.py" 2>/dev/null; then
+              echo "Ambiguous trusted checker paths" >&2; exit 1
+            fi
+            git show "$base:scripts/ci/no_work_prefixes.py" > "$RUNNER_TEMP/no-work-prefixes.py"
+          elif git cat-file -e "$base:site/ci/no_work_prefixes.py" 2>/dev/null; then
             git show "$base:site/ci/no_work_prefixes.py" > "$RUNNER_TEMP/no-work-prefixes.py"
           else
             # One-time audited installation against the exact previous main.
@@ -52,4 +57,4 @@ jobs:
           fi
           python3 "$RUNNER_TEMP/no-work-prefixes.py" --base "$base" --head "$GITHUB_SHA" --policy-ref "$policy" --report "$RUNNER_TEMP/work-prefix-result.json"
       - name: Verify the guard against intentional violations
-        run: python3 -I -m unittest discover -s site/ci -p 'test_no_work_prefixes.py' -v
+        run: python3 -I -m unittest discover -s tests/architecture -p 'test_no_work_prefixes.py' -v

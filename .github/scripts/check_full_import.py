@@ -41,7 +41,7 @@ def refused(f, message):
 
 def main():
     refused(lambda: pathname("demo_backend/asgi.py"), "not in import scope")
-    pathname("main/demo_backend/docker-compose.demo.yml")
+    pathname("environments/test/docker-compose.demo.yml")
     with tempfile.TemporaryDirectory() as temp:
         folder = Path(temp)
         root = folder / "checkout"
@@ -52,7 +52,7 @@ def main():
         assert not list(root.iterdir()) and count == len(REQUIRED) == pending
         assert run(root, bundle, sha, True) == (base, count, count)
         assert run(root, bundle, sha, False) == (base, count, 0)
-        changed = root / "site/frontend/package-lock.json"
+        changed = root / "frontend/package-lock.json"
         changed.write_bytes(b"owner content")
         refused(lambda: run(root, bundle, sha, True), "refusing to overwrite")
         assert changed.read_bytes() == b"owner content"

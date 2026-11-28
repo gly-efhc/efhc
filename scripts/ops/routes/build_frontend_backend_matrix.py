@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 ROUTE_DIR = ROOT / "backend" / "app" / "routes"
 FRONTEND_DIR = ROOT / "frontend"
 OUT = ROOT / "reports" / "generated" / "frontend_backend_matrix.json"

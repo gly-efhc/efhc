@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "main"
+ROOT = Path(__file__).resolve().parents[3]
 SSOT_ROUTES = ROOT / "docs/SSOT/ssot_pack/SSOT_ROUTES.csv"
 OPENAPI = ROOT / "backend/openapi/openapi.json"
 FRONTEND_FILES = [
