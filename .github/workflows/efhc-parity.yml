@@ -38,12 +38,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Prevent retired internal application aliases
-        run: python3 -I -m unittest discover -s site/ci -p test_application_aliases.py -v
+        run: python3 -I -m unittest discover -s tests/architecture -p test_application_aliases.py -v
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: site/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       # Resolve the identity from GitHub configuration, never from the GitHub account number.
       # The value lives in the job environment only; it is not a NEXT_PUBLIC_ build setting.
       - name: Bind and verify EFHC Global ID in test ENV
@@ -73,15 +73,15 @@ jobs:
           print("EFHC_GLOBAL_ID_JOB_ENV=PASS validated=D10 source=GitHub no-identity-logged")
           PY
       - name: Check bound Global ID and server-attested role boundary
-        run: node site/frontend/tests/parity/global-id-env.mjs
+        run: node tests/frontend/parity/global-id-env.mjs
       - name: Prepare actual React with Pages base path
-        run: python3 site/ci/pages-tools/prepare_pages.py --source site/frontend --target "$RUNNER_TEMP/efhc-parity-build" --base-path "$EFHC_DEMO_BASEPATH"
+        run: python3 deployment/pages-tools/prepare_pages.py --source frontend --target "$RUNNER_TEMP/efhc-parity-build" --base-path "$EFHC_DEMO_BASEPATH"
       - name: Install locked dependencies
         run: |
           cd "$RUNNER_TEMP/efhc-parity-build"
           npm ci --ignore-scripts --no-audit --no-fund
       - name: Install browser driver for full review
-        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
+        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/'))) }}
         run: |
           if [ ! -f "$RUNNER_TEMP/efhc-browser-tools/node_modules/playwright-core/package.json" ]; then
             npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
@@ -93,18 +93,19 @@ jobs:
           npm run typecheck
       - name: Check immutable HTML contracts and generated shared shell
         run: |
-          ln -s "$RUNNER_TEMP/efhc-parity-build/node_modules" site/frontend/node_modules
-          cd site/frontend
+          ln -s "$RUNNER_TEMP/efhc-parity-build/node_modules" frontend/node_modules
+          cd frontend
+          node ../tests/frontend/helpers/link-dependencies.mjs
           # Isolate a cache regression deadlock without weakening the full gate.
           echo EFHC_PWA_REGRESSION_START
-          timeout --signal=TERM --kill-after=10s 120s node --test tests/regression/current-pwa-full-cache.test.mjs
+          timeout --signal=TERM --kill-after=10s 120s node --test ../tests/frontend/regression/current-pwa-full-cache.test.mjs
           npm ls @tonconnect/ui-react @tonconnect/sdk
           echo EFHC_ALL_REGRESSIONS_START
-          timeout --signal=TERM --kill-after=10s 240s npm run test:frontend-regression
-          node --test tests/regression/balance-history-dots.test.mjs tests/regression/balance-panel-public-id.test.mjs tests/regression/pwa-sites-index-redirect.mjs
+          timeout --signal=TERM --kill-after=10s 240s npm run test:all
+          node --test ../tests/frontend/regression/balance-history-dots.test.mjs ../tests/frontend/regression/balance-panel-public-id.test.mjs ../tests/frontend/regression/pwa-sites-index-redirect.mjs
           cd "$GITHUB_WORKSPACE"
-          EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-parity-build/package.json" node site/ci/parity/generate_shell.mjs --check
-          node site/frontend/tests/parity/pages-artifact.test.mjs
+          EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-parity-build/package.json" node scripts/parity/generate_shell.mjs --check
+          node tests/frontend/parity/pages-artifact.test.mjs
       - name: Build React for the exact source revision
         env:
           NEXT_TELEMETRY_DISABLED: '1'
@@ -130,7 +131,7 @@ jobs:
             npm install --prefix "$RUNNER_TEMP/efhc-browser-tools" playwright-core@latest --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
           fi
           npm --prefix "$RUNNER_TEMP/efhc-browser-tools" list playwright-core --depth=0
-          python3 site/ci/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-parity-build/out" --base-path "/${GITHUB_REPOSITORY#*/}"
+          python3 deployment/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-parity-build/out" --base-path "/${GITHUB_REPOSITORY#*/}"
           mkdir -p "$RUNNER_TEMP/efhc-persistence-http"
           ln -s "$RUNNER_TEMP/efhc-parity-build/out" "$RUNNER_TEMP/efhc-persistence-http/${GITHUB_REPOSITORY#*/}"
           python3 -m http.server 19245 --bind 127.0.0.1 --directory "$RUNNER_TEMP/efhc-persistence-http" > "$RUNNER_TEMP/efhc-persistence-http.log" 2>&1 &
@@ -140,8 +141,8 @@ jobs:
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           export EFHC_REACT_URL="http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/"
           export EFHC_PWA_EXPORT_DIR="$RUNNER_TEMP/efhc-parity-build/out"
-          node site/frontend/tests/parity/pwa-cache-integration.mjs
-          node site/frontend/tests/parity/persistent-pages.mjs
+          node tests/frontend/parity/pwa-cache-integration.mjs
+          node tests/frontend/parity/persistent-pages.mjs
       - name: Retain mandatory persistence verification
         if: always()
         uses: actions/upload-artifact@v4
@@ -151,12 +152,12 @@ jobs:
           if-no-files-found: warn
 
       - name: Check actual rendered selections, colors, sizing and routes
-        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react')) }}
+        if: ${{ inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/'))) }}
         env:
           EFHC_BROWSER_TOOLS: ${{ runner.temp }}/efhc-browser-tools/package.json
           EFHC_PARITY_ARTIFACTS: ${{ runner.temp }}/efhc-parity-artifacts
         run: |
-          python3 site/ci/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-parity-build/out" --base-path "$EFHC_DEMO_BASEPATH"
+          python3 deployment/pages-tools/fix_pages_assets.py --directory "$RUNNER_TEMP/efhc-parity-build/out" --base-path "$EFHC_DEMO_BASEPATH"
           mkdir -p "$RUNNER_TEMP/efhc-parity-http"
           ln -s "$RUNNER_TEMP/efhc-parity-build/out" "$RUNNER_TEMP/efhc-parity-http$EFHC_DEMO_BASEPATH"
           python3 -m http.server 19240 --bind 127.0.0.1 --directory "$RUNNER_TEMP/efhc-parity-http" > "$RUNNER_TEMP/efhc-parity-http.log" 2>&1 &
@@ -169,7 +170,7 @@ jobs:
           # Preserve the FAIL gate: diagnostics must not bypass visual acceptance.
           failed=0
           for suite in panels-colors browser interactions templates routes; do
-            if node "site/frontend/tests/parity/${suite}.mjs"; then
+            if node "tests/frontend/parity/${suite}.mjs"; then
               echo "FULL_REVIEW_SUITE_PASS ${suite}"
             else
               echo "FULL_REVIEW_SUITE_FAIL ${suite}"
@@ -178,7 +179,7 @@ jobs:
           done
           test "$failed" -eq 0
       - name: Retain visual review and precise results
-        if: ${{ always() && (inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && contains(github.head_ref, 'official-tonconnect-ui-react'))) }}
+        if: ${{ always() && (inputs.full_review == true || github.event_name == 'schedule' || (github.event_name == 'pull_request' && (contains(github.head_ref, 'official-tonconnect-ui-react') || startsWith(github.head_ref, 'refactor/')))) }}
         uses: actions/upload-artifact@v4
         with:
           name: efhc-parity-${{ github.sha }}

@@ -13,15 +13,19 @@
 | Задача | Реальный путь efhc |
 | --- | --- |
 | Вход, правила и навигация | [AGENTS.md](AGENTS.md), [START_HERE.md](START_HERE.md), [KERNEL.md](KERNEL.md), [README.md](README.md) |
-| React/Next.js приложение | [site/frontend/](site/frontend/), [package.json](site/frontend/package.json) |
-| UI-компоненты и клиентская логика | [site/frontend/src/](site/frontend/src/) |
-| Регрессия и parity | [site/frontend/tests/](site/frontend/tests/) |
-| Parity-инструменты и проверка HTML | [site/ci/parity/](site/ci/parity/), [site/frontend/tests/parity/](site/frontend/tests/parity/) |
-| Pages/browser CI | [site/ci/pages-tools/](site/ci/pages-tools/) |
-| Восстановление frontend | [site/RECOVERY.md](site/RECOVERY.md) |
-| Публичные правила приложения | [site/EFHC_APPLICATION_RULES.md](site/EFHC_APPLICATION_RULES.md) — маршрут B |
-| Вторичная редакция правил | [site/APPLICATION_RULES.md](site/APPLICATION_RULES.md) — не самостоятельный SSOT |
-| Идентичность TEST-релиза | [site/RELEASE.json](site/RELEASE.json) — контракт; `release.json` формируется при сборке |
+| React/Next.js приложение | [frontend/](frontend/), [package.json](frontend/package.json) |
+| UI-компоненты и клиентская логика | [frontend/src/](frontend/src/) |
+| Регрессия и parity | [tests/frontend/](tests/frontend/) |
+| Backend | [backend/](backend/) |
+| Общие контракты | [contracts/](contracts/) |
+| TEST-адаптер | [environments/test/demo_backend/](environments/test/demo_backend/) |
+| Backend и интеграционные тесты | [tests/backend/](tests/backend/), [tests/integration/](tests/integration/) |
+| Parity-инструменты и проверка HTML | [scripts/parity/](scripts/parity/), [tests/frontend/parity/](tests/frontend/parity/) |
+| Pages/browser CI | [deployment/pages-tools/](deployment/pages-tools/) |
+| Восстановление frontend | [frontend/RECOVERY.md](frontend/RECOVERY.md) |
+| Публичные правила приложения | [frontend/EFHC_APPLICATION_RULES.md](frontend/EFHC_APPLICATION_RULES.md) — маршрут B |
+| Вторичная редакция правил | [frontend/APPLICATION_RULES.md](frontend/APPLICATION_RULES.md) — не самостоятельный SSOT |
+| Идентичность TEST-релиза | [frontend/RELEASE.json](frontend/RELEASE.json) — контракт; `release.json` формируется при сборке |
 | CI и публикация | [.github/workflows/](.github/workflows/) |
 | Импорт исходного frontend | [import/README.md](import/README.md); не путать с документальным Архивом |
 

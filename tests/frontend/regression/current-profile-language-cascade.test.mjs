@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+
+const picker = readFileSync(new URL("../../../frontend/src/components/profile/CompactLanguagePicker.tsx", import.meta.url), "utf8");
+const webProfile = readFileSync(new URL("../../../frontend/src/features/profile/WebProfilePage.tsx", import.meta.url), "utf8");
+const modal = readFileSync(new URL("../../../frontend/src/components/ProfileModal.tsx", import.meta.url), "utf8");
+const css = readFileSync(new URL("../../../frontend/public/" + "FRONTEND_" + "v" + "866.css", import.meta.url), "utf8");
+
+test("profile language picker receives the historical theme exclusions without changing frozen CSS", () => {
+  const genericRule = css.match(/\.source-profile-settings-card button(?<excluded>(?::not\([^)]+\))+),/);
+  assert.ok(genericRule, "The frozen profile button theme rule remains present");
+  for (const oldName of ["source-profile-language-button", "source-profile-language-option"]) {
+    assert.ok(genericRule.groups.excluded.includes(":not(." + oldName + ")"), oldName);
+    assert.ok(picker.includes(oldName), oldName + " must be used by the React profile");
+  }
+  for (const newName of [
+    "efhc-compact-language-picker_button",
+    "efhc-compact-language-picker_menu",
+    "efhc-compact-language-picker_option",
+  ]) {
+    assert.ok(picker.includes(newName), "Existing React class must be preserved: " + newName);
+  }
+  assert.match(picker, /profileSurface\?: boolean/);
+  assert.match(picker, /source-profile-language-menu/);
+  assert.match(webProfile, /<CompactLanguagePicker\s+profileSurface\s+value=/);
+  assert.doesNotMatch(modal, /<CompactLanguagePicker\s+profileSurface\s+value=/, "Existing profile modal remains unchanged");
+  assert.match(picker, /props\.profileSurface \? \(/, "Main profile must render the canonical three-column trigger");
+  assert.match(picker, /className="efhc-compact-language-picker_current"/, "Shop and other surfaces retain their existing trigger");
+});
+
+test("Profile's closed and open language surfaces use one CT fill, without styling other pickers", () => {
+  assert.match(picker, /props\.profileSurface\s*\?[^?]*styles\.profileLanguageSurface/);
+  const surface = readFileSync(new URL("../../../frontend/src/components/profile/compact-language-picker.module.css", import.meta.url), "utf8");
+  assert.match(surface, /--efhc-profile-language-surface:\s*#050508/);
+  assert.match(surface, /color-mix\(in srgb, var\(--efhc-ct-accent\) 5%, #050508\)/);
+  assert.match(surface, /\.profileLanguageSurface[^{}]*source-profile-language-button[^{}]*,\s*[^{}]*\.profileLanguageSurface[^{}]*source-profile-language-menu[^{}]*\{\s*background-color:\s*var\(--efhc-profile-language-surface\)/);
+  assert.doesNotMatch(surface, /source-profile-language-option/);
+});

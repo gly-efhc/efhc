@@ -67,15 +67,15 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test -f site/RELEASE.json
-          test -f site/frontend/package-lock.json
-          git diff --exit-code HEAD -- site main ROUTES.json
+          test -f frontend/RELEASE.json
+          test -f frontend/package-lock.json
+          git diff --exit-code HEAD -- site frontend main backend contracts environments tests scripts deployment ROUTES.json
 
       - name: Load checked-in Pages tools
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE="site/ci/pages-tools"
+          SOURCE="deployment/pages-tools"
           DEST="$RUNNER_TEMP/efhc-pages-tools"
           for file in prepare_pages.py fix_pages_assets.py verify_export.py browser-smoke.mjs inject_serwist.mjs sw-serwist.js; do
             test -s "$SOURCE/$file" || { echo "Missing checked-in Pages tool: $file" >&2; exit 1; }
@@ -91,7 +91,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: site/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Configure Pages (manual publish only)
         uses: actions/configure-pages@v6
@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 "$RUNNER_TEMP/efhc-pages-tools/prepare_pages.py" \
-            --source site/frontend \
+            --source frontend \
             --target "$RUNNER_TEMP/efhc-demo-build" \
             --base-path "/${REPO_NAME}"
 
@@ -114,16 +114,19 @@ jobs:
           cd "$RUNNER_TEMP/efhc-demo-build"
           npm ci --ignore-scripts --no-audit --no-fund 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/npm-ci.log"
+          ln -s "$RUNNER_TEMP/efhc-demo-build/node_modules" "$GITHUB_WORKSPACE/frontend/node_modules"
 
       # API origin migration is a narrow transport-contract check, not full visual review.
       - name: Verify HTTPS backend origin and authenticated transport contract
         shell: bash
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP/efhc-demo-build"
-          node --test tests/regression/current-demo-backend-transport.test.mjs
-          node --test tests/regression/current-panel-balance-after-purchase.test.mjs
-          node --test tests/regression/current-header-account-truth.test.mjs
+          export EFHC_FRONTEND_TEST_ROOT="$RUNNER_TEMP/efhc-demo-build"
+          export EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-demo-build/package.json"
+          cd "$GITHUB_WORKSPACE/frontend"
+          node --test ../tests/frontend/regression/current-demo-backend-transport.test.mjs
+          node --test ../tests/frontend/regression/current-panel-balance-after-purchase.test.mjs
+          node --test ../tests/frontend/regression/current-header-account-truth.test.mjs
 
       # OWNER C0035: extensive source/parity tests are release-only,
       # not blockers for iterative Pages preview publication.
@@ -132,14 +135,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP/efhc-demo-build"
+          export EFHC_FRONTEND_TEST_ROOT="$RUNNER_TEMP/efhc-demo-build"
+          export EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-demo-build/package.json"
+          cd "$GITHUB_WORKSPACE/frontend"
           npm run test:html-react-parity
-          node --test tests/regression/current-demo-backend-transport.test.mjs
-          node --test tests/regression/current-panel-balance-after-purchase.test.mjs
-          node --test tests/regression/current-header-account-truth.test.mjs
+          node --test ../tests/frontend/regression/current-demo-backend-transport.test.mjs
+          node --test ../tests/frontend/regression/current-panel-balance-after-purchase.test.mjs
+          node --test ../tests/frontend/regression/current-header-account-truth.test.mjs
           cd "$GITHUB_WORKSPACE"
-          EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-demo-build/package.json" node site/ci/parity/generate_shell.mjs --check
-          node site/frontend/tests/parity/pages-artifact.test.mjs
+          EFHC_FRONTEND_DEPENDENCIES="$RUNNER_TEMP/efhc-demo-build/package.json" node scripts/parity/generate_shell.mjs --check
+          node tests/frontend/parity/pages-artifact.test.mjs
 
       - name: Set up Python for isolated quality scanners
         uses: actions/setup-python@v5
@@ -167,7 +172,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 site/frontend/src/reconstruction/ci_predeploy_diagnostics.py \
+          python3 frontend/src/reconstruction/ci_predeploy_diagnostics.py \
             --phase prebuild \
             --frontend "$RUNNER_TEMP/efhc-demo-build" \
             --repo "$GITHUB_WORKSPACE" \
@@ -181,10 +186,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ln -s "$RUNNER_TEMP/efhc-demo-build/node_modules" site/frontend/node_modules
-          cd site/frontend
+          cd frontend
           echo 'EFHC_PREDEPLOY_FRONTEND_REGRESSION_START'
-          npm run test:frontend-regression 2>&1 \
+          npm run test:all 2>&1 \
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/frontend-regression.log"
 
       - name: Require configured HTTPS backend API before any Pages compilation
@@ -249,7 +253,7 @@ jobs:
             | tee "$RUNNER_TEMP/efhc-pages-diagnostics/verify-export.log"
 
       - name: Record exact source and Serwist release identity
-        run: python3 site/ci/release_identity.py --export "$RUNNER_TEMP/efhc-demo-build/out" --expected-commit "$GITHUB_SHA"
+        run: python3 scripts/ci/release_identity.py --export "$RUNNER_TEMP/efhc-demo-build/out" --expected-commit "$GITHUB_SHA"
 
       # Page persistence is mandatory; optional visual diagnostics remain separate.
       - name: Require complete offline PWA and persistent React pages before publishing
@@ -284,8 +288,8 @@ jobs:
           export EFHC_REACT_URL="http://127.0.0.1:19245/${GITHUB_REPOSITORY#*/}/"
           # The same full offline/CT/settings/PNL/staged-update gate as parity CI.
           # This is blocking for every Pages publication, including fast push.
-          node site/frontend/tests/parity/pwa-cache-integration.mjs
-          node site/frontend/tests/parity/persistent-pages.mjs
+          node tests/frontend/parity/pwa-cache-integration.mjs
+          node tests/frontend/parity/persistent-pages.mjs
       - name: Retain mandatory persistence evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -302,7 +306,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 site/frontend/src/reconstruction/ci_predeploy_diagnostics.py \
+          python3 frontend/src/reconstruction/ci_predeploy_diagnostics.py \
             --phase postbuild \
             --frontend "$RUNNER_TEMP/efhc-demo-build" \
             --repo "$GITHUB_WORKSPACE" \
@@ -436,11 +440,11 @@ jobs:
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:19243/${GITHUB_REPOSITORY#*/}/ -o /dev/null && break || sleep 1; done
           export CHROME_BIN="$(command -v google-chrome || command -v chromium)"
           export EFHC_REACT_URL=http://127.0.0.1:19243/${GITHUB_REPOSITORY#*/}/
-          node site/frontend/tests/parity/panels-colors.mjs
-          node site/frontend/tests/parity/browser.mjs
-          node site/frontend/tests/parity/interactions.mjs
-          node site/frontend/tests/parity/templates.mjs
-          node site/frontend/tests/parity/routes.mjs
+          node tests/frontend/parity/panels-colors.mjs
+          node tests/frontend/parity/browser.mjs
+          node tests/frontend/parity/interactions.mjs
+          node tests/frontend/parity/templates.mjs
+          node tests/frontend/parity/routes.mjs
 
       - name: Retain USER recovery review artifacts
         if: ${{ always() && inputs.full_review == true }}

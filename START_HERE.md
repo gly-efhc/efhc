@@ -22,7 +22,7 @@
 
 ## 3. Что читать по задаче
 
-- **Frontend и UI:** [`site/frontend/src/`](site/frontend/src/), [`site/RECOVERY.md`](site/RECOVERY.md), [`site/frontend/tests/`](site/frontend/tests/); приватные `05_SSOT/FRONTEND/APPLICATION_RULES.md` и `10_FRONTEND/README.md`. React Admin требует восстановления по внешнему HTML v866; его общий визуальный freeze отменён, но новое изменение кода требует scope OWNER.
+- **Frontend и UI:** [`frontend/src/`](frontend/src/), [`frontend/RECOVERY.md`](frontend/RECOVERY.md), [`tests/frontend/`](tests/frontend/); приватные `05_SSOT/FRONTEND/APPLICATION_RULES.md` и `10_FRONTEND/README.md`. React Admin требует восстановления по внешнему HTML v866; его общий визуальный freeze отменён, но новое изменение кода требует scope OWNER.
 - **PWA и обновления:** исходники Serwist в frontend; приватные `05_SSOT/FRONTEND/EFHC_SERWIST_PWA_CACHE_STANDARD.md` и `05_SSOT/FRONTEND/EFHC_UNIFIED_CACHE_OWNER_SSOT.md`. Различать PWA CacheStorage, пользовательское состояние, сессии и чувствительные сетевые операции.
 - **Wallet, TON, Identity, Admin, финансы:** только применимые `01_CANON`, `05_SSOT/CONTRACTS`, `06_NORM` и реальный frontend/backend код. Нельзя принимать клик или HTTP-ответ за подтверждение on-chain settlement.
 - **ТЗ и эксплуатация:** приватные `13_PLANS/TECHNICAL_TASKS/README.md`, `12_RUNBOOKS/README.md`; не искать действующие нормы в старых разделах.
@@ -30,10 +30,10 @@
 
 ## 4. Исполнение и проверка
 
-Сначала `SCOPE → PIN HEAD → targeted READ → EDIT`, затем релевантные `VERIFY → COMMIT → remote READBACK`. Не затрагивать неназванные файлы, публиковать приватные документы, менять secrets, backend, pipelines или production без разрешения. Для frontend команды из [`site/frontend/package.json`](site/frontend/package.json):
+Сначала `SCOPE → PIN HEAD → targeted READ → EDIT`, затем релевантные `VERIFY → COMMIT → remote READBACK`. Не затрагивать неназванные файлы, публиковать приватные документы, менять secrets, backend, pipelines или production без разрешения. Для frontend команды из [`frontend/package.json`](frontend/package.json):
 
 ```bash
-cd site/frontend
+cd frontend
 npm ci
 npm run typecheck
 npm run test:frontend-regression

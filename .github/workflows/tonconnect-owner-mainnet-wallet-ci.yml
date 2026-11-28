@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'site/frontend/**'
+      - 'frontend/**'
+      - 'tests/frontend/**'
       - '.github/workflows/efhc-pages.yml'
       - '.github/workflows/tonconnect-owner-mainnet-wallet-ci.yml'
   workflow_dispatch:
@@ -18,7 +19,7 @@ jobs:
     timeout-minutes: 35
     defaults:
       run:
-        working-directory: site/frontend
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,13 +28,13 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: site/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Install pinned official wallet SDK and Next
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Confirm one official TonConnect runtime
         run: npm ls @tonconnect/ui-react @tonconnect/sdk
       - name: Check actual wallet chain/network and current official runtime contracts
-        run: node --test tests/regression/current-owner-mainnet-wallet-boundary.test.mjs tests/regression/current-official-tonconnect-runtime.test.mjs
+        run: node ../tests/frontend/helpers/link-dependencies.mjs && node --test ../tests/frontend/regression/current-owner-mainnet-wallet-boundary.test.mjs ../tests/frontend/regression/current-official-tonconnect-runtime.test.mjs
       - name: Check all existing frontend regressions
         run: npm run test:frontend-regression
       - name: Check React/TypeScript correctness

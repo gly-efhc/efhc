@@ -7,3 +7,6 @@
 /site/ci/no_work_prefixes.py @gly-efhc
 /site/ci/test_no_work_prefixes.py @gly-efhc
 /site/ci/work-prefix-exceptions.json @gly-efhc
+/scripts/ci/no_work_prefixes.py @gly-efhc
+/tests/architecture/test_no_work_prefixes.py @gly-efhc
+/scripts/ci/work-prefix-exceptions.json @gly-efhc

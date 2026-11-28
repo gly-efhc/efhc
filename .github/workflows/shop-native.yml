@@ -1,10 +1,10 @@
 name: Shop native contracts
 on:
   pull_request:
-    paths: ['main/**', 'site/**', '.github/workflows/shop-native.yml']
+    paths: ['main/**', 'site/**', 'frontend/**', 'backend/**', 'contracts/**', 'environments/**', 'tests/**', 'scripts/**', 'deployment/**', 'requirements*.txt', 'pytest.ini', 'pyproject.toml', 'VERSION', '.dockerignore', '.github/workflows/shop-native.yml']
   push:
     branches: [main]
-    paths: ['main/**', 'site/**', '.github/workflows/shop-native.yml']
+    paths: ['main/**', 'site/**', 'frontend/**', 'backend/**', 'contracts/**', 'environments/**', 'tests/**', 'scripts/**', 'deployment/**', 'requirements*.txt', 'pytest.ini', 'pyproject.toml', 'VERSION', '.dockerignore', '.github/workflows/shop-native.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,39 +43,37 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: site/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Record exact candidate and verify database safety guard
         run: |
           git rev-parse HEAD
-          python -m unittest discover -s site/ci -p test_shop_database_guard.py -v
+          python -m unittest discover -s tests/architecture -p test_shop_database_guard.py -v
       - name: Install locked backend and test dependencies
-        run: python -m pip install -r main/backend/requirements.lock -r main/requirements-test.txt
+        run: python -m pip install -r backend/requirements.lock -r requirements-test.txt
       - name: Native API, PostgreSQL and watcher contracts
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}/main/tests
-        run: python site/ci/run_shop_native.py
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}/environments/test:${{ github.workspace }}:${{ github.workspace }}/tests
+        run: python scripts/ci/run_shop_native.py
       - name: Native TON and Telegram session contract tests
-        working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}/environments/test:${{ github.workspace }}
         run: |
-          python -m pytest -q tests/efhc_backend/identity/test_ton_auth_session.py tests/efhc_backend/identity/test_telegram_auth_session.py
+          python -m pytest -q tests/backend/identity/test_ton_auth_session.py tests/backend/identity/test_telegram_auth_session.py
       - name: Verify canonical DEMO adapter offline contracts
-        working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main
-        run: python -m pytest -q demo_backend/tests/test_config.py demo_backend/tests/test_sessions.py demo_backend/tests/test_security.py demo_backend/tests/test_schema.py demo_backend/tests/test_tonconnect.py demo_backend/tests/test_asgi_operator_contract.py demo_backend/tests/test_frontend_route_contract.py
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}/environments/test:${{ github.workspace }}
+        run: python -m pytest -q --confcutdir=tests/backend/test_adapter tests/backend/test_adapter/test_config.py tests/backend/test_adapter/test_sessions.py tests/backend/test_adapter/test_security.py tests/backend/test_adapter/test_schema.py tests/backend/test_adapter/test_tonconnect.py tests/backend/test_adapter/test_asgi_operator_contract.py tests/backend/test_adapter/test_frontend_route_contract.py
       - name: Install frontend lockfile and run native regressions
-        working-directory: site/frontend
+        working-directory: frontend
         run: |
           npm ci
           npm run typecheck
           npm run test:frontend-regression
       - name: Prepare public DEMO copy
         run: |
-          python site/ci/pages-tools/prepare_pages.py --source site/frontend --target "$RUNNER_TEMP/shop-pages" --base-path /efhc
+          python deployment/pages-tools/prepare_pages.py --source frontend --target "$RUNNER_TEMP/shop-pages" --base-path /efhc
           rm -rf "$RUNNER_TEMP/shop-pages/node_modules"
-          ln -s "$GITHUB_WORKSPACE/site/frontend/node_modules" "$RUNNER_TEMP/shop-pages/node_modules"
+          ln -s "$GITHUB_WORKSPACE/frontend/node_modules" "$RUNNER_TEMP/shop-pages/node_modules"
       - name: Build public DEMO with isolated fixture origin
         env:
           EFHC_DEMO_BASEPATH: /efhc
@@ -94,8 +92,8 @@ jobs:
           SHOP_REPORT_DIRECTORY: ${{ runner.temp }}/shop-evidence
           EFHC_SERWIST_PACKAGE_JSON: ${{ runner.temp }}/shop-pages/package.json
         run: |
-          python site/ci/pages-tools/fix_pages_assets.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
-          python site/ci/pages-tools/verify_export.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
+          python deployment/pages-tools/fix_pages_assets.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
+          python deployment/pages-tools/verify_export.py --directory "$SHOP_EXPORT_DIRECTORY" --base-path /efhc
           . /etc/os-release
           test "$ID" = ubuntu
           test "$VERSION_ID" = 26.04
@@ -104,15 +102,15 @@ jobs:
           "$browser_python" -m pip --isolated install --index-url https://pypi.org/simple --upgrade playwright
           "$browser_python" -m playwright --version
           "$browser_python" -m playwright install --with-deps chromium
-          "$browser_python" site/ci/shop_ui_smoke.py
+          "$browser_python" scripts/ci/shop_ui_smoke.py
 
       - name: Verify remaining frontend and architecture contracts
         run: |
-          python -I -m unittest discover -s site/ci -p 'test_*.py' -v
-          cd site/frontend
-          node --test tests/parity/pages-artifact.test.mjs tests/regression/balance-history-dots.test.mjs tests/regression/balance-panel-public-id.test.mjs
+          python -I -m unittest discover -s tests/architecture -p 'test_*.py' -v
+          cd frontend
+          node --test ../tests/frontend/parity/pages-artifact.test.mjs ../tests/frontend/regression/balance-history-dots.test.mjs ../tests/frontend/regression/balance-panel-public-id.test.mjs
       - name: Build server React from clean source
-        working-directory: site/frontend
+        working-directory: frontend
         env:
           NEXT_TELEMETRY_DISABLED: '1'
           NODE_OPTIONS: --max-old-space-size=6144
@@ -122,7 +120,7 @@ jobs:
           python - <<'PY'
           import os
           import sys
-          sys.path.insert(0, "site/ci")
+          sys.path.insert(0, "scripts/ci")
           from run_shop_native import check_database_environment
           check_database_environment(os.environ)
           import psycopg
@@ -132,26 +130,24 @@ jobs:
                   conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
           PY
       - name: Complete backend regression suite
-        working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}/environments/test:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
           ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
           SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
           PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/efhc_regression_ci
-        run: python -m pytest -q tests
+        run: python -m pytest -q --ignore=tests/backend/test_adapter tests/backend tests/integration
       - name: Complete DEMO adapter regression suite
         if: ${{ !cancelled() }}
-        working-directory: main
         env:
-          PYTHONPATH: ${{ github.workspace }}/main/backend:${{ github.workspace }}/main:${{ github.workspace }}
+          PYTHONPATH: ${{ github.workspace }}/backend:${{ github.workspace }}/environments/test:${{ github.workspace }}
           DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           SYNC_DATABASE_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           PSYCOPG_URL: postgresql://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           EFHC_GUEST_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
-          EFHC_READ_CONTRACT_ROOT: ${{ github.workspace }}/main/backend/app/routes
-          EFHC_BACKEND_ROOT: ${{ github.workspace }}/main/backend
+          EFHC_READ_CONTRACT_ROOT: ${{ github.workspace }}/backend/app/routes
+          EFHC_BACKEND_ROOT: ${{ github.workspace }}/backend
           EFHC_READ_SQL_TEST_DSN: postgresql+asyncpg://postgres:synthetic_shop_ci_only@127.0.0.1:5432/neondb
           EFHC_PUBLIC_CI: '1'
-        run: python -m pytest -q demo_backend/tests
+        run: python -m pytest -q --confcutdir=tests/backend/test_adapter tests/backend/test_adapter
